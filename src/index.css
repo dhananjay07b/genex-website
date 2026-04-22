@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-primary: #1AAEE8;
+  --color-secondary: #00D97E;
+  --color-gradient-start: #1AAEE8;
+  --color-gradient-end: #00D97E;
+
+  /* Surfaces */
+  --color-surface: #F8F9FA;
+  --color-surface-alt: #F1F3F5;
+
+  /* Text */
+  --color-text-primary: #0D1117;
+  --color-text-muted: #6B7280;
+
+  /* Border */
+  --color-border: #E5E7EB;
+
+  /* Dark */
+  --color-dark-bg: #0A1628;
+
+  /* Typography */
+  --font-sans: 'Raleway', system-ui, sans-serif;
+  --font-heading: 'Raleway', system-ui, sans-serif;
+}
+
+/* Base resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background-color: #F8F9FA;
+  color: #0D1117;
+  font-family: 'Raleway', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Brand gradient utility */
+.gradient-brand {
+  background: linear-gradient(90deg, #1AAEE8 0%, #00C5B0 50%, #00D97E 100%);
+}
+
+.gradient-brand-text {
+  background: linear-gradient(90deg, #1AAEE8 0%, #00C5B0 50%, #00D97E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
