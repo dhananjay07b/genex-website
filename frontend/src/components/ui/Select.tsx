@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { ChevronDown } from 'lucide-react'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { cn } from '@/lib/utils'
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -47,8 +47,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronDown
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"
+          <KeyboardArrowDownIcon
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+            sx={{ fontSize: 16 }}
             aria-hidden="true"
           />
         </div>

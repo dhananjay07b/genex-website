@@ -6,10 +6,7 @@ export function FinalCTA() {
   return (
     <section aria-labelledby="cta-heading">
       <motion.div
-        className="animate-gradient-pan py-24 lg:py-32 text-center px-6"
-        style={{
-          background: 'linear-gradient(135deg, #1AAEE8, #00C5B0, #00D97E, #00C5B0, #1AAEE8)',
-        }}
+        className="gradient-brand-shimmer animate-gradient-pan py-24 lg:py-32 text-center px-6"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}

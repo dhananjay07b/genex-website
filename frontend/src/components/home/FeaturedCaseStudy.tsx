@@ -33,22 +33,21 @@ export function FeaturedCaseStudy() {
 
           {/* Overlay card — bottom-left */}
           <motion.div
-            className="absolute bottom-0 left-0 right-0 lg:right-auto lg:w-[45%] p-7 lg:p-10"
-            style={{ background: 'rgba(10,22,40,0.94)' }}
+            className="absolute bottom-0 left-0 right-0 lg:right-auto lg:w-[45%] p-7 lg:p-10 bg-white/95"
             initial={{ y: 32, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.55, delay: 0.2, ease: 'easeOut' }}
           >
-            <p className="text-white/45 text-xs font-semibold uppercase tracking-widest mb-4">
+            <p className="text-text-muted text-xs font-semibold uppercase tracking-widest mb-4">
               Solar Power Plant · Rajasthan · 50 MW
             </p>
 
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-white leading-snug">
+            <h2 className="text-2xl lg:text-3xl font-extrabold text-text-primary leading-snug">
               40% reduction in<br />unplanned downtime.
             </h2>
 
-            <p className="mt-4 text-sm text-white/60 leading-relaxed">
+            <p className="mt-4 text-sm text-text-muted leading-relaxed">
               Full SCADA and remote monitoring deployment reduced fault response time from hours to minutes.
             </p>
 

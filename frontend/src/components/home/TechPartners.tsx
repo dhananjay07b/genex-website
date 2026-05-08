@@ -29,7 +29,7 @@ const itemVariants = {
 
 export function TechPartners() {
   return (
-    <section className="bg-surface py-20 lg:py-24" aria-labelledby="partners-heading">
+    <section className="bg-white py-20 lg:py-24" aria-labelledby="partners-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <motion.h2
           id="partners-heading"
@@ -57,7 +57,7 @@ export function TechPartners() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${name} — opens in new tab`}
-              className="group flex items-center justify-center px-6 py-4 rounded-xl border border-border bg-white text-text-muted font-bold text-sm tracking-wide hover:border-primary hover:text-primary hover:shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-w-[110px]"
+              className="group flex items-center justify-center px-6 py-4 rounded-xl border border-border text-text-muted font-bold text-sm tracking-wide hover:text-primary hover:border-primary shadow-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-w-28"
             >
               {abbr}
             </motion.a>

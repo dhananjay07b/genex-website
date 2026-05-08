@@ -78,10 +78,10 @@ function ProjectCard({
 
         {/* Hover overlay */}
         <div
-          className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          className="absolute inset-0 bg-black/15 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           aria-hidden="true"
         >
-          <span className="text-white text-sm font-semibold border border-white/60 rounded-full px-5 py-2 backdrop-blur-sm">
+          <span className="text-white text-sm font-semibold border border-white rounded-full px-5 py-2 backdrop-blur-sm">
             View Project →
           </span>
         </div>
@@ -110,7 +110,7 @@ export function ProjectsAtScale() {
   }
 
   return (
-    <section className="py-20 lg:py-28 bg-surface-alt" aria-labelledby="projects-heading">
+    <section className="py-20 lg:py-28 bg-white" aria-labelledby="projects-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-end justify-between mb-10">

@@ -107,7 +107,7 @@ export function WhatWeBuild() {
               className={cn(
                 'px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 tab.id === activeId
-                  ? 'bg-primary text-white shadow-sm'
+                  ? 'gradient-brand text-white shadow-sm'
                   : 'border border-border text-text-muted hover:border-primary hover:text-primary'
               )}
             >

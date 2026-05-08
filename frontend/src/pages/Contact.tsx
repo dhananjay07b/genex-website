@@ -3,7 +3,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Phone, Mail, MessageCircle, CheckCircle, Loader2 } from 'lucide-react'
+import LocationOnIcon from '@mui/icons-material/LocationOn'
+import PhoneIcon from '@mui/icons-material/Phone'
+import EmailIcon from '@mui/icons-material/Email'
+import ChatIcon from '@mui/icons-material/Chat'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
 import { PageHero } from '@/components/ui/PageHero'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -33,18 +38,18 @@ const PROJECT_TYPES = [
 
 const CONTACT_DETAILS = [
   {
-    icon: MapPin,
+    icon: LocationOnIcon,
     label: 'Office',
     lines: ['Genex Technocrats Pvt. Ltd.', 'Pune, Maharashtra, India'],
   },
   {
-    icon: Phone,
+    icon: PhoneIcon,
     label: 'Phone',
     lines: ['+91 XXXXX XXXXX'],
     note: 'Mon–Sat · 10am–7pm IST',
   },
   {
-    icon: Mail,
+    icon: EmailIcon,
     label: 'Email',
     lines: ['info@genextechnocrats.com'],
   },
@@ -80,7 +85,7 @@ export default function Contact() {
         subline="Our engineering team is available Mon–Sat, 10am–7pm IST. We respond to every message within 24 hours."
       />
 
-      <section className="bg-surface py-20 lg:py-28">
+      <section className="bg-white py-20 lg:py-28">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[3fr_2fr] gap-10 lg:gap-16 items-start">
 
@@ -94,7 +99,7 @@ export default function Contact() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center text-center py-12"
                   >
-                    <CheckCircle className="w-14 h-14 text-secondary mb-6" />
+                    <CheckCircleIcon className="w-14 h-14 text-secondary mb-6" />
                     <h2 className="text-2xl font-extrabold text-text-primary mb-3">
                       Message received.
                     </h2>
@@ -183,7 +188,7 @@ export default function Contact() {
                     >
                       {status === 'loading' ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          <AutorenewIcon className="w-4 h-4 animate-spin mr-2" sx={{ fontSize: 16 }} />
                           Sending…
                         </>
                       ) : (
@@ -230,7 +235,7 @@ export default function Contact() {
               {/* WhatsApp */}
               <div className="flex gap-4">
                 <div className="shrink-0 w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-secondary" aria-hidden="true" />
+                  <ChatIcon className="w-5 h-5 text-secondary" aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
@@ -252,7 +257,7 @@ export default function Contact() {
                 <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-4">
                   Location
                 </p>
-                <div className="w-full h-52 rounded-xl overflow-hidden bg-surface-alt border border-border flex items-center justify-center">
+                <div className="w-full h-52 rounded-xl overflow-hidden bg-surface border border-border flex items-center justify-center">
                   <p className="text-sm text-text-muted">Map embed goes here</p>
                 </div>
               </div>

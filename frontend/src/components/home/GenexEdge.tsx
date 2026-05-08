@@ -37,7 +37,7 @@ const statementVariants = {
 
 export function GenexEdge() {
   return (
-    <section className="bg-dark-bg overflow-hidden" aria-labelledby="genex-edge-heading">
+    <section className="bg-surface-alt overflow-hidden" aria-labelledby="genex-edge-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
         <div className="grid lg:grid-cols-[45fr_55fr] gap-12 lg:gap-20 items-center">
 
@@ -54,14 +54,14 @@ export function GenexEdge() {
               alt="Genex control room with SCADA screens"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(13,37,69,0.35)_0%,rgba(10,32,64,0.2)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(10,22,40,0.10)_0%,rgba(10,22,40,0.05)_100%)]" />
           </motion.div>
 
           {/* Right: statements */}
           <div>
             <motion.h2
               id="genex-edge-heading"
-              className="text-4xl lg:text-5xl font-extrabold text-white mb-10"
+              className="text-4xl lg:text-5xl font-extrabold text-text-primary mb-10"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -75,7 +75,7 @@ export function GenexEdge() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-40px' }}
-              className="divide-y divide-white/10"
+              className="divide-y divide-border"
             >
               {STATEMENTS.map(({ title, body }) => (
                 <motion.div
@@ -83,8 +83,8 @@ export function GenexEdge() {
                   variants={statementVariants}
                   className="py-6 first:pt-0 last:pb-0"
                 >
-                  <p className="text-xl font-bold text-white leading-snug">{title}</p>
-                  <p className="mt-1.5 text-base text-white/55 leading-relaxed">{body}</p>
+                  <p className="text-xl font-bold text-text-primary leading-snug">{title}</p>
+                  <p className="mt-1.5 text-base text-text-muted leading-relaxed">{body}</p>
                 </motion.div>
               ))}
             </motion.div>

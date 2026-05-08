@@ -1,20 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { cn } from '@/lib/utils'
 import { MegaMenu } from './MegaMenu'
 import type { NavItem } from '@/types/navigation'
 
 interface DesktopNavProps {
   items: NavItem[]
+  solidBg?: boolean
 }
 
-export function DesktopNav({ items }: DesktopNavProps) {
+export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const navRef = useRef<HTMLUListElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const location = useLocation()
 
-  const close = useCallback(() => setOpenIndex(null), [])
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }, [])
+
+  const close = useCallback(() => {
+    cancelClose()
+    setOpenIndex(null)
+  }, [cancelClose])
+
+  const scheduleClose = useCallback(() => {
+    closeTimer.current = setTimeout(() => setOpenIndex(null), 120)
+  }, [])
 
   useEffect(() => {
     close()
@@ -50,26 +66,34 @@ export function DesktopNav({ items }: DesktopNavProps) {
         const open = openIndex === i
 
         return (
-          <li key={item.label} className="relative" role="none">
+          <li
+              key={item.label}
+              className="relative"
+              role="none"
+            >
             {hasDropdown ? (
               <button
                 role="menuitem"
                 aria-haspopup="true"
                 aria-expanded={open}
                 onClick={() => setOpenIndex(open ? null : i)}
-                onMouseEnter={() => setOpenIndex(i)}
+                onMouseEnter={() => { cancelClose(); setOpenIndex(i) }}
+                onMouseLeave={scheduleClose}
                 className={cn(
-                  'flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   active
-                    ? 'text-primary'
-                    : 'text-text-primary hover:text-primary hover:bg-surface'
+                    ? solidBg ? 'text-primary' : 'text-white'
+                    : solidBg
+                      ? 'text-text-primary hover:text-primary'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
                 )}
               >
                 {item.label}
-                <ChevronDown
-                  size={14}
+                <KeyboardArrowDownIcon
+                  sx={{ fontSize: 14 }}
                   className={cn(
-                    'transition-transform duration-150 text-text-muted',
+                    'transition-transform duration-150',
+                    solidBg ? 'text-text-muted' : 'text-white/60',
                     open && 'rotate-180'
                   )}
                 />
@@ -81,11 +105,14 @@ export function DesktopNav({ items }: DesktopNavProps) {
               <Link
                 to={item.href ?? '/'}
                 role="menuitem"
+                onMouseEnter={close}
                 className={cn(
-                  'relative flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'relative flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   active
-                    ? 'text-primary'
-                    : 'text-text-primary hover:text-primary hover:bg-surface'
+                    ? solidBg ? 'text-primary' : 'text-white'
+                    : solidBg
+                      ? 'text-text-primary hover:text-primary'
+                      : 'text-white/90 hover:text-white hover:bg-white/10'
                 )}
               >
                 {item.label}
@@ -96,7 +123,7 @@ export function DesktopNav({ items }: DesktopNavProps) {
             )}
 
             {hasDropdown && item.dropdown && (
-              <div onMouseLeave={close}>
+              <div onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
                 <MegaMenu dropdown={item.dropdown} isOpen={open} />
               </div>
             )}

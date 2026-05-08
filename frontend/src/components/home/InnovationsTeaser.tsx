@@ -59,12 +59,12 @@ function ProductCard({ product }: { product: Product }) {
     <motion.div variants={cardVariants} className="group relative">
       <Link
         to={product.href}
-        className="flex flex-col h-full min-h-[220px] p-6 rounded-xl border border-white/10 bg-white/[0.03] hover:border-primary hover:bg-white/[0.07] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex flex-col h-full min-h-55 p-6 rounded-xl border border-border bg-white hover:border-primary hover:bg-surface transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`${product.name} — ${product.tagline}`}
       >
         {/* Index number — decorative */}
         <span
-          className="absolute top-4 right-5 text-5xl font-extrabold text-white/[0.05] leading-none select-none pointer-events-none group-hover:text-primary/10 transition-colors duration-300"
+          className="absolute top-4 right-5 text-5xl font-extrabold text-text-primary/5 leading-none select-none pointer-events-none group-hover:text-primary/10 transition-colors duration-300"
           aria-hidden="true"
         >
           {num}
@@ -78,10 +78,10 @@ function ProductCard({ product }: { product: Product }) {
         )}
 
         <div className={product.badge ? '' : 'mt-6'}>
-          <h3 className="text-lg font-extrabold text-white leading-snug group-hover:text-primary transition-colors duration-200">
+          <h3 className="text-lg font-extrabold text-text-primary leading-snug group-hover:text-primary transition-colors duration-200">
             {product.name}
           </h3>
-          <p className="mt-2 text-sm text-white/45 leading-relaxed">
+          <p className="mt-2 text-sm text-text-muted leading-relaxed">
             {product.tagline}
           </p>
         </div>
@@ -100,18 +100,8 @@ function ProductCard({ product }: { product: Product }) {
 
 export function InnovationsTeaser() {
   return (
-    <section className="bg-dark-bg py-20 lg:py-28 overflow-hidden" aria-labelledby="innovations-teaser-heading">
-      {/* Subtle grid texture */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-        aria-hidden="true"
-      />
-
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+    <section className="bg-surface py-20 lg:py-28 overflow-hidden" aria-labelledby="innovations-teaser-heading">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-end justify-between mb-12">
           <motion.div
@@ -125,7 +115,7 @@ export function InnovationsTeaser() {
             </p>
             <h2
               id="innovations-teaser-heading"
-              className="text-4xl lg:text-5xl font-extrabold text-white leading-tight"
+              className="text-4xl lg:text-5xl font-extrabold text-text-primary leading-tight"
             >
               Built On Our<br />Own Technology.
             </h2>

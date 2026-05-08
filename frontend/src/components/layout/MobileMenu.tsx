@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, ChevronDown, Phone, MessageCircle } from 'lucide-react'
+import MenuIcon from '@mui/icons-material/Menu'
+import CloseIcon from '@mui/icons-material/Close'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import PhoneIcon from '@mui/icons-material/Phone'
+import ChatIcon from '@mui/icons-material/Chat'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/Button'
@@ -8,9 +12,10 @@ import type { NavConfig } from '@/types/navigation'
 
 interface MobileMenuProps {
   config: NavConfig
+  solidBg?: boolean
 }
 
-export function MobileMenu({ config }: MobileMenuProps) {
+export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [openSection, setOpenSection] = useState<string | null>(null)
   const location = useLocation()
@@ -37,9 +42,12 @@ export function MobileMenu({ config }: MobileMenuProps) {
         aria-label={isOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((v) => !v)}
-        className="lg:hidden flex items-center justify-center h-10 w-10 rounded-md text-text-primary hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
+        className={cn(
+          'lg:hidden flex items-center justify-center h-10 w-10 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors',
+          solidBg ? 'text-text-primary hover:bg-surface' : 'text-white hover:bg-white/10'
+        )}
       >
-        {isOpen ? <X size={22} /> : <Menu size={22} />}
+        {isOpen ? <CloseIcon sx={{ fontSize: 22 }} /> : <MenuIcon sx={{ fontSize: 22 }} />}
       </button>
 
       <AnimatePresence>
@@ -74,7 +82,7 @@ export function MobileMenu({ config }: MobileMenuProps) {
                   onClick={() => setIsOpen(false)}
                   className="flex items-center justify-center h-9 w-9 rounded-md text-text-muted hover:text-text-primary hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
                 >
-                  <X size={20} />
+                  <CloseIcon sx={{ fontSize: 20 }} />
                 </button>
               </div>
 
@@ -97,8 +105,8 @@ export function MobileMenu({ config }: MobileMenuProps) {
                               className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-semibold text-text-primary hover:bg-surface hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {item.label}
-                              <ChevronDown
-                                size={16}
+                              <KeyboardArrowDownIcon
+                                sx={{ fontSize: 16 }}
                                 className={cn(
                                   'text-text-muted transition-transform duration-200',
                                   isExpanded && 'rotate-180'
@@ -168,7 +176,7 @@ export function MobileMenu({ config }: MobileMenuProps) {
                     href={`tel:${config.contact.phone}`}
                     className="flex-1 flex items-center justify-center gap-2 h-11 rounded-md border border-border text-sm font-medium text-text-primary hover:border-primary hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <Phone size={15} />
+                    <PhoneIcon sx={{ fontSize: 15 }} />
                     Call Us
                   </a>
                   <a
@@ -177,7 +185,7 @@ export function MobileMenu({ config }: MobileMenuProps) {
                     rel="noopener noreferrer"
                     className="flex-1 flex items-center justify-center gap-2 h-11 rounded-md border border-border text-sm font-medium text-text-primary hover:border-[#25D366] hover:text-[#25D366] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
                   >
-                    <MessageCircle size={15} />
+                    <ChatIcon sx={{ fontSize: 15 }} />
                     WhatsApp
                   </a>
                 </div>

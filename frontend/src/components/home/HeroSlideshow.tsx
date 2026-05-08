@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft'
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight'
+import PauseIcon from '@mui/icons-material/Pause'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { buttonVariants } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
@@ -13,8 +16,8 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    headline: "Powering India's Critical Infrastructure.",
-    subline: 'From field hardware to cloud intelligence — end-to-end.',
+    headline: "Next Generation Power Management",
+    subline: 'Complete solution for all your renewable and industrial assets.',
     media: { type: 'video', src: '/images/hero/slide1.mp4' },
   },
   {
@@ -34,7 +37,7 @@ const SLIDES: Slide[] = [
   },
 ]
 
-const INTERVAL_MS = 10000
+const INTERVAL_MS = 7500
 const RING_RADIUS = 16
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS // ≈ 100.53
 
@@ -101,7 +104,7 @@ export function HeroSlideshow() {
               aria-hidden="true"
             />
           )}
-          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.25)_50%,rgba(0,0,0,0.15)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.4)_0%,rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_100%)]" />
         </motion.div>
       </AnimatePresence>
 
@@ -118,7 +121,7 @@ export function HeroSlideshow() {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white leading-[1.05] max-w-3xl tracking-tight">
               {slide.headline}
             </h1>
-            <p className="mt-5 text-base lg:text-lg text-white/70 max-w-xl leading-relaxed">
+            <p className="mt-5 font-bold text-base lg:text-lg text-white/70 max-w-xl leading-relaxed">
               {slide.subline}
             </p>
             <div className="mt-8 flex flex-col lg:flex-row gap-4">
@@ -142,7 +145,7 @@ export function HeroSlideshow() {
         aria-label="Previous slide"
         className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 hidden sm:flex items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm hover:bg-black/40 hover:border-white/50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
-        <ChevronLeft className="w-5 h-5" />
+        <KeyboardArrowLeftIcon className="w-5 h-5" />
       </button>
 
       {/* Right arrow */}
@@ -151,7 +154,7 @@ export function HeroSlideshow() {
         aria-label="Next slide"
         className="absolute right-4 lg:right-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 hidden sm:flex items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm hover:bg-black/40 hover:border-white/50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
-        <ChevronRight className="w-5 h-5" />
+        <KeyboardArrowRightIcon className="w-5 h-5" />
       </button>
 
       {/* Bottom controls: dots + play/pause */}
@@ -215,8 +218,8 @@ export function HeroSlideshow() {
             className="absolute inset-0 flex items-center justify-center text-white focus-visible:outline-none"
           >
             {isPlaying
-              ? <Pause className="w-3.5 h-3.5 fill-white stroke-none" />
-              : <Play  className="w-3.5 h-3.5 fill-white stroke-none" />
+              ? <PauseIcon className="w-3.5 h-3.5" />
+              : <PlayArrowIcon className="w-3.5 h-3.5" />
             }
           </button>
         </div>
