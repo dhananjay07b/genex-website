@@ -1,6 +1,6 @@
 export interface NavSubItem {
   label: string
-  description: string
+  description?: string
   href: string
   icon?: string
   badge?: string

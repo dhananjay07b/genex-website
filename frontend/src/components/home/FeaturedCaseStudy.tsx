@@ -28,32 +28,32 @@ export function FeaturedCaseStudy() {
           <img
             src="/images/case-study/featured.jpeg"
             alt="50 MW solar power plant in Rajasthan"
-            className="w-full h-72 sm:h-96 lg:h-125 object-cover"
+            className="w-full h-64 sm:h-80 lg:h-125 object-cover object-top"
           />
 
-          {/* Overlay card — bottom-left */}
+          {/* Overlay card — full width on mobile, 45% bottom-left on desktop */}
           <motion.div
-            className="absolute bottom-0 left-0 right-0 lg:right-auto lg:w-[45%] p-7 lg:p-10 bg-white/95"
+            className="absolute bottom-0 left-0 right-0 lg:right-auto lg:w-[45%] p-5 sm:p-7 lg:p-10 bg-white/95 backdrop-blur-sm"
             initial={{ y: 32, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.55, delay: 0.2, ease: 'easeOut' }}
           >
-            <p className="text-text-muted text-xs font-semibold uppercase tracking-widest mb-4">
+            <p className="text-text-muted text-xs font-semibold uppercase tracking-widest mb-3 sm:mb-4">
               Solar Power Plant · Rajasthan · 50 MW
             </p>
 
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-text-primary leading-snug">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-text-primary leading-snug">
               40% reduction in<br />unplanned downtime.
             </h2>
 
-            <p className="mt-4 text-sm text-text-muted leading-relaxed">
+            <p className="mt-3 sm:mt-4 text-sm text-text-muted leading-relaxed hidden sm:block">
               Full SCADA and remote monitoring deployment reduced fault response time from hours to minutes.
             </p>
 
             <Link
-              to="/genex-learn/case-studies"
-              className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:underline"
+              to="/gelearn/case-studies"
+              className="mt-5 sm:mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:underline"
             >
               Read Full Story
               <span aria-hidden="true">→</span>

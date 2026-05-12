@@ -4,6 +4,7 @@ import Home from '@/pages/Home'
 import Contact from '@/pages/Contact'
 import Careers from '@/pages/Careers'
 import Portfolio from '@/pages/Portfolio'
+import CategoryPage from '@/pages/Portfolio/CategoryPage'
 import Innovations from '@/pages/Innovations'
 import GenexLearn from '@/pages/GenexLearn'
 import About from '@/pages/About'
@@ -13,7 +14,8 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/portfolio/*', element: <Portfolio /> },
+      { path: '/portfolio', element: <Portfolio /> },
+      { path: '/portfolio/:category', element: <CategoryPage /> },
       { path: '/innovations/*', element: <Innovations /> },
       { path: '/genex-learn/*', element: <GenexLearn /> },
       { path: '/about/*', element: <About /> },

@@ -2,59 +2,61 @@ import { Link } from 'react-router-dom'
 import PhoneIcon from '@mui/icons-material/Phone'
 import EmailIcon from '@mui/icons-material/Email'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import ChatIcon from '@mui/icons-material/Chat'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp'
+import TwitterIcon from '@mui/icons-material/Twitter'
+import YouTubeIcon from '@mui/icons-material/YouTube'
 
 const footerSections = [
   {
     title: 'Portfolio',
     links: [
-      { label: 'Solar Rooftop', href: '/portfolio/solar-rooftop' },
-      { label: 'Solar Power Plants', href: '/portfolio/solar-power-plants' },
-      { label: 'Remote Monitoring Systems', href: '/portfolio/rms' },
-      { label: 'Wind Energy Solutions', href: '/portfolio/wind-energy' },
-      { label: 'Industrial Energy Management', href: '/portfolio/industrial-energy' },
-      { label: 'Smart Grid & Utilities', href: '/portfolio/smart-grid' },
+      { label: 'SolarLive™',                      href: '/portfolio/solarlive' },
+      { label: 'EMS - BESS Storage',              href: '/portfolio/energy-storage' },
+      { label: 'Wind Network System',             href: '/portfolio/wind-network' },
+      { label: 'SCADA Platform',                  href: '/portfolio/scada' },
+      { label: 'RMS - PM Kusum Projects',         href: '/portfolio/rms' },
+      { label: 'EV - Software Management',        href: '/portfolio/ev-infrastructure' },
     ],
   },
   {
     title: 'Innovations',
     links: [
-      { label: 'SolarLive™', href: '/innovations/solarlive' },
-      { label: 'EVMS', href: '/innovations/evms' },
-      { label: 'Battery Management System', href: '/innovations/bms' },
-      { label: 'SCADA Platform', href: '/innovations/scada' },
-      { label: 'IoT Data Gateway', href: '/innovations/iot-gateway' },
+      { label: 'Advanced SCADA',                    href: '/innovations/solar-rooftop' },
+      { label: 'Re-NMS',                            href: '/innovations/solar-power-plants' },
+      { label: 'AI-based Remote Monitoring',        href: '/innovations/rms' },
+      { label: 'EMS - BESS',                        href: '/innovations/energy-storage' },
+      { label: 'AI-Plant Health Checkup',           href: '/innovations/ai-health-checkup' },
     ],
   },
   {
-    title: 'GenexLearn',
+    title: 'GeLearn',
     links: [
-      { label: 'How We Work', href: '/genex-learn/how-we-work' },
-      { label: 'Case Studies', href: '/genex-learn/case-studies' },
-      { label: 'Whitepapers & Reports', href: '/genex-learn/whitepapers' },
-      { label: 'Video Library', href: '/genex-learn/videos' },
-      { label: 'Blog & Insights', href: '/genex-learn/blog' },
-      { label: 'FAQ', href: '/genex-learn/faq' },
+      { label: 'How We Work',          href: '/gelearn/how-we-work' },
+      { label: 'Case Studies',         href: '/gelearn/case-studies' },
+      { label: 'Whitepapers & Reports', href: '/gelearn/whitepapers' },
+      { label: 'Video Library',        href: '/gelearn/videos' },
+      { label: 'Blog & Insights',      href: '/gelearn/blog' },
+      { label: 'FAQ',                  href: '/gelearn/faq' },
     ],
   },
   {
     title: 'Company',
     links: [
-      { label: 'Our Story', href: '/about/story' },
-      { label: 'Leadership', href: '/about/leadership' },
-      { label: 'Partners & Alliances', href: '/about/partners' },
+      { label: 'Our Story',               href: '/about/story' },
+      { label: 'Leadership',              href: '/about/leadership' },
+      { label: 'Partners & Alliances',    href: '/about/partners' },
       { label: 'Certifications & Awards', href: '/about/certifications' },
-      { label: 'Media & Press', href: '/about/media' },
-      { label: 'Careers', href: '/careers' },
+      { label: 'Media & Press',           href: '/about/media' },
+      { label: 'Careers',                 href: '/careers' },
     ],
   },
 ]
 
 const socialLinks = [
-  { icon: OpenInNewIcon, label: 'LinkedIn', href: 'https://linkedin.com' },
-  { icon: OpenInNewIcon, label: 'Twitter / X', href: 'https://twitter.com' },
-  { icon: OpenInNewIcon, label: 'YouTube', href: 'https://youtube.com' },
+  { icon: WhatsAppIcon, label: 'WhatsApp',    href: 'https://wa.me/910000000000' },
+  { icon: TwitterIcon,  label: 'Twitter / X', href: 'https://twitter.com' },
+  { icon: YouTubeIcon,  label: 'YouTube',     href: 'https://youtube.com' },
 ]
 
 export function Footer() {
