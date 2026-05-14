@@ -50,7 +50,7 @@ function CountUp({ value, suffix, duration = 1800 }: { value: number; suffix: st
 
 export function ImpactNumbers() {
   return (
-    <section className="bg-brand-tint py-20 lg:py-24" aria-label="Key metrics">
+    <section className="bg-surface-alt py-20 lg:py-24" aria-label="Key metrics">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
           {STATS.map((stat) => (

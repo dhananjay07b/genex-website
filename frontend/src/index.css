@@ -63,9 +63,40 @@ body {
   background: linear-gradient(135deg, #1AAEE8, #00C5B0, #00D97E, #00C5B0, #1AAEE8);
 }
 
-/* Light brand-tinted section background — PageHero, ImpactNumbers */
+/* Light brand-tinted section background — PageHero, ImpactNumbers, GeLearnTeaser */
+/* Orthogonal + diagonal grid layers drift over a static gradient */
 .bg-brand-tint {
-  background: linear-gradient(135deg, #e8faff 0%, #edfff6 100%);
+  background-image:
+    linear-gradient(rgba(26,174,232,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26,174,232,0.08) 1px, transparent 1px),
+    linear-gradient(45deg,  rgba(26,174,232,0.04) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(26,174,232,0.04) 1px, transparent 1px),
+    linear-gradient(45deg,  rgba(0,217,126,0.025) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(0,217,126,0.025) 1px, transparent 1px),
+    linear-gradient(135deg, #e8faff 0%, #edfff6 100%);
+  background-size:
+    44px 44px,
+    44px 44px,
+    62px 62px,
+    62px 62px,
+    124px 124px,
+    124px 124px,
+    100% 100%;
+  animation: grid-drift 28s linear infinite;
+}
+
+@keyframes grid-drift {
+  0% {
+    background-position:
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  }
+  100% {
+    background-position:
+      44px 44px, 44px 44px,
+      62px 62px, 62px 62px,
+      124px 124px, 124px 124px,
+      0 0;
+  }
 }
 
 /* Marquee — duplicate items for seamless loop */
@@ -91,4 +122,13 @@ body {
 .animate-gradient-pan {
   background-size: 200% 200%;
   animation: gradient-pan 10s ease infinite;
+}
+
+/* Loading screen — shimmer sweep across logo */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-150%) skewX(-15deg); }
+  100% { transform: translateX(350%) skewX(-15deg); }
+}
+.shimmer-sweep {
+  animation: shimmer-sweep 1.6s ease-out 0.4s 1 forwards;
 }
