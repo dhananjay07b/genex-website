@@ -36,6 +36,16 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
     }
   }, [isOpen])
 
+  const isActive = (item: NavConfig['items'][number]) => {
+    if (item.href) return location.pathname === item.href
+    if (item.dropdown) {
+      const firstHref = item.dropdown.sections[0]?.items[0]?.href ?? ''
+      const base = firstHref.split('/')[1]
+      return base ? location.pathname.startsWith(`/${base}`) : false
+    }
+    return false
+  }
+
   return (
     <>
       <button
@@ -92,6 +102,7 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
                   {config.items.map((item) => {
                     const hasDropdown = !!item.dropdown
                     const isExpanded = openSection === item.label
+                    const active = isActive(item)
 
                     return (
                       <li key={item.label}>
@@ -102,7 +113,12 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
                               onClick={() =>
                                 setOpenSection(isExpanded ? null : item.label)
                               }
-                              className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-semibold text-text-primary hover:bg-surface hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                              className={cn(
+                                'w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                                active
+                                  ? 'text-primary bg-primary/5'
+                                  : 'text-text-primary hover:bg-surface hover:text-primary'
+                              )}
                             >
                               {item.label}
                               <KeyboardArrowDownIcon
@@ -152,7 +168,12 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
                         ) : (
                           <Link
                             to={item.href ?? '/'}
-                            className="block px-3 py-3 rounded-lg text-sm font-semibold text-text-primary hover:bg-surface hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className={cn(
+                              'block px-3 py-3 rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                              active
+                                ? 'text-primary bg-primary/5'
+                                : 'text-text-primary hover:bg-surface hover:text-primary'
+                            )}
                           >
                             {item.label}
                           </Link>

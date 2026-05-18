@@ -13,11 +13,21 @@ import {
 } from '@/config/innovationsProducts'
 
 const STAGE_PILL: Record<string, string> = {
-  research:  'bg-slate-100 text-slate-600',
-  prototype: 'bg-amber-100 text-amber-700',
-  deployed:  'bg-sky-100 text-sky-700',
-  scaled:    'bg-emerald-100 text-emerald-700',
+  research:  'bg-slate-100 text-slate-600 border-slate-200',
+  prototype: 'bg-amber-50 text-amber-700 border-amber-200',
+  deployed:  'bg-sky-50 text-sky-700 border-sky-200',
+  scaled:    'bg-emerald-50 text-emerald-700 border-emerald-200',
 }
+
+const STAGE_BAR: Record<string, string> = {
+  research:  'bg-slate-400',
+  prototype: 'bg-amber-400',
+  deployed:  'bg-primary',
+  scaled:    'bg-secondary',
+}
+
+const STAGES_ORDERED = ['research', 'prototype', 'deployed', 'scaled'] as const
+const STAGE_PROGRESS: Record<string, number> = { research: 25, prototype: 50, deployed: 75, scaled: 100 }
 
 const cardVariants = {
   hidden: { opacity: 0, y: 24 },
@@ -28,39 +38,61 @@ const cardVariants = {
   }),
 }
 
+function HexOverlay() {
+  return (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none" aria-hidden="true">
+      <defs>
+        <pattern id="card-hex" x="0" y="0" width="28" height="24" patternUnits="userSpaceOnUse">
+          <polygon points="14,1 25,7 25,19 14,25 3,19 3,7" stroke="white" strokeWidth="0.7" fill="none" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#card-hex)" />
+    </svg>
+  )
+}
+
 function InnovationCard({ product, index }: { product: InnovationProduct; index: number }) {
   return (
     <Link
       to={`/innovations/${product.slug}`}
-      className="block group rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white"
+      className="block group rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 bg-white"
     >
       <motion.div custom={index} variants={cardVariants} className="h-full flex flex-col">
-        {/* Gradient header */}
-        <div className={`relative h-40 bg-linear-to-br ${product.gradient} bg-surface`}>
-          <span className="absolute top-4 left-4 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 bg-white/80 backdrop-blur-sm rounded-full px-2.5 py-0.5">
+        {/* Gradient header + hex overlay */}
+        <div className={`relative h-40 bg-linear-to-br ${product.gradient}`}>
+          <HexOverlay />
+          <span className="absolute top-4 left-4 z-10 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-0.5">
             {product.badge}
           </span>
-          <div className="absolute bottom-4 left-4 flex gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/70 text-text-muted backdrop-blur-sm">
+          <div className="absolute bottom-4 left-4 z-10">
+            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/80 text-text-muted backdrop-blur-sm">
               {CATEGORY_LABEL[product.category]}
-            </span>
-            <span
-              className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-sm ${STAGE_PILL[product.stage]}`}
-            >
-              {INNOVATION_STAGE_LABEL[product.stage]}
             </span>
           </div>
         </div>
 
+        {/* Stage progress bar */}
+        <div className="h-1 bg-border">
+          <div
+            className={`h-full ${STAGE_BAR[product.stage]} transition-all duration-500`}
+            style={{ width: `${STAGE_PROGRESS[product.stage]}%` }}
+          />
+        </div>
+
         {/* Card body */}
         <div className="p-6 flex flex-col flex-1">
-          <h3 className="text-base font-extrabold text-text-primary leading-snug mb-3 group-hover:text-primary transition-colors duration-200">
-            {product.label}
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-extrabold text-text-primary leading-snug group-hover:text-primary transition-colors duration-200">
+              {product.label}
+            </h3>
+            <span className={`shrink-0 ml-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${STAGE_PILL[product.stage]}`}>
+              {INNOVATION_STAGE_LABEL[product.stage]}
+            </span>
+          </div>
           <p className="text-sm text-text-muted leading-relaxed flex-1">
             {product.capabilities[0]}
           </p>
-          <span className="mt-5 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-1 transition-all duration-200">
+          <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 translate-x-0 transition-all duration-200">
             Explore →
           </span>
         </div>
@@ -127,26 +159,32 @@ export default function Innovations() {
       </section>
 
       {/* Stage legend */}
-      <section className="bg-surface py-12 border-t border-border">
+      <section className="bg-surface py-12 lg:py-16 border-t border-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-6">
-            Innovation Stages
-          </p>
-          <div className="flex flex-wrap gap-4">
-            {(['research', 'prototype', 'deployed', 'scaled'] as const).map(stage => (
-              <div key={stage} className="flex items-center gap-2">
-                <span
-                  className={`text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full ${STAGE_PILL[stage]}`}
-                >
-                  {INNOVATION_STAGE_LABEL[stage]}
-                </span>
-                <span className="text-xs text-text-muted">
-                  {stage === 'research' && '— Active R&D, not yet fielded'}
-                  {stage === 'prototype' && '— Pilot deployments underway'}
-                  {stage === 'deployed' && '— Commercially available'}
-                  {stage === 'scaled' && '— Live at 100+ sites nationwide'}
-                </span>
-              </div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted mb-8">Innovation Stages — How We Classify Our R&D</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {STAGES_ORDERED.map((stage, i) => (
+              <motion.div
+                key={stage}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.35, delay: i * 0.08 }}
+                className="bg-white border border-border rounded-2xl overflow-hidden"
+              >
+                <div className={`h-1.5 w-full ${STAGE_BAR[stage]}`} style={{ width: `${STAGE_PROGRESS[stage]}%` }} />
+                <div className="px-5 py-4">
+                  <span className={`inline-block text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border mb-2 ${STAGE_PILL[stage]}`}>
+                    {INNOVATION_STAGE_LABEL[stage]}
+                  </span>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    {stage === 'research'  && 'Active R&D — not yet fielded at customer sites'}
+                    {stage === 'prototype' && 'Pilot deployments underway with select partners'}
+                    {stage === 'deployed'  && 'Commercially available — contact us to deploy'}
+                    {stage === 'scaled'    && 'Live at 100+ sites across India'}
+                  </p>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>

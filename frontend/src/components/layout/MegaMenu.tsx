@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import type { NavDropdown } from '@/types/navigation'
 
@@ -9,6 +9,8 @@ interface MegaMenuProps {
 }
 
 export function MegaMenu({ dropdown, isOpen }: MegaMenuProps) {
+  const { pathname } = useLocation()
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -34,24 +36,30 @@ export function MegaMenu({ dropdown, isOpen }: MegaMenuProps) {
                   section.items.length > 4 ? 'grid-cols-2' : 'grid-cols-1'
                 )}
               >
-                {section.items.map((item) => (
-                    <li key={item.href} role="none">
-                      <Link
-                        to={item.href}
-                        role="menuitem"
-                        className="group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <span className="text-sm font-medium text-text-primary group-hover:text-primary transition-colors">
-                          {item.label}
-                        </span>
-                        {item.badge && (
-                          <span className="inline-flex items-center rounded-full bg-linear-to-r from-[#1AAEE8] to-[#00D97E] px-2 py-0.5 text-[10px] font-bold text-white leading-none">
-                            {item.badge}
+                {section.items.map((item) => {
+                    const active = pathname === item.href
+                    return (
+                      <li key={item.href} role="none">
+                        <Link
+                          to={item.href}
+                          role="menuitem"
+                          className="group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <span className={cn(
+                            'text-sm font-medium transition-colors',
+                            active ? 'text-primary' : 'text-text-primary group-hover:text-primary'
+                          )}>
+                            {item.label}
                           </span>
-                        )}
-                      </Link>
-                    </li>
-                  ))}
+                          {item.badge && (
+                            <span className="inline-flex items-center rounded-full bg-linear-to-r from-[#1AAEE8] to-[#00D97E] px-2 py-0.5 text-[10px] font-bold text-white leading-none">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      </li>
+                    )
+                  })}
               </ul>
             </div>
           ))}

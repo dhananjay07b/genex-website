@@ -55,6 +55,11 @@ export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
 
   const isActive = (item: NavItem) => {
     if (item.href) return location.pathname === item.href
+    if (item.dropdown) {
+      const firstHref = item.dropdown.sections[0]?.items[0]?.href ?? ''
+      const base = firstHref.split('/')[1]
+      return base ? location.pathname.startsWith(`/${base}`) : false
+    }
     return false
   }
 
@@ -82,7 +87,7 @@ export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
                 className={cn(
                   'flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   active
-                    ? solidBg ? 'text-primary' : 'text-white'
+                    ? 'text-primary'
                     : solidBg
                       ? 'text-text-primary hover:text-primary'
                       : 'text-white/90 hover:text-white hover:bg-white/10'
@@ -109,7 +114,7 @@ export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
                 className={cn(
                   'relative flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   active
-                    ? solidBg ? 'text-primary' : 'text-white'
+                    ? 'text-primary'
                     : solidBg
                       ? 'text-text-primary hover:text-primary'
                       : 'text-white/90 hover:text-white hover:bg-white/10'

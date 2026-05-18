@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { Button } from '@/components/ui/Button'
+import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import {
   PORTFOLIO_PRODUCTS,
   FAMILIES,
@@ -27,22 +28,39 @@ const cardVariants = {
   }),
 }
 
+function CircuitOverlay() {
+  return (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none" aria-hidden="true">
+      <defs>
+        <pattern id="mini-circuit" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M0 20 H14 M26 20 H40 M20 0 V14 M20 26 V40" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <circle cx="20" cy="20" r="3" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <circle cx="0"  cy="20" r="1.2" fill="currentColor" />
+          <circle cx="40" cy="20" r="1.2" fill="currentColor" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#mini-circuit)" className="text-white" />
+    </svg>
+  )
+}
+
 function ProductCard({ product, index }: { product: PortfolioProduct; index: number }) {
   return (
     <Link
       to={`/portfolio/${product.slug}`}
-      className="block group rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white"
+      className="block group rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 bg-white"
     >
       <motion.div custom={index} variants={cardVariants} className="h-full flex flex-col">
-        {/* Gradient header */}
-        <div className={`relative h-44 bg-linear-to-br ${product.gradient} bg-surface`}>
+        {/* Gradient header + circuit overlay */}
+        <div className={`relative h-44 bg-linear-to-br ${product.gradient}`}>
+          <CircuitOverlay />
           {product.badge && (
-            <span className="absolute top-4 left-4 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 bg-white/80 backdrop-blur-sm rounded-full px-2.5 py-0.5">
+            <span className="absolute top-4 left-4 z-10 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/40 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-0.5">
               {product.badge}
             </span>
           )}
-          <div className="absolute bottom-4 left-4">
-            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/70 text-text-muted backdrop-blur-sm">
+          <div className="absolute bottom-4 left-4 z-10">
+            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/80 text-text-muted backdrop-blur-sm">
               {FAMILY_LABEL[product.family]}
             </span>
           </div>
@@ -56,7 +74,7 @@ function ProductCard({ product, index }: { product: PortfolioProduct; index: num
           <p className="text-sm text-text-muted leading-relaxed flex-1">
             {product.capabilities[0]}
           </p>
-          <span className="mt-5 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-1 transition-all duration-200">
+          <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 translate-x-0 transition-all duration-200">
             View Product →
           </span>
         </div>
@@ -127,16 +145,8 @@ export default function Portfolio() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/20">
             {STATS.map(({ value, label }) => (
-              <div
-                key={label}
-                className="flex flex-col items-center justify-center py-8 lg:py-0 px-4 lg:px-10 text-center"
-              >
-                <span className="text-5xl lg:text-6xl font-extrabold text-white tabular-nums">
-                  {value}
-                </span>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-white/60">
-                  {label}
-                </p>
+              <div key={label} className="flex flex-col items-center justify-center py-8 lg:py-0 px-4 lg:px-10">
+                <AnimatedStat value={value} label={label} />
               </div>
             ))}
           </div>
