@@ -1,24 +1,16 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
+import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { PageHero } from '@/components/ui/PageHero'
 
 // ── Data ────────────────────────────────────────────────────────────────────
-
-const NAV_SECTIONS = [
-  { id: 'story',      label: 'Our Story'              },
-  { id: 'vision',     label: 'Vision & Mission'       },
-  { id: 'numbers',    label: 'By the Numbers'         },
-  { id: 'leadership', label: 'Leadership'             },
-  { id: 'partners',   label: 'Partners & Certs'       },
-  { id: 'cta',        label: 'Get in Touch'           },
-]
 
 const MILESTONES = [
   { year: '2010', title: 'Founded in Jaipur',      description: 'Genex Technocrats started as a power electronics consultancy, providing engineering services to industrial and commercial clients in Rajasthan.' },
@@ -76,26 +68,6 @@ function ArcsPattern() {
   )
 }
 
-// ── Sticky side-nav hook ──────────────────────────────────────────────────────
-function useSectionObserver(ids: string[]) {
-  const [active, setActive] = useState(ids[0])
-  useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    ids.forEach(id => {
-      const el = document.getElementById(id)
-      if (!el) return
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActive(id) },
-        { rootMargin: '-30% 0px -60% 0px', threshold: 0 }
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach(o => o.disconnect())
-  }, [ids])
-  return active
-}
-
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
@@ -105,9 +77,6 @@ const fadeUp = (delay = 0) => ({
 
 // ── About Page ───────────────────────────────────────────────────────────────
 export default function About() {
-  const sectionIds = NAV_SECTIONS.map(s => s.id)
-  const active = useSectionObserver(sectionIds)
-
   return (
     <>
       <PageHero
@@ -116,28 +85,56 @@ export default function About() {
         subline="We are a Jaipur-based energy technology company — building the software and systems that run India's renewable energy infrastructure, one platform at a time."
       />
 
-      {/* Scroll progress bar (mobile) */}
-      <div className="lg:hidden h-0.5 bg-border sticky top-16 z-10">
-        <div className="h-full bg-primary transition-all duration-300" style={{ width: '100%' }} />
-      </div>
-
       <div className="relative">
-        {/* ── Sticky side nav (desktop only) ── */}
-        <nav className="hidden lg:flex flex-col gap-1 fixed left-8 xl:left-12 top-1/2 -translate-y-1/2 z-20" aria-label="Page sections">
-          {NAV_SECTIONS.map(s => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className={[
-                'flex items-center gap-3 text-xs font-semibold transition-all duration-200 py-1.5 group',
-                active === s.id ? 'text-primary' : 'text-text-muted hover:text-text-primary',
-              ].join(' ')}
-            >
-              <span className={`h-px transition-all duration-200 ${active === s.id ? 'w-6 bg-primary' : 'w-3 bg-border group-hover:w-5 group-hover:bg-text-muted'}`} />
-              <span className={active === s.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}>{s.label}</span>
-            </a>
-          ))}
-        </nav>
+
+        {/* ── THE SPARK ─────────────────────────────────────────── */}
+        <section className="bg-surface py-20 lg:py-28 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+              {/* Left — image with overlaid quote card */}
+              <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, ease: 'easeOut' }}
+                className="relative rounded-2xl overflow-hidden min-h-85 lg:min-h-110"
+              >
+                <img
+                  src="/images/edge/control-room.png"
+                  alt="Genex engineering team at work"
+                  className="w-full h-full object-cover absolute inset-0"
+                />
+                {/* Quote overlay card */}
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="bg-dark-bg/90 backdrop-blur-sm rounded-xl p-5">
+                    <p className="text-white/40 text-3xl font-serif leading-none mb-2">"</p>
+                    <p className="text-sm text-white/90 leading-relaxed italic">
+                      [Founder quote placeholder]
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Right — text */}
+              <motion.div
+                initial={{ opacity: 0, x: 24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
+              >
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Our Origin</p>
+                <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-6">
+                  The Spark That Ignited A Digital Revolution.
+                </h2>
+                <p className="text-base text-text-muted leading-relaxed">
+                  Genex Technocrats was founded on a single premise: if the future of energy is decentralised, the software managing it must be flawless, scalable, and secure.
+                </p>
+              </motion.div>
+
+            </div>
+          </div>
+        </section>
 
         {/* ── OUR STORY ─────────────────────────────────────────── */}
         <section id="story" className="relative bg-white py-20 lg:py-28 scroll-mt-20 overflow-hidden">
@@ -148,8 +145,11 @@ export default function About() {
             <motion.div {...fadeUp()} className="mb-14">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-3">Our Story</p>
               <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight">
-                From a power electronics consultancy<br className="hidden lg:block" /> to an energy intelligence platform.
+                A Timeline of Innovation.
               </h2>
+              <p className="text-sm text-text-muted mt-3">
+                Trace our path from a small Jaipur consultancy to a full-stack energy intelligence platform.
+              </p>
             </motion.div>
 
             {/* Timeline */}
@@ -194,54 +194,117 @@ export default function About() {
           </div>
         </section>
 
-        {/* ── VISION & MISSION (full-bleed split) ───────────────── */}
-        <section id="vision" className="scroll-mt-20">
-          <div className="grid lg:grid-cols-[9fr_11fr]">
-            {/* Vision — dark */}
-            <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.55, ease: 'easeOut' }}
-              className="bg-dark-bg px-8 lg:px-16 py-20 lg:py-28 flex flex-col justify-center"
-            >
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-5">Vision</p>
-              <blockquote className="text-3xl lg:text-4xl font-extrabold text-white leading-tight italic mb-6">
-                "To be the intelligence layer of India's energy transition."
-              </blockquote>
-              <p className="text-sm text-white/65 leading-relaxed max-w-sm">
-                India's energy transformation will be won on data and software — not just hardware. Every solar farm, battery system, and smart grid needs a brain. We're building that brain.
-              </p>
-            </motion.div>
+        {/* ── VISION ────────────────────────────────────────────── */}
+        <section id="vision" className="bg-white py-20 lg:py-28 scroll-mt-20 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-            {/* Mission — light */}
-            <motion.div
-              initial={{ opacity: 0, x: 24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
-              className="bg-brand-tint px-8 lg:px-16 py-20 lg:py-28 flex flex-col justify-center"
-            >
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-5">Mission</p>
-              <h3 className="text-2xl font-extrabold text-text-primary leading-snug mb-6">
-                To make every megawatt perform at its peak — safely, reliably, and profitably.
-              </h3>
-              <ul className="space-y-3">
-                {MISSION_POINTS.map(({ text }, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: 10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.15 + i * 0.07, duration: 0.35 }}
-                    className="flex items-start gap-3"
-                  >
-                    <CheckCircleOutlinedIcon className="text-primary shrink-0 mt-0.5" style={{ fontSize: 18 }} />
-                    <span className="text-sm text-text-muted leading-relaxed">{text}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            </motion.div>
+              {/* Left — text + feature points */}
+              <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, ease: 'easeOut' }}
+              >
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Our Vision</p>
+                <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-5">
+                  A world powered by clean, intelligent energy.
+                </h2>
+                <p className="text-sm text-text-muted leading-relaxed mb-10">
+                  We look toward a horizon where reliance on fossil fuels is a relic of the past. In this future, energy is decentralised, intelligent, and resilient.
+                </p>
+
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <LanguageOutlinedIcon className="text-primary" style={{ fontSize: 20 }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-text-primary mb-1">Pan-India Scale</p>
+                      <p className="text-sm text-text-muted leading-relaxed">Deploying platforms that operate at national grid scale, across every state.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <ShieldOutlinedIcon className="text-primary" style={{ fontSize: 20 }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-text-primary mb-1">Absolute Reliability</p>
+                      <p className="text-sm text-text-muted leading-relaxed">Systems engineered for 99.9%+ uptime in mission-critical energy environments.</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Right — image */}
+              <motion.div
+                initial={{ opacity: 0, x: 24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
+                className="rounded-2xl overflow-hidden aspect-4/3"
+              >
+                <img
+                  src="/images/what-we-build/solar-rooftop.png"
+                  alt="Solar rooftop installation"
+                  className="w-full h-full object-cover"
+                />
+              </motion.div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ── MISSION ───────────────────────────────────────────── */}
+        <section id="mission" className="bg-brand-tint py-20 lg:py-28 scroll-mt-20 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+              {/* Left — image */}
+              <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, ease: 'easeOut' }}
+                className="rounded-2xl overflow-hidden aspect-4/3 order-2 lg:order-1"
+              >
+                <img
+                  src="/images/projects/solar-rajasthan.png"
+                  alt="Solar farm in Rajasthan"
+                  className="w-full h-full object-cover"
+                />
+              </motion.div>
+
+              {/* Right — text */}
+              <motion.div
+                initial={{ opacity: 0, x: 24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
+                className="order-1 lg:order-2"
+              >
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Our Mission</p>
+                <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-6">
+                  To make every megawatt perform at its peak — safely, reliably, and profitably.
+                </h2>
+                <ul className="space-y-4">
+                  {MISSION_POINTS.map(({ text }, i) => (
+                    <motion.li
+                      key={i}
+                      initial={{ opacity: 0, x: 10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.15 + i * 0.07, duration: 0.35 }}
+                      className="flex items-start gap-3"
+                    >
+                      <CheckCircleOutlinedIcon className="text-primary shrink-0 mt-0.5" style={{ fontSize: 18 }} />
+                      <span className="text-sm text-text-muted leading-relaxed">{text}</span>
+                    </motion.li>
+                  ))}
+                </ul>
+              </motion.div>
+
+            </div>
           </div>
         </section>
 
@@ -284,7 +347,6 @@ export default function About() {
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   className="group bg-surface border border-border rounded-2xl p-8 hover:-translate-y-1 hover:border-primary hover:shadow-md transition-all duration-200"
                 >
-                  {/* Avatar */}
                   <div
                     className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold text-white mb-5 group-hover:scale-105 transition-transform duration-200"
                     style={{ background: 'linear-gradient(135deg, #1AAEE8, #00D97E)' }}
@@ -356,22 +418,75 @@ export default function About() {
                 </motion.div>
               ))}
             </div>
+
+            <div className="mt-8 flex justify-end">
+              <Link
+                to="/about/media"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                View Media & Achievements <ArrowForwardIcon style={{ fontSize: 14 }} />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── PARTNERS & ALLIANCES ──────────────────────────────── */}
+        <section className="relative py-20 lg:py-28 overflow-hidden bg-white">
+          {/* Background overlay image */}
+          <img
+            src="/data/partners-bg.png"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none select-none"
+          />
+
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+            <motion.div {...fadeUp()} className="mb-12 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-3">Partners & Alliances</p>
+              <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight">
+                Our values are the operating system of our company culture.
+              </h2>
+              <p className="text-sm text-text-muted mt-4 max-w-xl mx-auto">
+                They dictate how we write code, how we treat our clients, and how we approach the monumental challenge of climate change.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+              {PARTNERS.map((name, i) => (
+                <motion.div
+                  key={name}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.06 }}
+                  className="group bg-white rounded-2xl border border-border p-6 flex flex-col items-center justify-center gap-3 hover:border-primary hover:shadow-md transition-all duration-200 aspect-3/2"
+                >
+                  {/* Logo placeholder */}
+                  <div className="w-12 h-12 rounded-xl bg-surface border border-border flex items-center justify-center">
+                    <div className="w-6 h-6 rounded bg-border/60" />
+                  </div>
+                  <p className="text-xs font-semibold text-text-muted group-hover:text-primary transition-colors duration-200 text-center">
+                    {name}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* ── CTA ───────────────────────────────────────────────── */}
-        <section id="cta" className="bg-dark-bg py-20 lg:py-28 scroll-mt-20 relative overflow-hidden">
-          <div
+        <section id="cta" className="bg-brand-tint py-20 lg:py-28 scroll-mt-20 relative overflow-hidden">
+          {/* <div
             className="absolute inset-0 opacity-20 pointer-events-none"
             style={{ background: 'linear-gradient(135deg, #1AAEE8 0%, transparent 60%, #00D97E 100%)' }}
-          />
+          /> */}
           <div className="relative max-w-2xl mx-auto px-6 lg:px-8 text-center">
             <motion.div {...fadeUp()}>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Get Involved</p>
-              <h2 className="text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-4">
-                Ready to work with Genex?
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Next Chapter</p>
+              <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-4">
+                Ready to work with us?
               </h2>
-              <p className="text-base text-white/65 leading-relaxed mb-10 max-w-lg mx-auto">
+              <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
                 Whether you're a developer, discom, or enterprise — we'd like to understand your project and show you what Genex can deliver.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -379,14 +494,15 @@ export default function About() {
                   <Button variant="primary" size="lg">Contact Us</Button>
                 </Link>
                 <Link to="/portfolio">
-                  <Button variant="dark" size="lg">
-                    See Our Portfolio <ArrowForwardIcon style={{ fontSize: 16, marginLeft: 4 }} />
+                  <Button variant="secondary" size="lg">
+                    See Our Work <ArrowForwardIcon style={{ fontSize: 16, marginLeft: 4 }} />
                   </Button>
                 </Link>
               </div>
             </motion.div>
           </div>
         </section>
+
       </div>
     </>
   )

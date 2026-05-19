@@ -78,13 +78,9 @@ export const navConfig: NavConfig = {
           {
             title: 'The Company',
             items: [
-              { label: 'Our Story',               href: '/about/story' },
-              { label: 'Leadership',              href: '/about/leadership' },
-              { label: 'Vision & Mission',        href: '/about/vision' },
-              { label: 'Partners & Alliances',    href: '/about/partners' },
-              { label: 'Certifications & Awards', href: '/about/certifications' },
-              { label: 'CSR Initiatives',         href: '/about/csr' },
-              { label: 'Media & Press',           href: '/about/media' },
+              { label: 'Media & Achievements', href: '/about/media' },
+              { label: 'Our Teams',            href: '/about/teams' },
+              { label: 'CSR Initiatives',      href: '/about/csr' },
             ],
           },
         ],
