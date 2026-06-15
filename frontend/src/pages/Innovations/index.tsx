@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import {
   INNOVATIONS,
@@ -111,6 +112,11 @@ export default function Innovations() {
 
   return (
     <main>
+      <PageMeta
+        title="Next-Gen Energy Technology Innovations"
+        description="Research and product innovations from Genex — AI-based monitoring, drone inspection, smart grid platforms, and next-generation energy management systems."
+        canonical="/innovations"
+      />
       <PageHero
         label="Product Innovations"
         headline="Built in India. Engineered for Scale."

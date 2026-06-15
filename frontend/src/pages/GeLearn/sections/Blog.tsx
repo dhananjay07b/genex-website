@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const TOPIC_STYLE: Record<string, string> = {
   'Policy & Regulation': 'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -68,6 +69,11 @@ const fadeUp = (delay = 0) => ({
 export default function Blog() {
   return (
     <main>
+      <PageMeta
+        title="Blog & Insights — Genex GeLearn"
+        description="Engineering perspectives on solar monitoring, SCADA, smart grid, and energy management from the Genex Technocrats team."
+        canonical="/gelearn/blog"
+      />
       <PageHero
         label="Blog & Insights"
         headline="Perspectives From the Field"
@@ -88,7 +94,7 @@ export default function Blog() {
 
           {/* Featured post */}
           <motion.div {...fadeUp(0)}>
-            <div className="bg-[#0A1628] rounded-2xl overflow-hidden">
+            <div className="bg-dark-bg rounded-2xl overflow-hidden">
               <div className="p-8 lg:p-12">
                 <div className="flex flex-wrap items-center gap-3 mb-5">
                   <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${TOPIC_STYLE[FEATURED.topic]}`}>

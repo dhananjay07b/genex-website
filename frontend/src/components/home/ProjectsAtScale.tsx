@@ -73,6 +73,8 @@ function ProjectCard({
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          width="960" height="540"
         />
         <div className="absolute inset-0" style={{ background: project.gradient, opacity: 0.45 }} />
 

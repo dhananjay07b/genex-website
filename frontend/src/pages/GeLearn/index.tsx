@@ -11,6 +11,7 @@ import HelpOutlinedIcon from '@mui/icons-material/HelpOutlined'
 import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 export const GELEARN_SECTIONS = [
   {
@@ -115,6 +116,11 @@ const RIPPLE_DELAYS = [0.35, 0.15, 0.35, 0.15, 0, 0.15, 0.35, 0.15, 0.35]
 export default function GeLearn() {
   return (
     <main>
+      <PageMeta
+        title="GeLearn — Energy Knowledge Hub by Genex"
+        description="Case studies, technology deep dives, whitepapers, video library, FAQs, and insights from Genex Technocrats — India's energy intelligence platform."
+        canonical="/gelearn"
+      />
       <PageHero
         label="Knowledge Hub"
         headline="GeLearn"

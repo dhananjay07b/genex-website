@@ -7,6 +7,7 @@ import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import {
@@ -116,6 +117,11 @@ export default function InnovationProductPage() {
 
   return (
     <main>
+      <PageMeta
+        title={product.headline}
+        description={product.subline}
+        canonical={`/innovations/${product.slug}`}
+      />
       {/* ── HERO ───────────────────────────────────────────────────────── */}
       <section className="relative bg-dark-bg min-h-[65vh] flex items-center overflow-hidden">
         <div className={`absolute inset-0 bg-linear-to-br ${CATEGORY_GRADIENT[product.category]} pointer-events-none`} />

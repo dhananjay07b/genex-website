@@ -12,6 +12,7 @@ import SchemaOutlinedIcon from '@mui/icons-material/SchemaOutlined'
 import SecurityOutlinedIcon from '@mui/icons-material/SecurityOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const STEPS = [
   {
@@ -75,6 +76,11 @@ const fadeUp = (delay = 0) => ({
 export default function HowWeWork() {
   return (
     <main>
+      <PageMeta
+        title="How We Work — Genex GeLearn"
+        description="Our engineering process from discovery to deployment. How Genex delivers reliable, scalable energy software on time and in the field."
+        canonical="/gelearn/how-we-work"
+      />
       <PageHero
         label="How We Work"
         headline="Engineering Delivered. Not Just Quoted."

@@ -5,6 +5,7 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const STATUSES = ['All', 'Open', 'Upcoming', 'Closed'] as const
 type Status = typeof STATUSES[number]
@@ -71,6 +72,11 @@ export default function Tenders() {
 
   return (
     <main>
+      <PageMeta
+        title="Tenders & Opportunities — Genex GeLearn"
+        description="Active tenders and partnership opportunities in solar monitoring, SCADA, and energy management from Genex Technocrats."
+        canonical="/gelearn/tenders"
+      />
       <PageHero
         label="Tenders & Opportunities"
         headline="Active & Upcoming Opportunities"

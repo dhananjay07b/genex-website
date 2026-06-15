@@ -4,6 +4,7 @@ import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const TOPIC_STYLE: Record<string, string> = {
   'Product Demo':    'bg-sky-50 text-sky-700 border-sky-200',
@@ -41,6 +42,11 @@ const fadeUp = (delay = 0) => ({
 export default function VideoLibrary() {
   return (
     <main>
+      <PageMeta
+        title="Video Library — Genex GeLearn"
+        description="Product walkthroughs, deployment case studies, and technical explanations — video content from the Genex Technocrats engineering team."
+        canonical="/gelearn/videos"
+      />
       <PageHero
         label="Video Library"
         headline="See It In Action"

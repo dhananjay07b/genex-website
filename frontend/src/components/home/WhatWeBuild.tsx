@@ -249,6 +249,8 @@ export function WhatWeBuild() {
                   alt=""
                   aria-hidden="true"
                   className="absolute inset-0 w-full h-full object-cover"
+                  loading="lazy"
+                  width="800" height="600"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_55%,rgba(255,255,255,0.08)_100%)]" />
               </motion.div>

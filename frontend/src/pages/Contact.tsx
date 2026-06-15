@@ -10,6 +10,7 @@ import ChatIcon from '@mui/icons-material/Chat'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
@@ -79,6 +80,11 @@ export default function Contact() {
 
   return (
     <main>
+      <PageMeta
+        title="Contact Genex — Request a Demo or Project Discussion"
+        description="Get in touch with Genex Technocrats. Request a product demo, discuss a project, or explore partnership opportunities with India's energy technology team."
+        canonical="/contact"
+      />
       <PageHero
         label="Get in Touch"
         headline="Let's Build Something Together."

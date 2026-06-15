@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import BoltIcon from '@mui/icons-material/Bolt'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
@@ -74,6 +75,11 @@ export default function Careers() {
 
   return (
     <main>
+      <PageMeta
+        title="Careers at Genex Technocrats — Join India's Energy Tech Team"
+        description="Work on software that powers India's energy grid. Explore open roles in engineering, AI, and energy systems at Genex Technocrats, Jaipur."
+        canonical="/careers"
+      />
       <PageHero
         label="Join Genex"
         headline="Build the Future of Energy"

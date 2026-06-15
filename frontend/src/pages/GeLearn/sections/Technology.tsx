@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const TOPICS = [
   'IEC 61850', 'SCADA', 'Modbus', 'MQTT', 'OPC-UA', 'Grid Management', 'IoT', 'Edge Computing',
@@ -78,6 +79,11 @@ const fadeUp = (delay = 0) => ({
 export default function Technology() {
   return (
     <main>
+      <PageMeta
+        title="Technology Deep Dives — Genex GeLearn"
+        description="IEC 61850, OPC-UA, MQTT, Modbus, AI/ML for energy — technical articles from Genex engineers on the protocols and architectures powering the energy transition."
+        canonical="/gelearn/technology"
+      />
       <PageHero
         label="Technology Deep Dives"
         headline="Under the Hood"

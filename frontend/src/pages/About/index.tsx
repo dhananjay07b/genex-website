@@ -9,6 +9,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 // ── Data ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,11 @@ const fadeUp = (delay = 0) => ({
 export default function About() {
   return (
     <>
+      <PageMeta
+        title="About Genex Technocrats — India's Energy Intelligence Platform"
+        description="Founded in Jaipur in 2010, Genex Technocrats has grown from a power electronics consultancy to a full-stack energy intelligence platform. 500 MW monitored."
+        canonical="/about"
+      />
       <PageHero
         label="About Genex"
         headline="Engineering India's Energy Future"
@@ -104,6 +110,8 @@ export default function About() {
                   src="/images/edge/control-room.png"
                   alt="Genex engineering team at work"
                   className="w-full h-full object-cover absolute inset-0"
+                  loading="lazy"
+                  width="800" height="600"
                 />
                 {/* Quote overlay card */}
                 <div className="absolute bottom-0 left-0 right-0 p-5">
@@ -248,6 +256,8 @@ export default function About() {
                   src="/images/what-we-build/solar-rooftop.png"
                   alt="Solar rooftop installation"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  width="800" height="600"
                 />
               </motion.div>
 
@@ -272,6 +282,8 @@ export default function About() {
                   src="/images/projects/solar-rajasthan.png"
                   alt="Solar farm in Rajasthan"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  width="800" height="600"
                 />
               </motion.div>
 
@@ -438,6 +450,8 @@ export default function About() {
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none select-none"
+            loading="lazy"
+            width="1440" height="800"
           />
 
           <div className="relative max-w-7xl mx-auto px-6 lg:px-8">

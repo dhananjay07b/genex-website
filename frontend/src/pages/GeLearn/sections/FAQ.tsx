@@ -5,6 +5,7 @@ import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const CATEGORIES = ['General', 'Technical', 'Projects', 'Pricing'] as const
 type Category = typeof CATEGORIES[number]
@@ -74,6 +75,11 @@ export default function FAQ() {
 
   return (
     <main>
+      <PageMeta
+        title="FAQ — Genex Technocrats"
+        description="Answers to common questions about Genex products, deployment timelines, integration support, pricing, and partnerships."
+        canonical="/gelearn/faq"
+      />
       <PageHero
         label="FAQ"
         headline="Frequently Asked Questions"

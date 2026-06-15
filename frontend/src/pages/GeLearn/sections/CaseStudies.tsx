@@ -5,6 +5,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const SECTORS = ['All', 'Solar', 'Grid & SCADA', 'EV', 'Energy Storage'] as const
 type Sector = typeof SECTORS[number]
@@ -83,6 +84,11 @@ export default function CaseStudies() {
 
   return (
     <main>
+      <PageMeta
+        title="Case Studies — Genex GeLearn"
+        description="Real-world deployments: how Genex platforms have performed across solar, BESS, wind, and grid projects across India."
+        canonical="/gelearn/case-studies"
+      />
       <PageHero
         label="Case Studies"
         headline="Projects That Prove the Point"

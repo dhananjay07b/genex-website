@@ -53,6 +53,8 @@ export function GenexEdge() {
               src="/images/edge/control-room.png"
               alt="Genex control room with SCADA screens"
               className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              width="960" height="720"
             />
             <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(10,22,40,0.10)_0%,rgba(10,22,40,0.05)_100%)]" />
           </motion.div>

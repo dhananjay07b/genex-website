@@ -5,6 +5,7 @@ import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const TOPIC_STYLE: Record<string, string> = {
   'Grid & SCADA':     'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -66,6 +67,11 @@ const fadeUp = (delay = 0) => ({
 export default function Podcasts() {
   return (
     <main>
+      <PageMeta
+        title="Podcasts & Interviews — Genex GeLearn"
+        description="Conversations on India's energy transition, renewable infrastructure, and technology from the Genex Technocrats team."
+        canonical="/gelearn/podcasts"
+      />
       <PageHero
         label="Podcasts & Interviews"
         headline="Conversations That Matter"

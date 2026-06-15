@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import {
@@ -93,6 +94,11 @@ export default function Portfolio() {
 
   return (
     <main>
+      <PageMeta
+        title="Software Products for Power & Energy"
+        description="13 production-grade software products for solar, BESS, wind, SCADA, EV, and grid — engineered by Genex Technocrats for India's energy sector."
+        canonical="/portfolio"
+      />
       <PageHero
         label="Our Products"
         headline="Software That Runs the Grid"

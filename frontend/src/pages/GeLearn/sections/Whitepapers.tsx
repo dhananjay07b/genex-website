@@ -4,6 +4,7 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
+import { PageMeta } from '@/components/seo/PageMeta'
 
 const TOPIC_STYLE: Record<string, string> = {
   'Grid Technology':   'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -61,6 +62,11 @@ const fadeUp = (delay = 0) => ({
 export default function Whitepapers() {
   return (
     <main>
+      <PageMeta
+        title="Whitepapers & Reports — Genex GeLearn"
+        description="In-depth technical whitepapers on energy monitoring, grid reliability, and software architecture from Genex Technocrats."
+        canonical="/gelearn/whitepapers"
+      />
       <PageHero
         label="Whitepapers & Reports"
         headline="Research You Can Act On"

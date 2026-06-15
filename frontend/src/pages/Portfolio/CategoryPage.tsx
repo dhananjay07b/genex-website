@@ -11,6 +11,7 @@ import ApiIcon from '@mui/icons-material/Api'
 import MemoryIcon from '@mui/icons-material/Memory'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
+import { PageMeta } from '@/components/seo/PageMeta'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import {
@@ -72,6 +73,11 @@ export default function CategoryPage() {
 
   return (
     <main>
+      <PageMeta
+        title={product.headline}
+        description={product.subline}
+        canonical={`/portfolio/${product.slug}`}
+      />
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section className="relative bg-dark-bg min-h-[62vh] flex items-center overflow-hidden">
         {/* gradient tint layer */}
