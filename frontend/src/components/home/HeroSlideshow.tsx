@@ -25,11 +25,11 @@ const SLIDES: Slide[] = [
     subline: 'Real-time visibility across every solar, wind, and industrial asset.',
     media: { type: 'image', src: '/images/hero/slide2.png' },
   },
-  {
-    headline: 'Intelligence from the Field to the Cloud.',
-    subline: 'SCADA, DERMS, and analytics built on open standards.',
-    media: { type: 'image', src: '/images/hero/slide3.png' },
-  },
+  // {
+  //   headline: 'Intelligence from the Field to the Cloud.',
+  //   subline: 'SCADA, DERMS, and analytics built on open standards.',
+  //   media: { type: 'image', src: '/images/hero/slide3.png' },
+  // },
   {
     headline: 'Built by Engineers. For Engineers.',
     subline: 'Indian engineering at global scale — deployed across 8 states.',

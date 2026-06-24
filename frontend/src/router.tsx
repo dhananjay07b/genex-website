@@ -2,24 +2,8 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 
-const Home                = lazy(() => import('@/pages/Home'))
-const Contact             = lazy(() => import('@/pages/Contact'))
-const Careers             = lazy(() => import('@/pages/Careers'))
-const Portfolio           = lazy(() => import('@/pages/Portfolio'))
-const CategoryPage        = lazy(() => import('@/pages/Portfolio/CategoryPage'))
-const Innovations         = lazy(() => import('@/pages/Innovations'))
-const InnovationProductPage = lazy(() => import('@/pages/Innovations/ProductPage'))
-const GeLearn             = lazy(() => import('@/pages/GeLearn'))
-const CaseStudies         = lazy(() => import('@/pages/GeLearn/sections/CaseStudies'))
-const Technology          = lazy(() => import('@/pages/GeLearn/sections/Technology'))
-const HowWeWork           = lazy(() => import('@/pages/GeLearn/sections/HowWeWork'))
-const Blog                = lazy(() => import('@/pages/GeLearn/sections/Blog'))
-const FAQ                 = lazy(() => import('@/pages/GeLearn/sections/FAQ'))
-const VideoLibrary        = lazy(() => import('@/pages/GeLearn/sections/VideoLibrary'))
-const Tenders             = lazy(() => import('@/pages/GeLearn/sections/Tenders'))
-const Whitepapers         = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
-const Podcasts            = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
-const About               = lazy(() => import('@/pages/About'))
+const Home       = lazy(() => import('@/pages/Home'))
+const ComingSoon = lazy(() => import('@/pages/ComingSoon'))
 
 const s = (el: React.ReactNode) => (
   <Suspense fallback={<div className="min-h-screen" />}>{el}</Suspense>
@@ -30,23 +14,26 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: '/',                         element: s(<Home />) },
-      { path: '/portfolio',                element: s(<Portfolio />) },
-      { path: '/portfolio/:category',      element: s(<CategoryPage />) },
-      { path: '/innovations',              element: s(<Innovations />) },
-      { path: '/innovations/:slug',        element: s(<InnovationProductPage />) },
-      { path: '/gelearn',                  element: s(<GeLearn />) },
-      { path: '/gelearn/case-studies',     element: s(<CaseStudies />) },
-      { path: '/gelearn/technology',       element: s(<Technology />) },
-      { path: '/gelearn/how-we-work',      element: s(<HowWeWork />) },
-      { path: '/gelearn/blog',             element: s(<Blog />) },
-      { path: '/gelearn/faq',              element: s(<FAQ />) },
-      { path: '/gelearn/videos',           element: s(<VideoLibrary />) },
-      { path: '/gelearn/tenders',          element: s(<Tenders />) },
-      { path: '/gelearn/whitepapers',      element: s(<Whitepapers />) },
-      { path: '/gelearn/podcasts',         element: s(<Podcasts />) },
-      { path: '/about',                    element: s(<About />) },
-      { path: '/contact',                  element: s(<Contact />) },
-      { path: '/careers',                  element: s(<Careers />) },
+
+      // ── All inner pages → Coming Soon until full launch ──
+      { path: '/portfolio',                element: s(<ComingSoon />) },
+      { path: '/portfolio/:category',      element: s(<ComingSoon />) },
+      { path: '/innovations',              element: s(<ComingSoon />) },
+      { path: '/innovations/:slug',        element: s(<ComingSoon />) },
+      { path: '/gelearn',                  element: s(<ComingSoon />) },
+      { path: '/gelearn/case-studies',     element: s(<ComingSoon />) },
+      { path: '/gelearn/technology',       element: s(<ComingSoon />) },
+      { path: '/gelearn/how-we-work',      element: s(<ComingSoon />) },
+      { path: '/gelearn/blog',             element: s(<ComingSoon />) },
+      { path: '/gelearn/faq',              element: s(<ComingSoon />) },
+      { path: '/gelearn/videos',           element: s(<ComingSoon />) },
+      { path: '/gelearn/tenders',          element: s(<ComingSoon />) },
+      { path: '/gelearn/whitepapers',      element: s(<ComingSoon />) },
+      { path: '/gelearn/podcasts',         element: s(<ComingSoon />) },
+      { path: '/about',                    element: s(<ComingSoon />) },
+      { path: '/about/media',              element: s(<ComingSoon />) },
+      { path: '/contact',                  element: s(<ComingSoon />) },
+      { path: '/careers',                  element: s(<ComingSoon />) },
     ],
   },
 ])
