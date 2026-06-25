@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <main>
       <PageMeta
-        title="Energy Monitoring & SCADA Software for India"
+        title="Genex Technocrats | Next Generation Energy Software & Systems"
         description="Genex Technocrats builds software and systems that run India's renewable energy infrastructure — solar monitoring, SCADA, RMS, EMS, and AI platforms."
         canonical="/"
       />
