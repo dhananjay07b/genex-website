@@ -3,208 +3,208 @@
 
   <!-- Core pages -->
   <url>
-    <loc>https://genextechnocrats.in/</loc>
+    <loc>https://genextechnocrats.com/</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio</loc>
+    <loc>https://genextechnocrats.com/portfolio</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations</loc>
+    <loc>https://genextechnocrats.com/innovations</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/about</loc>
+    <loc>https://genextechnocrats.com/about</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/contact</loc>
+    <loc>https://genextechnocrats.com/contact</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/careers</loc>
+    <loc>https://genextechnocrats.com/careers</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.6</priority>
   </url>
 
   <!-- Portfolio product pages -->
   <url>
-    <loc>https://genextechnocrats.in/portfolio/solarlive</loc>
+    <loc>https://genextechnocrats.com/portfolio/solarlive</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/energy-storage</loc>
+    <loc>https://genextechnocrats.com/portfolio/energy-storage</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/wind-network</loc>
+    <loc>https://genextechnocrats.com/portfolio/wind-network</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/bms</loc>
+    <loc>https://genextechnocrats.com/portfolio/bms</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/rms</loc>
+    <loc>https://genextechnocrats.com/portfolio/rms</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/scada</loc>
+    <loc>https://genextechnocrats.com/portfolio/scada</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/ev-infrastructure</loc>
+    <loc>https://genextechnocrats.com/portfolio/ev-infrastructure</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/power-billing</loc>
+    <loc>https://genextechnocrats.com/portfolio/power-billing</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/zero-export</loc>
+    <loc>https://genextechnocrats.com/portfolio/zero-export</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/carbon-credit</loc>
+    <loc>https://genextechnocrats.com/portfolio/carbon-credit</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/iot-gateway</loc>
+    <loc>https://genextechnocrats.com/portfolio/iot-gateway</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/power-cloud</loc>
+    <loc>https://genextechnocrats.com/portfolio/power-cloud</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/portfolio/rtc-power-tools</loc>
+    <loc>https://genextechnocrats.com/portfolio/rtc-power-tools</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
 
   <!-- Innovations product pages -->
   <url>
-    <loc>https://genextechnocrats.in/innovations/solar-rooftop</loc>
+    <loc>https://genextechnocrats.com/innovations/solar-rooftop</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/solar-power-plants</loc>
+    <loc>https://genextechnocrats.com/innovations/solar-power-plants</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/rms</loc>
+    <loc>https://genextechnocrats.com/innovations/rms</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/energy-storage</loc>
+    <loc>https://genextechnocrats.com/innovations/energy-storage</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/wind-energy</loc>
+    <loc>https://genextechnocrats.com/innovations/wind-energy</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/industrial-energy</loc>
+    <loc>https://genextechnocrats.com/innovations/industrial-energy</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/ai-health-checkup</loc>
+    <loc>https://genextechnocrats.com/innovations/ai-health-checkup</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/smart-grid</loc>
+    <loc>https://genextechnocrats.com/innovations/smart-grid</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/ev-infrastructure</loc>
+    <loc>https://genextechnocrats.com/innovations/ev-infrastructure</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/power-trading</loc>
+    <loc>https://genextechnocrats.com/innovations/power-trading</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/innovations/power-billing</loc>
+    <loc>https://genextechnocrats.com/innovations/power-billing</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.8</priority>
   </url>
 
   <!-- GeLearn hub and sections -->
   <url>
-    <loc>https://genextechnocrats.in/gelearn</loc>
+    <loc>https://genextechnocrats.com/gelearn</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/how-we-work</loc>
+    <loc>https://genextechnocrats.com/gelearn/how-we-work</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/technology</loc>
+    <loc>https://genextechnocrats.com/gelearn/technology</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/case-studies</loc>
+    <loc>https://genextechnocrats.com/gelearn/case-studies</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/blog</loc>
+    <loc>https://genextechnocrats.com/gelearn/blog</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/faq</loc>
+    <loc>https://genextechnocrats.com/gelearn/faq</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/videos</loc>
+    <loc>https://genextechnocrats.com/gelearn/videos</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/tenders</loc>
+    <loc>https://genextechnocrats.com/gelearn/tenders</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/whitepapers</loc>
+    <loc>https://genextechnocrats.com/gelearn/whitepapers</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://genextechnocrats.in/gelearn/podcasts</loc>
+    <loc>https://genextechnocrats.com/gelearn/podcasts</loc>
     <lastmod>2026-05-19</lastmod>
     <priority>0.7</priority>
   </url>

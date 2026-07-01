@@ -34,6 +34,9 @@ export const router = createBrowserRouter([
       { path: '/about/media',              element: s(<ComingSoon />) },
       { path: '/contact',                  element: s(<ComingSoon />) },
       { path: '/careers',                  element: s(<ComingSoon />) },
+
+      // Catch-all — any unmatched route shows Coming Soon
+      { path: '*',                          element: s(<ComingSoon />) },
     ],
   },
 ])
