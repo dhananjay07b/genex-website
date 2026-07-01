@@ -5,6 +5,5 @@ export const EVENT_CONFIG = {
   tagline: "A New Era in India's Energy Intelligence",
   description:
     "We're launching a new chapter. Join us for a live webinar showcasing what Genex has been building.",
-  registrationUrl:
-    'https://docs.google.com/forms/d/e/1FAIpQLSenf9apJ7Id_70f7lWyFJOqX3tTGXCr9fTTTeLhsVYA365WKg/viewform',
+  registrationUrl: 'https://forms.gle/yKySZ3D4UixgqRYD8',
 } as const
