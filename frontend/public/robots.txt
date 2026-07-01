@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://genextechnocrats.in/sitemap.xml
+Sitemap: https://genextechnocrats.com/sitemap.xml
