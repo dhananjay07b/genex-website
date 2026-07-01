@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { SampleFooter } from '@/components/shared/SampleFooter'
 import { EVENT_CONFIG } from '@/config/eventConfig'
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/Button';
@@ -247,13 +248,6 @@ function CountdownTile({ value, label }: { value: number; label: string }) {
 export default function ComingSoon() {
   const { days, hours, minutes, seconds } = useCountdown(EVENT_CONFIG.date)
 
-  useEffect(() => {
-    if (window.innerWidth < 768) return
-    const root = document.documentElement
-    root.style.overflow = 'hidden'
-    return () => { root.style.overflow = '' }
-  }, [])
-
   const eventDateLabel = EVENT_CONFIG.date.toLocaleDateString('en-IN', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
   })
@@ -315,11 +309,8 @@ export default function ComingSoon() {
 
         </div>
 
-        {/* Pinned to viewport bottom */}
-        <p className="absolute bottom-5 text-xs text-text-muted">
-          Genex Technocrats Pvt. Ltd. | Next Generation Energy Intelligence
-        </p>
       </main>
+      <SampleFooter />
     </>
   )
 }

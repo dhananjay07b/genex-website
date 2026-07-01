@@ -1,4 +1,5 @@
 import { PageMeta }       from '@/components/seo/PageMeta'
+import { SampleFooter }  from '@/components/shared/SampleFooter'
 import { HeroSlideshow }  from '@/components/home/HeroSlideshow'
 // import { ImpactNumbers }  from '@/components/home/ImpactNumbers'
 import { WhatWeBuild }    from '@/components/home/WhatWeBuild'
@@ -17,6 +18,7 @@ import { EventBanner }    from '@/components/home/EventBanner'
 
 export default function Home() {
   return (
+    <>
     <main>
       <PageMeta
         title="Genex Technocrats | Next Generation Energy Software & Systems"
@@ -28,5 +30,7 @@ export default function Home() {
       <WhatWeBuild />
       <OperationsMap />
     </main>
+    <SampleFooter />
+    </>
   )
 }

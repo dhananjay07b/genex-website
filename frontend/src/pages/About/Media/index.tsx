@@ -104,7 +104,7 @@ function PhotoCard({ item }: { item: PhotoItem }) {
         width={600}
         height={400}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(22,36,86,0.55)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-linear-to-t from-[rgba(22,36,86,0.55)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
     </motion.div>
   )
 }
@@ -140,7 +140,7 @@ export default function Media() {
                 {/* Image card */}
                 <motion.div
                   {...fadeUp(0)}
-                  className="w-full lg:w-5/12 flex-shrink-0 relative"
+                  className="w-full lg:w-5/12 shrink-0 relative"
                 >
                   {/* Tilted bg decoration */}
                   <div
@@ -151,7 +151,7 @@ export default function Media() {
                   <motion.div
                     whileHover={{ y: -6 }}
                     transition={{ duration: 0.35, ease: 'easeOut' as const }}
-                    className="relative overflow-hidden rounded-3xl border border-[#dcebfe] shadow-2xl aspect-[3/4]"
+                    className="relative overflow-hidden rounded-3xl border border-[#dcebfe] shadow-2xl aspect-3/4"
                   >
                     <img
                       src={ach.image}
@@ -170,7 +170,7 @@ export default function Media() {
                   className="w-full lg:w-7/12 space-y-6"
                 >
                   {/* Badge chip */}
-                  <div className="inline-flex items-center gap-2 px-4 py-[9px] rounded bg-[#f3f0fd] border border-[#cbe9fb]">
+                  <div className="inline-flex items-center gap-2 px-4 py-2.25 rounded bg-[#f3f0fd] border border-[#cbe9fb]">
                     <Icon sx={{ fontSize: 16, color: '#003878' }} />
                     <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#003878]">
                       {ach.badge}

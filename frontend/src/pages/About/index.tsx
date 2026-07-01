@@ -173,7 +173,7 @@ export default function About() {
       />
 
       {/* ── THE SPARK ───────────────────────────────────────────────────── */}
-      <section className="bg-[#F0F9FF] py-20 lg:py-28 overflow-hidden">
+      <section className="bg-surface py-20 lg:py-28 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
@@ -196,7 +196,7 @@ export default function About() {
                 <img
                   src="/images/edge/control-room.png"
                   alt="Genex engineering team at work"
-                  className="w-full aspect-[4/3] object-cover"
+                  className="w-full aspect-4/3 object-cover"
                   loading="lazy"
                   width="800"
                   height="600"
@@ -208,7 +208,7 @@ export default function About() {
                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.35, ease: 'easeOut' }}
-                className="absolute bottom-0 right-0 max-w-[280px] bg-[#1AAEE8] rounded-xl p-5 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.18)]"
+                className="absolute bottom-0 right-0 max-w-70 bg-[#1AAEE8] rounded-xl p-5 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.18)]"
               >
                 <FormatQuoteIcon className="text-white/50 mb-2" style={{ fontSize: 26 }} />
                 <p className="text-white font-bold text-sm leading-relaxed">
@@ -310,7 +310,7 @@ export default function About() {
                       >
                         {m.year}
                       </span>
-                      <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#009689]">
+                      <span className="text-xs font-bold uppercase tracking text-[#009689]">
                         {m.label}
                       </span>
                     </div>
@@ -426,7 +426,7 @@ export default function About() {
       </section>
 
       {/* ── MISSION ─────────────────────────────────────────────────────── */}
-      <section id="mission" className="bg-[#F0F9FF] py-20 lg:py-28 scroll-mt-20 overflow-hidden">
+      <section id="mission" className="bg-surface py-20 lg:py-28 scroll-mt-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
@@ -665,7 +665,7 @@ export default function About() {
                 variants={staggerChild}
                 whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(26,174,232,0.12)', borderColor: '#1AAEE8' }}
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl border border-[#e7edf4] p-6 flex flex-col items-center justify-center gap-3 aspect-[3/2] transition-all duration-200 cursor-default"
+                className="bg-white rounded-2xl border border-[#e7edf4] p-6 flex flex-col items-center justify-center gap-3 aspect-3/2 transition-all duration-200 cursor-default"
               >
                 <div className="w-14 h-12 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center">
                   <div className="w-8 h-4 rounded bg-[#e2e8f0]" />
@@ -689,7 +689,7 @@ export default function About() {
                 variants={staggerChild}
                 whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(26,174,232,0.12)', borderColor: '#1AAEE8' }}
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-2xl border border-[#e7edf4] p-6 flex flex-col items-center justify-center gap-3 aspect-[3/2] transition-all duration-200 cursor-default"
+                className="bg-white rounded-2xl border border-[#e7edf4] p-6 flex flex-col items-center justify-center gap-3 aspect-3/2 transition-all duration-200 cursor-default"
               >
                 <div className="w-14 h-12 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center">
                   <div className="w-8 h-4 rounded bg-[#e2e8f0]" />
