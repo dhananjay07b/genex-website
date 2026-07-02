@@ -1,5 +1,4 @@
 import { PageMeta }       from '@/components/seo/PageMeta'
-import { SampleFooter }  from '@/components/shared/SampleFooter'
 import { HeroSlideshow }  from '@/components/home/HeroSlideshow'
 // import { ImpactNumbers }  from '@/components/home/ImpactNumbers'
 import { WhatWeBuild }    from '@/components/home/WhatWeBuild'
@@ -18,11 +17,10 @@ import { EventBanner }    from '@/components/home/EventBanner'
 
 export default function Home() {
   return (
-    <>
     <main>
       <PageMeta
-        title="Genex Technocrats | Next Generation Energy Software & Systems"
-        description="Genex Technocrats builds software and systems that run India's renewable energy infrastructure — solar monitoring, SCADA, RMS, EMS, and AI platforms."
+        title="Genex Technocrats | AI, Renewable Energy & Industrial IoT Solutions"
+        description="Genex Technocrats develops AI-powered renewable energy, Battery Energy Storage Systems (BESS), EV charging, Industrial IoT, energy management, and smart digital solutions for a sustainable future."
         canonical="/"
       />
       <HeroSlideshow />
@@ -30,7 +28,5 @@ export default function Home() {
       <WhatWeBuild />
       <OperationsMap />
     </main>
-    <SampleFooter />
-    </>
   )
 }
