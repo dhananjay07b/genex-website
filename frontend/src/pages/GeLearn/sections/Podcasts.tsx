@@ -1,68 +1,172 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
-import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
-import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 
-const TOPIC_STYLE: Record<string, string> = {
-  'Grid & SCADA':     'bg-indigo-50 text-indigo-700 border-indigo-200',
-  'Solar':            'bg-amber-50 text-amber-700 border-amber-200',
-  'Energy Policy':    'bg-violet-50 text-violet-700 border-violet-200',
-  'EV':               'bg-emerald-50 text-emerald-700 border-emerald-200',
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+interface Episode {
+  id: number
+  title: string
+  category: string
+  categoryBg: string
+  categoryText: string
+  date: string
+  duration: string
+  description: string
+  guest: string
+  role: string
+  image: string
 }
 
-const EPISODES = [
+const EPISODES: Episode[] = [
   {
     id: 1,
-    episode: 'EP 01',
     title: 'The State of SCADA in India — Where Are We and Where Are We Going?',
-    guest: 'Rajesh Kumar',
-    role: 'Head of Grid Automation, State Transmission Utility',
-    topic: 'Grid & SCADA',
+    category: 'Grid & SCADA',
+    categoryBg: '#eef2ff',
+    categoryText: '#432dd7',
+    date: 'JUL 27 2025',
     duration: '48 min',
     description: 'A frank conversation about the state of SCADA adoption at Indian utilities — the gap between aspiration and ground reality, and what it will take to close it.',
+    guest: 'Rajesh Kumar',
+    role: 'Head of Grid Automation, STU',
+    image: '/images/podcasts/podcast-thumb.jpg',
   },
   {
     id: 2,
     title: 'Solar O&M at Scale: Lessons from 500 MW Under Management',
-    episode: 'EP 02',
-    guest: 'Priya Menon',
-    role: 'O&M Director, Renewable Energy Developer',
-    topic: 'Solar',
+    category: 'Solar',
+    categoryBg: '#fffbeb',
+    categoryText: '#b45309',
+    date: 'AUG 05 2025',
     duration: '41 min',
     description: 'What changes when you go from managing 10 solar sites to 300? Data quality, team structure, alarm fatigue, and the tools that actually help.',
+    guest: 'Priya Menon',
+    role: 'O&M Director, RE Developer',
+    image: '/images/podcasts/podcast-thumb.jpg',
   },
   {
     id: 3,
     title: "India's Energy Storage Policy in 2026: What Operators Need to Know",
-    episode: 'EP 03',
-    guest: 'Amit Sharma',
-    role: 'Energy Policy Analyst, Independent Consultant',
-    topic: 'Energy Policy',
+    category: 'Energy Policy',
+    categoryBg: '#f5f3ff',
+    categoryText: '#6d28d9',
+    date: 'AUG 19 2025',
     duration: '55 min',
-    description: 'The BESS policy landscape has shifted significantly in the past two years. We break down what the changes mean for project developers, utilities, and software vendors.',
+    description: 'The BESS policy landscape has shifted significantly in the past two years. We break down what the changes mean for developers, utilities, and software vendors.',
+    guest: 'Amit Sharma',
+    role: 'Energy Policy Analyst',
+    image: '/images/podcasts/podcast-thumb.jpg',
   },
   {
     id: 4,
     title: 'Fleet Electrification: The Infrastructure Reality Behind the Headlines',
-    episode: 'EP 04',
-    guest: 'Deepa Nair',
-    role: 'Fleet Electrification Lead, State Road Transport Corp.',
-    topic: 'EV',
+    category: 'EV',
+    categoryBg: '#ecfdf5',
+    categoryText: '#047857',
+    date: 'SEP 02 2025',
     duration: '37 min',
-    description: 'Fleet operators are moving faster than the charging infrastructure ecosystem. An honest conversation about what\'s working, what isn\'t, and what software needs to do better.',
+    description: "Fleet operators are moving faster than the charging infrastructure ecosystem. An honest conversation about what's working, what isn't, and what software needs to do better.",
+    guest: 'Deepa Nair',
+    role: 'Fleet Electrification Lead, SRTC',
+    image: '/images/podcasts/podcast-thumb.jpg',
+  },
+  {
+    id: 5,
+    title: 'IEC 61850 in Practice: Commissioning Lessons from the Field',
+    category: 'Grid & SCADA',
+    categoryBg: '#eef2ff',
+    categoryText: '#432dd7',
+    date: 'SEP 16 2025',
+    duration: '44 min',
+    description: 'Moving from theory to deployed substations — a practitioner walkthrough of GOOSE configuration, SCL files, vendor interoperability, and what the standard still does not tell you.',
+    guest: 'Vikram Patel',
+    role: 'Senior Protection Engineer',
+    image: '/images/podcasts/podcast-thumb.jpg',
+  },
+  {
+    id: 6,
+    title: 'RTC Power Trading: Data and Decisions on the IEX',
+    category: 'Grid & SCADA',
+    categoryBg: '#eef2ff',
+    categoryText: '#432dd7',
+    date: 'OCT 01 2025',
+    duration: '39 min',
+    description: 'How analytics platforms are changing real-time trading decisions on Indian exchanges — bid optimisation signals, settlement data, and the tools traders actually use.',
+    guest: 'Neha Singh',
+    role: 'Power Trading Analyst, IEX',
+    image: '/images/podcasts/podcast-thumb.jpg',
   },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' as const },
-  transition: { duration: 0.45, ease: 'easeOut' as const, delay },
-})
+// ── Animations ────────────────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (d = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: d, ease: 'easeOut' as const },
+  }),
+}
+
+// ── EpisodeCard ───────────────────────────────────────────────────────────────
+
+function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
+  return (
+    <motion.div
+      custom={index * 0.08}
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-40px' as const }}
+      whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
+      className="bg-white border border-[#e9e9e9] rounded-3xl p-8 flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/30 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 group cursor-pointer"
+    >
+      {/* Category + date/duration */}
+      <div className="flex items-center gap-3 mb-5">
+        <span
+          className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+          style={{ background: ep.categoryBg, color: ep.categoryText }}
+        >
+          {ep.category}
+        </span>
+        <span className="text-xs font-medium text-[#62748e]">
+          {ep.date}&nbsp;&nbsp;|&nbsp;&nbsp;{ep.duration}
+        </span>
+      </div>
+
+      {/* Thumbnail */}
+      <div className="w-full h-36 rounded-2xl overflow-hidden bg-[#c5bebe] mb-5 shrink-0">
+        <img
+          src={ep.image}
+          alt={ep.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Title */}
+      <h3 className="text-xl font-semibold text-black leading-7 mb-4 flex-1 group-hover:text-primary transition-colors duration-200">
+        {ep.title}
+      </h3>
+
+      {/* Description */}
+      <p className="text-sm text-[#62748e] leading-5 mb-6">
+        {ep.description}
+      </p>
+
+      {/* Guest */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold text-[#314158]">{ep.guest}</span>
+        <span className="text-[#62748e] text-xs">•</span>
+        <span className="text-xs font-medium text-[#62748e]">{ep.role}</span>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Podcasts() {
   return (
@@ -78,62 +182,60 @@ export default function Podcasts() {
         subline="Engineers, plant operators, and sector leaders talk honestly about India's energy infrastructure."
       />
 
-      {/* Breadcrumb */}
-      <div className="bg-white border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-text-muted">
-          <Link to="/gelearn" className="hover:text-primary transition-colors">GeLearn</Link>
-          <span>/</span>
-          <span className="font-semibold text-text-primary">Podcasts & Interviews</span>
-        </div>
-      </div>
+      <section className="bg-white py-16 lg:py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-      <section className="bg-surface py-16 lg:py-24">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 space-y-5">
-          {EPISODES.map((ep, i) => (
-            <motion.div key={ep.id} {...fadeUp(i * 0.08)}>
-              <div className="bg-white border border-border rounded-2xl p-7 flex gap-6 items-start hover:border-primary hover:shadow-md transition-all duration-200">
-                {/* Episode number + play */}
-                <div className="flex flex-col items-center gap-3 shrink-0">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface border border-border">
-                    <MicOutlinedIcon className="text-primary" style={{ fontSize: 22 }} />
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{ep.episode}</span>
-                </div>
+          {/* Section heading */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' as const }}
+            className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14"
+          >
+            <h2 className="text-4xl font-bold text-black capitalize leading-tight max-w-lg">
+              Our Insights On Trends,<br />Technologies, And<br />Transformation
+            </h2>
+            <p className="text-base text-[#949494] max-w-xs lg:text-right leading-6">
+              Bring to the table win-win survival strategies to ensure proactive domination at the end of the day.
+            </p>
+          </motion.div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${TOPIC_STYLE[ep.topic]}`}>
-                      {ep.topic}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-text-muted">
-                      <AccessTimeOutlinedIcon style={{ fontSize: 12 }} />{ep.duration}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-extrabold text-text-primary leading-snug mb-2">{ep.title}</h3>
-                  <p className="text-xs font-semibold text-primary mb-3">{ep.guest} — <span className="text-text-muted font-normal">{ep.role}</span></p>
-                  <p className="text-sm text-text-muted leading-relaxed mb-4">{ep.description}</p>
-                  <Link to="/contact" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-                    <PlayCircleOutlinedIcon style={{ fontSize: 18 }} /> Listen
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+          {/* 3-column grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {EPISODES.map((ep, i) => (
+              <EpisodeCard key={ep.id} ep={ep} index={i} />
+            ))}
+          </div>
+
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-white border-t border-border py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">Be a Guest</p>
-            <h2 className="text-xl font-extrabold text-text-primary">Want to share your perspective?</h2>
-            <p className="mt-1 text-sm text-text-muted">We talk to engineers, operators, and policy experts across India's energy sector.</p>
-          </div>
-          <Link to="/contact" className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text-primary hover:border-primary hover:text-primary transition-all duration-200">
-            Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+      <section className="bg-[#f0f9ff] py-14">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' as const }}
+            className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8"
+          >
+            <div>
+              <h2 className="text-3xl font-bold text-[#0f2930] leading-snug mb-2">
+                Start Now.<br />Get Started For Free
+              </h2>
+              <p className="text-sm text-[#6b7280] max-w-md leading-6">
+                Our AI-monitored solar grids distribute power intelligently — book a personalised demo with our engineering team.
+              </p>
+            </div>
+            <Link
+              to="/contact#demo"
+              className="shrink-0 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
+            >
+              Request a Demo
+            </Link>
+          </motion.div>
         </div>
       </section>
     </main>

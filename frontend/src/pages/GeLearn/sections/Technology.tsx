@@ -4,77 +4,106 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { TECH_ARTICLES } from '@/config/technologyArticles'
 
-const TOPICS = [
-  'IEC 61850', 'SCADA', 'Modbus', 'MQTT', 'OPC-UA', 'Grid Management', 'IoT', 'Edge Computing',
-  'Energy Storage', 'Solar Analytics', 'EV Infrastructure', 'Cloud Architecture',
-]
+// ── Styles ────────────────────────────────────────────────────────────────────
 
-const DIFFICULTY_STYLE: Record<string, string> = {
-  Beginner:     'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Intermediate: 'bg-amber-50 text-amber-700 border-amber-200',
-  Advanced:     'bg-rose-50 text-rose-700 border-rose-200',
+const DIFFICULTY_STYLE: Record<string, { bg: string; text: string }> = {
+  Beginner:     { bg: '#e9ffe8', text: '#2c8502' },
+  Intermediate: { bg: '#fff8e8', text: '#855a02' },
+  Advanced:     { bg: '#ffe8e8', text: '#8b0000' },
 }
 
-const ARTICLES = [
-  {
-    id: 1,
-    title: 'How IEC 61850 Changed Substation Automation — And Why It Matters for Indian Utilities',
-    topic: 'IEC 61850',
-    difficulty: 'Intermediate',
-    readTime: '12 min read',
-    excerpt: "IEC 61850 is more than a communication protocol — it's a complete engineering philosophy for interoperable, vendor-agnostic substation automation. This deep dive covers GOOSE, SV messaging, and practical deployment lessons from Genex SCADA installations.",
-    tags: ['IEC 61850', 'SCADA', 'Substation'],
-    featured: true,
-  },
-  {
-    id: 2,
-    title: 'Edge vs Cloud: Choosing the Right Data Architecture for Solar Monitoring at Scale',
-    topic: 'Edge Computing',
-    difficulty: 'Intermediate',
-    readTime: '9 min read',
-    excerpt: "When you're managing 500+ solar sites, the decision between edge processing and cloud aggregation isn't theoretical — it affects data latency, cost, and reliability in measurable ways.",
-    tags: ['Solar Analytics', 'Edge Computing', 'Cloud Architecture'],
-    featured: false,
-  },
-  {
-    id: 3,
-    title: 'OCPP 2.0.1 vs OCPP 1.6: What Fleet Operators Need to Know Before Upgrading',
-    topic: 'EV Infrastructure',
-    difficulty: 'Beginner',
-    readTime: '7 min read',
-    excerpt: "The jump from OCPP 1.6 to 2.0.1 introduces device management, improved security, and ISO 15118 readiness. Here's a practical comparison for charging network operators planning infrastructure upgrades.",
-    tags: ['EV Infrastructure', 'OCPP', 'Standards'],
-    featured: false,
-  },
-  {
-    id: 4,
-    title: 'Designing a Reliable MQTT Architecture for Industrial IoT at 10,000 Endpoints',
-    topic: 'MQTT',
-    difficulty: 'Advanced',
-    readTime: '15 min read',
-    excerpt: "MQTT is lightweight by design — but scaling it reliably across thousands of field devices requires careful broker configuration, QoS selection, and failover planning. Lessons from Genex's Data Logger fleet.",
-    tags: ['IoT', 'MQTT', 'Edge Computing'],
-    featured: false,
-  },
-  {
-    id: 5,
-    title: 'Battery State-of-Health Estimation: Methods, Tradeoffs, and What Actually Works in the Field',
-    topic: 'Energy Storage',
-    difficulty: 'Advanced',
-    readTime: '11 min read',
-    excerpt: 'SOH estimation algorithms range from simple coulomb counting to machine learning models. We break down the methods Genex uses in its BMS platform and why accuracy requirements differ by application.',
-    tags: ['Energy Storage', 'BMS', 'AI Analytics'],
-    featured: false,
-  },
-]
+// ── Animations ────────────────────────────────────────────────────────────────
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' as const },
-  transition: { duration: 0.45, ease: 'easeOut' as const, delay },
-})
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (d = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: d, ease: 'easeOut' as const },
+  }),
+}
+
+// ── ArticleCard ───────────────────────────────────────────────────────────────
+
+function ArticleCard({ article, index }: { article: (typeof TECH_ARTICLES)[number]; index: number }) {
+  const diff = DIFFICULTY_STYLE[article.difficulty]
+  return (
+    <motion.div
+      custom={index * 0.08}
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-40px' as const }}
+      whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
+      className="bg-white border border-[#e9e9e9] rounded-3xl flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/40 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 overflow-hidden"
+    >
+      {/* Featured tab */}
+      {article.featured && (
+        <div className="bg-white px-8 pt-4 pb-0">
+          <span className="inline-block text-[13px] font-semibold text-primary bg-primary/8 px-4 py-1.5 rounded-t-xl border border-b-0 border-primary/20">
+            Featured
+          </span>
+        </div>
+      )}
+
+      {/* Card body */}
+      <div className={`px-8 pb-8 flex flex-col flex-1 ${article.featured ? 'pt-4' : 'pt-8'}`}>
+        {/* Difficulty + topic badges */}
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
+          <span
+            className="px-3 py-1 rounded-full text-xs font-bold"
+            style={{ background: diff.bg, color: diff.text }}
+          >
+            {article.difficulty}
+          </span>
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#f7f7f7] text-[#3f3f3f]">
+            {article.topic}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-[22px] font-semibold text-[#0f172b] leading-[1.35] mb-4 flex-1">
+          {article.title}
+        </h3>
+
+        {/* Excerpt */}
+        <p className="text-[15px] text-[#45556c] leading-[1.6] mb-6">
+          {article.excerpt}
+        </p>
+
+        {/* Arrow button */}
+        <div className="flex justify-end mb-6">
+          <Link
+            to={`/gelearn/technology/${article.id}`}
+            className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] hover:opacity-85 transition-opacity"
+          >
+            <ArrowForwardIcon
+              style={{ fontSize: 18, transform: 'rotate(-45deg)', color: '#fff' }}
+            />
+          </Link>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[#e8e8e8] pt-5 flex items-center justify-between gap-4">
+          {/* Tags */}
+          <p className="text-sm font-semibold text-[#0f172b] leading-5">
+            {article.tags.join(', ')}
+          </p>
+
+          {/* Read time */}
+          <span className="shrink-0 flex items-center gap-1.5 text-sm font-medium text-[#62748e] border border-[#e4e4e4] rounded-full px-3 py-1 whitespace-nowrap">
+            <AccessTimeOutlinedIcon style={{ fontSize: 14 }} />
+            {article.readTime}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Technology() {
   return (
@@ -90,85 +119,60 @@ export default function Technology() {
         subline="In-depth technical articles from engineers who build, commission, and operate these systems in the field."
       />
 
-      {/* Breadcrumb */}
-      <div className="bg-white border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-text-muted">
-          <Link to="/gelearn" className="hover:text-primary transition-colors">GeLearn</Link>
-          <span>/</span>
-          <span className="font-semibold text-text-primary">Technology Deep Dives</span>
-        </div>
-      </div>
-
-      <section className="bg-surface py-16 lg:py-24">
+      <section className="bg-white py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid lg:grid-cols-[1fr_240px] gap-12 items-start">
 
-            {/* Article list */}
-            <div className="space-y-4">
-              {ARTICLES.map((article, i) => (
-                <motion.div key={article.id} {...fadeUp(i * 0.07)}>
-                  <div className={`bg-white border rounded-2xl p-7 hover:border-primary hover:shadow-sm transition-all duration-200 ${article.featured ? 'border-primary/30 ring-1 ring-primary/10' : 'border-border'}`}>
-                    {article.featured && (
-                      <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/5 rounded-full px-2.5 py-0.5 mb-4">
-                        Featured
-                      </span>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${DIFFICULTY_STYLE[article.difficulty]}`}>
-                        {article.difficulty}
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-text-muted border border-border rounded-full px-2.5 py-0.5">
-                        {article.topic}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-text-muted ml-auto">
-                        <AccessTimeOutlinedIcon style={{ fontSize: 13 }} />{article.readTime}
-                      </span>
-                    </div>
-                    <h3 className={`font-extrabold text-text-primary leading-snug mb-3 ${article.featured ? 'text-xl' : 'text-base'}`}>
-                      {article.title}
-                    </h3>
-                    <p className="text-sm text-text-muted leading-relaxed mb-4">{article.excerpt}</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {article.tags.map(t => (
-                        <span key={t} className="px-3 py-1 bg-surface border border-border rounded-full text-xs font-medium text-text-primary">{t}</span>
-                      ))}
-                    </div>
-                    <Link to="/contact" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-                      Read Article <ArrowForwardIcon style={{ fontSize: 15 }} />
-                    </Link>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          {/* Section heading */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' as const }}
+            className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14"
+          >
+            <h2 className="text-4xl font-bold text-black capitalize leading-tight max-w-lg">
+              Our Insights On Trends,<br />Technologies, And<br />Transformation
+            </h2>
+            <p className="text-base text-[#949494] max-w-xs lg:text-right leading-6">
+              Engineering analysis and field lessons from the teams who build and operate India's energy infrastructure.
+            </p>
+          </motion.div>
 
-            {/* Sticky topic sidebar */}
-            <div className="lg:sticky lg:top-24">
-              <div className="bg-white border border-border rounded-2xl p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted mb-4">Topics</p>
-                <div className="flex flex-wrap gap-2">
-                  {TOPICS.map(t => (
-                    <span key={t} className="px-3 py-1.5 bg-surface border border-border rounded-full text-xs font-medium text-text-primary hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+          {/* 3-column grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {TECH_ARTICLES.map((article, i) => (
+              <ArticleCard key={article.id} article={article} index={i} />
+            ))}
           </div>
+
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-white border-t border-border py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">Contribute</p>
-            <h2 className="text-xl font-extrabold text-text-primary">Have content to contribute?</h2>
-            <p className="mt-1 text-sm text-text-muted">We publish technical articles from engineers and researchers across the energy sector.</p>
-          </div>
-          <Link to="/contact" className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text-primary hover:border-primary hover:text-primary transition-all duration-200">
-            Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+      <section className="bg-[#f0f9ff] py-14">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' as const }}
+            className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8"
+          >
+            <div>
+              <h2 className="text-3xl font-bold text-[#0f2930] leading-snug mb-2">
+                Start Now.<br />Get Started For Free
+              </h2>
+              <p className="text-sm text-[#6b7280] max-w-md leading-6">
+                Our AI-monitored solar grids distribute power intelligently — book a personalised demo with our engineering team.
+              </p>
+            </div>
+            <Link
+              to="/contact#demo"
+              className="shrink-0 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
+            >
+              Request a Demo
+            </Link>
+          </motion.div>
         </div>
       </section>
     </main>

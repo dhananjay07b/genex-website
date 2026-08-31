@@ -1,178 +1,374 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
-import ArchitectureOutlinedIcon from '@mui/icons-material/ArchitectureOutlined'
-import CodeOutlinedIcon from '@mui/icons-material/CodeOutlined'
-import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
-import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined'
-import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined'
-import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import SchemaOutlinedIcon from '@mui/icons-material/SchemaOutlined'
-import SecurityOutlinedIcon from '@mui/icons-material/SecurityOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 
-const STEPS = [
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+interface Step {
+  num: string
+  title: string
+  desc: string
+  badgeColor: string
+  dotColor: string
+  connectorColor: string
+  cardBorder: string
+  image: string
+  side: 'right' | 'left' // which side the CARD is on
+}
+
+const STEPS: Step[] = [
   {
-    number: '01',
+    num: '01',
     title: 'Discovery',
-    Icon: SearchOutlinedIcon,
-    description: 'We start with a site survey and requirements workshop. Our engineers map existing infrastructure, communication protocols, and operational pain points before writing a single line of code.',
-    deliverable: 'Site survey report + requirements spec',
+    desc: 'We analyse your site topology, hardware constraints, and protocol environment. Every project starts with a structured technical discovery — before any line of code is written.',
+    badgeColor: '#1c398e',
+    dotColor: '#155dfc',
+    connectorColor: '#bedbff',
+    cardBorder: '#eff6ff',
+    image: '/images/how-we-work/how-1.jpg',
+    side: 'right',
   },
   {
-    number: '02',
+    num: '02',
     title: 'Architecture',
-    Icon: ArchitectureOutlinedIcon,
-    description: "System architecture is designed based on your site's constraints — connectivity, hardware, protocols, and scale. We define integration points, data flows, and failover requirements upfront.",
-    deliverable: 'Architecture document + BoQ',
+    desc: 'We design the data pipeline, protocol translation layer, and platform topology — edge, cloud, or hybrid. No ambiguity is left before development begins.',
+    badgeColor: '#2ccefb',
+    dotColor: '#2ccefb',
+    connectorColor: '#b0eeff',
+    cardBorder: '#b0eeff',
+    image: '/images/how-we-work/how-2.jpg',
+    side: 'left',
   },
   {
-    number: '03',
+    num: '03',
     title: 'Development',
-    Icon: CodeOutlinedIcon,
-    description: 'Software is built against a defined spec with internal QA gates. We do not ship to production without internal validation at each milestone. Client review points are built into the timeline.',
-    deliverable: 'Staged builds with review checkpoints',
+    desc: 'Our engineers build your SCADA platform, data loggers, dashboards, and integration adapters — iterating in short cycles with full client visibility throughout.',
+    badgeColor: '#00bba7',
+    dotColor: '#00bba7',
+    connectorColor: '#78ede1',
+    cardBorder: '#eff6ff',
+    image: '/images/how-we-work/how-3.jpg',
+    side: 'right',
   },
   {
-    number: '04',
+    num: '04',
     title: 'Integration',
-    Icon: CableOutlinedIcon,
-    description: 'On-site commissioning with your field team. We validate every data point, protocol handshake, and alarm path against the requirements spec — and document deviations before sign-off.',
-    deliverable: 'Commissioning report + FAT/SAT docs',
+    desc: 'We connect your field hardware, RTUs, inverters, and legacy systems. Protocol bridges, OPC-UA servers, and API layers are built and validated against live field data.',
+    badgeColor: '#1c398e',
+    dotColor: '#1c398e',
+    connectorColor: '#6686e6',
+    cardBorder: '#b0eeff',
+    image: '/images/how-we-work/how-2.jpg',
+    side: 'left',
   },
   {
-    number: '05',
+    num: '05',
     title: 'Deployment',
-    Icon: RocketLaunchOutlinedIcon,
-    description: "Go-live is planned around operational windows to minimise downtime. Rollback procedures are defined before deployment begins. We don't leave site until the system is stable.",
-    deliverable: 'Go-live checklist + handover documentation',
+    desc: 'Go-live is a controlled cutover — not a handover. We commission on-site, validate every data point in production, and confirm SLA performance before we step back.',
+    badgeColor: '#2ccefb',
+    dotColor: '#2ccefb',
+    connectorColor: '#b0eeff',
+    cardBorder: '#eff6ff',
+    image: '/images/how-we-work/how-3.jpg',
+    side: 'right',
   },
   {
-    number: '06',
-    title: 'Support',
-    Icon: SupportAgentOutlinedIcon,
-    description: 'Post-deployment support covers remote diagnostics, firmware updates, and 24×7 escalation for critical systems. SLA tiers are agreed at contract stage, not after an incident.',
-    deliverable: 'SLA agreement + support portal access',
+    num: '06',
+    title: 'Support & Scale',
+    desc: 'Ongoing firmware updates, dashboard enhancements, and 24×7 escalation paths are established from day one. We stay engaged as your asset base grows.',
+    badgeColor: '#00bba7',
+    dotColor: '#00bba7',
+    connectorColor: '#78ede1',
+    cardBorder: '#b0eeff',
+    image: '/images/how-we-work/how-2.jpg',
+    side: 'left',
   },
 ]
 
 const PRINCIPLES = [
-  { Icon: VerifiedOutlinedIcon,  title: 'Spec Before Code',      body: 'We document requirements before implementation. Changes after spec sign-off are change requests — not scope creep absorbed silently.' },
-  { Icon: SchemaOutlinedIcon,    title: 'Protocol-Agnostic',     body: 'We do not lock clients into proprietary hardware or communication stacks. Our platforms support open standards by default.' },
-  { Icon: GroupsOutlinedIcon,    title: 'Site-First Engineering', body: 'Our engineers visit sites. Software designed without field context produces systems that work in demos and fail in operations.' },
-  { Icon: SecurityOutlinedIcon,  title: 'Security by Design',    body: 'Cybersecurity is an architecture input, not a post-deployment checklist. We align with IEC 62443 and CERT-In guidance for critical infrastructure.' },
+  {
+    title: 'Protocol-Agnostic by Design',
+    desc: 'We never lock clients to proprietary hardware. Every platform we build speaks Modbus, IEC 61850, DNP3, OPC-UA, MQTT, and REST — simultaneously where required.',
+  },
+  {
+    title: 'Edge-First Connectivity',
+    desc: 'Remote sites cannot rely on constant cloud connectivity. Our edge nodes buffer, process, and sync — so data loss from connectivity gaps is never a risk.',
+  },
+  {
+    title: 'Real-Time Over Periodic',
+    desc: 'Periodic reports miss critical events. We build for sub-second telemetry — fault detection, overcurrent alerts, SOC exceedance — so action happens before losses compound.',
+  },
+  {
+    title: 'Security Without Compromise',
+    desc: 'Role-based access, encrypted tunnels, certificate-based device authentication, and full audit logging are built in from day one — not added as afterthoughts.',
+  },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' as const },
-  transition: { duration: 0.45, ease: 'easeOut' as const, delay },
+// ── Animations ────────────────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  visible: (d = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.5, delay: d, ease: 'easeOut' as const } }),
+}
+
+const slideFrom = (x: number) => ({
+  hidden: { opacity: 0, x },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: 'easeOut' as const } },
 })
+
+// ── StepRow ───────────────────────────────────────────────────────────────────
+
+function StepRow({ step, index }: { step: Step; index: number }) {
+  const isRight = step.side === 'right' // card on right side
+  const cardSlide = slideFrom(isRight ? 60 : -60)
+  const imgSlide  = slideFrom(isRight ? -60 : 60)
+
+  const image = (
+    <motion.div
+      variants={imgSlide}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-80px' as const }}
+      className="aspect-4/3 h-48 rounded-3xl overflow-hidden bg-[#f3f4f6] shadow-sm"
+    >
+      <motion.img
+        src={step.image}
+        alt={step.title}
+        className="w-full h-full object-cover"
+        whileHover={{ scale: 1.06 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      />
+    </motion.div>
+  )
+
+  const card = (
+    <motion.div
+      variants={cardSlide}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-80px' as const }}
+      whileHover={{ y: -5, transition: { duration: 0.2, ease: 'easeOut' } }}
+      className="relative rounded-3xl p-8 shadow-[0px_10px_15px_-3px_rgba(28,57,142,0.05),0px_4px_6px_-4px_rgba(28,57,142,0.05)] bg-white w-full"
+      style={{ border: `1px solid ${step.cardBorder}` }}
+    >
+      {/* Number badge */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        whileInView={{ scale: 1, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, delay: 0.2, type: 'spring', bounce: 0.4 }}
+        className={`absolute top-8 size-12 rounded-full flex items-center justify-center text-white text-lg font-bold z-10 ${
+          isRight ? '-left-6' : '-right-6'
+        }`}
+        style={{ background: step.badgeColor }}
+      >
+        {step.num}
+      </motion.div>
+
+      <div className={isRight ? 'pl-8' : 'pr-8 text-right'}>
+        <h3 className="text-xl font-bold text-black mb-3">{step.title}</h3>
+        <p className="text-sm text-[#949494] leading-6">{step.desc}</p>
+      </div>
+    </motion.div>
+  )
+
+  return (
+    <div className="hidden lg:flex items-center w-full gap-0">
+      {/* Left side */}
+      <div className="flex-1 flex items-center justify-end pr-12">
+        {isRight ? image : card}
+      </div>
+
+      {/* Center: dot + connector */}
+      <div className="relative z-10 flex-none flex items-center justify-center">
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.35, delay: 0.1, type: 'spring', bounce: 0.5 }}
+          className="size-4 rounded-full bg-white border-4 relative"
+          style={{ borderColor: step.dotColor }}
+        >
+          {/* Connector line to card side */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 h-px w-12"
+            style={{
+              background: step.connectorColor,
+              left: isRight ? '100%' : 'auto',
+              right: isRight ? 'auto' : '100%',
+            }}
+          />
+        </motion.div>
+      </div>
+
+      {/* Right side */}
+      <div className="flex-1 flex items-center pl-12">
+        {isRight ? card : image}
+      </div>
+    </div>
+  )
+}
+
+// ── Mobile StepRow ────────────────────────────────────────────────────────────
+
+function MobileStep({ step }: { step: Step }) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-40px' as const }}
+      className="flex gap-5"
+    >
+      {/* Left: number + vertical line */}
+      <div className="flex flex-col items-center">
+        <div
+          className="size-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+          style={{ background: step.badgeColor }}
+        >
+          {step.num}
+        </div>
+        <div className="flex-1 w-0.5 mt-3" style={{ background: step.connectorColor }} />
+      </div>
+      {/* Right: content */}
+      <div className="pb-10 flex-1 min-w-0">
+        <div className="rounded-2xl overflow-hidden aspect-video mb-4">
+          <img src={step.image} alt={step.title} className="w-full h-full object-cover" />
+        </div>
+        <h3 className="text-lg font-bold text-black mb-2">{step.title}</h3>
+        <p className="text-sm text-[#949494] leading-6">{step.desc}</p>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HowWeWork() {
   return (
     <main>
       <PageMeta
-        title="How We Work — Genex GeLearn"
-        description="Our engineering process from discovery to deployment. How Genex delivers reliable, scalable energy software on time and in the field."
+        title="How We Work — Genex Technocrats"
+        description="Six stages from site survey to long-term support — and the engineering principles that guide every Genex project."
         canonical="/gelearn/how-we-work"
       />
       <PageHero
         label="How We Work"
         headline="Engineering Delivered. Not Just Quoted."
-        subline="Six stages from site survey to long-term support — and the principles that run through every one of them."
+        subline="Six stages from site survey to long-term support — and the principles that see every project through."
       />
 
-      {/* Breadcrumb */}
-      <div className="bg-white border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-text-muted">
-          <Link to="/gelearn" className="hover:text-primary transition-colors">GeLearn</Link>
-          <span>/</span>
-          <span className="font-semibold text-text-primary">How We Work</span>
-        </div>
-      </div>
-
-      {/* Process Steps */}
-      <section className="bg-white py-20 lg:py-28">
+      {/* ── PREPARING FOR YOUR SUCCESS ───────────────────────────────────── */}
+      <section className="bg-white py-16 lg:py-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-12">Our Process</p>
-          <div className="space-y-0">
-            {STEPS.map((step, i) => {
-              const { Icon } = step
-              return (
-                <motion.div
-                  key={step.number}
-                  {...fadeUp(i * 0.07)}
-                  className="grid lg:grid-cols-[80px_1fr_1fr] gap-6 lg:gap-12 py-10 border-b border-border last:border-0 items-start"
-                >
-                  {/* Number */}
-                  <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-2">
-                    <span className="text-4xl font-extrabold gradient-brand-text leading-none">{step.number}</span>
-                  </div>
 
-                  {/* Title + icon */}
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface border border-border">
-                      <Icon className="text-primary" style={{ fontSize: 22 }} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-extrabold text-text-primary mb-2">{step.title}</h3>
-                      <p className="text-sm text-text-muted leading-relaxed">{step.description}</p>
-                    </div>
-                  </div>
+          {/* Section heading */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' as const }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold text-black mb-4">Preparing For Your Success</h2>
+            <p className="text-sm text-[#949494] max-w-lg mx-auto leading-6">
+              Every Genex engagement follows a repeatable, transparent process — from the first discovery call to the final SLA handover.
+            </p>
+          </motion.div>
 
-                  {/* Deliverable */}
-                  <div className="lg:pt-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted mb-2">Deliverable</p>
-                    <p className="text-sm font-semibold text-text-primary bg-surface border border-border rounded-xl px-4 py-3">
-                      {step.deliverable}
-                    </p>
-                  </div>
-                </motion.div>
-              )
-            })}
+          {/* Desktop timeline */}
+          <div className="relative hidden lg:block">
+            {/* Vertical dashed line */}
+            <motion.div
+              initial={{ scaleY: 0 }}
+              whileInView={{ scaleY: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.4, ease: 'easeInOut' }}
+              style={{ originY: 0 }}
+              className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-px border-l-2 border-dashed border-[#bedbff]"
+            />
+
+            {/* Steps */}
+            <div className="flex flex-col gap-24">
+              {STEPS.map((step, i) => (
+                <StepRow key={i} step={step} index={i} />
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile timeline */}
+          <div className="lg:hidden">
+            {STEPS.map((step, i) => (
+              <MobileStep key={i} step={step} />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Our Principles */}
-      <section className="bg-surface py-16 lg:py-24">
+      {/* ── ENGINEERING PRINCIPLES ───────────────────────────────────────── */}
+      <section className="bg-white border-t border-[#e5e7eb] py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-3">What Guides Us</p>
-          <h2 className="text-3xl font-extrabold text-text-primary mb-10">Engineering Principles</h2>
-          <div className="grid sm:grid-cols-2 gap-6">
-            {PRINCIPLES.map(({ Icon, title, body }, i) => (
-              <motion.div key={title} {...fadeUp(i * 0.08)}
-                className="bg-white border border-border rounded-2xl p-7 flex items-start gap-5 hover:border-primary hover:shadow-sm transition-all duration-200"
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' as const }}
+            className="mb-10"
+          >
+            <h2 className="text-4xl font-bold text-[#111827] mb-4">Engineering Principles</h2>
+            <p className="text-base text-[#6b7280] max-w-2xl leading-6">
+              We combine open protocol standards with smart monitoring tools to ensure long-term reliability and transparency across every deployment.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {PRINCIPLES.map((p, i) => (
+              <motion.div
+                key={i}
+                custom={i * 0.08}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-40px' as const }}
+                whileHover={{ y: -5, borderColor: '#1AAEE8', transition: { duration: 0.2, ease: 'easeOut' } }}
+                className="bg-white/50 border border-[#e5e7eb] rounded-3xl p-8 cursor-default transition-shadow hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)]"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl gradient-brand">
-                  <Icon style={{ fontSize: 22, color: '#fff' }} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-extrabold text-text-primary mb-1.5">{title}</h4>
-                  <p className="text-sm text-text-muted leading-relaxed">{body}</p>
-                </div>
+                <h3 className="text-xl font-bold text-[#111827] mb-3">{p.title}</h3>
+                <p className="text-sm text-[#6b7280] leading-6">{p.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-white border-t border-border py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">Start a Project</p>
-            <h2 className="text-xl font-extrabold text-text-primary">Ready to scope your next deployment?</h2>
-            <p className="mt-1 text-sm text-text-muted">We'll start with a no-obligation discovery call.</p>
-          </div>
-          <Link to="/contact#demo" className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-            Request a Demo <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+      {/* ── CTA BANNER ───────────────────────────────────────────────────── */}
+      <section className="bg-[#f0f9ff] py-14">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' as const }}
+            className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8"
+          >
+            <div>
+              <h2 className="text-3xl font-bold text-[#0f2930] leading-snug mb-2">
+                Start Now.<br />Get Started For Free
+              </h2>
+              <p className="text-sm text-[#6b7280] max-w-md leading-6">
+                Book a discovery call with our engineering team — no sales pitch, just an honest conversation about your project.
+              </p>
+            </div>
+            <Link
+              to="/contact#demo"
+              className="shrink-0 gradient-brand text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              Request a Demo <ArrowForwardIcon style={{ fontSize: 18 }} />
+            </Link>
+          </motion.div>
         </div>
       </section>
     </main>

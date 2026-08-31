@@ -1,76 +1,93 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { POSTS, BLOG_IMAGES, type BlogPost as Post } from '@/config/blogPosts'
 
-const TOPIC_STYLE: Record<string, string> = {
-  'Policy & Regulation': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  'Engineering':         'bg-cyan-50 text-cyan-700 border-cyan-200',
-  'Industry Trends':     'bg-amber-50 text-amber-700 border-amber-200',
-  'Operations':          'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Technology':          'bg-violet-50 text-violet-700 border-violet-200',
+const PAGE_SIZE = 6
+
+// ── Card ─────────────────────────────────────────────────────────────────────
+
+function BlogCard({ post, index }: { post: Post; index: number }) {
+  const img = BLOG_IMAGES[(post.id - 1) % BLOG_IMAGES.length]
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' as const }}
+      transition={{ duration: 0.45, delay: (index % PAGE_SIZE) * 0.07, ease: 'easeOut' as const }}
+      className="bg-white border border-[#e8e8e8] rounded-3xl overflow-hidden flex flex-col"
+    >
+      {/* Image */}
+      <div className="relative h-64 shrink-0">
+        <img
+          src={img}
+          alt={post.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <span className="absolute top-4 left-4 bg-secondary text-white text-xs font-bold px-4 py-1.5 rounded">
+          {post.topic}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="p-8 flex flex-col flex-1">
+        {/* Meta */}
+        <div className="flex items-center gap-6 mb-4">
+          <span className="flex items-center gap-2 text-xs text-[#949494]">
+            <PersonOutlinedIcon style={{ fontSize: 14 }} />
+            Posted By - Genex
+          </span>
+          <span className="flex items-center gap-2 text-xs text-[#949494]">
+            <CalendarTodayOutlinedIcon style={{ fontSize: 14 }} />
+            {post.date}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-2xl font-bold text-black capitalize leading-8 mb-4 flex-1">
+          {post.title}
+        </h3>
+
+        {/* Excerpt */}
+        <p className="text-sm text-[#949494] leading-5 mb-6">
+          {post.excerpt}
+        </p>
+
+        {/* Read More */}
+        <Link
+          to={`/gelearn/blog/${post.id}`}
+          className="inline-flex items-center gap-2 text-sm font-bold text-black hover:text-primary transition-colors duration-200 self-start"
+        >
+          Read More <ArrowForwardIcon style={{ fontSize: 16 }} />
+        </Link>
+      </div>
+    </motion.div>
+  )
 }
 
-const FEATURED = {
-  title: "India's Grid Modernisation Roadmap: What the 2030 Targets Mean for SCADA and EMS Vendors",
-  topic: 'Policy & Regulation',
-  date: 'April 2026',
-  excerpt: "The Ministry of Power's 2030 transmission capacity targets require 500 GW of renewable integration — and the control room infrastructure to match. We break down what this means for the SCADA, EMS, and monitoring software ecosystem in India.",
-  tags: ['SCADA', 'Grid Modernisation', 'Policy', 'Renewables'],
-}
-
-const POSTS = [
-  {
-    id: 1,
-    title: 'Why PM Kusum Monitoring Is Harder Than It Looks — And How to Get It Right',
-    topic: 'Engineering',
-    date: 'March 2026',
-    excerpt: "Distributed rural solar deployments have unique connectivity, power, and reporting challenges. The mistakes we've learned to avoid.",
-  },
-  {
-    id: 2,
-    title: 'The Hidden Costs of Proprietary SCADA: A Lifecycle Analysis',
-    topic: 'Operations',
-    date: 'February 2026',
-    excerpt: 'Licensing, vendor lock-in, and support dependencies add up over a 15-year asset lifespan. An honest breakdown of what proprietary systems really cost.',
-  },
-  {
-    id: 3,
-    title: 'Drone Inspection for Solar: Where the Technology Actually Stands in 2026',
-    topic: 'Technology',
-    date: 'January 2026',
-    excerpt: "Thermal drones are moving from pilot to production in India. We examine what's working, what's not, and what plant operators should ask before committing.",
-  },
-  {
-    id: 4,
-    title: 'EV Fleet Charging Demand: Planning Grid Impact Before It Becomes a Problem',
-    topic: 'Industry Trends',
-    date: 'December 2025',
-    excerpt: 'Fleet operators often underestimate the grid impact of simultaneous charging. We outline a demand modelling approach that prevents expensive surprises.',
-  },
-  {
-    id: 5,
-    title: 'ISO 50001 in Practice: What Indian Industrial Sites Actually Find Useful',
-    topic: 'Operations',
-    date: 'November 2025',
-    excerpt: "The standard is comprehensive but implementation varies widely. Here's what energy managers at manufacturing sites tell us they actually use — and what collects dust.",
-  },
-]
-
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-40px' as const },
-  transition: { duration: 0.45, ease: 'easeOut' as const, delay },
-})
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Blog() {
+  const [page, setPage] = useState(1)
+  const totalPages = Math.ceil(POSTS.length / PAGE_SIZE)
+  const visible = POSTS.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function goTo(p: number) {
+    setPage(p)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <main>
       <PageMeta
-        title="Blog & Insights — Genex GeLearn"
+        title="Blog & Insights — Genex Technocrats"
         description="Engineering perspectives on solar monitoring, SCADA, smart grid, and energy management from the Genex Technocrats team."
         canonical="/gelearn/blog"
       />
@@ -80,82 +97,93 @@ export default function Blog() {
         subline="Engineering commentary, industry analysis, and operational observations from the Genex team."
       />
 
-      {/* Breadcrumb */}
-      <div className="bg-white border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-text-muted">
-          <Link to="/gelearn" className="hover:text-primary transition-colors">GeLearn</Link>
-          <span>/</span>
-          <span className="font-semibold text-text-primary">Blog & Insights</span>
-        </div>
-      </div>
+      <section className="bg-white py-16 lg:py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-      <section className="bg-surface py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 space-y-6">
-
-          {/* Featured post */}
-          <motion.div {...fadeUp(0)}>
-            <div className="bg-dark-bg rounded-2xl overflow-hidden">
-              <div className="p-8 lg:p-12">
-                <div className="flex flex-wrap items-center gap-3 mb-5">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${TOPIC_STYLE[FEATURED.topic]}`}>
-                    {FEATURED.topic}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs text-white/50">
-                    <CalendarTodayOutlinedIcon style={{ fontSize: 12 }} />{FEATURED.date}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10 rounded-full px-2.5 py-0.5 ml-auto">
-                    Featured
-                  </span>
-                </div>
-                <h2 className="text-2xl lg:text-3xl font-extrabold text-white leading-snug mb-4">{FEATURED.title}</h2>
-                <p className="text-sm text-white/65 leading-relaxed mb-6 max-w-2xl">{FEATURED.excerpt}</p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {FEATURED.tags.map(t => (
-                    <span key={t} className="px-3 py-1 bg-white/10 border border-white/15 rounded-full text-xs font-medium text-white/70">{t}</span>
-                  ))}
-                </div>
-                <Link to="/contact" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-                  Read Article <ArrowForwardIcon style={{ fontSize: 15 }} />
-                </Link>
-              </div>
-            </div>
+          {/* Intro header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' as const }}
+            transition={{ duration: 0.5, ease: 'easeOut' as const }}
+            className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14"
+          >
+            <h2 className="text-4xl font-bold text-black capitalize leading-tight max-w-lg">
+              Our insights on trends,<br />Technologies, and<br />Transformation
+            </h2>
+            <p className="text-base text-[#949494] max-w-xs lg:text-right leading-relaxed">
+              Engineering perspectives on power, renewables, and industrial automation from the Genex team.
+            </p>
           </motion.div>
 
-          {/* Regular posts grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {POSTS.map((post, i) => (
-              <motion.div key={post.id} {...fadeUp(0.1 + i * 0.07)}>
-                <div className="bg-white border border-border rounded-2xl p-6 h-full flex flex-col hover:border-primary hover:shadow-sm transition-all duration-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${TOPIC_STYLE[post.topic]}`}>
-                      {post.topic}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-text-muted">
-                      <CalendarTodayOutlinedIcon style={{ fontSize: 11 }} />{post.date}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-extrabold text-text-primary leading-snug mb-3 flex-1">{post.title}</h3>
-                  <p className="text-xs text-text-muted leading-relaxed mb-4">{post.excerpt}</p>
-                  <Link to="/contact" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline mt-auto">
-                    Read <ArrowForwardIcon style={{ fontSize: 14 }} />
-                  </Link>
-                </div>
-              </motion.div>
+          {/* Card grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-12">
+            {visible.map((post, i) => (
+              <BlogCard key={post.id} post={post} index={i} />
             ))}
           </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-center gap-2 mt-16">
+            {page > 1 && (
+              <button
+                onClick={() => goTo(page - 1)}
+                className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
+              >
+                <ChevronLeftIcon style={{ fontSize: 18 }} className="text-[#111827]" />
+              </button>
+            )}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => goTo(p)}
+                className={`size-10 rounded-full font-bold text-base flex items-center justify-center transition-colors duration-200 ${
+                  page === p
+                    ? 'bg-primary text-white'
+                    : 'bg-[#f3f4f6] text-[#111827] hover:bg-primary/10'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            {page < totalPages && (
+              <button
+                onClick={() => goTo(page + 1)}
+                className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
+              >
+                <ChevronRightIcon style={{ fontSize: 18 }} className="text-[#111827]" />
+              </button>
+            )}
+          </div>
+
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-white border-t border-border py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">Have content to contribute?</p>
-            <h2 className="text-xl font-extrabold text-text-primary">We publish perspectives from engineers and operators.</h2>
-          </div>
-          <Link to="/contact" className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text-primary hover:border-primary hover:text-primary transition-all duration-200">
-            Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+      <section className="bg-brand-tint py-20 lg:py-28">
+        <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' as const }}
+            transition={{ duration: 0.5, ease: 'easeOut' as const }}
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
+              Have content to contribute?
+            </p>
+            <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
+              We publish perspectives from engineers and operators.
+            </h2>
+            <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
+              If you work in power, renewables, or industrial automation and have something real to say, we want to hear from you.
+            </p>
+            <Link
+              to="/contact"
+              className="inline-flex items-center gap-2 px-8 py-4 gradient-brand text-white text-sm font-bold rounded-md hover:opacity-90 transition-opacity"
+            >
+              Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
+            </Link>
+          </motion.div>
         </div>
       </section>
     </main>

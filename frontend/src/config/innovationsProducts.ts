@@ -12,9 +12,10 @@ export interface InnovationProduct {
   subline: string
   overview: string[]
   capabilities: string[]
-  techHighlights: string[]
+  techHighlights: { title: string; description: string }[]
   stats: { value: string; label: string }[]
   gradient: string
+  image: string
 }
 
 export const INNOVATION_CATEGORIES: { key: InnovationFilterKey; label: string }[] = [
@@ -64,10 +65,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Remote setpoint control and automated interlock sequences',
     ],
     techHighlights: [
-      'IEC 61850 Ed. 2 with GOOSE and SV messaging',
-      'DNP3 Secure Authentication v5',
-      'WebSocket streaming for real-time dashboard updates',
-      'Hot-standby redundancy with automatic failover < 2s',
+      { title: 'IEC 61850 Ed. 2 with GOOSE and SV messaging', description: 'Delivers substation-grade interoperability across mixed-vendor devices, using GOOSE and Sampled Values for microsecond-level protection signaling.' },
+      { title: 'DNP3 Secure Authentication v5', description: 'Encrypts and authenticates telecontrol traffic to DNP3 SAv5 standards, closing the gap that plain DNP3 leaves open on utility networks.' },
+      { title: 'WebSocket streaming for real-time dashboard updates', description: 'Pushes live point updates to operator dashboards over persistent WebSocket connections instead of slow polling cycles.' },
+      { title: 'Hot-standby redundancy with automatic failover < 2s', description: 'Runs a mirrored standby server that takes over control in under two seconds if the primary node fails, with zero manual intervention.' },
     ],
     stats: [
       { value: '100+',  label: 'SCADA Deployments' },
@@ -75,6 +76,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '<1s',   label: 'Data Acquisition Cycle' },
     ],
     gradient: 'from-indigo-400/35 via-violet-300/20 to-blue-100/10',
+    image: '/images/portfolio/scada-platform.png',
   },
   {
     slug: 'solar-power-plants',
@@ -97,10 +99,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Integration with SolarLive™ and third-party monitoring platforms',
     ],
     techHighlights: [
-      'ICMP, SNMP, and REST-based device health polling',
-      'MQTT heartbeat monitoring with configurable timeout thresholds',
-      'Automated escalation rules with on-call rotation support',
-      'Multi-tenant architecture for managing multiple client portfolios',
+      { title: 'ICMP, SNMP, and REST-based device health polling', description: "Continuously polls modems, routers, and loggers over ICMP, SNMP, and REST so a silent device failure is caught before it becomes a data gap." },
+      { title: 'MQTT heartbeat monitoring with configurable timeout thresholds', description: "Tracks lightweight MQTT heartbeats per device with adjustable timeout windows, tuned to each site's connectivity profile." },
+      { title: 'Automated escalation rules with on-call rotation support', description: 'Routes unresolved outages through configurable escalation chains and on-call rotations so alerts always reach an available field engineer.' },
+      { title: 'Multi-tenant architecture for managing multiple client portfolios', description: 'Isolates data and dashboards per client while running on shared infrastructure, letting O&M teams manage many portfolios from one deployment.' },
     ],
     stats: [
       { value: '3,000+', label: 'Devices Monitored' },
@@ -108,6 +110,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '<5 min', label: 'Outage Detection Time' },
     ],
     gradient: 'from-sky-400/35 via-cyan-300/20 to-blue-100/10',
+    image: '/images/portfolio/rms-kusum.png',
   },
   {
     slug: 'rms',
@@ -130,10 +133,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Natural language query interface for operational data',
     ],
     techHighlights: [
-      'LSTM and transformer models for time-series fault prediction',
-      'scikit-learn and PyTorch inference engine on cloud backend',
-      'Real-time streaming inference with < 30s prediction latency',
-      'Explainable AI layer — all alerts include reasoning and confidence score',
+      { title: 'LSTM and transformer models for time-series fault prediction', description: 'Trains LSTM and transformer architectures on historical sensor time-series to catch early-stage degradation before it triggers a hard fault.' },
+      { title: 'scikit-learn and PyTorch inference engine on cloud backend', description: 'Runs a hybrid scikit-learn and PyTorch inference stack in the cloud, balancing classical models with deep learning where each performs best.' },
+      { title: 'Real-time streaming inference with < 30s prediction latency', description: 'Scores incoming telemetry against trained models within 30 seconds, keeping predictions close enough to real time for operational response.' },
+      { title: 'Explainable AI layer — all alerts include reasoning and confidence score', description: 'Attaches a plain-language reason and confidence score to every alert, so maintenance teams can act on model output without a black box.' },
     ],
     stats: [
       { value: '40%',  label: 'Reduction in Unplanned Downtime' },
@@ -141,6 +144,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '200+', label: 'Sites on AI Monitoring' },
     ],
     gradient: 'from-violet-400/35 via-purple-300/20 to-indigo-100/10',
+    image: '/images/portfolio/power-cloud.png',
   },
   {
     slug: 'energy-storage',
@@ -163,10 +167,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Regulatory reporting for capacity markets and ancillary services',
     ],
     techHighlights: [
-      'Reinforcement learning-based dispatch optimization engine',
-      'IEC 61850 grid interface and MODBUS BMS communication',
-      'Sub-minute dispatch cycle with adaptive forecast integration',
-      'Digital twin of battery chemistry for degradation simulation',
+      { title: 'Reinforcement learning-based dispatch optimization engine', description: 'Uses reinforcement learning to continuously refine charge/discharge decisions against live grid signals, tariffs, and forecast data.' },
+      { title: 'IEC 61850 grid interface and MODBUS BMS communication', description: 'Bridges standardized IEC 61850 grid signaling with Modbus-based BMS communication, unifying grid and battery control in one system.' },
+      { title: 'Sub-minute dispatch cycle with adaptive forecast integration', description: 'Recomputes dispatch decisions on a sub-minute cycle, folding in updated weather and tariff forecasts as conditions change.' },
+      { title: 'Digital twin of battery chemistry for degradation simulation', description: 'Simulates battery chemistry behavior in a digital twin to model degradation ahead of time and adjust cycling to protect lifetime value.' },
     ],
     stats: [
       { value: '35%',    label: 'Avg. Energy Cost Reduction' },
@@ -174,6 +178,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '20%',    label: 'Battery Life Extension' },
     ],
     gradient: 'from-teal-400/35 via-cyan-300/20 to-blue-100/10',
+    image: '/images/portfolio/ems-bess.png',
   },
   {
     slug: 'wind-energy',
@@ -196,10 +201,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Integration with monitoring platforms for correlation with generation loss',
     ],
     techHighlights: [
-      'Computer vision models trained on 500,000+ panel images',
-      'DJI SDK and MAVLink drone control protocol integration',
-      'Orthomosaic stitching with sub-cm spatial resolution',
-      'Edge inference on drone payload for real-time flagging',
+      { title: 'Computer vision models trained on 500,000+ panel images', description: 'Trained on more than 500,000 labeled panel images, the vision models reliably distinguish hotspots, soiling, and delamination from normal wear.' },
+      { title: 'DJI SDK and MAVLink drone control protocol integration', description: 'Integrates directly with DJI SDK and MAVLink flight controllers to plan and execute autonomous inspection flight paths.' },
+      { title: 'Orthomosaic stitching with sub-cm spatial resolution', description: 'Stitches individual aerial captures into a single orthomosaic with sub-centimeter resolution, precise enough to pinpoint a single faulty cell.' },
+      { title: 'Edge inference on drone payload for real-time flagging', description: 'Runs defect-detection inference directly on the drone payload, flagging likely faults during flight instead of waiting for post-processing.' },
     ],
     stats: [
       { value: '80%',   label: 'Inspection Time Reduction' },
@@ -207,6 +212,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '92%',   label: 'Defect Detection Accuracy' },
     ],
     gradient: 'from-amber-400/35 via-orange-300/20 to-yellow-100/10',
+    image: '/images/portfolio/wind-network.png',
   },
   {
     slug: 'industrial-energy',
@@ -229,10 +235,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'ISO 50001 EnPI baseline and continuous improvement reporting',
     ],
     techHighlights: [
-      'Modbus and BACnet smart meter integration',
-      'IEC 61000-4 power quality measurement compliance',
-      'Closed-loop VFD and capacitor bank control via Modbus',
-      'ISO 50001:2018 EnPI calculation and baseline engine',
+      { title: 'Modbus and BACnet smart meter integration', description: 'Pulls half-hourly readings directly from smart meters and PLCs over Modbus and BACnet, no manual meter walks required.' },
+      { title: 'IEC 61000-4 power quality measurement compliance', description: 'Measures harmonic distortion and power quality to IEC 61000-4 test standards, giving auditable, standards-compliant readings.' },
+      { title: 'Closed-loop VFD and capacitor bank control via Modbus', description: 'Closes the loop on power factor correction by driving VFDs and capacitor banks directly over Modbus when thresholds are breached.' },
+      { title: 'ISO 50001:2018 EnPI calculation and baseline engine', description: 'Automates ISO 50001:2018 EnPI baseline calculation, tracking continuous improvement without manual spreadsheet reporting.' },
     ],
     stats: [
       { value: '150+',     label: 'Industrial Sites' },
@@ -240,6 +246,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: 'ISO 50001', label: 'Compliance Supported' },
     ],
     gradient: 'from-emerald-400/35 via-green-300/20 to-teal-100/10',
+    image: '/images/portfolio/rtc-power.png',
   },
   {
     slug: 'ai-health-checkup',
@@ -262,10 +269,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Structured PDF health report with executive summary',
     ],
     techHighlights: [
-      'Weather normalization using ERA5 and satellite irradiance data',
-      'Random forest classifier for fault attribution and scoring',
-      'Integration with SolarLive™ and third-party monitoring APIs',
-      'Automated report generation pipeline — full PDF in < 60 minutes',
+      { title: 'Weather normalization using ERA5 and satellite irradiance data', description: 'Normalizes plant output against ERA5 reanalysis and satellite irradiance data, separating true underperformance from weather variability.' },
+      { title: 'Random forest classifier for fault attribution and scoring', description: 'Uses a random forest classifier to attribute yield loss to a specific fault category and rank subsystems by health score.' },
+      { title: 'Integration with SolarLive™ and third-party monitoring APIs', description: 'Pulls 12 months of operational history directly from SolarLive™ or any third-party monitoring API, no manual data export needed.' },
+      { title: 'Automated report generation pipeline — full PDF in < 60 minutes', description: 'Runs the full analysis-to-report pipeline automatically, delivering a structured PDF health report in under 60 minutes.' },
     ],
     stats: [
       { value: '50+',  label: 'Plants Assessed' },
@@ -273,6 +280,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '22%',  label: 'Avg. Recoverable Yield Found' },
     ],
     gradient: 'from-rose-400/35 via-pink-300/20 to-orange-100/10',
+    image: '/images/portfolio/bms.png',
   },
   {
     slug: 'smart-grid',
@@ -295,10 +303,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'DER and rooftop solar backflow management',
     ],
     techHighlights: [
-      'IEC 61968/61970 CIM data model for utility integration',
-      'DLMS/COSEM smart meter communication protocol support',
-      'Real-time outage management with geo-fenced fault isolation',
-      'DERMS integration for distributed energy resource dispatch',
+      { title: 'IEC 61968/61970 CIM data model for utility integration', description: 'Models grid assets against the IEC 61968/61970 Common Information Model, so utility systems integrate without custom data mapping.' },
+      { title: 'DLMS/COSEM smart meter communication protocol support', description: 'Reads AMI smart meters natively over DLMS/COSEM, the protocol most Indian utility meter fleets already speak.' },
+      { title: 'Real-time outage management with geo-fenced fault isolation', description: 'Isolates faults to a geo-fenced feeder segment in real time, narrowing outage response from guesswork to a known location.' },
+      { title: 'DERMS integration for distributed energy resource dispatch', description: 'Coordinates rooftop solar, storage, and other DERs through DERMS integration, keeping distributed generation within grid limits.' },
     ],
     stats: [
       { value: '10+',   label: 'Utility Clients' },
@@ -306,6 +314,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '30%',   label: 'NTL Reduction Achieved' },
     ],
     gradient: 'from-cyan-400/35 via-sky-300/20 to-blue-100/10',
+    image: '/images/portfolio/zero-export.png',
   },
   {
     slug: 'ev-infrastructure',
@@ -328,10 +337,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'White-label driver mobile app with RFID, QR, and app authentication',
     ],
     techHighlights: [
-      'OCPP 2.0.1 and ISO 15118-2 V2G protocol support',
-      'Reinforcement learning for fleet charge schedule optimization',
-      'REST and MQTT APIs for fleet management system integration',
-      'End-to-end encryption and PCI-DSS compliant payment flow',
+      { title: 'OCPP 2.0.1 and ISO 15118-2 V2G protocol support', description: 'Speaks OCPP 2.0.1 for charger control and ISO 15118-2 for vehicle-to-grid, positioning the platform for bidirectional charging as it matures.' },
+      { title: 'Reinforcement learning for fleet charge schedule optimization', description: "Applies reinforcement learning to fleet charging schedules, balancing tariff cost against each vehicle's required departure readiness." },
+      { title: 'REST and MQTT APIs for fleet management system integration', description: 'Exposes REST and MQTT interfaces so fleet management systems can pull charging status and push scheduling changes directly.' },
+      { title: 'End-to-end encryption and PCI-DSS compliant payment flow', description: 'Encrypts payment data end-to-end through a PCI-DSS compliant flow, meeting the compliance bar public charging operators need.' },
     ],
     stats: [
       { value: '500+', label: 'Chargers Managed' },
@@ -339,6 +348,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '25%',  label: 'Avg. Charging Cost Reduction' },
     ],
     gradient: 'from-green-400/35 via-emerald-300/20 to-teal-100/10',
+    image: '/images/portfolio/ev-software.png',
   },
   {
     slug: 'power-trading',
@@ -361,10 +371,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Regulatory compliance and settlement automation (CERC guidelines)',
     ],
     techHighlights: [
-      'XGBoost and LSTM generation forecast models (1hr resolution)',
-      'IEX API integration for market price and clearing data',
-      'Monte Carlo simulation for bid price uncertainty modeling',
-      'CERC imbalance charge calculation and settlement reconciliation',
+      { title: 'XGBoost and LSTM generation forecast models (1hr resolution)', description: 'Forecasts hourly generation using a combined XGBoost and LSTM ensemble, tuned for the resolution IEX bidding windows require.' },
+      { title: 'IEX API integration for market price and clearing data', description: 'Pulls live price and clearing data directly from IEX APIs, keeping bid decisions grounded in current market conditions.' },
+      { title: 'Monte Carlo simulation for bid price uncertainty modeling', description: 'Runs Monte Carlo simulations over forecast uncertainty to size bid prices that balance revenue against imbalance risk.' },
+      { title: 'CERC imbalance charge calculation and settlement reconciliation', description: 'Automates CERC imbalance charge calculation and settlement reconciliation, built to the regulatory architecture research partners are validating.' },
     ],
     stats: [
       { value: 'Active',  label: 'Research Phase' },
@@ -372,6 +382,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '2026',    label: 'Commercial Launch Target' },
     ],
     gradient: 'from-slate-400/35 via-gray-300/20 to-zinc-100/10',
+    image: '/images/portfolio/carbon-credit.png',
   },
   {
     slug: 'power-billing',
@@ -394,10 +405,10 @@ export const INNOVATIONS: InnovationProduct[] = [
       'Discom MIS API connectors for automated reconciliation',
     ],
     techHighlights: [
-      'GNM and VNM regulatory formula engine per state SERC orders',
-      'DLMS/COSEM smart meter reading protocol support',
-      'Digital signature (DSC) integration for bill authentication',
-      'Multi-discom adapter layer with format versioning',
+      { title: 'GNM and VNM regulatory formula engine per state SERC orders', description: "Applies each state SERC's specific GNM and VNM billing formulas automatically, instead of maintaining separate spreadsheets per discom." },
+      { title: 'DLMS/COSEM smart meter reading protocol support', description: 'Ingests raw meter readings over DLMS/COSEM directly from the field, removing manual reading entry from the billing cycle.' },
+      { title: 'Digital signature (DSC) integration for bill authentication', description: 'Signs every generated bill with a Digital Signature Certificate, giving consumers and auditors a verifiable, tamper-evident document.' },
+      { title: 'Multi-discom adapter layer with format versioning', description: "Adapts to each discom's MIS format through a versioned connector layer, so a format change at one discom doesn't break the others." },
     ],
     stats: [
       { value: '10,000+', label: 'Bills Generated Monthly' },
@@ -405,6 +416,7 @@ export const INNOVATIONS: InnovationProduct[] = [
       { value: '98%',     label: 'Billing Accuracy Rate' },
     ],
     gradient: 'from-blue-400/35 via-sky-300/20 to-cyan-100/10',
+    image: '/images/portfolio/power-billing.png',
   },
 ]
 

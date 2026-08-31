@@ -10,7 +10,7 @@ export interface PortfolioProduct {
   subline: string
   overview: string[]
   capabilities: string[]
-  techHighlights: string[]
+  techHighlights: { title: string; description: string }[]
   stats: { value: string; label: string }[]
   image: string
   gradient: string
@@ -44,17 +44,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Automated daily and monthly generation reports',
     ],
     techHighlights: [
-      'Modbus TCP/RTU and RS485 inverter communication',
-      'Sub-minute data acquisition and cloud sync',
-      '4G/LTE, Wi-Fi, and fiber connectivity support',
-      'RESTful API for third-party ERP and CMMS integration',
+      { title: 'Modbus TCP/RTU and RS485 inverter communication', description: 'Talks directly to inverters over Modbus TCP/RTU and RS485, covering the communication standards most solar inverter fleets already use.' },
+      { title: 'Sub-minute data acquisition and cloud sync', description: 'Polls plant data on a sub-minute cycle and syncs it to the cloud immediately, keeping the live dashboard genuinely live.' },
+      { title: '4G/LTE, Wi-Fi, and fiber connectivity support', description: 'Works over 4G/LTE, Wi-Fi, or fiber backhaul, so connectivity choice is dictated by the site, not the platform.' },
+      { title: 'RESTful API for third-party ERP and CMMS integration', description: 'Exposes a RESTful API so generation and fault data can flow directly into existing ERP and CMMS systems.' },
     ],
     stats: [
       { value: '300+', label: 'Sites Monitored' },
       { value: '500 MW', label: 'Capacity Under Management' },
       { value: '99.5%', label: 'Platform Uptime' },
     ],
-    image: '/images/what-we-build/solar-rooftop.png',
+    image: '/images/portfolio/solarlive.png',
     gradient: 'from-amber-400/35 via-amber-200/20 to-yellow-100/10',
   },
   {
@@ -75,17 +75,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Revenue metering and dispatch optimisation',
     ],
     techHighlights: [
-      'CAN bus and Modbus BMS communication',
-      'IEC 61850 grid interface support',
-      'Real-time SOC/SOH calculation engine',
-      'SCADA and EMS integration via OPC-UA',
+      { title: 'CAN bus and Modbus BMS communication', description: 'Communicates with battery management systems over CAN bus and Modbus, covering the two protocols most BESS hardware ships with.' },
+      { title: 'IEC 61850 grid interface support', description: 'Interfaces with grid-side equipment over IEC 61850, the standard substation automation protocol utilities already rely on.' },
+      { title: 'Real-time SOC/SOH calculation engine', description: 'Continuously calculates state-of-charge and state-of-health in real time, the two numbers that drive every dispatch decision.' },
+      { title: 'SCADA and EMS integration via OPC-UA', description: 'Connects to plant SCADA and third-party EMS platforms over OPC-UA, avoiding vendor lock-in on the control layer.' },
     ],
     stats: [
       { value: '50+', label: 'BESS Projects' },
       { value: '200 MWh', label: 'Storage Managed' },
       { value: '30%', label: 'Avg. Peak Demand Reduction' },
     ],
-    image: '/images/what-we-build/solar-plants.png',
+    image: '/images/portfolio/ems-bess.png',
     gradient: 'from-teal-400/35 via-cyan-300/20 to-blue-100/10',
   },
   {
@@ -106,17 +106,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Predictive fault analytics and maintenance scheduling',
     ],
     techHighlights: [
-      'OPC-DA/UA and Modbus turbine controller integration',
-      'IEC 61400 wind data standard compliance',
-      '4G/LTE and fiber backhaul connectivity',
-      'REST API for developer and utility integrations',
+      { title: 'OPC-DA/UA and Modbus turbine controller integration', description: 'Pulls turbine-level data directly from SCADA controllers over OPC-DA/UA and Modbus, no proprietary turbine OEM software required.' },
+      { title: 'IEC 61400 wind data standard compliance', description: 'Structures wind and turbine data to IEC 61400 standards, keeping reporting consistent across mixed turbine fleets.' },
+      { title: '4G/LTE and fiber backhaul connectivity', description: 'Backhauls turbine data over 4G/LTE or fiber depending on site access, without compromising on data continuity.' },
+      { title: 'REST API for developer and utility integrations', description: 'Provides a REST API for developers and utilities to build custom reporting or dispatch tools on top of turbine data.' },
     ],
     stats: [
       { value: '1,000+', label: 'Turbines Monitored' },
       { value: '22%', label: 'Avg. Downtime Reduction' },
       { value: '15+', label: 'Wind Farms Covered' },
     ],
-    image: '/images/what-we-build/solar-rooftop.png',
+    image: '/images/portfolio/wind-network.png',
     gradient: 'from-sky-400/35 via-cyan-300/20 to-blue-100/10',
   },
   {
@@ -137,17 +137,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Configurable alarm thresholds and event logging',
     ],
     techHighlights: [
-      'CAN 2.0B and ISO 15765 protocol support',
-      'Modbus RTU/TCP for EMS integration',
-      'Sub-second cell data sampling rate',
-      'Hardware-level overcurrent and overvoltage protection',
+      { title: 'CAN 2.0B and ISO 15765 protocol support', description: 'Communicates over CAN 2.0B and ISO 15765 diagnostics protocols, matching what most lithium-ion and LFP battery packs speak natively.' },
+      { title: 'Modbus RTU/TCP for EMS integration', description: 'Exposes cell and pack data over Modbus RTU/TCP so any EMS platform can integrate without custom drivers.' },
+      { title: 'Sub-second cell data sampling rate', description: 'Samples individual cell voltage and temperature on a sub-second cycle, catching thermal events before they cascade.' },
+      { title: 'Hardware-level overcurrent and overvoltage protection', description: 'Backs software monitoring with hardware-level overcurrent and overvoltage cutoffs, protecting cells even if the control loop is delayed.' },
     ],
     stats: [
       { value: '500+', label: 'BMS Units Deployed' },
       { value: '35%', label: 'Avg. Battery Life Improvement' },
       { value: '5', label: 'Chemistry Types Supported' },
     ],
-    image: '/images/what-we-build/industrial.jpeg',
+    image: '/images/portfolio/bms.png',
     gradient: 'from-emerald-400/35 via-green-300/20 to-teal-100/10',
   },
   {
@@ -168,17 +168,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'SMS and email alerts for fault and low generation events',
     ],
     techHighlights: [
-      'GPRS, 4G LTE, and NB-IoT connectivity',
-      'Edge data buffering for offline resilience',
-      'Modbus RTU for inverter and meter integration',
-      'PM Kusum reporting format compliance',
+      { title: 'GPRS, 4G LTE, and NB-IoT connectivity', description: 'Supports GPRS, 4G LTE, and NB-IoT connectivity options to match whatever network reaches a given rural site.' },
+      { title: 'Edge data buffering for offline resilience', description: 'Buffers readings locally at the edge during network outages, so rural connectivity gaps never translate into lost data.' },
+      { title: 'Modbus RTU for inverter and meter integration', description: 'Reads inverters and meters over Modbus RTU, keeping hardware integration simple across distributed pump and feeder sites.' },
+      { title: 'PM Kusum reporting format compliance', description: 'Generates daily reports in the exact format PM Kusum compliance requires, without manual data collection or formatting.' },
     ],
     stats: [
       { value: '2,000+', label: 'PM Kusum Sites Monitored' },
       { value: '8', label: 'States Covered' },
       { value: '99%', label: 'Data Availability' },
     ],
-    image: '/images/what-we-build/solar-rooftop.png',
+    image: '/images/portfolio/rms-kusum.png',
     gradient: 'from-orange-400/35 via-amber-300/20 to-yellow-100/10',
   },
   {
@@ -199,17 +199,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Redundant server architecture for high availability',
     ],
     techHighlights: [
-      'IEC 61850 Ed. 2 and GOOSE messaging',
-      'DNP3 and IEC 104 for RTU/telecontrol',
-      'OPC-UA for device-agnostic integration',
-      'Hot-standby redundancy with automatic failover',
+      { title: 'IEC 61850 Ed. 2 and GOOSE messaging', description: 'Supports IEC 61850 Ed. 2 with GOOSE messaging for fast, standardized protection and control signaling between devices.' },
+      { title: 'DNP3 and IEC 104 for RTU/telecontrol', description: 'Handles DNP3 and IEC 104 telecontrol protocols, covering the RTU communication standards common across Indian substations.' },
+      { title: 'OPC-UA for device-agnostic integration', description: "Integrates PLCs and field devices over OPC-UA, avoiding hardware lock-in to a single vendor's protocol stack." },
+      { title: 'Hot-standby redundancy with automatic failover', description: 'Keeps a mirrored standby server ready to take over control automatically if the primary node goes down.' },
     ],
     stats: [
       { value: '80+', label: 'SCADA Deployments' },
       { value: '220 kV', label: 'Highest Voltage Level' },
       { value: '<1s', label: 'Data Acquisition Cycle' },
     ],
-    image: '/images/what-we-build/scada.png',
+    image: '/images/portfolio/scada-platform.png',
     gradient: 'from-indigo-400/35 via-violet-300/20 to-blue-100/10',
   },
   {
@@ -230,17 +230,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Mobile app for driver access and session monitoring',
     ],
     techHighlights: [
-      'OCPP 1.6J and 2.0.1 protocol support',
-      'RFID, QR code, and app-based authentication',
-      'REST API for fleet management system integration',
-      'Smart charging with ISO 15118 V2G readiness',
+      { title: 'OCPP 1.6J and 2.0.1 protocol support', description: 'Supports both OCPP 1.6J and 2.0.1, so the platform manages older charger fleets alongside the newest hardware.' },
+      { title: 'RFID, QR code, and app-based authentication', description: "Authenticates drivers through RFID, QR code, or the mobile app, matching whichever method a site's users prefer." },
+      { title: 'REST API for fleet management system integration', description: 'Exposes a REST API so fleet management systems can pull charger status and push session data directly.' },
+      { title: 'Smart charging with ISO 15118 V2G readiness', description: 'Builds in ISO 15118 V2G readiness now, positioning charging infrastructure for bidirectional power flow as regulation catches up.' },
     ],
     stats: [
       { value: '500+', label: 'Chargers Managed' },
       { value: '40+', label: 'Enterprise Clients' },
       { value: '99.2%', label: 'Charger Uptime' },
     ],
-    image: '/images/what-we-build/industrial.jpeg',
+    image: '/images/portfolio/ev-software.png',
     gradient: 'from-green-400/35 via-emerald-300/20 to-teal-100/10',
   },
   {
@@ -261,17 +261,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'API integration with utility billing systems',
     ],
     techHighlights: [
-      'GNM and VNM regulatory formula engine',
-      'Time-of-use and slab tariff support',
-      'REST API for discom MIS integration',
-      'PDF bill generation with digital signature support',
+      { title: 'GNM and VNM regulatory formula engine', description: 'Applies GNM and VNM billing formulas automatically per project, removing manual tariff calculation from the billing cycle.' },
+      { title: 'Time-of-use and slab tariff support', description: 'Handles time-of-use and slab tariff structures natively, matching the rate designs most Indian discoms actually use.' },
+      { title: 'REST API for discom MIS integration', description: 'Reconciles generation and billing data with discom MIS systems directly over a REST API, cutting manual data entry.' },
+      { title: 'PDF bill generation with digital signature support', description: 'Generates signed PDF bills automatically, giving consumers a verifiable document without manual sign-off.' },
     ],
     stats: [
       { value: '10,000+', label: 'Bills Generated Monthly' },
       { value: '15+', label: 'Discom Formats Supported' },
       { value: '98%', label: 'Billing Accuracy Rate' },
     ],
-    image: '/images/what-we-build/scada.png',
+    image: '/images/portfolio/power-billing.png',
     gradient: 'from-blue-400/35 via-sky-300/20 to-cyan-100/10',
   },
   {
@@ -292,17 +292,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Alarm on export threshold breach',
     ],
     techHighlights: [
-      'Modbus TCP/RTU inverter control interface',
-      'CT/PT-based real-time grid import sensing',
-      'Sub-second response to load changes',
-      'Compatible with all major inverter brands',
+      { title: 'Modbus TCP/RTU inverter control interface', description: 'Controls inverter output set-points directly over Modbus TCP/RTU, compatible with the communication interface most inverters expose.' },
+      { title: 'CT/PT-based real-time grid import sensing', description: 'Senses grid import in real time through CT/PT metering, giving the control loop an accurate, low-latency signal to act on.' },
+      { title: 'Sub-second response to load changes', description: 'Adjusts inverter output within a sub-second window as on-site load changes, keeping export at zero without overcorrecting.' },
+      { title: 'Compatible with all major inverter brands', description: "Works across all major inverter brands, so the export-limiting logic doesn't dictate which hardware a site can install." },
     ],
     stats: [
       { value: '200+', label: 'Zero Export Sites' },
       { value: '<1s', label: 'Response Latency' },
       { value: '100%', label: 'Export Compliance Rate' },
     ],
-    image: '/images/what-we-build/scada.png',
+    image: '/images/portfolio/zero-export.png',
     gradient: 'from-violet-400/35 via-purple-300/20 to-indigo-100/10',
   },
   {
@@ -323,17 +323,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'API output for registry and marketplace integration',
     ],
     techHighlights: [
-      'BEE and UNFCCC calculation methodology support',
-      'Integration with SolarLive™ and third-party platforms',
-      'SHA-256 data integrity verification for audit trails',
-      'ISO 14064 alignment for GHG accounting',
+      { title: 'BEE and UNFCCC calculation methodology support', description: 'Calculates credits using BEE and UNFCCC-approved methodologies, keeping every conversion aligned with the standard a registry expects.' },
+      { title: 'Integration with SolarLive™ and third-party platforms', description: 'Pulls verified generation data directly from SolarLive™ or any connected third-party monitoring platform, no manual re-entry.' },
+      { title: 'SHA-256 data integrity verification for audit trails', description: 'Hashes every generation record with SHA-256, giving auditors a tamper-evident trail from raw data to final credit.' },
+      { title: 'ISO 14064 alignment for GHG accounting', description: 'Aligns GHG accounting methodology with ISO 14064, keeping reports consistent with international carbon accounting practice.' },
     ],
     stats: [
       { value: '500,000+', label: 'Credits Tracked' },
       { value: '3', label: 'Registry Standards Supported' },
       { value: '100%', label: 'Audit Pass Rate' },
     ],
-    image: '/images/what-we-build/solar-plants.png',
+    image: '/images/portfolio/carbon-credit.png',
     gradient: 'from-lime-400/35 via-green-300/20 to-emerald-100/10',
   },
   {
@@ -354,17 +354,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'DIN-rail mounting with industrial-grade enclosure options',
     ],
     techHighlights: [
-      'Modbus RTU/TCP, RS485, and CAN bus support',
-      '4G LTE, Wi-Fi, and Ethernet uplink options',
-      'On-device SQLite buffering up to 30 days',
-      'MQTT and REST for cloud platform connectivity',
+      { title: 'Modbus RTU/TCP, RS485, and CAN bus support', description: 'Speaks Modbus RTU/TCP, RS485, and CAN bus out of the box, covering the field protocols most inverters, meters, and BMS units use.' },
+      { title: '4G LTE, Wi-Fi, and Ethernet uplink options', description: 'Ships with 4G LTE, Wi-Fi, or Ethernet uplink options, letting each deployment pick the connectivity path a site actually has.' },
+      { title: 'On-device SQLite buffering up to 30 days', description: 'Buffers up to 30 days of readings locally in an on-device SQLite store, so extended outages never mean lost data.' },
+      { title: 'MQTT and REST for cloud platform connectivity', description: 'Syncs buffered data to the cloud over MQTT or REST once connectivity returns, with automatic retry and no manual intervention.' },
     ],
     stats: [
       { value: '5,000+', label: 'Units Deployed' },
       { value: '30 Days', label: 'Local Data Buffer' },
       { value: '10+ Years', label: 'Device Lifespan' },
     ],
-    image: '/images/what-we-build/solar-rooftop.png',
+    image: '/images/portfolio/data-loggers.png',
     gradient: 'from-slate-400/35 via-gray-300/20 to-zinc-100/10',
   },
   {
@@ -385,17 +385,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Role-based access for operators, managers, and clients',
     ],
     techHighlights: [
-      'REST and GraphQL API for data access',
-      'MQTT and WebSocket for real-time data ingestion',
-      'Multi-tenant architecture with data isolation',
-      'Power BI and Tableau connector support',
+      { title: 'REST and GraphQL API for data access', description: 'Offers both REST and GraphQL endpoints, letting integration teams choose whichever query pattern fits their BI or ERP tooling.' },
+      { title: 'MQTT and WebSocket for real-time data ingestion', description: 'Ingests live data over MQTT and WebSocket, keeping cross-portfolio dashboards current without polling delays.' },
+      { title: 'Multi-tenant architecture with data isolation', description: "Isolates each client's data at the architecture level while sharing infrastructure, so multi-tenant scale never risks data leakage." },
+      { title: 'Power BI and Tableau connector support', description: 'Connects natively to Power BI and Tableau, so management teams can build custom reporting on top of the unified data model.' },
     ],
     stats: [
       { value: '1,000+', label: 'Assets on Platform' },
       { value: '50M+', label: 'Data Points per Day' },
       { value: '99.9%', label: 'API Uptime' },
     ],
-    image: '/images/what-we-build/scada.png',
+    image: '/images/portfolio/power-cloud.png',
     gradient: 'from-cyan-400/35 via-sky-300/20 to-blue-100/10',
   },
   {
@@ -416,17 +416,17 @@ export const PORTFOLIO_PRODUCTS: PortfolioProduct[] = [
       'Tariff optimisation and peak demand alerts',
     ],
     techHighlights: [
-      'IEC 61000-4 power quality measurement compliance',
-      'Modbus and BACnet meter integration',
-      'ISO 50001 EnPI and baseline reporting',
-      'Real-time demand response signal processing',
+      { title: 'IEC 61000-4 power quality measurement compliance', description: 'Measures harmonic distortion and power quality to IEC 61000-4 standards, producing readings that hold up to audit.' },
+      { title: 'Modbus and BACnet meter integration', description: 'Integrates directly with meters and PLCs over Modbus and BACnet, capturing load and power quality data without extra hardware.' },
+      { title: 'ISO 50001 EnPI and baseline reporting', description: 'Automates ISO 50001 EnPI and baseline reporting, giving energy managers audit-ready compliance documentation without manual tracking.' },
+      { title: 'Real-time demand response signal processing', description: 'Processes demand response signals in real time, coordinating VFDs and capacitor banks to react as tariff or grid conditions shift.' },
     ],
     stats: [
       { value: '150+', label: 'Industrial Sites' },
       { value: '18%', label: 'Avg. Energy Cost Reduction' },
       { value: 'ISO 50001', label: 'Compliance Supported' },
     ],
-    image: '/images/what-we-build/industrial.jpeg',
+    image: '/images/portfolio/rtc-power.png',
     gradient: 'from-rose-400/35 via-orange-300/20 to-amber-100/10',
   },
 ]
