@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import { apiFetch } from '@/lib/api/client'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -9,96 +12,20 @@ interface Episode {
   id: number
   title: string
   category: string
-  categoryBg: string
-  categoryText: string
+  category_bg: string
+  category_text: string
   date: string
   duration: string
   description: string
   guest: string
-  role: string
-  image: string
+  guest_role: string
+  audio_url: string | null
+  is_locked: boolean
 }
 
-const EPISODES: Episode[] = [
-  {
-    id: 1,
-    title: 'The State of SCADA in India — Where Are We and Where Are We Going?',
-    category: 'Grid & SCADA',
-    categoryBg: '#eef2ff',
-    categoryText: '#432dd7',
-    date: 'JUL 27 2025',
-    duration: '48 min',
-    description: 'A frank conversation about the state of SCADA adoption at Indian utilities — the gap between aspiration and ground reality, and what it will take to close it.',
-    guest: 'Rajesh Kumar',
-    role: 'Head of Grid Automation, STU',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-  {
-    id: 2,
-    title: 'Solar O&M at Scale: Lessons from 500 MW Under Management',
-    category: 'Solar',
-    categoryBg: '#fffbeb',
-    categoryText: '#b45309',
-    date: 'AUG 05 2025',
-    duration: '41 min',
-    description: 'What changes when you go from managing 10 solar sites to 300? Data quality, team structure, alarm fatigue, and the tools that actually help.',
-    guest: 'Priya Menon',
-    role: 'O&M Director, RE Developer',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-  {
-    id: 3,
-    title: "India's Energy Storage Policy in 2026: What Operators Need to Know",
-    category: 'Energy Policy',
-    categoryBg: '#f5f3ff',
-    categoryText: '#6d28d9',
-    date: 'AUG 19 2025',
-    duration: '55 min',
-    description: 'The BESS policy landscape has shifted significantly in the past two years. We break down what the changes mean for developers, utilities, and software vendors.',
-    guest: 'Amit Sharma',
-    role: 'Energy Policy Analyst',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-  {
-    id: 4,
-    title: 'Fleet Electrification: The Infrastructure Reality Behind the Headlines',
-    category: 'EV',
-    categoryBg: '#ecfdf5',
-    categoryText: '#047857',
-    date: 'SEP 02 2025',
-    duration: '37 min',
-    description: "Fleet operators are moving faster than the charging infrastructure ecosystem. An honest conversation about what's working, what isn't, and what software needs to do better.",
-    guest: 'Deepa Nair',
-    role: 'Fleet Electrification Lead, SRTC',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-  {
-    id: 5,
-    title: 'IEC 61850 in Practice: Commissioning Lessons from the Field',
-    category: 'Grid & SCADA',
-    categoryBg: '#eef2ff',
-    categoryText: '#432dd7',
-    date: 'SEP 16 2025',
-    duration: '44 min',
-    description: 'Moving from theory to deployed substations — a practitioner walkthrough of GOOSE configuration, SCL files, vendor interoperability, and what the standard still does not tell you.',
-    guest: 'Vikram Patel',
-    role: 'Senior Protection Engineer',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-  {
-    id: 6,
-    title: 'RTC Power Trading: Data and Decisions on the IEX',
-    category: 'Grid & SCADA',
-    categoryBg: '#eef2ff',
-    categoryText: '#432dd7',
-    date: 'OCT 01 2025',
-    duration: '39 min',
-    description: 'How analytics platforms are changing real-time trading decisions on Indian exchanges — bid optimisation signals, settlement data, and the tools traders actually use.',
-    guest: 'Neha Singh',
-    role: 'Power Trading Analyst, IEX',
-    image: '/images/podcasts/podcast-thumb.jpg',
-  },
-]
+interface EpisodeListResponse {
+  results: Episode[]
+}
 
 // ── Animations ────────────────────────────────────────────────────────────────
 
@@ -128,7 +55,7 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       <div className="flex items-center gap-3 mb-5">
         <span
           className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-          style={{ background: ep.categoryBg, color: ep.categoryText }}
+          style={{ background: ep.category_bg, color: ep.category_text }}
         >
           {ep.category}
         </span>
@@ -138,12 +65,11 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       </div>
 
       {/* Thumbnail */}
-      <div className="w-full h-36 rounded-2xl overflow-hidden bg-[#c5bebe] mb-5 shrink-0">
-        <img
-          src={ep.image}
-          alt={ep.title}
-          className="w-full h-full object-cover"
-        />
+      <div
+        className="w-full h-36 rounded-2xl overflow-hidden mb-5 shrink-0 relative"
+        style={{ background: `linear-gradient(135deg, ${ep.category_bg}, #c5bebe)` }}
+      >
+        {ep.is_locked && <LockedOverlay />}
       </div>
 
       {/* Title */}
@@ -160,7 +86,7 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       <div className="flex items-center gap-2">
         <span className="text-sm font-bold text-[#314158]">{ep.guest}</span>
         <span className="text-[#62748e] text-xs">•</span>
-        <span className="text-xs font-medium text-[#62748e]">{ep.role}</span>
+        <span className="text-xs font-medium text-[#62748e]">{ep.guest_role}</span>
       </div>
     </motion.div>
   )
@@ -169,6 +95,14 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Podcasts() {
+  const [episodes, setEpisodes] = useState<Episode[]>([])
+
+  useEffect(() => {
+    apiFetch<EpisodeListResponse>('/api/snippets/podcasts/')
+      .then(res => setEpisodes(res.results))
+      .catch(() => setEpisodes([]))
+  }, [])
+
   return (
     <main>
       <PageMeta
@@ -203,7 +137,7 @@ export default function Podcasts() {
 
           {/* 3-column grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {EPISODES.map((ep, i) => (
+            {episodes.map((ep, i) => (
               <EpisodeCard key={ep.id} ep={ep} index={i} />
             ))}
           </div>

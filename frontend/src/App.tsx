@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { router } from '@/router'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { AuthProvider } from '@/context/AuthContext'
 
 export default function App() {
   const [loading, setLoading] = useState(true)
@@ -13,9 +14,9 @@ export default function App() {
   }, [])
 
   return (
-    <>
+    <AuthProvider>
       <AnimatePresence>{loading && <LoadingScreen />}</AnimatePresence>
       <RouterProvider router={router} />
-    </>
+    </AuthProvider>
   )
 }

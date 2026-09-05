@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -7,7 +6,6 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
-import ReplyIcon from '@mui/icons-material/Reply'
 import SearchIcon from '@mui/icons-material/Search'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
@@ -15,6 +13,7 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { POSTS, BLOG_IMAGES } from '@/config/blogPosts'
+import { CommentSection } from '@/components/gelearn/CommentSection'
 
 // ── Placeholder lorem ipsum body paragraphs ──────────────────────────────────
 const LOREM_P1 = 'At Genex, we build monitoring and control platforms that integrate across every facet of power infrastructure. Our goal is straightforward: to enable plant operators, utilities, and developers to deploy advanced software with confidence — enhancing visibility, decision-making, and operational resilience across India\'s energy sector.'
@@ -27,38 +26,6 @@ const LOREM_P4 = 'Sit ut non scelerisque magna cras etiam suspendisse. Eget leo 
 
 const BLOCKQUOTE = '"Our monitoring platform revealed performance gaps we had never quantified before. We corrected a systemic soiling loss, improved energy yield by 8%, and reduced O&M response time by over 60%."'
 
-// ── Static placeholder comments (CMS will replace) ───────────────────────────
-const COMMENTS = [
-  {
-    id: 1,
-    author: 'Rajesh Mehta',
-    date: 'April 15, 2026, at 10:22 am',
-    text: 'Very insightful article. We faced exactly this challenge when deploying across 14 sites in Rajasthan — the protocol diversity alone added 3 weeks to the integration timeline. Would love to read a follow-up on how you handle firmware versioning across mixed-vendor hardware.',
-    parentId: null,
-  },
-  {
-    id: 2,
-    author: 'Priya Nair',
-    date: 'April 15, 2026, at 2:47 pm',
-    text: 'Agreed on the protocol fragmentation point. IEC 61850 adoption in India is still patchy — most substations we deal with are still running Modbus RTU with custom framing. The mismatch between what specs say and what field hardware actually does is real.',
-    parentId: 1,
-  },
-  {
-    id: 3,
-    author: 'Amit Verma',
-    date: 'April 16, 2026, at 9:05 am',
-    text: 'The cost analysis section is spot on. We ran a TCO comparison for a 250 MW wind farm and the proprietary SCADA licensing alone exceeded 2 Cr over 10 years — without factoring in the support lock-in. Open protocol platforms change that equation significantly.',
-    parentId: 1,
-  },
-  {
-    id: 4,
-    author: 'Divya Sharma',
-    date: 'April 17, 2026, at 11:30 am',
-    text: 'Good read. One thing I\'d add — the data sovereignty aspect is becoming more important for PSU clients. On-premise deployment capability is often a non-negotiable now, not an optional configuration. Would be curious whether Genex has addressed this for NTPC-scale deployments.',
-    parentId: null,
-  },
-]
-
 // ── Tags ─────────────────────────────────────────────────────────────────────
 const TAGS = ['SCADA', 'Solar', 'Wind', 'EMS', 'Grid', 'Monitoring', 'IoT', 'Renewables', 'Automation', 'BESS', 'EV', 'Protocols']
 
@@ -69,11 +36,6 @@ export default function BlogPost() {
   const postId = Number(id)
   const post = POSTS.find(p => p.id === postId)
 
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [comment, setComment] = useState('')
-  const [agreed, setAgreed] = useState(false)
-
   if (!post) return <Navigate to="/gelearn/blog" replace />
 
   const heroImg   = BLOG_IMAGES[(post.id - 1) % BLOG_IMAGES.length]
@@ -82,9 +44,6 @@ export default function BlogPost() {
 
   const prevPost = POSTS.find(p => p.id === post.id - 1)
   const nextPost = POSTS.find(p => p.id === post.id + 1)
-
-  const topLevelComments = COMMENTS.filter(c => c.parentId === null)
-  const replies = (parentId: number) => COMMENTS.filter(c => c.parentId === parentId)
 
   return (
     <main>
@@ -244,110 +203,7 @@ export default function BlogPost() {
             </div>
 
             {/* ── COMMENTS ───────────────────────────────────────────────── */}
-            <div className="mt-12">
-              <h2 className="text-3xl font-bold text-[#0f172a] mb-10">
-                {COMMENTS.length} Comments
-              </h2>
-
-              <div className="space-y-8">
-                {topLevelComments.map(c => (
-                  <div key={c.id}>
-                    {/* Top-level comment */}
-                    <div className="flex gap-6 border-b border-[#f1f5f9] pb-8">
-                      <div className="size-16 rounded-full bg-[#e2e8f0] shrink-0 flex items-center justify-center text-lg font-bold text-[#62748e]">
-                        {c.author[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p className="text-[17px] font-bold text-[#0f172a]">{c.author}</p>
-                            <p className="text-xs text-[#62748e] mt-0.5">{c.date}</p>
-                          </div>
-                          <button className="flex items-center gap-1.5 text-sm font-bold text-[#62748e] hover:text-primary transition-colors">
-                            <ReplyIcon style={{ fontSize: 14 }} /> Reply
-                          </button>
-                        </div>
-                        <p className="text-[15px] text-[#45556c] leading-6">{c.text}</p>
-                      </div>
-                    </div>
-
-                    {/* Nested replies */}
-                    {replies(c.id).map(r => (
-                      <div key={r.id} className="flex gap-6 border-b border-[#f1f5f9] pb-8 pl-20 mt-8">
-                        <div className="size-12 rounded-full bg-[#e2e8f0] shrink-0 flex items-center justify-center text-sm font-bold text-[#62748e]">
-                          {r.author[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <p className="text-[17px] font-bold text-[#0f172a]">{r.author}</p>
-                              <p className="text-xs text-[#62748e] mt-0.5">{r.date}</p>
-                            </div>
-                            <button className="flex items-center gap-1.5 text-sm font-bold text-[#62748e] hover:text-primary transition-colors">
-                              <ReplyIcon style={{ fontSize: 14 }} /> Reply
-                            </button>
-                          </div>
-                          <p className="text-[15px] text-[#45556c] leading-6">{r.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── LEAVE A COMMENT ────────────────────────────────────────── */}
-            <div className="mt-12">
-              <h2 className="text-3xl font-bold text-[#0f172a] mb-2">Leave A Comment</h2>
-              <p className="text-[15px] text-[#62748e] mb-8">
-                Your email address will not be published. Required fields are marked *
-              </p>
-
-              <form className="space-y-6" onSubmit={e => e.preventDefault()}>
-                <div className="grid grid-cols-2 gap-6">
-                  <input
-                    type="text"
-                    placeholder="Your name *"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="bg-[#fcfcfc] border border-[#e2e8f0] rounded-3xl px-5 py-4 text-sm text-[#1d293d] placeholder-[#90a1b9] outline-none focus:border-primary transition-colors"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email address *"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="bg-[#fcfcfc] border border-[#e2e8f0] rounded-3xl px-5 py-4 text-sm text-[#1d293d] placeholder-[#90a1b9] outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-                <textarea
-                  placeholder="Write comment..."
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  rows={5}
-                  className="w-full bg-[#fcfcfc] border border-[#e2e8f0] rounded-3xl px-5 py-4 text-sm text-[#1d293d] placeholder-[#90a1b9] outline-none focus:border-primary transition-colors resize-none"
-                />
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={e => setAgreed(e.target.checked)}
-                    className="size-4 rounded border-[#cad5e2] accent-primary"
-                  />
-                  <span className="text-sm text-[#62748e]">
-                    Please note, your email won&apos;t be published.
-                  </span>
-                </label>
-                <div>
-                  <button
-                    type="submit"
-                    className="gradient-brand text-white text-base font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity"
-                  >
-                    Post Comment
-                  </button>
-                </div>
-              </form>
-            </div>
+            <CommentSection contentType="blogpost" objectId={post.id} />
           </article>
 
           {/* ── RIGHT: SIDEBAR ───────────────────────────────────────────── */}

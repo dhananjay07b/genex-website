@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import { apiFetch } from '@/lib/api/client'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -10,82 +13,18 @@ interface Video {
   id: number
   title: string
   category: string
-  categoryColor: string
-  categoryTextColor: string
+  category_color: string
+  category_text_color: string
   date: string
   duration: string
   excerpt: string
-  image: string
+  video_url: string | null
+  is_locked: boolean
 }
 
-const VIDEOS: Video[] = [
-  {
-    id: 1,
-    title: 'SolarLive™ Dashboard — Full Product Walkthrough',
-    category: 'Product Demo',
-    categoryColor: '#eef2ff',
-    categoryTextColor: '#432dd7',
-    date: 'JUL 27 2025',
-    duration: '14:32 min',
-    excerpt: 'A complete tour of the SolarLive™ monitoring platform — from site onboarding to live PR tracking, fault alerts, and multi-site portfolio view.',
-    image: '/images/videos/video-1.jpg',
-  },
-  {
-    id: 2,
-    title: 'Live SCADA Demo — 220 kV Substation Control Room View',
-    category: 'Live System',
-    categoryColor: '#ecfdf5',
-    categoryTextColor: '#047857',
-    date: 'AUG 05 2025',
-    duration: '11:20 min',
-    excerpt: 'A live screen recording from an operational substation SCADA deployment. IEC 61850 real-time data, alarm management, and remote switching in action.',
-    image: '/images/videos/video-2.jpg',
-  },
-  {
-    id: 3,
-    title: 'Data Logger Commissioning — Step-by-Step Installation Guide',
-    category: 'Installation',
-    categoryColor: '#fffbeb',
-    categoryTextColor: '#b45309',
-    date: 'AUG 12 2025',
-    duration: '08:45 min',
-    excerpt: 'How to physically install and commission a Genex Data Logger at a solar site — DIN rail mounting, Modbus wiring, SIM setup, and cloud pairing.',
-    image: '/images/videos/video-3.jpg',
-  },
-  {
-    id: 4,
-    title: 'EV Charging Network Management — Operator Training Module 1',
-    category: 'Training',
-    categoryColor: '#fdf2f8',
-    categoryTextColor: '#9d174d',
-    date: 'AUG 19 2025',
-    duration: '18:05 min',
-    excerpt: 'First module of the EV Software Management operator training series. Covers charger onboarding, session management, and alert configuration.',
-    image: '/images/videos/video-4.jpg',
-  },
-  {
-    id: 5,
-    title: 'Genex at India Smart Grid Week 2025 — Panel & Demo Highlights',
-    category: 'Event',
-    categoryColor: '#f5f3ff',
-    categoryTextColor: '#6d28d9',
-    date: 'AUG 25 2025',
-    duration: '22:10 min',
-    excerpt: 'Highlights from the Genex booth and panel session at ISGW 2025. Includes demo footage of Advanced SCADA and EMS-BESS at the innovation showcase.',
-    image: '/images/videos/video-5.jpg',
-  },
-  {
-    id: 6,
-    title: 'PM Kusum RMS — Government Compliance Reporting Workflow',
-    category: 'Product Demo',
-    categoryColor: '#eef2ff',
-    categoryTextColor: '#432dd7',
-    date: 'SEP 02 2025',
-    duration: '09:50 min',
-    excerpt: 'How the Genex RMS platform generates PM Kusum compliance reports automatically — report templates, state-specific formats, and bulk export.',
-    image: '/images/videos/video-6.jpg',
-  },
-]
+interface VideoListResponse {
+  results: Video[]
+}
 
 // ── Animations ────────────────────────────────────────────────────────────────
 
@@ -112,28 +51,29 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
       className="bg-white rounded-3xl shadow-[0px_4px_16px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col group"
     >
       {/* Thumbnail */}
-      <div className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative bg-[#f3f4f6] shrink-0">
-        <img
-          src={video.image}
-          alt={video.title}
-          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-        />
+      <div
+        className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0"
+        style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
+      >
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
         {/* Play button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            whileHover={{
-              scale: 1.2,
-              boxShadow: '0px 0px 0px 10px rgba(26,174,232,0.2), 0px 16px_48px_rgba(26,174,232,0.75)',
-            }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="size-16 gradient-brand rounded-full flex items-center justify-center cursor-pointer"
-            style={{ boxShadow: '0px 8px 28px rgba(26,174,232,0.55)' }}
-          >
-            <PlayArrowIcon style={{ fontSize: 30, color: '#fff', marginLeft: 3 }} />
-          </motion.div>
-        </div>
+        {!video.is_locked && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              whileHover={{
+                scale: 1.2,
+                boxShadow: '0px 0px 0px 10px rgba(26,174,232,0.2), 0px 16px_48px_rgba(26,174,232,0.75)',
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              className="size-16 gradient-brand rounded-full flex items-center justify-center cursor-pointer"
+              style={{ boxShadow: '0px 8px 28px rgba(26,174,232,0.55)' }}
+            >
+              <PlayArrowIcon style={{ fontSize: 30, color: '#fff', marginLeft: 3 }} />
+            </motion.div>
+          </div>
+        )}
+        {video.is_locked && <LockedOverlay />}
       </div>
 
       {/* Body */}
@@ -142,7 +82,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
         <div className="flex items-center gap-4 mb-4">
           <span
             className="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap"
-            style={{ background: video.categoryColor, color: video.categoryTextColor }}
+            style={{ background: video.category_color, color: video.category_text_color }}
           >
             {video.category}
           </span>
@@ -168,6 +108,14 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VideoLibrary() {
+  const [videos, setVideos] = useState<Video[]>([])
+
+  useEffect(() => {
+    apiFetch<VideoListResponse>('/api/snippets/videos/')
+      .then(res => setVideos(res.results))
+      .catch(() => setVideos([]))
+  }, [])
+
   return (
     <main>
       <PageMeta
@@ -211,7 +159,7 @@ export default function VideoLibrary() {
 
           {/* 2-column grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {VIDEOS.map((video, i) => (
+            {videos.map((video, i) => (
               <VideoCard key={video.id} video={video} index={i} />
             ))}
           </div>

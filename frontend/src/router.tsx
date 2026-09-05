@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 const Home                  = lazy(() => import('@/pages/Home'))
 const Contact               = lazy(() => import('@/pages/Contact'))
@@ -25,6 +26,10 @@ const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcas
 const About                 = lazy(() => import('@/pages/About'))
 const Media                 = lazy(() => import('@/pages/About/Media'))
 const Team                  = lazy(() => import('@/pages/About/Team'))
+const Login                 = lazy(() => import('@/pages/Account/Login'))
+const Register              = lazy(() => import('@/pages/Account/Register'))
+const Profile                = lazy(() => import('@/pages/Account/Profile'))
+const SubmitPost            = lazy(() => import('@/pages/Account/SubmitPost'))
 
 const s = (el: React.ReactNode) => (
   <Suspense fallback={<div className="min-h-screen" />}>{el}</Suspense>
@@ -57,6 +62,15 @@ export const router = createBrowserRouter([
       { path: '/about/teams',              element: s(<Team />) },
       { path: '/contact',                  element: s(<Contact />) },
       { path: '/careers',                  element: s(<Careers />) },
+      { path: '/login',                    element: s(<Login />) },
+      { path: '/register',                 element: s(<Register />) },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: '/account',              element: s(<Profile />) },
+          { path: '/gelearn/submit-post',  element: s(<SubmitPost />) },
+        ],
+      },
     ],
   },
 ])
