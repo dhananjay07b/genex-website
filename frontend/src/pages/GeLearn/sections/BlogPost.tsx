@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -12,8 +13,18 @@ import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { POSTS, BLOG_IMAGES } from '@/config/blogPosts'
+import { apiFetch } from '@/lib/api/client'
+import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 import { CommentSection } from '@/components/gelearn/CommentSection'
+
+const BLOG_IMAGES = [
+  '/images/blog/blog-1.jpg',
+  '/images/blog/blog-2.jpg',
+  '/images/blog/blog-3.jpg',
+  '/images/blog/blog-4.jpg',
+  '/images/blog/blog-5.jpg',
+  '/images/blog/blog-6.jpg',
+]
 
 // ── Placeholder lorem ipsum body paragraphs ──────────────────────────────────
 const LOREM_P1 = 'At Genex, we build monitoring and control platforms that integrate across every facet of power infrastructure. Our goal is straightforward: to enable plant operators, utilities, and developers to deploy advanced software with confidence — enhancing visibility, decision-making, and operational resilience across India\'s energy sector.'
@@ -33,17 +44,30 @@ const TAGS = ['SCADA', 'Solar', 'Wind', 'EMS', 'Grid', 'Monitoring', 'IoT', 'Ren
 
 export default function BlogPost() {
   const { id } = useParams<{ id: string }>()
-  const postId = Number(id)
-  const post = POSTS.find(p => p.id === postId)
+  const [post, setPost] = useState<BlogPostItem | null | undefined>(undefined)
+  const [allPosts, setAllPosts] = useState<BlogPostItem[]>([])
 
-  if (!post) return <Navigate to="/gelearn/blog" replace />
+  useEffect(() => {
+    if (!id) { setPost(null); return }
+    apiFetch<BlogPostItem>(`/api/snippets/blog-posts/${id}/`)
+      .then(p => setPost(p))
+      .catch(() => setPost(null))
+    apiFetch<SnippetListResponse<BlogPostItem>>('/api/snippets/blog-posts/?limit=50')
+      .then(res => setAllPosts(res.results))
+      .catch(() => {})
+  }, [id])
 
-  const heroImg   = BLOG_IMAGES[(post.id - 1) % BLOG_IMAGES.length]
-  const inlineImg1 = BLOG_IMAGES[(post.id) % BLOG_IMAGES.length]
-  const inlineImg2 = BLOG_IMAGES[(post.id + 1) % BLOG_IMAGES.length]
+  if (post === undefined) return null
+  if (post === null) return <Navigate to="/gelearn/blog" replace />
 
-  const prevPost = POSTS.find(p => p.id === post.id - 1)
-  const nextPost = POSTS.find(p => p.id === post.id + 1)
+  const postIdx = allPosts.findIndex(p => p.id === post.id)
+  const heroImg    = BLOG_IMAGES[postIdx >= 0 ? postIdx % BLOG_IMAGES.length : 0]
+  const inlineImg1 = BLOG_IMAGES[(postIdx + 1) % BLOG_IMAGES.length]
+  const inlineImg2 = BLOG_IMAGES[(postIdx + 2) % BLOG_IMAGES.length]
+
+  const prevPost = postIdx > 0 ? allPosts[postIdx - 1] : undefined
+  const nextPost = postIdx >= 0 && postIdx < allPosts.length - 1 ? allPosts[postIdx + 1] : undefined
+  const recentPosts = allPosts.filter(p => p.id !== post.id).slice(0, 3)
 
   return (
     <main>
@@ -225,7 +249,7 @@ export default function BlogPost() {
             <div className="bg-[#fcfcfc] border border-[#f1f5f9] rounded-2xl p-8">
               <h3 className="text-xl font-bold text-[#0f172a] mb-6">Recent Posts</h3>
               <div className="space-y-6">
-                {POSTS.slice(0, 3).map(p => (
+                {recentPosts.map((p, pi) => (
                   <Link
                     key={p.id}
                     to={`/gelearn/blog/${p.id}`}
@@ -233,9 +257,10 @@ export default function BlogPost() {
                   >
                     <div className="size-18 rounded-3xl overflow-hidden shrink-0">
                       <img
-                        src={BLOG_IMAGES[(p.id - 1) % BLOG_IMAGES.length]}
+                        src={BLOG_IMAGES[pi % BLOG_IMAGES.length]}
                         alt={p.title}
                         className="w-full h-full object-cover opacity-80"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">

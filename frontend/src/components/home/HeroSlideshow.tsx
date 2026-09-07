@@ -6,7 +6,8 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight'
 import PauseIcon from '@mui/icons-material/Pause'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { buttonVariants } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { cn, getMediaUrl } from '@/lib/utils'
+import type { HeroSlideApiValue } from '@/types/api'
 
 interface Slide {
   headline: string
@@ -14,7 +15,7 @@ interface Slide {
   media: { type: 'video'; src: string } | { type: 'image'; src: string }
 }
 
-const SLIDES: Slide[] = [
+const DEFAULT_SLIDES: Slide[] = [
   {
     headline: "Next Generation Power Management",
     subline: 'Complete solution for all your renewable and industrial assets.',
@@ -25,11 +26,6 @@ const SLIDES: Slide[] = [
     subline: 'Real-time visibility across every solar, wind, and industrial asset.',
     media: { type: 'image', src: '/images/hero/slide2.png' },
   },
-  // {
-  //   headline: 'Intelligence from the Field to the Cloud.',
-  //   subline: 'SCADA, DERMS, and analytics built on open standards.',
-  //   media: { type: 'image', src: '/images/hero/slide3.png' },
-  // },
   {
     headline: 'Built by Engineers. For Engineers.',
     subline: 'Indian engineering at global scale — deployed across 8 states.',
@@ -37,16 +33,27 @@ const SLIDES: Slide[] = [
   },
 ]
 
+function mapApiSlides(apiSlides: HeroSlideApiValue[]): Slide[] {
+  return apiSlides.map(s => ({
+    headline: s.headline,
+    subline: s.subline ?? '',
+    media: s.media_type === 'video' && s.background_video
+      ? { type: 'video' as const, src: getMediaUrl(s.background_video.url) }
+      : { type: 'image' as const, src: getMediaUrl(s.background_image?.url) },
+  }))
+}
+
 const INTERVAL_MS = 7500
 const RING_RADIUS = 16
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS // ≈ 100.53
 
-export function HeroSlideshow() {
+export function HeroSlideshow({ slides: apiSlides }: { slides?: HeroSlideApiValue[] }) {
+  const SLIDES = apiSlides && apiSlides.length > 0 ? mapApiSlides(apiSlides) : DEFAULT_SLIDES
+
   const [active, setActive]       = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
   const [resetKey, setResetKey]   = useState(0)
 
-  // Restart interval whenever resetKey changes or play state changes
   useEffect(() => {
     if (!isPlaying) return
     const timer = setInterval(() => {
@@ -54,7 +61,7 @@ export function HeroSlideshow() {
       setResetKey(k => k + 1)
     }, INTERVAL_MS)
     return () => clearInterval(timer)
-  }, [isPlaying, resetKey])
+  }, [isPlaying, resetKey, SLIDES.length])
 
   function goToSlide(i: number) {
     if (i === active) return

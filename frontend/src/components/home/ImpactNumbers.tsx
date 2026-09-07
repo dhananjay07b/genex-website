@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useInView } from 'framer-motion'
+import type { ProductStat } from '@/types/api'
 
 interface Stat {
   value: number
@@ -7,7 +8,7 @@ interface Stat {
   label: string
 }
 
-const STATS: Stat[] = [
+const DEFAULT_STATS: Stat[] = [
   { value: 500, suffix: ' MW', label: 'Monitored' },
   { value: 120, suffix: '+',   label: 'Projects Delivered' },
   { value: 8,   suffix: '',    label: 'States' },
@@ -48,7 +49,11 @@ function CountUp({ value, suffix, duration = 1800 }: { value: number; suffix: st
   )
 }
 
-export function ImpactNumbers() {
+export function ImpactNumbers({ stats: apiStats }: { stats?: ProductStat[] }) {
+  const STATS = apiStats && apiStats.length > 0
+    ? apiStats.map(s => ({ value: parseInt(s.value) || 0, suffix: s.suffix ?? '', label: s.label }))
+    : DEFAULT_STATS
+
   return (
     <section className="bg-surface-alt py-20 lg:py-24" aria-label="Key metrics">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">

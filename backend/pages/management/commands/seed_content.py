@@ -1,7 +1,7 @@
 """
 Idempotent seed command — safe to re-run after schema changes.
 Creates all Wagtail pages and snippets from frontend data in seed_data.py.
-Images are NOT seeded (upload manually via /cms/images/).
+Images and videos are NOT seeded (upload manually via /cms/images/ and /cms/documents/).
 """
 
 import json
@@ -216,7 +216,7 @@ class Command(BaseCommand):
                 "subline": s.get("subline", ""),
                 "media_type": s.get("media_type", "image"),
                 "background_image": None,
-                "background_video": s.get("background_video", ""),
+                "background_video": None,
                 "cta_text": s.get("cta_text", ""),
                 "cta_link": s.get("cta_link", ""),
             }
@@ -224,7 +224,7 @@ class Command(BaseCommand):
         ])
 
         credibility_strip = _list_stream("client", [
-            {"name": name} for name in hp["credibility_clients"]
+            {"name": name, "logo": None} for name in hp["credibility_clients"]
         ])
 
         impact_stats = _list_stream("stat", hp["impact_stats"])

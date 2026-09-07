@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -9,15 +10,21 @@ import CheckIcon from '@mui/icons-material/Check'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { CASE_STUDIES, CS_IMAGES } from '@/config/caseStudies'
+import { apiFetch } from '@/lib/api/client'
+import type { CaseStudyItem, SnippetListResponse } from '@/types/api'
 
-// ── Lorem ipsum placeholder text ─────────────────────────────────────────────
+const CS_IMAGES = [
+  '/images/case-studies/cs-1.jpg',
+  '/images/case-studies/cs-2.jpg',
+  '/images/case-studies/cs-3.jpg',
+  '/images/case-studies/cs-4.jpg',
+  '/images/case-studies/cs-5.jpg',
+  '/images/case-studies/cs-6.jpg',
+]
 
-const LOREM_1 = "In today's competitive energy landscape, deploying robust monitoring and control infrastructure is essential for enhancing asset visibility and operational performance. By integrating real-time data acquisition with intelligent analytics, operators not only improve plant availability but also establish a verifiable track record of performance within the industry. This strategic approach involves identifying the right protocol stack, building reliable edge connectivity, and delivering dashboards that surface the right information at the right time. As your data infrastructure matures, so does your ability to make evidence-based decisions — leading to improved yield, faster fault response, and greater trust from clients and regulators alike."
+const LOREM_1 = "In today's competitive energy landscape, deploying robust monitoring and control infrastructure is essential for enhancing asset visibility and operational performance. By integrating real-time data acquisition with intelligent analytics, operators not only improve plant availability but also establish a verifiable track record of performance within the industry. This strategic approach involves identifying the right protocol stack, building reliable edge connectivity, and delivering dashboards that surface the right information at the right time."
 
-const LOREM_2 = "Effective monitoring and control management not only enhances site visibility but also enables meaningful intervention when performance drifts below baseline. By actively tracking generation, consumption, and fault events in real time, engineering teams can respond before losses compound. Additionally, by continuously analysing historical trends, operators can identify systemic inefficiencies — soiling patterns, inverter degradation curves, communication dropouts — and address them proactively rather than reactively. The result is a platform that pays for itself through measurable operational improvement."
-
-// ── Project requirements checklist ───────────────────────────────────────────
+const LOREM_2 = "Effective monitoring and control management not only enhances site visibility but also enables meaningful intervention when performance drifts below baseline. By actively tracking generation, consumption, and fault events in real time, engineering teams can respond before losses compound. The result is a platform that pays for itself through measurable operational improvement."
 
 const REQUIREMENTS = [
   'System Architecture & Scoping',
@@ -30,16 +37,14 @@ const REQUIREMENTS = [
   'Ongoing Adjustments & Reporting',
 ]
 
-// ── Mini card for "More Case Studies" ────────────────────────────────────────
-
-function MiniCard({ cs }: { cs: (typeof CASE_STUDIES)[number] }) {
+function MiniCard({ cs }: { cs: CaseStudyItem }) {
   const img = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
   return (
     <motion.div
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
       className="bg-white border border-[#e8e8e8] rounded-2xl shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col group"
     >
-      <div className={`h-1.5 w-32 rounded-b-xl ml-6 shrink-0 ${cs.categoryColor}`} />
+      <div className={`h-1.5 w-32 rounded-b-xl ml-6 shrink-0 ${cs.category_color}`} />
       <div className="mx-6 mt-4 rounded-3xl overflow-hidden bg-[#f3f4f6] aspect-4/3 shrink-0">
         <motion.img
           src={img}
@@ -47,6 +52,7 @@ function MiniCard({ cs }: { cs: (typeof CASE_STUDIES)[number] }) {
           className="w-full h-full object-cover"
           whileHover={{ scale: 1.05 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
       </div>
       <div className="flex flex-col flex-1 px-6 pt-5 pb-6">
@@ -60,7 +66,7 @@ function MiniCard({ cs }: { cs: (typeof CASE_STUDIES)[number] }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <AccessTimeOutlinedIcon style={{ fontSize: 14 }} className="text-[#949494]" />
-              <span className="text-sm font-bold text-[#949494]">{cs.readTime}</span>
+              <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
             <Link
               to={`/gelearn/case-studies/${cs.id}`}
@@ -75,17 +81,25 @@ function MiniCard({ cs }: { cs: (typeof CASE_STUDIES)[number] }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function CaseStudyDetail() {
   const { id } = useParams<{ id: string }>()
-  const csId = Number(id)
-  const cs = CASE_STUDIES.find(c => c.id === csId)
+  const [cs, setCs] = useState<CaseStudyItem | null | undefined>(undefined)
+  const [related, setRelated] = useState<CaseStudyItem[]>([])
 
-  if (!cs) return <Navigate to="/gelearn/case-studies" replace />
+  useEffect(() => {
+    if (!id) { setCs(null); return }
+    apiFetch<CaseStudyItem>(`/api/snippets/case-studies/${id}/`)
+      .then(item => setCs(item))
+      .catch(() => setCs(null))
+    apiFetch<SnippetListResponse<CaseStudyItem>>('/api/snippets/case-studies/?limit=4')
+      .then(res => setRelated(res.results.filter(c => c.id !== Number(id)).slice(0, 3)))
+      .catch(() => {})
+  }, [id])
+
+  if (cs === undefined) return null
+  if (cs === null) return <Navigate to="/gelearn/case-studies" replace />
 
   const heroImg = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
-  const related = CASE_STUDIES.filter(c => c.id !== cs.id).slice(0, 3)
 
   return (
     <main>
@@ -95,7 +109,6 @@ export default function CaseStudyDetail() {
         canonical={`/gelearn/case-studies/${cs.id}`}
       />
 
-      {/* ── BREADCRUMB ───────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[#e2e8f0] py-4">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
@@ -109,7 +122,6 @@ export default function CaseStudyDetail() {
       <div className="bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-          {/* ── HERO TITLE ───────────────────────────────────────────────── */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -119,39 +131,37 @@ export default function CaseStudyDetail() {
             {cs.title}
           </motion.h1>
 
-          {/* ── HERO IMAGE ───────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' as const }}
-            className="rounded-3xl overflow-hidden aspect-21/9 mb-16"
+            className="rounded-3xl overflow-hidden aspect-21/9 mb-16 bg-[#f3f4f6]"
           >
             <img
               src={heroImg}
               alt={cs.title}
               className="w-full h-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           </motion.div>
 
-          {/* ── SECTION HEADING ──────────────────────────────────────────── */}
           <h2 className="text-3xl font-bold text-black capitalize mb-8">
-            Online media management boost your presence
+            Project Overview
           </h2>
 
-          {/* ── BODY PARAGRAPHS ──────────────────────────────────────────── */}
           <div className="space-y-6 mb-12">
+            <p className="text-lg text-[#949494] leading-[1.63]">{cs.excerpt}</p>
             <p className="text-lg text-[#949494] leading-[1.63]">{LOREM_1}</p>
             <p className="text-lg text-[#949494] leading-[1.63]">{LOREM_2}</p>
           </div>
 
-          {/* ── META BAR ─────────────────────────────────────────────────── */}
           <div className="border-t border-b border-[#e8e8e8] py-6 mb-14">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
               {[
-                { Icon: PersonOutlinedIcon,       label: 'Client',          value: 'Confidential' },
-                { Icon: BuildOutlinedIcon,         label: 'Services',        value: cs.category },
-                { Icon: CalendarTodayOutlinedIcon, label: 'Completed Date',  value: cs.date },
-                { Icon: LocationOnOutlinedIcon,    label: 'Location',        value: 'India' },
+                { Icon: PersonOutlinedIcon,       label: 'Client',         value: 'Confidential' },
+                { Icon: BuildOutlinedIcon,         label: 'Services',       value: cs.category },
+                { Icon: CalendarTodayOutlinedIcon, label: 'Completed',      value: cs.date },
+                { Icon: LocationOnOutlinedIcon,    label: 'Location',       value: 'India' },
               ].map(({ Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div className="size-8 flex items-center justify-center shrink-0 text-[#62748e]">
@@ -166,11 +176,10 @@ export default function CaseStudyDetail() {
             </div>
           </div>
 
-          {/* ── PROJECT REQUIREMENTS ─────────────────────────────────────── */}
           <div className="mb-20">
-            <h3 className="text-3xl font-bold text-black capitalize mb-4">Project Requirement</h3>
+            <h3 className="text-3xl font-bold text-black capitalize mb-4">Project Deliverables</h3>
             <p className="text-lg text-[#949494] leading-[1.63] mb-8">
-              Our client seeks to optimise operational presence across monitoring platforms, connecting plant data with engineering teams and driving evidence-based decisions. We help build a resilient digital infrastructure that boosts performance visibility and supports long-term asset management.
+              Our approach covers the full lifecycle — from initial scoping and architecture through commissioning, acceptance testing, and ongoing operational support.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
               {REQUIREMENTS.map(req => (
@@ -186,43 +195,40 @@ export default function CaseStudyDetail() {
 
         </div>
 
-        {/* ── MORE CASE STUDIES ─────────────────────────────────────────── */}
-        <div className="border-t border-[#e8e8e8] py-16 lg:py-24">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <h2 className="text-3xl font-bold text-black capitalize mb-2">More Case Studies</h2>
-                <p className="text-lg text-[#45556c] max-w-xl">
-                  The software managing these decentralised power sources was fragmented, insecure, and incapable of scale. Here's how we fixed it.
-                </p>
-              </div>
-              <Link
-                to="/gelearn/case-studies"
-                className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
-              >
-                View All <ArrowForwardIcon style={{ fontSize: 16 }} />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 mt-10">
-              {related.map((relCs, i) => (
-                <motion.div
-                  key={relCs.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-40px' as const }}
-                  transition={{ duration: 0.45, delay: i * 0.1, ease: 'easeOut' as const }}
+        {related.length > 0 && (
+          <div className="border-t border-[#e8e8e8] py-16 lg:py-24">
+            <div className="max-w-7xl mx-auto px-6 lg:px-8">
+              <div className="flex items-end justify-between mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-black capitalize mb-2">More Case Studies</h2>
+                  <p className="text-lg text-[#45556c] max-w-xl">
+                    More field deployments from the Genex engineering team.
+                  </p>
+                </div>
+                <Link
+                  to="/gelearn/case-studies"
+                  className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
                 >
-                  <MiniCard cs={relCs} />
-                </motion.div>
-              ))}
+                  View All <ArrowForwardIcon style={{ fontSize: 16 }} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 mt-10">
+                {related.map((relCs, i) => (
+                  <motion.div
+                    key={relCs.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-40px' as const }}
+                    transition={{ duration: 0.45, delay: i * 0.1, ease: 'easeOut' as const }}
+                  >
+                    <MiniCard cs={relCs} />
+                  </motion.div>
+                ))}
+              </div>
             </div>
-
           </div>
-        </div>
+        )}
 
-        {/* ── CTA ──────────────────────────────────────────────────────── */}
         <section className="bg-brand-tint py-20 lg:py-28">
           <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
             <motion.div
@@ -249,7 +255,6 @@ export default function CaseStudyDetail() {
             </motion.div>
           </div>
         </section>
-
       </div>
     </main>
   )

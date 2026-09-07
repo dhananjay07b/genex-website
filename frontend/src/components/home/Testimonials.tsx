@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import ChevronLeftIcon  from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import type { TestimonialApiValue } from '@/types/api'
 
-const TESTIMONIALS = [
+const DEFAULT_TESTIMONIALS = [
   {
     quote:
       'The SCADA system Genex deployed for our 50 MW plant reduced fault response time from 4 hours to under 15 minutes. The ROI was visible within the first quarter.',
@@ -38,13 +39,11 @@ const TESTIMONIALS = [
   },
 ]
 
-const n = TESTIMONIALS.length
-
 // x values are % of the card's own width, applied from left:50% anchor
 // Active   → x='-50%'   : shifts left by half card width → perfectly centered
 // Right    → x='60%'    : left edge at 50%+60% of card width (peeks from right)
 // Left     → x='-160%'  : right edge at 50%-60% of card width (peeks from left)
-function getCardState(i: number, active: number) {
+function getCardState(i: number, active: number, n: number) {
   const raw    = ((i - active) % n + n) % n
   const offset = raw > n / 2 ? raw - n : raw
 
@@ -56,7 +55,10 @@ function getCardState(i: number, active: number) {
 
 const SPRING = { type: 'spring' as const, stiffness: 260, damping: 30 }
 
-export function Testimonials() {
+export function Testimonials({ testimonials: apiTestimonials }: { testimonials?: TestimonialApiValue[] }) {
+  const TESTIMONIALS = apiTestimonials && apiTestimonials.length > 0 ? apiTestimonials : DEFAULT_TESTIMONIALS
+  const n = TESTIMONIALS.length
+
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -68,7 +70,7 @@ export function Testimonials() {
     if (paused) return
     const id = setInterval(() => setActive(a => (a + 1) % n), 4500)
     return () => clearInterval(id)
-  }, [paused])
+  }, [paused, n])
 
   return (
     <section
@@ -105,7 +107,7 @@ export function Testimonials() {
           <div className="relative w-full" style={{ height: 340 }}>
 
             {TESTIMONIALS.map((t, i) => {
-              const state = getCardState(i, active)
+              const state = getCardState(i, active, n)
               return (
                 <motion.div
                   key={i}

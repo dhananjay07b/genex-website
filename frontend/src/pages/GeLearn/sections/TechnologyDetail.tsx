@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -8,7 +9,8 @@ import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlin
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { TECH_ARTICLES } from '@/config/technologyArticles'
+import { apiFetch } from '@/lib/api/client'
+import type { TechArticleItem, SnippetListResponse } from '@/types/api'
 
 // ── Difficulty styles ─────────────────────────────────────────────────────────
 
@@ -20,8 +22,8 @@ const DIFFICULTY_STYLE: Record<string, { bg: string; text: string }> = {
 
 // ── Related article mini-card ─────────────────────────────────────────────────
 
-function RelatedCard({ article }: { article: (typeof TECH_ARTICLES)[number] }) {
-  const diff = DIFFICULTY_STYLE[article.difficulty]
+function RelatedCard({ article }: { article: TechArticleItem }) {
+  const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
   return (
     <motion.div
       whileHover={{ y: -5, transition: { duration: 0.2, ease: 'easeOut' } }}
@@ -30,13 +32,9 @@ function RelatedCard({ article }: { article: (typeof TECH_ARTICLES)[number] }) {
       {/* Colour bar */}
       <div className="h-1 gradient-brand w-full shrink-0" />
 
-      {/* Thumbnail */}
-      <div className="mx-5 mt-4 rounded-2xl overflow-hidden bg-[#f3f4f6] aspect-video shrink-0">
-        <img
-          src={article.image}
-          alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-        />
+      {/* Thumbnail placeholder */}
+      <div className="mx-5 mt-4 rounded-2xl overflow-hidden bg-[#f3f4f6] aspect-video shrink-0 flex items-center justify-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
       </div>
 
       {/* Body */}
@@ -78,13 +76,23 @@ function RelatedCard({ article }: { article: (typeof TECH_ARTICLES)[number] }) {
 
 export default function TechnologyDetail() {
   const { id } = useParams<{ id: string }>()
-  const articleId = Number(id)
-  const article = TECH_ARTICLES.find(a => a.id === articleId)
+  const [article, setArticle] = useState<TechArticleItem | null | undefined>(undefined)
+  const [related, setRelated] = useState<TechArticleItem[]>([])
 
-  if (!article) return <Navigate to="/gelearn/technology" replace />
+  useEffect(() => {
+    if (!id) { setArticle(null); return }
+    apiFetch<TechArticleItem>(`/api/snippets/tech-articles/${id}/`)
+      .then(a => setArticle(a))
+      .catch(() => setArticle(null))
+    apiFetch<SnippetListResponse<TechArticleItem>>('/api/snippets/tech-articles/?limit=5')
+      .then(res => setRelated(res.results.filter(a => a.id !== Number(id)).slice(0, 3)))
+      .catch(() => {})
+  }, [id])
 
-  const diff = DIFFICULTY_STYLE[article.difficulty]
-  const related = TECH_ARTICLES.filter(a => a.id !== article.id).slice(0, 3)
+  if (article === undefined) return null
+  if (article === null) return <Navigate to="/gelearn/technology" replace />
+
+  const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
 
   return (
     <main>
@@ -147,7 +155,7 @@ export default function TechnologyDetail() {
           >
             <span className="flex items-center gap-1.5">
               <AccessTimeOutlinedIcon style={{ fontSize: 16 }} />
-              {article.readTime}
+              {article.read_time}
             </span>
             <span className="flex items-center gap-1.5">
               <CalendarTodayOutlinedIcon style={{ fontSize: 16 }} />
@@ -159,19 +167,15 @@ export default function TechnologyDetail() {
           </motion.div>
         </div>
 
-        {/* ── HERO IMAGE ────────────────────────────────────────────────── */}
+        {/* ── HERO PLACEHOLDER ─────────────────────────────────────────── */}
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.18, ease: 'easeOut' as const }}
-            className="rounded-3xl overflow-hidden aspect-21/9 mb-16"
+            className="rounded-3xl overflow-hidden aspect-21/9 mb-16 bg-[#f0f4f8] flex items-center justify-center"
           >
-            <img
-              src={article.image}
-              alt={article.title}
-              className="w-full h-full object-cover"
-            />
+            <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
           </motion.div>
         </div>
 
@@ -181,7 +185,7 @@ export default function TechnologyDetail() {
 
             {/* Main content */}
             <div>
-              {/* Introduction */}
+              {/* Introduction / excerpt */}
               <motion.p
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -189,29 +193,10 @@ export default function TechnologyDetail() {
                 transition={{ duration: 0.5, ease: 'easeOut' as const }}
                 className="text-lg text-[#45556c] leading-[1.75] mb-10 font-normal border-l-4 border-primary pl-6"
               >
-                {article.intro}
+                {article.excerpt}
               </motion.p>
 
-              {/* Sections */}
-              {article.sections.map((section, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-40px' as const }}
-                  transition={{ duration: 0.5, delay: i * 0.06, ease: 'easeOut' as const }}
-                  className="mb-10"
-                >
-                  <h2 className="text-2xl font-bold text-[#0f172b] mb-4 leading-snug">
-                    {section.heading}
-                  </h2>
-                  <p className="text-[16px] text-[#45556c] leading-[1.75]">
-                    {section.body}
-                  </p>
-                </motion.div>
-              ))}
-
-              {/* Technical callout */}
+              {/* Placeholder technical callout */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -222,52 +207,24 @@ export default function TechnologyDetail() {
                 <div className="flex items-center gap-2.5 mb-4">
                   <TipsAndUpdatesOutlinedIcon style={{ fontSize: 18, color: '#1AAEE8' }} />
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-                    {article.callout.label}
+                    Key Insight
                   </p>
                 </div>
-                <p className="text-sm font-mono text-[#314158] leading-7 whitespace-pre-line">
-                  {article.callout.content}
+                <p className="text-sm text-[#314158] leading-7">
+                  {article.topic} is a critical area of expertise for teams deploying modern energy infrastructure in India. Genex engineers document real-world lessons from field deployments across the country.
                 </p>
-              </motion.div>
-
-              {/* Key takeaways */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' as const }}
-                transition={{ duration: 0.5, ease: 'easeOut' as const }}
-                className="bg-white border border-[#e2e8f0] rounded-2xl p-8"
-              >
-                <h3 className="text-xl font-bold text-[#0f172b] mb-6">Key Takeaways</h3>
-                <ul className="space-y-4">
-                  {article.takeaways.map((t, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircleOutlinedIcon
-                        style={{ fontSize: 20, color: '#1AAEE8', flexShrink: 0, marginTop: 2 }}
-                      />
-                      <span className="text-base text-[#314158] leading-6">{t}</span>
-                    </li>
-                  ))}
-                </ul>
               </motion.div>
             </div>
 
             {/* Sidebar */}
             <div className="lg:sticky lg:top-24 space-y-6">
 
-              {/* Tags */}
+              {/* Topic */}
               <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-4">Tags</p>
-                <div className="flex flex-wrap gap-2">
-                  {article.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158] hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-4">Topic</p>
+                <span className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]">
+                  {article.topic}
+                </span>
               </div>
 
               {/* Article meta summary */}
@@ -289,7 +246,7 @@ export default function TechnologyDetail() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-[#949494] uppercase tracking-widest mb-1">Read time</p>
-                    <p className="text-sm font-bold text-[#0f172b]">{article.readTime}</p>
+                    <p className="text-sm font-bold text-[#0f172b]">{article.read_time}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-[#949494] uppercase tracking-widest mb-1">Published</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
@@ -7,13 +7,21 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { CASE_STUDIES, CS_IMAGES, type CaseStudy } from '@/config/caseStudies'
+import { apiFetch } from '@/lib/api/client'
+import type { CaseStudyItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
 
-// ── Card ─────────────────────────────────────────────────────────────────────
+const CS_IMAGES = [
+  '/images/case-studies/cs-1.jpg',
+  '/images/case-studies/cs-2.jpg',
+  '/images/case-studies/cs-3.jpg',
+  '/images/case-studies/cs-4.jpg',
+  '/images/case-studies/cs-5.jpg',
+  '/images/case-studies/cs-6.jpg',
+]
 
-function CaseStudyCard({ cs, index }: { cs: CaseStudy; index: number }) {
+function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
   const img = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
   return (
     <motion.div
@@ -24,10 +32,8 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudy; index: number }) {
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
       className="bg-white border border-[#e8e8e8] rounded-2xl shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col group"
     >
-      {/* Category colour strip */}
-      <div className={`h-1.5 w-32 rounded-b-xl ml-6 shrink-0 ${cs.categoryColor}`} />
+      <div className={`h-1.5 w-32 rounded-b-xl ml-6 shrink-0 ${cs.category_color}`} />
 
-      {/* Image */}
       <div className="mx-6 mt-4 mb-0 rounded-3xl overflow-hidden bg-[#f3f4f6] aspect-4/3 shrink-0">
         <motion.img
           src={img}
@@ -35,19 +41,14 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudy; index: number }) {
           className="w-full h-full object-cover"
           whileHover={{ scale: 1.05 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
       </div>
 
-      {/* Body */}
       <div className="flex flex-col flex-1 px-6 pt-5 pb-6">
-        <h3 className="text-2xl font-semibold text-black leading-8 mb-3">
-          {cs.title}
-        </h3>
-        <p className="text-sm text-[#949494] leading-5 flex-1 mb-5">
-          {cs.excerpt}
-        </p>
+        <h3 className="text-2xl font-semibold text-black leading-8 mb-3">{cs.title}</h3>
+        <p className="text-sm text-[#949494] leading-5 flex-1 mb-5">{cs.excerpt}</p>
 
-        {/* Footer */}
         <div className="border-t border-[#e8e8e8] pt-6 flex items-end justify-between">
           <div className="flex flex-col gap-1">
             <p className="text-base font-bold text-black">{cs.category}</p>
@@ -57,15 +58,15 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudy; index: number }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <AccessTimeOutlinedIcon style={{ fontSize: 14 }} className="text-[#949494]" />
-              <span className="text-sm font-bold text-[#949494]">{cs.readTime}</span>
+              <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
-              <Link
-                to={`/gelearn/case-studies/${cs.id}`}
-                className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
-                aria-label={`Read case study: ${cs.title}`}
-              >
-                <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />
-              </Link>
+            <Link
+              to={`/gelearn/case-studies/${cs.id}`}
+              className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
+              aria-label={`Read case study: ${cs.title}`}
+            >
+              <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />
+            </Link>
           </div>
         </div>
       </div>
@@ -73,12 +74,18 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudy; index: number }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function CaseStudies() {
+  const [items, setItems] = useState<CaseStudyItem[]>([])
   const [page, setPage] = useState(1)
-  const totalPages = Math.ceil(CASE_STUDIES.length / PAGE_SIZE)
-  const visible = CASE_STUDIES.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  useEffect(() => {
+    apiFetch<SnippetListResponse<CaseStudyItem>>('/api/snippets/case-studies/?limit=200')
+      .then(res => setItems(res.results))
+      .catch(() => setItems([]))
+  }, [])
+
+  const totalPages = Math.ceil(items.length / PAGE_SIZE)
+  const visible = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   function goTo(p: number) {
     setPage(p)
@@ -101,7 +108,6 @@ export default function CaseStudies() {
       <section className="bg-white py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-          {/* Intro header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -113,60 +119,59 @@ export default function CaseStudies() {
               Our Insights On Trends,<br />Technologies, And<br />Transformation
             </h2>
             <p className="text-base text-[#949494] max-w-xs lg:text-right leading-relaxed">
-              Bring to the table win-win survival strategies to ensure proactive domination at the end of the day.
+              Field-proven engineering outcomes from deployments across India's power sector.
             </p>
           </motion.div>
 
-          {/* Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
             {visible.map((cs, i) => (
               <CaseStudyCard key={cs.id} cs={cs} index={i} />
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-center gap-2 mt-16">
-            {page > 1 && (
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => goTo(page - 1)}
-                className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
-              >
-                <ChevronLeftIcon style={{ fontSize: 18 }} className="text-[#111827]" />
-              </motion.button>
-            )}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <motion.button
-                key={p}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => goTo(p)}
-                className={`size-10 rounded-full font-bold text-base flex items-center justify-center transition-colors duration-200 ${
-                  page === p
-                    ? 'bg-primary text-white'
-                    : 'bg-[#f3f4f6] text-[#111827] hover:bg-primary/10'
-                }`}
-              >
-                {p}
-              </motion.button>
-            ))}
-            {page < totalPages && (
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => goTo(page + 1)}
-                className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
-              >
-                <ChevronRightIcon style={{ fontSize: 18 }} className="text-[#111827]" />
-              </motion.button>
-            )}
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-16">
+              {page > 1 && (
+                <motion.button
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => goTo(page - 1)}
+                  className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
+                >
+                  <ChevronLeftIcon style={{ fontSize: 18 }} className="text-[#111827]" />
+                </motion.button>
+              )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <motion.button
+                  key={p}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => goTo(p)}
+                  className={`size-10 rounded-full font-bold text-base flex items-center justify-center transition-colors duration-200 ${
+                    page === p
+                      ? 'bg-primary text-white'
+                      : 'bg-[#f3f4f6] text-[#111827] hover:bg-primary/10'
+                  }`}
+                >
+                  {p}
+                </motion.button>
+              ))}
+              {page < totalPages && (
+                <motion.button
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => goTo(page + 1)}
+                  className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
+                >
+                  <ChevronRightIcon style={{ fontSize: 18 }} className="text-[#111827]" />
+                </motion.button>
+              )}
+            </div>
+          )}
 
         </div>
       </section>
 
-      {/* CTA */}
       <section className="bg-brand-tint py-20 lg:py-28">
         <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
           <motion.div

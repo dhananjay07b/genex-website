@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
@@ -8,14 +8,24 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { POSTS, BLOG_IMAGES, type BlogPost as Post } from '@/config/blogPosts'
+import { apiFetch } from '@/lib/api/client'
+import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
 
+const BLOG_IMAGES = [
+  '/images/blog/blog-1.jpg',
+  '/images/blog/blog-2.jpg',
+  '/images/blog/blog-3.jpg',
+  '/images/blog/blog-4.jpg',
+  '/images/blog/blog-5.jpg',
+  '/images/blog/blog-6.jpg',
+]
+
 // ── Card ─────────────────────────────────────────────────────────────────────
 
-function BlogCard({ post, index }: { post: Post; index: number }) {
-  const img = BLOG_IMAGES[(post.id - 1) % BLOG_IMAGES.length]
+function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
+  const img = BLOG_IMAGES[index % BLOG_IMAGES.length]
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -75,9 +85,17 @@ function BlogCard({ post, index }: { post: Post; index: number }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Blog() {
+  const [posts, setPosts] = useState<BlogPostItem[]>([])
   const [page, setPage] = useState(1)
-  const totalPages = Math.ceil(POSTS.length / PAGE_SIZE)
-  const visible = POSTS.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  useEffect(() => {
+    apiFetch<SnippetListResponse<BlogPostItem>>('/api/snippets/blog-posts/?limit=200')
+      .then(res => setPosts(res.results))
+      .catch(() => setPosts([]))
+  }, [])
+
+  const totalPages = Math.ceil(posts.length / PAGE_SIZE)
+  const visible = posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   function goTo(p: number) {
     setPage(p)
@@ -119,7 +137,7 @@ export default function Blog() {
           {/* Card grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-12">
             {visible.map((post, i) => (
-              <BlogCard key={post.id} post={post} index={i} />
+              <BlogCard key={post.id} post={post} index={(page - 1) * PAGE_SIZE + i} />
             ))}
           </div>
 

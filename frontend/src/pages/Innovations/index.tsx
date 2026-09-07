@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
-
-// ── Animation presets ─────────────────────────────────────────────────────────
+import { apiFetch } from '@/lib/api/client'
+import type { InnovationPageData, WagtailListResponse } from '@/types/api'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
@@ -23,98 +24,8 @@ const staggerChild = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-interface Innovation {
-  slug: string
-  label: string
-  description: string
-  icon: string
-}
-
-const INNOVATIONS: Innovation[] = [
-  {
-    slug: 'solar-rooftop',
-    label: 'Advanced SCADA',
-    description:
-      'Cloud-native, protocol-agnostic control layer supporting IEC 61850, DNP3, Modbus, and OPC-UA — with built-in AI anomaly detection across mixed-vendor field devices.',
-    icon: '/images/innovations/icon-scada.svg',
-  },
-  {
-    slug: 'solar-power-plants',
-    label: 'Re-NMS',
-    description:
-      'Dedicated network management system for renewable energy infrastructure — monitoring edge devices, modems, and data loggers across hundreds of sites with automated outage detection.',
-    icon: '/images/innovations/icon-renms.svg',
-  },
-  {
-    slug: 'rms',
-    label: 'AI-Based Remote Monitoring Systems',
-    description:
-      'Machine learning layer over conventional monitoring — shifting from reactive alerts to predictive operations with automated plain-language work orders for maintenance teams.',
-    icon: '/images/innovations/icon-ai-rms.svg',
-  },
-  {
-    slug: 'energy-storage',
-    label: 'EMS - BESS',
-    description:
-      'AI-driven economic dispatch for battery storage — automatically optimizing charge/discharge against tariff schedules, grid signals, and battery degradation in real time.',
-    icon: '/images/innovations/icon-ems-bess.svg',
-  },
-  {
-    slug: 'wind-energy',
-    label: 'Drone Monitoring',
-    description:
-      'Autonomous drone inspection for solar arrays and wind assets — AI-generated geo-tagged fault maps with severity classification from thermal and RGB aerial imagery.',
-    icon: '/images/innovations/icon-drone.svg',
-  },
-  {
-    slug: 'industrial-energy',
-    label: 'Power Management Tools',
-    description:
-      'Industrial energy intelligence platform covering load profiling, power factor correction, harmonic analysis, and ISO 50001 EnPI reporting for industrial facilities.',
-    icon: '/images/innovations/icon-power-tools.svg',
-  },
-  {
-    slug: 'ai-health-checkup',
-    label: 'AI-Plant Health Checkup',
-    description:
-      'Automated AI diagnostic for solar and storage plants — 12-month performance analysis, subsystem health scoring, and prioritized remediation with financial recovery estimates.',
-    icon: '/images/innovations/icon-ai-health.svg',
-  },
-  {
-    slug: 'smart-grid',
-    label: 'Smart Grid & Utilities',
-    description:
-      'Unified operations platform for utilities and discoms — AMI integration, feeder automation, non-technical loss detection, and demand response orchestration.',
-    icon: '/images/innovations/icon-smart-grid.svg',
-  },
-  {
-    slug: 'ev-infrastructure',
-    label: 'EV - Software Management',
-    description:
-      'AI-driven fleet charging intelligence with OCPP 2.0.1 and V2G readiness — optimizing schedules against tariff curves and vehicle telematics for enterprise operators.',
-    icon: '/images/innovations/icon-ev.svg',
-  },
-  {
-    slug: 'power-trading',
-    label: 'Power Trading',
-    description:
-      'Algorithmic power trading platform for IEX Day-Ahead and Real-Time markets — generation forecasting, bid optimization, and demand flexibility aggregation.',
-    icon: '/images/innovations/icon-trading.svg',
-  },
-  {
-    slug: 'power-billing',
-    label: 'Power Billing System',
-    description:
-      'Enterprise automated billing for utilities and discoms — multi-tariff engine, bulk bill generation, digital delivery, and discom MIS reconciliation at scale.',
-    icon: '/images/innovations/icon-billing.svg',
-  },
-]
-
-// ── Card ──────────────────────────────────────────────────────────────────────
-
-function InnovationCard({ item }: { item: Innovation }) {
+function InnovationCard({ item }: { item: InnovationPageData }) {
+  const firstCapability = item.capabilities?.[0]?.value ?? item.subline
   return (
     <motion.div
       variants={staggerChild}
@@ -122,23 +33,19 @@ function InnovationCard({ item }: { item: Innovation }) {
       whileHover={{ y: -6, boxShadow: 'inset 0 3px 0 #1AAEE8, 0 16px 32px rgba(0,0,0,0.10)' }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
     >
-      <img
-        src={item.icon}
-        alt=""
-        aria-hidden="true"
-        className="w-12 h-12 mb-6"
-      />
+      {/* Gradient icon placeholder */}
+      <div className={`w-12 h-12 mb-6 rounded-xl bg-linear-to-br ${item.gradient || 'from-slate-200 to-slate-300'}`} />
 
       <p className="text-2xl font-bold text-[#1d293d] leading-tight mb-3">
-        {item.label}
+        {item.title}
       </p>
 
       <p className="text-[15px] text-[#45556c] leading-7 flex-1">
-        {item.description}
+        {firstCapability}
       </p>
 
       <Link
-        to={`/innovations/${item.slug}`}
+        to={`/innovations/${item.meta.slug}`}
         className="mt-8 inline-flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-widest text-primary hover:text-primary/70 transition-colors duration-200 self-start"
       >
         Read More &rarr;
@@ -147,9 +54,17 @@ function InnovationCard({ item }: { item: Innovation }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function Innovations() {
+  const [innovations, setInnovations] = useState<InnovationPageData[]>([])
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<InnovationPageData>>(
+      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,gradient,capabilities&limit=50'
+    )
+      .then(res => setInnovations(res.items))
+      .catch(() => setInnovations([]))
+  }, [])
+
   return (
     <main>
       <PageMeta
@@ -173,7 +88,6 @@ export default function Innovations() {
           <p className="text-[18px] text-[#45556c] leading-7.25">
             From real-time network management to AI-driven diagnostics and autonomous drone inspection — every platform is purpose-built for the complexity of India&apos;s power sector.
           </p>
-
         </motion.div>
       </section>
 
@@ -187,8 +101,8 @@ export default function Innovations() {
             viewport={{ once: true, margin: '-60px' as const }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border border-[#e2e8f0]"
           >
-            {INNOVATIONS.map((item) => (
-              <InnovationCard key={item.slug} item={item} />
+            {innovations.map((item) => (
+              <InnovationCard key={item.id} item={item} />
             ))}
           </motion.div>
         </div>

@@ -70,12 +70,20 @@ ICON_CHOICES = [
 # Base class — serialises ImageChooserBlock to {url: ...} in API output
 # ---------------------------------------------------------------------------
 class ImageApiStructBlock(blocks.StructBlock):
+    """Serialises ImageChooserBlock/DocumentChooserBlock child fields to {url: ...} in API output.
+
+    Used for any block with a media chooser field (images, or uploaded video/PDF documents)
+    so the frontend gets a ready-to-use absolute-relative URL instead of a raw PK.
+    """
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
         for field_name, field in self.child_blocks.items():
             if isinstance(field, ImageChooserBlock) and value.get(field_name):
                 img = value[field_name]
                 data[field_name] = {"url": img.file.url, "width": img.width, "height": img.height, "alt": img.title}
+            elif isinstance(field, DocumentChooserBlock) and value.get(field_name):
+                doc = value[field_name]
+                data[field_name] = {"url": doc.url, "title": doc.title}
         return data
 
 
@@ -126,7 +134,7 @@ class HeroSlideBlock(ImageApiStructBlock):
         default="image",
     )
     background_image = ImageChooserBlock(required=False)
-    background_video = blocks.URLBlock(required=False)
+    background_video = DocumentChooserBlock(required=False, help_text="Upload a video file (mp4) for this slide")
     cta_text         = blocks.CharBlock(required=False)
     cta_link         = blocks.CharBlock(required=False)
 
@@ -134,12 +142,13 @@ class HeroSlideBlock(ImageApiStructBlock):
         icon = "image"
 
 
-class CredibilityNameBlock(blocks.StructBlock):
-    """Simple string name — frontend uses string[] with no logos yet."""
-    name = blocks.CharBlock()
+class CredibilityLogoBlock(ImageApiStructBlock):
+    """Client logo shown in the homepage trust strip. Name is alt-text only, never rendered."""
+    name = blocks.CharBlock(help_text="Client name — used for accessible alt text only, not displayed")
+    logo = ImageChooserBlock(help_text="Small logo, ideally transparent background")
 
     class Meta:
-        icon = "tag"
+        icon = "image"
 
 
 class WhatWeBuildTabBlock(ImageApiStructBlock):

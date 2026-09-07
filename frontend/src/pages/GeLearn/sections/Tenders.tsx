@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
@@ -6,73 +6,17 @@ import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-
-// ── Data ─────────────────────────────────────────────────────────────────────
+import { apiFetch } from '@/lib/api/client'
+import type { TenderItem, SnippetListResponse } from '@/types/api'
 
 const STATUSES = ['All', 'Open', 'Upcoming', 'Closed'] as const
 type Status = typeof STATUSES[number]
-
-interface Tender {
-  id: number
-  title: string
-  authority: string
-  deadline: string
-  value: string
-  status: Status
-  sector: string
-  description: string
-}
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   Open:     { bg: '#e9ffe8', text: '#2c8502' },
   Upcoming: { bg: '#ffffe8', text: '#858302' },
   Closed:   { bg: '#ffe8e8', text: '#8b0000' },
 }
-
-const TENDERS: Tender[] = [
-  {
-    id: 1,
-    title: 'Supply & Commissioning of SCADA System for 220/66 kV Substation',
-    authority: 'State Power Transmission Corp., Uttar Pradesh',
-    deadline: '30 / 06 / 2026',
-    value: '₹1.2 Cr – ₹2.5 Cr',
-    status: 'Open',
-    sector: 'Grid & SCADA',
-    description: 'RFP for SCADA, RTU, and communication system for a new 220/66 kV substation. IEC 61850 compliance mandatory. Contact Genex for pre-bid consultation and documentation support.',
-  },
-  {
-    id: 2,
-    title: 'Remote Monitoring System for PM Kusum Component-A Solar Plants',
-    authority: 'RRECL — Rajasthan Renewable Energy Corp.',
-    deadline: '15 / 07 / 2026',
-    value: '₹80 L – ₹1.5 Cr',
-    status: 'Open',
-    sector: 'Solar',
-    description: 'RMS platform for 500+ PM Kusum Component-A solar pumping installations across Rajasthan. Must support PM Kusum reporting format and 4G/NB-IoT connectivity.',
-  },
-  {
-    id: 3,
-    title: 'EV Charging Management Software for State Transport Fleet',
-    authority: 'Maharashtra State Road Transport Corp.',
-    deadline: '20 / 08 / 2026',
-    value: '₹50 L – ₹90 L',
-    status: 'Upcoming',
-    sector: 'EV Software',
-    description: 'Software-only tender for OCPP-compliant EV fleet charging management platform. 200+ charge points across 6 depots. Pre-qualification round opens July 1.',
-  },
-  {
-    id: 4,
-    title: 'Energy Management System for 50 MWh Battery Storage Plant',
-    authority: 'Gujarat Urja Vikas Nigam Ltd.',
-    deadline: '12 / 03 / 2026',
-    value: '₹1.8 Cr – ₹3 Cr',
-    status: 'Closed',
-    sector: 'BESS',
-    description: 'EMS-BESS platform for grid-tied battery storage project. IEC 61850 grid interface and OPC-UA integration required. This tender has closed — contact us for future similar opportunities.',
-  },
-]
-
-// ── Animations ────────────────────────────────────────────────────────────────
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -83,10 +27,8 @@ const fadeUp = {
   }),
 }
 
-// ── TenderCard ────────────────────────────────────────────────────────────────
-
-function TenderCard({ tender, index }: { tender: Tender; index: number }) {
-  const st = STATUS_STYLE[tender.status]
+function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
+  const st = STATUS_STYLE[tender.status] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
   const isClosed = tender.status === 'Closed'
 
   return (
@@ -99,7 +41,6 @@ function TenderCard({ tender, index }: { tender: Tender; index: number }) {
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
       className={`relative bg-white border border-[#ececec] rounded-2xl overflow-hidden shadow-[0px_10px_15px_-3px_rgba(226,232,240,0.4),0px_4px_6px_-4px_rgba(226,232,240,0.4)] flex flex-col transition-shadow duration-300 ${isClosed ? 'opacity-70' : 'hover:shadow-[0px_16px_32px_rgba(26,174,232,0.1)]'}`}
     >
-      {/* Top badges — absolute over the card */}
       <div className="absolute left-8 top-4 flex items-center gap-2 z-10">
         <span
           className="px-3 py-1.5 rounded text-sm font-medium"
@@ -113,34 +54,27 @@ function TenderCard({ tender, index }: { tender: Tender; index: number }) {
         </span>
       </div>
 
-      {/* Card body */}
       <div className="pt-16 px-8 pb-8 flex flex-col flex-1 gap-5">
-        {/* Issuer */}
         <div className="flex items-center gap-2 text-sm text-[#62748e]">
           <BusinessOutlinedIcon style={{ fontSize: 15 }} />
           <span>{tender.authority}</span>
         </div>
 
-        {/* Deadline */}
         <div className="flex items-center gap-2 text-sm text-[#62748e]">
           <CalendarTodayOutlinedIcon style={{ fontSize: 15 }} />
           <span>Deadline : {tender.deadline}</span>
         </div>
 
-        {/* Title */}
         <h3 className="text-2xl font-semibold text-[#0f172b] leading-8 capitalize">
           {tender.title}
         </h3>
 
-        {/* Description */}
         <p className="text-[15px] text-[#45556c] leading-[1.52] flex-1">
           {tender.description}
         </p>
 
-        {/* Budget */}
         <p className="text-base font-semibold text-[#0f172b]">{tender.value}</p>
 
-        {/* Enquire button */}
         {!isClosed ? (
           <Link
             to="/contact"
@@ -158,11 +92,17 @@ function TenderCard({ tender, index }: { tender: Tender; index: number }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function Tenders() {
+  const [tenders, setTenders] = useState<TenderItem[]>([])
   const [active, setActive] = useState<Status>('All')
-  const filtered = active === 'All' ? TENDERS : TENDERS.filter(t => t.status === active)
+
+  useEffect(() => {
+    apiFetch<SnippetListResponse<TenderItem>>('/api/snippets/tenders/?limit=200')
+      .then(res => setTenders(res.results))
+      .catch(() => setTenders([]))
+  }, [])
+
+  const filtered = active === 'All' ? tenders : tenders.filter(t => t.status === active)
 
   return (
     <main>
@@ -180,7 +120,6 @@ export default function Tenders() {
       <section className="bg-white py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
 
-          {/* Section heading */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -192,11 +131,10 @@ export default function Tenders() {
               Our Insights On Trends,<br />Technologies, And<br />Transformation
             </h2>
             <p className="text-base text-[#949494] max-w-xs lg:text-right leading-6">
-              Bring to the table win-win survival strategies to ensure proactive domination at the end of the day.
+              Active RFPs and opportunities where Genex platforms are directly applicable.
             </p>
           </motion.div>
 
-          {/* Filter tabs */}
           <div className="flex items-center gap-2 mb-10 flex-wrap">
             {STATUSES.map(s => (
               <button
@@ -214,7 +152,6 @@ export default function Tenders() {
             ))}
           </div>
 
-          {/* 2-column grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {filtered.map((tender, i) => (
               <TenderCard key={tender.id} tender={tender} index={i} />
@@ -224,7 +161,6 @@ export default function Tenders() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="bg-[#f0f9ff] py-14">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div

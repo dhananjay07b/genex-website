@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import type { InnovationTeaserApiValue } from '@/types/api'
 
 interface Product {
   name: string
@@ -9,7 +10,7 @@ interface Product {
   index: number
 }
 
-const PRODUCTS: Product[] = [
+const DEFAULT_PRODUCTS: Product[] = [
   {
     name: 'Advanced SCADA',
     tagline: 'End-to-end supervisory control and data acquisition for commercial & industrial assets',
@@ -98,7 +99,16 @@ function ProductCard({ product }: { product: Product }) {
   )
 }
 
-export function InnovationsTeaser() {
+export function InnovationsTeaser({ products: apiProducts }: { products?: InnovationTeaserApiValue[] }) {
+  const PRODUCTS = apiProducts && apiProducts.length > 0
+    ? apiProducts.map(p => ({
+        name: p.name,
+        tagline: p.tagline,
+        href: p.href,
+        badge: p.badge ?? undefined,
+        index: p.index,
+      }))
+    : DEFAULT_PRODUCTS
   return (
     <section className="bg-surface py-20 lg:py-28 overflow-hidden" aria-labelledby="innovations-teaser-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -144,8 +154,8 @@ export function InnovationsTeaser() {
           whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
         >
-          {PRODUCTS.map(product => (
-            <ProductCard key={product.href} product={product} />
+          {PRODUCTS.map((product, i) => (
+            <ProductCard key={product.href ?? i} product={product} />
           ))}
         </motion.div>
 

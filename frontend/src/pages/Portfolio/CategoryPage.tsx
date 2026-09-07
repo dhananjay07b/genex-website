@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import CloudQueueIcon from '@mui/icons-material/CloudQueue'
@@ -10,13 +11,16 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
-import {
-  PORTFOLIO_PRODUCTS,
-  PRODUCT_BY_SLUG,
-  FAMILY_LABEL,
-} from '@/config/portfolioProjects'
+import { apiFetch } from '@/lib/api/client'
+import type { ProductPageData, WagtailListResponse } from '@/types/api'
 
-// ── Capability icon set (cycles by index) ─────────────────────────────────────
+const FAMILY_LABEL: Record<string, string> = {
+  solar:   'Solar & Monitoring',
+  storage: 'Energy Storage',
+  grid:    'Grid & SCADA',
+  ev:      'EV & Power Tools',
+}
+
 const CAP_ICONS = [
   CloudQueueIcon,
   NotificationsNoneIcon,
@@ -26,32 +30,51 @@ const CAP_ICONS = [
   DeviceHubIcon,
 ]
 
-// ── Stat value splitter ───────────────────────────────────────────────────────
 function splitStat(value: string): { num: string; unit: string } {
   const m = value.match(/^([<>]?[\d,]+(?:\.\d+)?)([+%\s]*)(.*)$/)
   if (m) return { num: m[1], unit: (m[2] + m[3]).trim() }
   return { num: value, unit: '' }
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function CategoryPage() {
   const { category: slug } = useParams<{ category: string }>()
-  const product = slug ? PRODUCT_BY_SLUG[slug] : undefined
+  const [product, setProduct] = useState<ProductPageData | null | undefined>(undefined)
+  const [allProducts, setAllProducts] = useState<ProductPageData[]>([])
 
-  if (!product) return <Navigate to="/portfolio" replace />
+  useEffect(() => {
+    if (!slug) { setProduct(null); return }
+    apiFetch<WagtailListResponse<ProductPageData>>(
+      `/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,gradient,overview,capabilities,tech_highlights,stats&slug=${slug}&limit=1`
+    )
+      .then(res => setProduct(res.items[0] ?? null))
+      .catch(() => setProduct(null))
 
-  const related = PORTFOLIO_PRODUCTS.filter(p => p.slug !== product.slug).slice(0, 3)
+    apiFetch<WagtailListResponse<ProductPageData>>(
+      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family,gradient&limit=50'
+    )
+      .then(res => setAllProducts(res.items))
+      .catch(() => setAllProducts([]))
+  }, [slug])
+
+  if (product === undefined) return null
+  if (product === null) return <Navigate to="/portfolio" replace />
+
+  const related = allProducts.filter(p => p.meta.slug !== slug).slice(0, 3)
+
+  const overview = (product.overview ?? []).map(b => b.value)
+  const capabilities = (product.capabilities ?? []).map(b => b.value)
+  const techHighlights = (product.tech_highlights ?? []).map(b => b.value).slice(0, 4)
+  const stats = (product.stats ?? []).map(b => b.value)
 
   return (
     <main>
       <PageMeta
         title={product.headline}
         description={product.subline}
-        canonical={`/portfolio/${product.slug}`}
+        canonical={`/portfolio/${slug}`}
       />
 
-      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#f0f8ff] border-b border-[#e5e7eb] py-20 lg:py-28 overflow-hidden">
         <div
           className={`absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br ${product.gradient}`}
@@ -70,11 +93,11 @@ export default function CategoryPage() {
                 </span>
               )}
               <span className="px-3 py-1 text-xs font-semibold uppercase tracking-widest bg-[#f0f4f8] text-[#62748e] rounded-full">
-                {FAMILY_LABEL[product.family]}
+                {FAMILY_LABEL[product.family] ?? product.family}
               </span>
             </div>
             <h1 className="text-5xl lg:text-6xl font-extrabold text-[#162456] leading-tight mb-5 max-w-3xl">
-              {product.label}
+              {product.title}
             </h1>
             <p className="text-lg text-[#45556c] leading-relaxed max-w-2xl mb-10">
               {product.subline}
@@ -91,7 +114,7 @@ export default function CategoryPage() {
         </div>
       </section>
 
-      {/* ── OVERVIEW ─────────────────────────────────────────────────────── */}
+      {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
       <section className="bg-white py-20 lg:py-28">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
@@ -107,7 +130,7 @@ export default function CategoryPage() {
                 Overview
               </h2>
               <div className="space-y-5">
-                {product.overview.map((para, i) => (
+                {overview.map((para, i) => (
                   <p key={i} className="text-lg text-[#45556c] leading-7.25">{para}</p>
                 ))}
               </div>
@@ -122,7 +145,7 @@ export default function CategoryPage() {
               className="border-t border-b border-[#eaf0f6] py-10"
             >
               <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-                {product.capabilities.map((cap, i) => {
+                {capabilities.map((cap, i) => {
                   const Icon = CAP_ICONS[i % CAP_ICONS.length]
                   return (
                     <div key={i} className="flex flex-col gap-3">
@@ -140,96 +163,94 @@ export default function CategoryPage() {
         </div>
       </section>
 
-      {/* ── TECHNICAL HIGHLIGHTS ─────────────────────────────────────────── */}
-      <TechHighlightsSection highlights={product.techHighlights.slice(0, 4)} />
+      {/* ── TECHNICAL HIGHLIGHTS ──────────────────────────────────────────────── */}
+      <TechHighlightsSection highlights={techHighlights} />
 
-      {/* ── STATS BAR ────────────────────────────────────────────────────── */}
-      <section className="bg-white border-t border-b border-[#e5e7eb] py-8">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-3 divide-x divide-[#e5e7eb]">
-            {product.stats.map(({ value, label }, i) => {
-              const { num, unit } = splitStat(value)
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.1 }}
-                  className="flex flex-col items-center gap-1.5 py-4 px-4 lg:px-10"
-                >
-                  <div className="flex items-baseline gap-1.5 justify-center">
-                    <span className="text-4xl font-bold text-[#1d4ed8] leading-tight">{num}</span>
-                    {unit && (
-                      <span className="text-xl font-medium text-[#111827]">{unit}</span>
-                    )}
-                  </div>
-                  <span className="text-sm text-[#6b7280] text-center">{label}</span>
-                </motion.div>
-              )
-            })}
+      {/* ── STATS BAR ─────────────────────────────────────────────────────────── */}
+      {stats.length > 0 && (
+        <section className="bg-white border-t border-b border-[#e5e7eb] py-8">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className={`grid grid-cols-${stats.length} divide-x divide-[#e5e7eb]`}>
+              {stats.map(({ value, suffix, label }, i) => {
+                const display = `${value}${suffix ?? ''}`
+                const { num, unit } = splitStat(display)
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: i * 0.1 }}
+                    className="flex flex-col items-center gap-1.5 py-4 px-4 lg:px-10"
+                  >
+                    <div className="flex items-baseline gap-1.5 justify-center">
+                      <span className="text-4xl font-bold text-[#1d4ed8] leading-tight">{num}</span>
+                      {unit && <span className="text-xl font-medium text-[#111827]">{unit}</span>}
+                    </div>
+                    <span className="text-sm text-[#6b7280] text-center">{label}</span>
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ── MORE FROM PORTFOLIO ───────────────────────────────────────────── */}
-      <section className="bg-white py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-start justify-between mb-10">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' as const }}
-              transition={{ duration: 0.45, ease: 'easeOut' as const }}
-            >
-              <h2 className="text-4xl font-bold text-[#162456] capitalize mb-3">
-                More From Our Portfolio
-              </h2>
-              <p className="text-lg text-[#45556c]">
-                Explore our full range of power intelligence solutions.
-              </p>
-            </motion.div>
-            <Link
-              to="/portfolio"
-              className="shrink-0 mt-2 flex items-center gap-1.5 px-6 py-3 bg-[#f0f4f8] text-[#0f2930] text-sm font-bold rounded-full hover:bg-[#e5ebf0] transition-colors duration-200"
-            >
-              View All <ArrowForwardIcon style={{ fontSize: 16 }} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {related.map((p, i) => (
+      {/* ── MORE FROM PORTFOLIO ───────────────────────────────────────────────── */}
+      {related.length > 0 && (
+        <section className="bg-white py-16 lg:py-24">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="flex items-start justify-between mb-10">
               <motion.div
-                key={p.slug}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' as const }}
-                transition={{ duration: 0.45, delay: i * 0.1, ease: 'easeOut' as const }}
+                transition={{ duration: 0.45, ease: 'easeOut' as const }}
               >
-                <Link
-                  to={`/portfolio/${p.slug}`}
-                  className="group block relative h-72 rounded-3xl overflow-hidden"
-                >
-                  <img
-                    src={p.image}
-                    alt={p.label}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
-                  <div className="absolute bottom-0 left-0 p-6">
-                    <p className="text-xs text-white/60 uppercase tracking-widest mb-1 font-medium">
-                      {FAMILY_LABEL[p.family]}
-                    </p>
-                    <p className="text-2xl font-bold text-white leading-tight">{p.label}</p>
-                  </div>
-                </Link>
+                <h2 className="text-4xl font-bold text-[#162456] capitalize mb-3">
+                  More From Our Portfolio
+                </h2>
+                <p className="text-lg text-[#45556c]">
+                  Explore our full range of power intelligence solutions.
+                </p>
               </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <Link
+                to="/portfolio"
+                className="shrink-0 mt-2 flex items-center gap-1.5 px-6 py-3 bg-[#f0f4f8] text-[#0f2930] text-sm font-bold rounded-full hover:bg-[#e5ebf0] transition-colors duration-200"
+              >
+                View All <ArrowForwardIcon style={{ fontSize: 16 }} />
+              </Link>
+            </div>
 
-      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {related.map((p, i) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' as const }}
+                  transition={{ duration: 0.45, delay: i * 0.1, ease: 'easeOut' as const }}
+                >
+                  <Link
+                    to={`/portfolio/${p.meta.slug}`}
+                    className={`group block relative h-72 rounded-3xl overflow-hidden bg-linear-to-br ${p.gradient || 'from-slate-200 to-slate-300'}`}
+                  >
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-6">
+                      <p className="text-xs text-white/60 uppercase tracking-widest mb-1 font-medium">
+                        {FAMILY_LABEL[p.family] ?? p.family}
+                      </p>
+                      <p className="text-2xl font-bold text-white leading-tight">{p.title}</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── CTA ───────────────────────────────────────────────────────────────── */}
       <section className="bg-brand-tint py-20 lg:py-28">
         <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
           <motion.div
@@ -242,7 +263,7 @@ export default function CategoryPage() {
               Start a Project
             </p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Want to see {product.label} in action?
+              Want to see {product.title} in action?
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
               Talk to our engineering team. We scope, plan, and deliver — from a single site to a national rollout.

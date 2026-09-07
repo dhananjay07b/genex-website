@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import type { ProjectShowcaseApiValue } from '@/types/api'
+import { getMediaUrl } from '@/lib/utils'
 
 interface Project {
   name: string
@@ -11,7 +13,7 @@ interface Project {
   image: string
 }
 
-const PROJECTS: Project[] = [
+const DEFAULT_PROJECTS: Project[] = [
   {
     name: '50 MW Solar Power Plant',
     location: 'Rajasthan',
@@ -100,7 +102,18 @@ function ProjectCard({
   )
 }
 
-export function ProjectsAtScale() {
+export function ProjectsAtScale({ projects: apiProjects }: { projects?: ProjectShowcaseApiValue[] }) {
+  const PROJECTS = apiProjects && apiProjects.length > 0
+    ? apiProjects.map(p => ({
+        name: p.name,
+        location: p.location ?? '',
+        metric: p.metric ?? '',
+        href: p.href ?? '/portfolio',
+        gradient: p.gradient ?? 'linear-gradient(160deg, #0a1628 0%, #0d2d50 100%)',
+        image: getMediaUrl(p.image?.url),
+      }))
+    : DEFAULT_PROJECTS
+
   const [hovered, setHovered] = useState<number | null>(null)
 
   function getFlexGrow(i: number): number {

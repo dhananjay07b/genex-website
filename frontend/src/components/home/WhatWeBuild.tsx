@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn, getMediaUrl } from '@/lib/utils'
+import type { WhatWeBuildTabApiValue } from '@/types/api'
 
 interface Tab {
   id: string
@@ -14,7 +15,7 @@ interface Tab {
   image: string
 }
 
-const TABS: Tab[] = [
+const DEFAULT_TABS: Tab[] = [
   {
     id: 'solarlive',
     label: 'SolarLive™',
@@ -187,7 +188,20 @@ const TABS: Tab[] = [
   },
 ]
 
-export function WhatWeBuild() {
+export function WhatWeBuild({ tabs: apiTabs }: { tabs?: WhatWeBuildTabApiValue[] }) {
+  const TABS = apiTabs && apiTabs.length > 0
+    ? apiTabs.map(t => ({
+        id: t.id,
+        label: t.label,
+        badge: t.badge ?? undefined,
+        headline: t.headline,
+        body: t.body,
+        points: t.points,
+        href: t.href,
+        image: getMediaUrl(t.image?.url),
+      }))
+    : DEFAULT_TABS
+
   const [activeId, setActiveId] = useState(TABS[0].id)
   const activeTab = TABS.find(t => t.id === activeId) ?? TABS[0]
 

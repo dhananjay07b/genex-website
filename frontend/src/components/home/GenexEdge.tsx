@@ -1,28 +1,18 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import type { GenexEdgeApiValue } from '@/types/api'
+import { getMediaUrl } from '@/lib/utils'
 
 interface Statement {
   title: string
   body: string
 }
 
-const STATEMENTS: Statement[] = [
-  {
-    title: 'Full-stack.',
-    body: 'Hardware to cloud, in one team. No integration headaches.',
-  },
-  {
-    title: 'Indian engineering.',
-    body: 'Built to global standards. Priced for Indian realities.',
-  },
-  {
-    title: 'Deployed at scale.',
-    body: 'Not pilot projects. 500 MW under active monitoring.',
-  },
-  {
-    title: 'Responsive support.',
-    body: 'Real engineers on call. Not a support ticket number.',
-  },
+const DEFAULT_STATEMENTS: Statement[] = [
+  { title: 'Full-stack.',         body: 'Hardware to cloud, in one team. No integration headaches.' },
+  { title: 'Indian engineering.', body: 'Built to global standards. Priced for Indian realities.' },
+  { title: 'Deployed at scale.',  body: 'Not pilot projects. 500 MW under active monitoring.' },
+  { title: 'Responsive support.', body: 'Real engineers on call. Not a support ticket number.' },
 ]
 
 const containerVariants = {
@@ -35,7 +25,9 @@ const statementVariants = {
   visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: [0.0, 0.0, 0.2, 1] as const } },
 }
 
-export function GenexEdge() {
+export function GenexEdge({ edge }: { edge?: GenexEdgeApiValue }) {
+  const STATEMENTS = edge?.statements?.length ? edge.statements : DEFAULT_STATEMENTS
+  const edgeImage = edge?.image?.url ? getMediaUrl(edge.image.url) : '/images/edge/control-room.png'
   return (
     <section className="bg-surface-alt overflow-hidden" aria-labelledby="genex-edge-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
@@ -50,7 +42,7 @@ export function GenexEdge() {
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
             <img
-              src="/images/edge/control-room.png"
+              src={edgeImage}
               alt="Genex control room with SCADA screens"
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"

@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { TECH_ARTICLES } from '@/config/technologyArticles'
+import { apiFetch } from '@/lib/api/client'
+import type { TechArticleItem, SnippetListResponse } from '@/types/api'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -27,8 +29,8 @@ const fadeUp = {
 
 // ── ArticleCard ───────────────────────────────────────────────────────────────
 
-function ArticleCard({ article, index }: { article: (typeof TECH_ARTICLES)[number]; index: number }) {
-  const diff = DIFFICULTY_STYLE[article.difficulty]
+function ArticleCard({ article, index }: { article: TechArticleItem; index: number }) {
+  const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
   return (
     <motion.div
       custom={index * 0.08}
@@ -87,15 +89,15 @@ function ArticleCard({ article, index }: { article: (typeof TECH_ARTICLES)[numbe
 
         {/* Divider */}
         <div className="border-t border-[#e8e8e8] pt-5 flex items-center justify-between gap-4">
-          {/* Tags */}
+          {/* Topic */}
           <p className="text-sm font-semibold text-[#0f172b] leading-5">
-            {article.tags.join(', ')}
+            {article.topic}
           </p>
 
           {/* Read time */}
           <span className="shrink-0 flex items-center gap-1.5 text-sm font-medium text-[#62748e] border border-[#e4e4e4] rounded-full px-3 py-1 whitespace-nowrap">
             <AccessTimeOutlinedIcon style={{ fontSize: 14 }} />
-            {article.readTime}
+            {article.read_time}
           </span>
         </div>
       </div>
@@ -106,6 +108,14 @@ function ArticleCard({ article, index }: { article: (typeof TECH_ARTICLES)[numbe
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Technology() {
+  const [articles, setArticles] = useState<TechArticleItem[]>([])
+
+  useEffect(() => {
+    apiFetch<SnippetListResponse<TechArticleItem>>('/api/snippets/tech-articles/?limit=200')
+      .then(res => setArticles(res.results))
+      .catch(() => setArticles([]))
+  }, [])
+
   return (
     <main>
       <PageMeta
@@ -140,7 +150,7 @@ export default function Technology() {
 
           {/* 3-column grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {TECH_ARTICLES.map((article, i) => (
+            {articles.map((article, i) => (
               <ArticleCard key={article.id} article={article} index={i} />
             ))}
           </div>

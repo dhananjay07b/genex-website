@@ -20,7 +20,7 @@ from .blocks import (
     CertificationBlock,
     ContactDetailBlock,
     CTABandBlock,
-    CredibilityNameBlock,
+    CredibilityLogoBlock,
     DocumentSectionBlock,
     EngineeringPrincipleBlock,
     EventBannerBlock,
@@ -118,7 +118,7 @@ class SiteSettings(BaseSiteSetting):
 class HomePage(BasePage):
     event_banner      = StreamField([("event", EventBannerBlock())], blank=True, use_json_field=True)
     hero_slides       = StreamField([("slide", HeroSlideBlock())], use_json_field=True, min_num=1)
-    credibility_strip = StreamField([("client", CredibilityNameBlock())], use_json_field=True, min_num=1)
+    credibility_strip = StreamField([("client", CredibilityLogoBlock())], use_json_field=True, min_num=1)
     impact_stats      = StreamField([("stat", StatBlock())], use_json_field=True, min_num=1)
     what_we_build     = StreamField([("tab", WhatWeBuildTabBlock())], use_json_field=True, min_num=1)
     edge_section      = StreamField([("section", GenexEdgeSectionBlock())], use_json_field=True)

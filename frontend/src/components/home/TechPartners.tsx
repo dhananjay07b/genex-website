@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import type { TechPartnerApiValue } from '@/types/api'
 
 interface Partner {
   name: string
@@ -6,7 +7,7 @@ interface Partner {
   href: string
 }
 
-const PARTNERS: Partner[] = [
+const DEFAULT_PARTNERS: Partner[] = [
   { name: 'Amazon Web Services', abbr: 'AWS',       href: 'https://aws.amazon.com' },
   { name: 'Microsoft Azure',     abbr: 'Azure',     href: 'https://azure.microsoft.com' },
   { name: 'Google Cloud',        abbr: 'GCP',       href: 'https://cloud.google.com' },
@@ -27,7 +28,10 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 }
 
-export function TechPartners() {
+export function TechPartners({ partners: apiPartners }: { partners?: TechPartnerApiValue[] }) {
+  const PARTNERS = apiPartners && apiPartners.length > 0
+    ? apiPartners.map(p => ({ name: p.name, abbr: p.abbr, href: p.href ?? '#' }))
+    : DEFAULT_PARTNERS
   return (
     <section className="bg-white py-20 lg:py-24" aria-labelledby="partners-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
