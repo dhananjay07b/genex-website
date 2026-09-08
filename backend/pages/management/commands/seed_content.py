@@ -261,7 +261,6 @@ class Command(BaseCommand):
                 "metric": p.get("metric", ""),
                 "image": None,
                 "href": p.get("href", ""),
-                "gradient": p.get("gradient", ""),
             }
             for p in hp["projects_showcase"]
         ])
@@ -270,14 +269,18 @@ class Command(BaseCommand):
 
         world_map = _list_stream("map", [
             {
-                "heading": "",
+                "eyebrow": hp.get("world_map_eyebrow", "Global Presence"),
+                "heading": hp.get("world_map_heading", "Operating Worldwide."),
+                "description": hp.get("world_map_description", []),
                 "pins": hp["world_map_pins"],
                 "stats": hp["world_map_stats"],
-                "bullet_points": [],
+                "bullet_points": hp.get("world_map_bullet_points", []),
             }
         ])
 
-        tech_partners = _list_stream("partner", hp["tech_partners"])
+        tech_partners = _list_stream("partner", [
+            {**p, "logo": None} for p in hp["tech_partners"]
+        ])
 
         testimonials = _list_stream("item", hp["testimonials"])
 

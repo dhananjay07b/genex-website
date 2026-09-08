@@ -27,27 +27,36 @@ const statementVariants = {
 
 export function GenexEdge({ edge }: { edge?: GenexEdgeApiValue }) {
   const STATEMENTS = edge?.statements?.length ? edge.statements : DEFAULT_STATEMENTS
-  const edgeImage = edge?.image?.url ? getMediaUrl(edge.image.url) : '/images/edge/control-room.png'
+  const heading = edge?.heading || 'Why Genex.'
+  // Local fallback image only applies when the CMS has no section at all — once a section
+  // exists, an empty image field means "no image", not "show the placeholder photo".
+  const edgeImage = edge?.image?.url
+    ? getMediaUrl(edge.image.url)
+    : edge
+      ? null
+      : '/images/edge/control-room.png'
   return (
     <section className="bg-surface-alt overflow-hidden" aria-labelledby="genex-edge-heading">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
         <div className="grid lg:grid-cols-[45fr_55fr] gap-12 lg:gap-20 items-center">
 
-          {/* Left: visual placeholder — swap with real photo/video */}
+          {/* Left: visual */}
           <motion.div
-            className="relative rounded-2xl overflow-hidden h-72 lg:h-120"
+            className="relative rounded-2xl overflow-hidden h-72 lg:h-120 bg-[linear-gradient(160deg,#0a1628_0%,#0d2d50_100%)]"
             initial={{ opacity: 0, x: -24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
-            <img
-              src={edgeImage}
-              alt="Genex control room with SCADA screens"
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-              width="960" height="720"
-            />
+            {edgeImage && (
+              <img
+                src={edgeImage}
+                alt="Genex control room with SCADA screens"
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                width="960" height="720"
+              />
+            )}
             <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(10,22,40,0.10)_0%,rgba(10,22,40,0.05)_100%)]" />
           </motion.div>
 
@@ -61,7 +70,7 @@ export function GenexEdge({ edge }: { edge?: GenexEdgeApiValue }) {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              Why Genex.
+              {heading}
             </motion.h2>
 
             <motion.div

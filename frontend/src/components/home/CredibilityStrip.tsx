@@ -38,7 +38,7 @@ export function CredibilityStrip({ clients }: { clients?: Client[] }) {
                   key={i}
                   src={getMediaUrl(client.logo.url)}
                   alt={client.name}
-                  className="shrink-0 h-6 w-auto max-w-24 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-200 select-none"
+                  className="shrink-0 h-10 w-auto max-w-24 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-200 select-none"
                 />
               ) : (
                 <span

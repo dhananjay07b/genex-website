@@ -9,9 +9,10 @@ interface Project {
   location: string
   metric: string
   href: string
-  gradient: string
   image: string
 }
+
+const CARD_GRADIENT = 'linear-gradient(160deg, #0a1628 0%, #0d2d50 100%)'
 
 const DEFAULT_PROJECTS: Project[] = [
   {
@@ -19,7 +20,6 @@ const DEFAULT_PROJECTS: Project[] = [
     location: 'Rajasthan',
     metric: '50 MW',
     href: '/portfolio/solar-power-plants',
-    gradient: 'linear-gradient(160deg, #1a2d0a 0%, #2a4a15 100%)',
     image: '/images/projects/solar-rajasthan.png',
   },
   {
@@ -27,7 +27,6 @@ const DEFAULT_PROJECTS: Project[] = [
     location: 'Pune, Maharashtra',
     metric: 'SCADA',
     href: '/portfolio/rms',
-    gradient: 'linear-gradient(160deg, #0a1628 0%, #0d2d50 100%)',
     image: '/images/projects/scada-pune.png',
   },
   {
@@ -35,12 +34,9 @@ const DEFAULT_PROJECTS: Project[] = [
     location: 'Gujarat',
     metric: 'Wind RMS',
     href: '/portfolio/wind-energy',
-    gradient: 'linear-gradient(160deg, #0a1a28 0%, #0d3040 100%)',
     image: '/images/projects/wind-gujrat.jpg',
   },
 ]
-
-const FLEX_DEFAULT = [5, 3, 2]
 
 function ProjectCard({
   project,
@@ -78,7 +74,7 @@ function ProjectCard({
           loading="lazy"
           width="960" height="540"
         />
-        <div className="absolute inset-0" style={{ background: project.gradient, opacity: 0.45 }} />
+        <div className="absolute inset-0" style={{ background: CARD_GRADIENT, opacity: 0.45 }} />
 
         {/* Hover overlay */}
         <div
@@ -109,7 +105,6 @@ export function ProjectsAtScale({ projects: apiProjects }: { projects?: ProjectS
         location: p.location ?? '',
         metric: p.metric ?? '',
         href: p.href ?? '/portfolio',
-        gradient: p.gradient ?? 'linear-gradient(160deg, #0a1628 0%, #0d2d50 100%)',
         image: getMediaUrl(p.image?.url),
       }))
     : DEFAULT_PROJECTS
@@ -117,11 +112,12 @@ export function ProjectsAtScale({ projects: apiProjects }: { projects?: ProjectS
   const [hovered, setHovered] = useState<number | null>(null)
 
   function getFlexGrow(i: number): number {
-    if (hovered === null) return FLEX_DEFAULT[i]
+    const base = i === 0 ? 5 : i === 1 ? 3 : 2
+    if (hovered === null) return base
     if (i === hovered) return 5
     // Shrink the default-large card when it's not the hovered one
     if (i === 0) return 2
-    return FLEX_DEFAULT[i]
+    return base
   }
 
   return (

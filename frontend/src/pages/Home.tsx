@@ -21,7 +21,7 @@ export default function Home() {
 
   useEffect(() => {
     apiFetch<WagtailListResponse<HomePageData>>(
-      '/api/v2/pages/?type=pages.HomePage&fields=event_banner,hero_slides,credibility_strip,impact_stats,what_we_build,edge_section,projects_showcase,innovations_teaser,tech_partners,testimonials,cta_section&limit=1'
+      '/api/v2/pages/?type=pages.HomePage&fields=event_banner,hero_slides,credibility_strip,impact_stats,what_we_build,edge_section,projects_showcase,innovations_teaser,world_map,gelearn_teaser,tech_partners,testimonials,cta_section&limit=1'
     )
       .then(res => setData(res.items[0] ?? null))
       .catch(() => setData(null))
@@ -35,6 +35,8 @@ export default function Home() {
   const edgeVal   = data?.edge_section?.[0]?.value
   const projects  = data?.projects_showcase?.map(b => b.value) ?? []
   const innoItems = data?.innovations_teaser?.map(b => b.value) ?? []
+  const worldMap  = data?.world_map?.[0]?.value
+  const gelearnCards = data?.gelearn_teaser?.map(b => b.value) ?? []
   const partners  = data?.tech_partners?.map(b => b.value) ?? []
   const testi     = data?.testimonials?.map(b => b.value) ?? []
 
@@ -56,10 +58,10 @@ export default function Home() {
       <WhatWeBuild      tabs={tabs.length ? tabs : undefined} />
       <ProjectsAtScale  projects={projects.length ? projects : undefined} />
       <GenexEdge        edge={edgeVal} />
-      <IndiaOperationsMap />
+      <IndiaOperationsMap map={worldMap} />
       <InnovationsTeaser products={innoItems.length ? innoItems : undefined} />
       <Testimonials      testimonials={testi.length ? testi : undefined} />
-      <GeLearnTeaser />
+      <GeLearnTeaser     cards={gelearnCards.length ? gelearnCards : undefined} />
       <TechPartners      partners={partners.length ? partners : undefined} />
       <FinalCTA />
     </main>

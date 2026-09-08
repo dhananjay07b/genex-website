@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import EngineeringOutlinedIcon from '@mui/icons-material/EngineeringOutlined'
@@ -9,18 +10,36 @@ import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import RssFeedOutlinedIcon from '@mui/icons-material/RssFeedOutlined'
 import HelpOutlinedIcon from '@mui/icons-material/HelpOutlined'
 import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
+import type { SvgIconProps } from '@mui/material/SvgIcon'
 import { buttonVariants } from '../ui/Button'
+import type { GeLearnTeaserCardApiValue } from '@/types/api'
 
-const CATEGORIES = [
-  { slug: 'how-we-work',   label: 'How We Work',            Icon: EngineeringOutlinedIcon },
-  { slug: 'technology',    label: 'Technology Deep Dives',   Icon: MemoryOutlinedIcon },
-  { slug: 'case-studies',  label: 'Case Studies',            Icon: DescriptionOutlinedIcon },
-  { slug: 'tenders',       label: 'Tenders & Opportunities', Icon: GavelOutlinedIcon },
-  { slug: 'whitepapers',   label: 'Whitepapers & Reports',   Icon: ArticleOutlinedIcon },
-  { slug: 'videos',        label: 'Video Library',           Icon: PlayCircleOutlinedIcon },
-  { slug: 'blog',          label: 'Blog & Insights',         Icon: RssFeedOutlinedIcon },
-  { slug: 'faq',           label: 'FAQ',                     Icon: HelpOutlinedIcon },
-  { slug: 'podcasts',      label: 'Podcasts & Interviews',   Icon: MicOutlinedIcon },
+// Icon field is a free-choice CMS field shared across many blocks (see ICON_CHOICES in
+// backend/pages/blocks.py); only the icons actually relevant to a GeLearn category are mapped
+// here, with a sensible fallback for anything else an editor might pick.
+const ICON_MAP: Record<string, ComponentType<SvgIconProps>> = {
+  EngineeringOutlined: EngineeringOutlinedIcon,
+  MemoryOutlined: MemoryOutlinedIcon,
+  DescriptionOutlined: DescriptionOutlinedIcon,
+  GavelOutlined: GavelOutlinedIcon,
+  ArticleOutlined: ArticleOutlinedIcon,
+  PlayCircleOutlined: PlayCircleOutlinedIcon,
+  RssFeedOutlined: RssFeedOutlinedIcon,
+  HelpOutlined: HelpOutlinedIcon,
+  MicOutlined: MicOutlinedIcon,
+}
+const FALLBACK_ICON = ArticleOutlinedIcon
+
+const DEFAULT_CATEGORIES: GeLearnTeaserCardApiValue[] = [
+  { slug: 'how-we-work',   label: 'How We Work',            icon: 'EngineeringOutlined' },
+  { slug: 'technology',    label: 'Technology Deep Dives',   icon: 'MemoryOutlined' },
+  { slug: 'case-studies',  label: 'Case Studies',            icon: 'DescriptionOutlined' },
+  { slug: 'tenders',       label: 'Tenders & Opportunities', icon: 'GavelOutlined' },
+  { slug: 'whitepapers',   label: 'Whitepapers & Reports',   icon: 'ArticleOutlined' },
+  { slug: 'videos',        label: 'Video Library',           icon: 'PlayCircleOutlined' },
+  { slug: 'blog',          label: 'Blog & Insights',         icon: 'RssFeedOutlined' },
+  { slug: 'faq',           label: 'FAQ',                     icon: 'HelpOutlined' },
+  { slug: 'podcasts',      label: 'Podcasts & Interviews',   icon: 'MicOutlined' },
 ]
 
 // Center-outward ripple delays (row-major, center=index 4 fires first)
@@ -36,7 +55,8 @@ const tileVariants = {
   }),
 }
 
-export function GeLearnTeaser() {
+export function GeLearnTeaser({ cards }: { cards?: GeLearnTeaserCardApiValue[] }) {
+  const CATEGORIES = cards && cards.length > 0 ? cards : DEFAULT_CATEGORIES
   return (
     <section
       className="bg-brand-tint py-20 lg:py-28 overflow-hidden"
@@ -77,38 +97,41 @@ export function GeLearnTeaser() {
             </Link>
 
             <p className="mt-6 text-xs text-text-muted tracking-wide">
-              9 Content Sections &nbsp;·&nbsp; Case Studies &nbsp;·&nbsp; Whitepapers &nbsp;·&nbsp; Video Library
+              {CATEGORIES.length} Content Sections &nbsp;·&nbsp; Case Studies &nbsp;·&nbsp; Whitepapers &nbsp;·&nbsp; Video Library
             </p>
           </motion.div>
 
           {/* ── Right column — 3×3 ripple grid ── */}
           <div className="grid grid-cols-3 gap-3">
-            {CATEGORIES.map(({ slug, label, Icon }, i) => (
-              <motion.div
-                key={slug}
-                custom={RIPPLE_DELAYS[i]}
-                variants={tileVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-40px' }}
-              >
-                <Link
-                  to={`/gelearn/${slug}`}
-                  className="group flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-primary/40 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label={label}
+            {CATEGORIES.map(({ slug, label, icon }, i) => {
+              const Icon = ICON_MAP[icon] ?? FALLBACK_ICON
+              return (
+                <motion.div
+                  key={slug}
+                  custom={RIPPLE_DELAYS[i % RIPPLE_DELAYS.length]}
+                  variants={tileVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: '-40px' }}
                 >
-                  {/* Icon badge */}
-                  <div className="relative overflow-hidden flex h-10 w-10 items-center justify-center rounded-lg gradient-brand shrink-0">
-                    <Icon sx={{ fontSize: 20, color: '#fff' }} />
-                    <div className="pointer-events-none absolute inset-y-0 w-1/2 bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </div>
+                  <Link
+                    to={`/gelearn/${slug}`}
+                    className="group flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-primary/40 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={label}
+                  >
+                    {/* Icon badge */}
+                    <div className="relative overflow-hidden flex h-10 w-10 items-center justify-center rounded-lg gradient-brand shrink-0">
+                      <Icon sx={{ fontSize: 20, color: '#fff' }} />
+                      <div className="pointer-events-none absolute inset-y-0 w-1/2 bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
 
-                  <span className="text-[11px] font-semibold text-text-muted group-hover:text-primary leading-tight transition-colors duration-200">
-                    {label}
-                  </span>
-                </Link>
-              </motion.div>
-            ))}
+                    <span className="text-[11px] font-semibold text-text-muted group-hover:text-primary leading-tight transition-colors duration-200">
+                      {label}
+                    </span>
+                  </Link>
+                </motion.div>
+              )
+            })}
           </div>
 
         </div>

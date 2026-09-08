@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { WorldMapPaths } from './WorldMapPaths'
+import type { WorldMapApiValue } from '@/types/api'
 
 // ─── Coordinate mapping ────────────────────────────────────────────────────
 // world.svg geoViewBox: west=-169.110266, north=83.600842, east=190.486279, south=-58.508473
@@ -22,32 +23,42 @@ interface Pin {
   delay: number
 }
 
-const PROJECT_PINS: Pin[] = [
-  { id: 'IN', name: 'India',          x: toX(77.2),   y: toY(28.6),  delay: 0.00 },
-  { id: 'US', name: 'United States',  x: toX(-98.0),  y: toY(38.0),  delay: 0.10 },
-  { id: 'SG', name: 'Singapore',      x: toX(103.8),  y: toY(1.35),  delay: 0.20 },
-  { id: 'GB', name: 'United Kingdom', x: toX(-0.12),  y: toY(51.5),  delay: 0.08 },
-  { id: 'CN', name: 'China',          x: toX(116.4),  y: toY(39.9),  delay: 0.14 },
-  { id: 'CA', name: 'Canada',         x: toX(-75.7),  y: toY(45.4),  delay: 0.06 },
-  { id: 'CO', name: 'Colombia',       x: toX(-74.1),  y: toY(4.7),   delay: 0.24 },
-  { id: 'FR', name: 'France',         x: toX(2.35),   y: toY(48.85), delay: 0.12 },
-  { id: 'IT', name: 'Italy',          x: toX(12.48),  y: toY(41.9),  delay: 0.18 },
+interface PinData {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  delay: number
+}
+
+const DEFAULT_PINS: PinData[] = [
+  { id: 'IN', name: 'India',          latitude: 28.6,  longitude: 77.2,    delay: 0.00 },
+  { id: 'US', name: 'United States',  latitude: 38.0,  longitude: -98.0,   delay: 0.10 },
+  { id: 'SG', name: 'Singapore',      latitude: 1.35,  longitude: 103.8,   delay: 0.20 },
+  { id: 'GB', name: 'United Kingdom', latitude: 51.5,  longitude: -0.12,   delay: 0.08 },
+  { id: 'CN', name: 'China',          latitude: 39.9,  longitude: 116.4,   delay: 0.14 },
+  { id: 'CA', name: 'Canada',         latitude: 45.4,  longitude: -75.7,   delay: 0.06 },
+  { id: 'CO', name: 'Colombia',       latitude: 4.7,   longitude: -74.1,   delay: 0.24 },
+  { id: 'FR', name: 'France',         latitude: 48.85, longitude: 2.35,    delay: 0.12 },
+  { id: 'IT', name: 'Italy',          latitude: 41.9,  longitude: 12.48,   delay: 0.18 },
 ]
 
-// ─── Connections ───────────────────────────────────────────────────────────
-const RAW_CONNECTIONS = [
-  { id: 'in-sg', from: 'IN', to: 'SG', dur: 3.0 },
-  { id: 'in-cn', from: 'IN', to: 'CN', dur: 2.6 },
-  { id: 'cn-sg', from: 'CN', to: 'SG', dur: 2.4 },
-  { id: 'in-gb', from: 'IN', to: 'GB', dur: 3.8 },
-  { id: 'gb-fr', from: 'GB', to: 'FR', dur: 2.2 },
-  { id: 'gb-it', from: 'GB', to: 'IT', dur: 2.4 },
-  { id: 'fr-it', from: 'FR', to: 'IT', dur: 2.1 },
-  { id: 'gb-ca', from: 'GB', to: 'CA', dur: 3.6 },
-  { id: 'gb-us', from: 'GB', to: 'US', dur: 3.8 },
-  { id: 'us-ca', from: 'US', to: 'CA', dur: 2.3 },
-  { id: 'us-co', from: 'US', to: 'CO', dur: 2.8 },
-  { id: 'cn-us', from: 'CN', to: 'US', dur: 4.2 },
+const DEFAULT_STATS = [
+  { value: '9',  suffix: '',   label: 'Countries'  },
+  { value: '3',  suffix: '',   label: 'Continents' },
+  { value: '24', suffix: '×7', label: 'Operations' },
+]
+
+const DEFAULT_DESCRIPTION = [
+  'Genex technology platforms are deployed across power infrastructure projects spanning Asia, Europe, and the Americas — connecting operators, engineers, and decision-makers in real time across continents.',
+  'From renewable energy monitoring in India to grid intelligence projects in Europe and the Americas, our systems run 24×7 at global scale.',
+]
+
+const DEFAULT_BULLET_POINTS = [
+  'Asia Pacific — India, Singapore, China',
+  'Europe — UK, France, Italy',
+  'Americas — US, Canada, Colombia',
+  'Remote Monitoring — 24×7 Global NOC',
 ]
 
 function arcPath(x1: number, y1: number, x2: number, y2: number) {
@@ -56,24 +67,6 @@ function arcPath(x1: number, y1: number, x2: number, y2: number) {
   const cpy = (y1 + y2) / 2 - dist * 0.50
   return `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`
 }
-
-const CONNECTIONS = RAW_CONNECTIONS.map((c, i) => {
-  const p1 = PROJECT_PINS.find(p => p.id === c.from)!
-  const p2 = PROJECT_PINS.find(p => p.id === c.to)!
-  return {
-    ...c,
-    d: arcPath(p1.x, p1.y, p2.x, p2.y),
-    drawDelay: i * 0.12,
-  }
-})
-
-const PIN_ENTRANCE_DELAYS = PROJECT_PINS.map(() => 0.3 + Math.random() * 1.1)
-
-const STATS = [
-  { value: '9',    label: 'Countries'  },
-  { value: '3',    label: 'Continents' },
-  { value: '24×7', label: 'Operations' },
-]
 
 // ─── TravelingDot ──────────────────────────────────────────────────────────
 interface TravelingDotProps {
@@ -116,12 +109,39 @@ function TravelingDot({ pathId, r, fill, dur, keyPoints, opacityDelay }: Traveli
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
-export function WorldOperationsMap() {
+export function WorldOperationsMap({ map }: { map?: WorldMapApiValue }) {
   const sectionRef   = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [activePin,  setActivePin]  = useState<Pin | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
   const [dotsActive, setDotsActive] = useState(false)
+
+  const eyebrow       = map?.eyebrow || 'Global Presence'
+  const heading       = map?.heading || 'Operating Worldwide.'
+  const description   = map?.description?.length ? map.description : DEFAULT_DESCRIPTION
+  const bulletPoints  = map?.bullet_points?.length ? map.bullet_points : DEFAULT_BULLET_POINTS
+  const STATS         = map?.stats?.length ? map.stats : DEFAULT_STATS
+  const pinData        = map?.pins?.length ? map.pins.map(p => ({ ...p, delay: p.delay ?? 0 })) : DEFAULT_PINS
+
+  const PROJECT_PINS: Pin[] = useMemo(
+    () => pinData.map(p => ({ id: p.id, name: p.name, x: toX(p.longitude), y: toY(p.latitude), delay: p.delay })),
+    [pinData]
+  )
+
+  // Arcs connect the first pin (hub) to every other pin, so this stays correct
+  // no matter how many pins an editor adds or removes in the CMS.
+  const CONNECTIONS = useMemo(() => {
+    if (PROJECT_PINS.length < 2) return []
+    const hub = PROJECT_PINS[0]
+    return PROJECT_PINS.slice(1).map((p, i) => ({
+      id: `${hub.id}-${p.id}`,
+      d: arcPath(hub.x, hub.y, p.x, p.y),
+      dur: 2.2 + (i % 4) * 0.5,
+      drawDelay: i * 0.12,
+    }))
+  }, [PROJECT_PINS])
+
+  const PIN_ENTRANCE_DELAYS = PROJECT_PINS.map(p => 0.3 + (p.delay % 1.1))
 
   const isInView = useInView(sectionRef, { once: true, amount: 0.15 })
 
@@ -161,30 +181,21 @@ export function WorldOperationsMap() {
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
-              Global Presence
+              {eyebrow}
             </p>
             <h2
               id="world-map-heading"
               className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary leading-tight mb-6"
             >
-              Operating<br />Worldwide.
+              {heading}
             </h2>
-            <p className="text-text-muted text-base leading-relaxed mb-4 max-w-sm">
-              Genex technology platforms are deployed across power infrastructure projects
-              spanning Asia, Europe, and the Americas — connecting operators, engineers,
-              and decision-makers in real time across continents.
-            </p>
-            <p className="text-text-muted text-base leading-relaxed mb-6 max-w-sm">
-              From renewable energy monitoring in India to grid intelligence projects in
-              Europe and the Americas, our systems run 24×7 at global scale.
-            </p>
+            {description.map((paragraph, i) => (
+              <p key={i} className="text-text-muted text-base leading-relaxed mb-4 last:mb-6 max-w-sm">
+                {paragraph}
+              </p>
+            ))}
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-10 max-w-sm">
-              {[
-                'Asia Pacific — India, Singapore, China',
-                'Europe — UK, France, Italy',
-                'Americas — US, Canada, Colombia',
-                'Remote Monitoring — 24×7 Global NOC',
-              ].map((item) => (
+              {bulletPoints.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                   {item}
@@ -192,9 +203,9 @@ export function WorldOperationsMap() {
               ))}
             </ul>
             <div className="grid grid-cols-3 gap-4">
-              {STATS.map(({ value, label }) => (
+              {STATS.map(({ value, suffix, label }) => (
                 <div key={label} className="border-l-2 border-primary/20 pl-3">
-                  <span className="text-4xl font-extrabold gradient-brand-text">{value}</span>
+                  <span className="text-4xl font-extrabold gradient-brand-text">{value}{suffix}</span>
                   <p className="text-sm text-text-muted mt-0.5">{label}</p>
                 </div>
               ))}

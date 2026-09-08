@@ -176,8 +176,8 @@ class StatementBlock(blocks.StructBlock):
 
 
 class GenexEdgeSectionBlock(ImageApiStructBlock):
-    """The 'Why Genex' split section — image on one side, statements on the other."""
-    heading    = blocks.CharBlock(required=False)
+    """The 'Why Genex' split section — image on one side, statements on the other. Limited to one per page."""
+    heading    = blocks.CharBlock(required=False, default="Why Genex.", help_text="Section title shown above the statements")
     image      = ImageChooserBlock(required=False, help_text="Control room image")
     statements = blocks.ListBlock(StatementBlock(), min_num=1)
 
@@ -186,16 +186,12 @@ class GenexEdgeSectionBlock(ImageApiStructBlock):
 
 
 class ProjectShowcaseItemBlock(ImageApiStructBlock):
-    """Maps to Project in ProjectsAtScale.tsx — gradient is raw CSS string."""
+    """Maps to Project in ProjectsAtScale.tsx. Card background gradient is hardcoded in the frontend, not editable."""
     name     = blocks.CharBlock()
     location = blocks.CharBlock(required=False)
     metric   = blocks.CharBlock(required=False)
     image    = ImageChooserBlock(required=False)
     href     = blocks.CharBlock(required=False)
-    gradient = blocks.CharBlock(
-        required=False,
-        help_text="CSS linear-gradient string e.g. linear-gradient(160deg, #1a2d0a, #2a4a15)",
-    )
 
     class Meta:
         icon = "site"
@@ -213,11 +209,12 @@ class InnovationsTeaserItemBlock(blocks.StructBlock):
         icon = "snippet"
 
 
-class TechPartnerBlock(blocks.StructBlock):
-    """Maps to { name, abbr, href } in TechPartners.tsx — text-only, no logo."""
+class TechPartnerBlock(ImageApiStructBlock):
+    """Maps to { name, abbr, href, logo } in TechPartners.tsx. Falls back to the abbr text pill when no logo is set."""
     name = blocks.CharBlock(help_text="Full name e.g. 'Amazon Web Services'")
     abbr = blocks.CharBlock(help_text="Short display name e.g. 'AWS'")
     href = blocks.URLBlock(required=False)
+    logo = ImageChooserBlock(required=False, help_text="Small partner/standard logo — shown instead of the abbreviation text")
 
     class Meta:
         icon = "link"
@@ -236,14 +233,11 @@ class TestimonialItemBlock(blocks.StructBlock):
 
 
 class GeLearnTeaserCardBlock(blocks.StructBlock):
-    """Maps to GELEARN_SECTIONS in GeLearnTeaser.tsx — 9 hub cards."""
-    slug        = blocks.CharBlock(help_text="URL slug e.g. 'how-we-work'")
-    label       = blocks.CharBlock()
-    icon        = blocks.ChoiceBlock(choices=ICON_CHOICES)
-    gradient    = blocks.CharBlock(help_text="Tailwind gradient class for card background")
-    icon_bg     = blocks.CharBlock(help_text="Tailwind gradient class for icon square background")
-    count       = blocks.CharBlock(help_text="e.g. '6 Methodology Steps'")
-    description = blocks.TextBlock()
+    """Maps to CATEGORIES in GeLearnTeaser.tsx — 9 hub tiles. Tile color/icon-badge styling
+    is hardcoded in the frontend (identical for every tile), not editor-controlled."""
+    slug  = blocks.CharBlock(help_text="URL slug e.g. 'how-we-work'")
+    label = blocks.CharBlock()
+    icon  = blocks.ChoiceBlock(choices=ICON_CHOICES)
 
     class Meta:
         icon = "folder-open-inverse"
@@ -262,10 +256,13 @@ class MapPinBlock(blocks.StructBlock):
 
 
 class WorldMapSectionBlock(blocks.StructBlock):
-    heading       = blocks.CharBlock(required=False)
+    """The 'Operating Worldwide' section — copy, stats strip, and pins are all editor-managed."""
+    eyebrow       = blocks.CharBlock(required=False, default="Global Presence", help_text="Small label above the heading")
+    heading       = blocks.CharBlock(required=False, default="Operating Worldwide.")
+    description   = blocks.ListBlock(blocks.TextBlock(), required=False, default=[], help_text="Paragraphs shown under the heading")
+    bullet_points = blocks.ListBlock(blocks.CharBlock(), required=False, default=[])
+    stats         = blocks.ListBlock(StatBlock(), help_text="Stats strip — add or remove freely")
     pins          = blocks.ListBlock(MapPinBlock(), min_num=1)
-    stats         = blocks.ListBlock(StatBlock(), help_text="3 stats strip items")
-    bullet_points = blocks.ListBlock(blocks.CharBlock(), required=False)
 
     class Meta:
         icon = "globe"

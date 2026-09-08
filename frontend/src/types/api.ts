@@ -194,7 +194,6 @@ export interface ProjectShowcaseApiValue {
   metric: string | null
   image: WagtailImage | null
   href: string | null
-  gradient: string | null
 }
 
 export interface InnovationTeaserApiValue {
@@ -217,6 +216,7 @@ export interface TechPartnerApiValue {
   name: string
   abbr: string
   href: string | null
+  logo: WagtailImage | null
 }
 
 export interface EventBannerApiValue {
@@ -225,6 +225,29 @@ export interface EventBannerApiValue {
   tagline: string
   description: string | null
   registration_url: string
+}
+
+export interface MapPinApiValue {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  delay: number | null
+}
+
+export interface WorldMapApiValue {
+  eyebrow: string | null
+  heading: string | null
+  description: string[]
+  bullet_points: string[]
+  stats: ProductStat[]
+  pins: MapPinApiValue[]
+}
+
+export interface GeLearnTeaserCardApiValue {
+  slug: string
+  label: string
+  icon: string
 }
 
 export interface HomePageData extends WagtailPageBase {
@@ -236,6 +259,8 @@ export interface HomePageData extends WagtailPageBase {
   edge_section:      StreamBlock<GenexEdgeApiValue>[]
   projects_showcase: StreamBlock<ProjectShowcaseApiValue>[]
   innovations_teaser:StreamBlock<InnovationTeaserApiValue>[]
+  world_map:         StreamBlock<WorldMapApiValue>[]
+  gelearn_teaser:    StreamBlock<GeLearnTeaserCardApiValue>[]
   tech_partners:     StreamBlock<TechPartnerApiValue>[]
   testimonials:      StreamBlock<TestimonialApiValue>[]
   cta_section:       StreamBlock<{ heading: string; description: string; primary_cta_text: string; primary_cta_link: string }>[]
