@@ -1,141 +1,31 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
-import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
-import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
-import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
-import SecurityOutlinedIcon from '@mui/icons-material/SecurityOutlined'
+import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-
-// ── Data ────────────────────────────────────────────────────────────────────
-
-const MILESTONES = [
-  {
-    year: '2010',
-    label: 'THE BEGINNING',
-    title: 'Founded in Jaipur',
-    description:
-      'Genex Technocrats started as a power electronics consultancy, providing engineering services to industrial and commercial clients in Rajasthan.',
-  },
-  {
-    year: '2014',
-    label: 'FIRST DEPLOYMENT',
-    title: 'First SCADA Deployment',
-    description:
-      "Delivered the first industrial SCADA system for a 10 MW solar farm — the beginning of Genex's transition from services to products.",
-  },
-  {
-    year: '2017',
-    label: 'PRODUCT LAUNCH',
-    title: 'SolarLive™ Launched',
-    description:
-      'Launched SolarLive™, the flagship solar monitoring platform. Within 18 months, it was deployed across 50+ sites in 4 states.',
-  },
-  {
-    year: '2019',
-    label: 'PM KUSUM ROLLOUT',
-    title: 'State-Level Contract',
-    description:
-      'Won first state-level PM Kusum monitoring contract, deploying RMS across 500+ rural solar pumping installations in Rajasthan.',
-  },
-  {
-    year: '2021',
-    label: '500 MW MILESTONE',
-    title: '500 MW Under Monitoring',
-    description:
-      'Crossed 500 MW of renewable capacity under active monitoring across SolarLive™, SCADA, and RMS deployments nationwide.',
-  },
-  {
-    year: '2024',
-    label: 'AI & BEYOND',
-    title: 'AI & Innovation Division',
-    description:
-      'Launched the AI research division — developing next-generation products including AI-RMS, Drone Monitoring, and Smart Grid platforms.',
-    isCurrent: true,
-  },
-]
-
-const STATS = [
-  { value: '14+',    label: 'Years of Operation' },
-  { value: '120+',   label: 'Projects Delivered' },
-  { value: '500 MW', label: 'Capacity Monitored' },
-  { value: '10+',    label: 'States Covered'      },
-]
-
-const VISION_CARDS = [
-  {
-    icon: LanguageOutlinedIcon,
-    title: 'Pan-India Scale',
-    text: 'Interconnected state grids sharing power seamlessly — monitored from a single platform.',
-  },
-  {
-    icon: ShieldOutlinedIcon,
-    title: 'Absolute Reliability',
-    text: 'Systems engineered for 99.9%+ uptime in mission-critical energy environments.',
-  },
-]
-
-const MISSION_POINTS = [
-  {
-    icon: BoltOutlinedIcon,
-    title: 'Optimise Efficiency',
-    text: 'Build software-first solutions that reduce energy waste by intelligently routing power exactly where it is needed.',
-  },
-  {
-    icon: SecurityOutlinedIcon,
-    title: 'Protect Infrastructure',
-    text: 'Defending national power grids against sophisticated cyber attacks — ISO 27001 certified, field-tested.',
-  },
-  {
-    icon: CheckCircleOutlinedIcon,
-    title: 'Ensure Reliability',
-    text: 'Ship products that work in the field, not just in demos — built on open standards to prevent vendor lock-in.',
-  },
-]
-
-const LEADERSHIP = [
-  {
-    title: 'Founder & CEO',
-    bio: 'Power systems engineer with 20+ years in industrial automation and renewable energy. Led the company from consultancy to a full-stack energy technology platform.',
-    initials: 'G',
-  },
-  {
-    title: 'Head of Engineering',
-    bio: 'Led SCADA and monitoring platform development across 80+ deployments. Expert in IEC 61850, OPC-UA, and distributed systems architecture.',
-    initials: 'E',
-  },
-  {
-    title: 'Head of AI & R&D',
-    bio: 'Data scientist specialising in time-series ML for energy systems. Leads the AI research division building next-generation predictive platforms.',
-    initials: 'A',
-  },
-]
-
-const PARTNERS = [
-  'Siemens',
-  'Schneider Electric',
-  'ABB',
-  'Huawei Solar',
-  'SMA Solar',
-  'Delta Electronics',
-  'Fronius',
-  'Growatt',
-]
-
-const CERTIFICATIONS = [
-  { name: 'ISO 9001:2015',   label: 'Quality Management System'           },
-  { name: 'ISO 27001',       label: 'Information Security Management'     },
-  { name: 'IEC 61850',       label: 'Power System Communication Standard' },
-  { name: 'MNRE Empanelled', label: 'Ministry of New & Renewable Energy'  },
-]
+import { apiFetch } from '@/lib/api/client'
+import { getMuiIcon } from '@/lib/muiIconRegistry'
+import type {
+  AboutPageData,
+  CertificationApiValue,
+  CTABandValue,
+  HeroSectionApiValue,
+  LeadershipCardApiValue,
+  MilestoneApiValue,
+  ProductStat,
+  StatsGridSectionValue,
+  VisionMissionCardApiValue,
+  WagtailListResponse,
+} from '@/types/api'
 
 // ── Animation helpers ────────────────────────────────────────────────────────
 
@@ -159,6 +49,27 @@ const staggerChild = {
 // ── About Page ───────────────────────────────────────────────────────────────
 
 export default function About() {
+  const [page, setPage] = useState<AboutPageData | null | undefined>(undefined)
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<AboutPageData>>('/api/v2/pages/?type=pages.AboutPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  if (page === undefined) return null
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const stats = (body.find(b => b.type === 'stats_section')?.value as StatsGridSectionValue | undefined)?.stats ?? []
+  const milestones = (body.find(b => b.type === 'milestones')?.value as MilestoneApiValue[] | undefined) ?? []
+  const visionCards = (body.find(b => b.type === 'vision_cards')?.value as VisionMissionCardApiValue[] | undefined) ?? []
+  const missionPoints = (body.find(b => b.type === 'mission_points')?.value as VisionMissionCardApiValue[] | undefined) ?? []
+  const leadership = (body.find(b => b.type === 'leadership')?.value as LeadershipCardApiValue[] | undefined) ?? []
+  const partners = (body.find(b => b.type === 'partner_names')?.value as string[] | undefined) ?? []
+  const certifications = (body.find(b => b.type === 'certifications')?.value as CertificationApiValue[] | undefined) ?? []
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
+
   return (
     <>
       <PageMeta
@@ -167,9 +78,9 @@ export default function About() {
         canonical="/about"
       />
       <PageHero
-        label="About Genex"
-        headline="Engineering India's Energy Future"
-        subline="We are a Jaipur-based energy technology company — building the software and systems that run India's renewable energy infrastructure, one platform at a time."
+        label={hero?.label ?? 'About Genex'}
+        headline={hero?.heading ?? "Engineering India's Energy Future"}
+        subline={hero?.description ?? "We are a Jaipur-based energy technology company — building the software and systems that run India's renewable energy infrastructure, one platform at a time."}
       />
 
       {/* ── THE SPARK ───────────────────────────────────────────────────── */}
@@ -268,7 +179,7 @@ export default function About() {
             />
 
             <div className="space-y-12">
-              {MILESTONES.map((m, i) => {
+              {milestones.map((m, i) => {
                 const isLeft = i % 2 === 0
                 return (
                   <motion.div
@@ -285,13 +196,13 @@ export default function About() {
                         'absolute left-2 top-8 lg:top-1/2 lg:left-1/2 z-10',
                         'flex items-center justify-center rounded-full border-4 border-solid',
                         '-translate-y-1/2 lg:-translate-x-1/2',
-                        m.isCurrent
+                        m.is_current
                           ? 'w-10 h-10 bg-[#00bba7] border-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.12)]'
                           : 'w-8 h-8 bg-white border-[#00bba7] shadow-md',
                       ].join(' ')}
                       aria-hidden="true"
                     >
-                      {m.isCurrent
+                      {m.is_current
                         ? <StarIcon style={{ fontSize: 14, color: 'white' }} />
                         : <div className="w-2 h-2 rounded-full bg-[#00bba7]" />
                       }
@@ -306,7 +217,7 @@ export default function About() {
                     >
                       <span
                         className="font-extrabold leading-none text-5xl"
-                        style={{ color: m.isCurrent ? '#96f7e4' : '#dbeafe' }}
+                        style={{ color: m.is_current ? '#96f7e4' : '#dbeafe' }}
                       >
                         {m.year}
                       </span>
@@ -331,7 +242,7 @@ export default function About() {
                         transition={{ duration: 0.2 }}
                         className={[
                           'rounded-2xl px-6 py-5 transition-all duration-200',
-                          m.isCurrent
+                          m.is_current
                             ? 'bg-[#f0fff9] border border-[#00d783] shadow-[0_0_0_2px_rgba(0,187,167,0.15)]'
                             : 'bg-white border border-[#e2e8f0] shadow-sm hover:border-primary/40',
                         ].join(' ')}
@@ -380,19 +291,22 @@ export default function About() {
                 viewport={{ once: true }}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
-                {VISION_CARDS.map(({ icon: Icon, title, text }) => (
-                  <motion.div
-                    key={title}
-                    variants={staggerChild}
-                    whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(26,174,232,0.10)', borderColor: '#1AAEE8' }}
-                    transition={{ duration: 0.2 }}
-                    className="bg-[#f8fafc] border border-[#f1f5f9] rounded-2xl p-5 transition-all duration-200"
-                  >
-                    <Icon style={{ fontSize: 24, color: '#009689' }} />
-                    <p className="mt-3 text-sm font-bold text-[#1c398e]">{title}</p>
-                    <p className="mt-1 text-xs text-text-muted leading-relaxed">{text}</p>
-                  </motion.div>
-                ))}
+                {visionCards.map(({ icon, title, text }) => {
+                  const Icon = getMuiIcon(icon)
+                  return (
+                    <motion.div
+                      key={title}
+                      variants={staggerChild}
+                      whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(26,174,232,0.10)', borderColor: '#1AAEE8' }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-[#f8fafc] border border-[#f1f5f9] rounded-2xl p-5 transition-all duration-200"
+                    >
+                      <Icon style={{ fontSize: 24, color: '#009689' }} />
+                      <p className="mt-3 text-sm font-bold text-[#1c398e]">{title}</p>
+                      <p className="mt-1 text-xs text-text-muted leading-relaxed">{text}</p>
+                    </motion.div>
+                  )
+                })}
               </motion.div>
             </motion.div>
 
@@ -483,7 +397,9 @@ export default function About() {
                 viewport={{ once: true }}
                 className="space-y-4"
               >
-                {MISSION_POINTS.map(({ icon: Icon, title, text }) => (
+                {missionPoints.map(({ icon, title, text }) => {
+                  const Icon = getMuiIcon(icon)
+                  return (
                   <motion.div
                     key={title}
                     variants={staggerChild}
@@ -499,7 +415,8 @@ export default function About() {
                       <p className="text-sm text-text-muted leading-relaxed">{text}</p>
                     </div>
                   </motion.div>
-                ))}
+                  )
+                })}
               </motion.div>
             </motion.div>
 
@@ -514,9 +431,9 @@ export default function About() {
             Genex in Numbers
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/20">
-            {STATS.map(({ value, label }) => (
+            {stats.map(({ value, suffix, label }: ProductStat) => (
               <div key={label} className="flex flex-col items-center justify-center py-8 lg:py-0 px-4">
-                <AnimatedStat value={value} label={label} />
+                <AnimatedStat value={`${value}${suffix ?? ''}`} label={label} />
               </div>
             ))}
           </div>
@@ -540,7 +457,7 @@ export default function About() {
             viewport={{ once: true }}
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {LEADERSHIP.map((person) => (
+            {leadership.map((person: LeadershipCardApiValue) => (
               <motion.div
                 key={person.title}
                 variants={staggerChild}
@@ -557,15 +474,24 @@ export default function About() {
                 </div>
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary mb-2">{person.title}</p>
                 <p className="text-sm text-text-muted leading-relaxed mb-4">{person.bio}</p>
-                <a
-                  href="#"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted hover:text-primary transition-colors duration-200"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`LinkedIn profile of ${person.title}`}
-                >
-                  <LinkedInIcon style={{ fontSize: 16 }} /> LinkedIn
-                </a>
+                {person.linkedin ? (
+                  <a
+                    href={person.linkedin}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted hover:text-primary transition-colors duration-200"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`LinkedIn profile of ${person.title}`}
+                  >
+                    <LinkedInIcon style={{ fontSize: 16 }} /> LinkedIn
+                  </a>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted/50"
+                    aria-hidden="true"
+                  >
+                    <LinkedInIcon style={{ fontSize: 16 }} /> LinkedIn
+                  </span>
+                )}
               </motion.div>
             ))}
           </motion.div>
@@ -590,7 +516,7 @@ export default function About() {
             viewport={{ once: true }}
             className="flex flex-wrap gap-3 mb-14"
           >
-            {PARTNERS.map((p) => (
+            {partners.map((p: string) => (
               <motion.span
                 key={p}
                 variants={staggerChild}
@@ -611,7 +537,7 @@ export default function About() {
             viewport={{ once: true }}
             className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
-            {CERTIFICATIONS.map(({ name, label }) => (
+            {certifications.map(({ name, label }: CertificationApiValue) => (
               <motion.div
                 key={name}
                 variants={staggerChild}
@@ -659,7 +585,7 @@ export default function About() {
             viewport={{ once: true }}
             className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4"
           >
-            {PARTNERS.slice(0, 4).map((name) => (
+            {partners.slice(0, 4).map((name: string) => (
               <motion.div
                 key={name}
                 variants={staggerChild}
@@ -683,7 +609,7 @@ export default function About() {
             viewport={{ once: true }}
             className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:translate-x-16"
           >
-            {PARTNERS.slice(4).map((name) => (
+            {partners.slice(4).map((name: string) => (
               <motion.div
                 key={name}
                 variants={staggerChild}
@@ -707,18 +633,18 @@ export default function About() {
           <motion.div {...fadeUp()}>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Next Chapter</p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Ready to work with us?
+              {cta?.heading ?? 'Ready to work with us?'}
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              Whether you're a developer, discom, or enterprise — we'd like to understand your project and show you what Genex can deliver.
+              {cta?.description ?? "Whether you're a developer, discom, or enterprise — we'd like to understand your project and show you what Genex can deliver."}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/contact">
-                <Button variant="primary" size="lg">Contact Us</Button>
+              <Link to={cta?.primary_cta_link ?? '/contact'}>
+                <Button variant="primary" size="lg">{cta?.primary_cta_text ?? 'Contact Us'}</Button>
               </Link>
-              <Link to="/portfolio">
+              <Link to={cta?.secondary_cta_link ?? '/portfolio'}>
                 <Button variant="secondary" size="lg">
-                  See Our Work <ArrowForwardIcon style={{ fontSize: 16, marginLeft: 4 }} />
+                  {cta?.secondary_cta_text ?? 'See Our Work'} <ArrowForwardIcon style={{ fontSize: 16, marginLeft: 4 }} />
                 </Button>
               </Link>
             </div>

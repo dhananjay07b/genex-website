@@ -7,7 +7,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { apiFetch } from '@/lib/api/client'
-import type { ProductPageData, WagtailListResponse } from '@/types/api'
+import type { CapabilitiesSectionValue, ProductPageData, WagtailListResponse } from '@/types/api'
 
 // ── Animation presets ─────────────────────────────────────────────────────────
 
@@ -50,7 +50,8 @@ const STATS = [
 
 function ProductCard({ product, index }: { product: ProductPageData; index: number }) {
   const slug = product.meta.slug
-  const firstCapability = product.capabilities?.[0]?.value ?? product.subline
+  const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
+  const firstCapability = capabilities[0] ?? product.subline
 
   return (
     <motion.div
@@ -61,7 +62,7 @@ function ProductCard({ product, index }: { product: ProductPageData; index: numb
       className="group flex flex-col lg:flex-row h-auto lg:h-[400px] overflow-hidden border border-border hover:border-primary hover:shadow-[0_8px_32px_rgba(26,174,232,0.12)] transition-all duration-300"
     >
       {/* Gradient panel — left, replaces image until images are uploaded */}
-      <div className={`relative w-full lg:flex-1 h-56 lg:h-auto overflow-hidden shrink-0 bg-linear-to-br ${product.gradient || 'from-slate-100 to-slate-200'}`}>
+      <div className="relative w-full lg:flex-1 h-56 lg:h-auto overflow-hidden shrink-0 bg-linear-to-br from-slate-100 to-slate-200">
         {product.badge && (
           <span className="absolute top-4 left-4 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/50 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-0.5 z-10">
             {product.badge}
@@ -104,7 +105,7 @@ export default function Portfolio() {
 
   useEffect(() => {
     apiFetch<WagtailListResponse<ProductPageData>>(
-      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,gradient,capabilities&limit=50'
+      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,body&limit=50'
     )
       .then(res => setProducts(res.items))
       .catch(() => setProducts([]))

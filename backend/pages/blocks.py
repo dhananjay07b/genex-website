@@ -293,6 +293,93 @@ class TechHighlightBlock(blocks.StructBlock):
 
 
 # ===========================================================================
+# SECTION C-2 — Product / Innovation Body Blocks (flexible `body` StreamField)
+# ===========================================================================
+#
+# Wrapper blocks below carry forward the exact content shape of ProductPage/
+# InnovationPage's old bare `overview`/`capabilities`/`tech_highlights` fields,
+# so a data migration can map old values onto these 1:1 with no visual change.
+# The remaining blocks are new, original additions for these two page types —
+# inspired by SolarLive's step/video/testimonial-style sections but re-scoped
+# for a B2B power-sector engineering audience (proof/outcomes, not marketing).
+
+class OverviewSectionBlock(blocks.StructBlock):
+    heading    = blocks.CharBlock(required=False, default="Overview")
+    paragraphs = blocks.ListBlock(blocks.TextBlock(), min_num=1)
+
+    class Meta:
+        icon = "doc-full"
+        label = "Overview Section"
+
+
+class CapabilitiesSectionBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(required=False, default="Capabilities")
+    items   = blocks.ListBlock(blocks.CharBlock(), min_num=1)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Capabilities Section"
+
+
+class TechHighlightsSectionBlock(blocks.StructBlock):
+    eyebrow = blocks.CharBlock(required=False, default="Built for Reliability")
+    intro   = blocks.TextBlock(
+        required=False,
+        default="Purpose-engineered for the complexity of India's power infrastructure — built to last and scale.",
+    )
+    items   = blocks.ListBlock(TechHighlightBlock(), min_num=1)
+
+    class Meta:
+        icon = "tag"
+        label = "Tech Highlights Section"
+
+
+class DeploymentStepBlock(blocks.StructBlock):
+    """One step in a commissioning/integration sequence — not a generic marketing step."""
+    num         = blocks.CharBlock(max_length=3, help_text="'01', '02', etc.")
+    title       = blocks.CharBlock()
+    description = blocks.TextBlock()
+    icon        = blocks.ChoiceBlock(choices=ICON_CHOICES, required=False)
+
+    class Meta:
+        icon = "order"
+        label = "Deployment Step"
+
+
+class DeploymentStepsSectionBlock(blocks.StructBlock):
+    heading     = blocks.CharBlock(required=False, default="How It's Deployed")
+    description = blocks.TextBlock(required=False)
+    steps       = blocks.ListBlock(DeploymentStepBlock(), min_num=1)
+
+    class Meta:
+        icon = "order"
+        label = "Deployment Steps Section"
+
+
+class ProductVideoSectionBlock(ImageApiStructBlock):
+    """Demo/commissioning video — either an uploaded mp4 or a hosted URL."""
+    heading      = blocks.CharBlock(required=False)
+    description  = blocks.TextBlock(required=False)
+    video_file   = DocumentChooserBlock(required=False, help_text="Upload an mp4 file")
+    video_url    = blocks.URLBlock(required=False, help_text="…or a hosted video URL (YouTube/Vimeo/CDN) instead of uploading")
+    poster_image = ImageChooserBlock(required=False, help_text="Thumbnail shown before play")
+
+    class Meta:
+        icon = "media"
+        label = "Video Section"
+
+
+class ProductTestimonialSectionBlock(blocks.StructBlock):
+    """Per-product client testimonials — reuses the existing TestimonialItemBlock."""
+    heading = blocks.CharBlock(required=False, default="What Our Clients Say")
+    items   = blocks.ListBlock(TestimonialItemBlock(), min_num=1)
+
+    class Meta:
+        icon = "openquote"
+        label = "Testimonials Section"
+
+
+# ===========================================================================
 # SECTION D — Inner Page / GeLearn / About / Careers / Contact Blocks
 # ===========================================================================
 

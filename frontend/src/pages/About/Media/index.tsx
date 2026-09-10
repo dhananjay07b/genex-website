@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
@@ -6,6 +7,17 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { apiFetch } from '@/lib/api/client'
+import { getMediaUrl } from '@/lib/utils'
+import type {
+  AchievementApiValue,
+  CTABandValue,
+  GalleryItemApiValue,
+  HeroSectionApiValue,
+  MediaPageData,
+  PressItemApiValue,
+  WagtailListResponse,
+} from '@/types/api'
 
 // ── Animation presets ─────────────────────────────────────────────────────────
 
@@ -25,55 +37,6 @@ const staggerChild = {
   hidden: { opacity: 0, y: 24 },
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 }
-
-// ── Data ─────────────────────────────────────────────────────────────────────
-
-const ACHIEVEMENTS = [
-  {
-    badge: 'Certificate',
-    Icon: WorkspacePremiumOutlinedIcon,
-    heading: 'Certificate of Recognition — Delhi Solar Week 2026',
-    body: 'Genex Technocrats received the Certificate of Recognition at Delhi Solar Week 2026 — honouring our contribution to smart SCADA infrastructure and real-time remote monitoring technology across 200+ MW of solar installations across India.',
-    image: '/images/media/cert-recognition.png',
-    imageAlt: 'Certificate of Recognition — Delhi Solar Week 2026',
-    imageWidth: 1920,
-    imageHeight: 1080,
-  },
-  {
-    badge: 'Award',
-    Icon: EmojiEventsOutlinedIcon,
-    heading: 'India Solar Week — Technology & Innovation Excellence Award',
-    body: 'Our flagship SolarLive™ real-time plant monitoring platform was honoured at the India Solar Week AI Impact Summit for advancing predictive fault detection, live analytics, and centralised plant intelligence at utility-scale solar and wind sites.',
-    image: '/images/media/award-solar-week.png',
-    imageAlt: 'SolarLive™ Technology & Innovation Excellence Award — India Solar Week',
-    imageWidth: 1920,
-    imageHeight: 1280,
-  },
-]
-
-// Media & Press bento grid — 4-col × 2-row, large featured + 3 smaller
-const PRESS = [
-  {
-    src: '/images/media/press-1.png',
-    alt: 'Genex Technocrats at India Solar Week main stage',
-    caption: 'India Solar Week 2026',
-    subcaption: 'Recognised for energy technology excellence',
-    featured: true,
-  },
-  { src: '/images/media/press-2.png', alt: 'Award ceremony at AI Impact Summit', featured: false },
-  { src: '/images/media/press-3.png', alt: 'Genex team receiving ASSOCHAM recognition', featured: false },
-  { src: '/images/media/press-4.png', alt: 'Panel discussion on renewable energy innovation', featured: false },
-]
-
-// Gallery — masonry columns (3 cols desktop)
-const GALLERY = [
-  { src: '/images/media/gallery-1.png', alt: 'SCADA control room at Genex headquarters, Jaipur', w: 1920, h: 1080 },
-  { src: '/images/media/gallery-2.png', alt: 'Award ceremony — Genex Technocrats',               w: 1920, h: 1080 },
-  { src: '/images/media/gallery-3.png', alt: 'Solar farm commissioning — Rajasthan',              w: 1920, h: 1280 },
-  { src: '/images/media/gallery-4.png', alt: 'India Solar Week exhibition stage',                 w: 1920, h: 1080 },
-  { src: '/images/media/gallery-5.png', alt: 'Field commissioning — solar inverter data logger',  w: 1920, h: 1080 },
-  { src: '/images/media/gallery-6.png', alt: 'SCADA deployment — Pune industrial site',           w: 1920, h: 1280 },
-]
 
 // ── Reusable section eyebrow ──────────────────────────────────────────────────
 
@@ -95,7 +58,33 @@ function SectionEyebrow({ label, centered = false }: { label: string; centered?:
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const ACHIEVEMENT_ICON: Record<AchievementApiValue['icon_type'], typeof WorkspacePremiumOutlinedIcon> = {
+  certificate: WorkspacePremiumOutlinedIcon,
+  award: EmojiEventsOutlinedIcon,
+}
+
 export default function Media() {
+  const [page, setPage] = useState<MediaPageData | null | undefined>(undefined)
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<MediaPageData>>('/api/v2/pages/?type=pages.MediaPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  if (page === undefined) return null
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const achievements = (body.find(b => b.type === 'achievements')?.value as AchievementApiValue[] | undefined) ?? []
+  const pressItems = (body.find(b => b.type === 'press_items')?.value as PressItemApiValue[] | undefined) ?? []
+  const gallery = (body.find(b => b.type === 'gallery')?.value as GalleryItemApiValue[] | undefined) ?? []
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
+
+  const orderedPress = [...pressItems].sort((a, b) => Number(b.featured) - Number(a.featured))
+  const featured = orderedPress[0]
+  const rest = orderedPress.slice(1, 4)
+
   return (
     <>
       <PageMeta
@@ -105,16 +94,16 @@ export default function Media() {
       />
 
       <PageHero
-        label="About Genex"
-        headline="Media & Achievements"
-        subline="Awards, certifications, and the milestones that mark our journey as India's energy intelligence company."
+        label={hero?.label ?? 'About Genex'}
+        headline={hero?.heading ?? 'Media & Achievements'}
+        subline={hero?.description ?? "Awards, certifications, and the milestones that mark our journey as India's energy intelligence company."}
       />
 
       {/* ── ACHIEVEMENTS ──────────────────────────────────────────────────────── */}
       <section className="bg-white overflow-hidden" aria-label="Awards and certifications">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          {ACHIEVEMENTS.map((ach, i) => {
-            const Icon = ach.Icon
+          {achievements.map((ach, i) => {
+            const Icon = ACHIEVEMENT_ICON[ach.icon_type] ?? WorkspacePremiumOutlinedIcon
             const isOdd = i % 2 !== 0
             return (
               <div
@@ -139,14 +128,16 @@ export default function Media() {
                     transition={{ duration: 0.3, ease: 'easeOut' }}
                     className="relative overflow-hidden rounded-2xl border border-[#dcebfe] shadow-2xl aspect-video"
                   >
-                    <img
-                      src={ach.image}
-                      alt={ach.imageAlt}
-                      className="w-full h-full object-cover object-top"
-                      loading={i === 0 ? 'eager' : 'lazy'}
-                      width={ach.imageWidth}
-                      height={ach.imageHeight}
-                    />
+                    {ach.image && (
+                      <img
+                        src={getMediaUrl(ach.image.url)}
+                        alt={ach.image_alt ?? ach.heading}
+                        className="w-full h-full object-cover object-top"
+                        loading={i === 0 ? 'eager' : 'lazy'}
+                        width={ach.image.width}
+                        height={ach.image.height}
+                      />
+                    )}
                   </motion.div>
                 </motion.div>
 
@@ -167,9 +158,10 @@ export default function Media() {
                     {ach.heading}
                   </h2>
 
-                  <p className="text-[17px] text-text-muted leading-relaxed">
-                    {ach.body}
-                  </p>
+                  <div
+                    className="text-[17px] text-text-muted leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: ach.body }}
+                  />
                 </motion.div>
               </div>
             )
@@ -201,6 +193,7 @@ export default function Media() {
             style={{ gridTemplateRows: 'repeat(2, 1fr)' }}
           >
             {/* Featured — col-span-2 row-span-2 */}
+            {featured && (
             <motion.div
               variants={staggerChild}
               className="group relative col-span-2 lg:col-span-2 lg:row-span-2 overflow-hidden rounded-2xl border border-border shadow-sm h-64 lg:h-auto cursor-pointer"
@@ -208,23 +201,27 @@ export default function Media() {
               transition={{ duration: 0.2 }}
             >
               <img
-                src={PRESS[0].src}
-                alt={PRESS[0].alt}
+                src={getMediaUrl(featured.image.url)}
+                alt={featured.alt}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                 loading="eager"
-                width={1920}
-                height={1080}
+                width={featured.image.width ?? 1920}
+                height={featured.image.height ?? 1080}
               />
               {/* Hover gradient overlay */}
               <div className="absolute inset-0 bg-linear-to-t from-[rgba(22,36,86,0.8)] via-[rgba(22,36,86,0)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               {/* Caption — slides up on hover */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                <p className="text-white font-bold text-lg leading-tight">{PRESS[0].caption}</p>
-                <p className="text-blue-200 text-sm mt-1">{PRESS[0].subcaption}</p>
-              </div>
+              {(featured.caption || featured.subcaption) && (
+                <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                  {featured.caption && <p className="text-white font-bold text-lg leading-tight">{featured.caption}</p>}
+                  {featured.subcaption && <p className="text-blue-200 text-sm mt-1">{featured.subcaption}</p>}
+                </div>
+              )}
             </motion.div>
+            )}
 
             {/* Top-right small — col 3, row 1 */}
+            {rest[0] && (
             <motion.div
               variants={staggerChild}
               className="group relative col-span-1 overflow-hidden rounded-2xl border border-border shadow-sm h-40 lg:h-auto cursor-pointer"
@@ -232,17 +229,19 @@ export default function Media() {
               transition={{ duration: 0.2 }}
             >
               <img
-                src={PRESS[1].src}
-                alt={PRESS[1].alt}
+                src={getMediaUrl(rest[0].image.url)}
+                alt={rest[0].alt}
                 className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
                 loading="lazy"
-                width={1920}
-                height={1080}
+                width={rest[0].image.width ?? 1920}
+                height={rest[0].image.height ?? 1080}
               />
               <div className="absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-[rgba(22,36,86,0.55)] to-transparent" />
             </motion.div>
+            )}
 
             {/* Top-right small — col 4, row 1 */}
+            {rest[1] && (
             <motion.div
               variants={staggerChild}
               className="group relative col-span-1 overflow-hidden rounded-2xl border border-border shadow-sm h-40 lg:h-auto cursor-pointer"
@@ -250,16 +249,18 @@ export default function Media() {
               transition={{ duration: 0.2 }}
             >
               <img
-                src={PRESS[2].src}
-                alt={PRESS[2].alt}
+                src={getMediaUrl(rest[1].image.url)}
+                alt={rest[1].alt}
                 className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
                 loading="lazy"
-                width={1920}
-                height={1280}
+                width={rest[1].image.width ?? 1920}
+                height={rest[1].image.height ?? 1280}
               />
             </motion.div>
+            )}
 
             {/* Bottom-right wide — col 3-4, row 2 */}
+            {rest[2] && (
             <motion.div
               variants={staggerChild}
               className="group relative col-span-2 overflow-hidden rounded-2xl border border-border shadow-sm h-40 lg:h-auto cursor-pointer"
@@ -267,14 +268,15 @@ export default function Media() {
               transition={{ duration: 0.2 }}
             >
               <img
-                src={PRESS[3].src}
-                alt={PRESS[3].alt}
+                src={getMediaUrl(rest[2].image.url)}
+                alt={rest[2].alt}
                 className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
                 loading="lazy"
-                width={1920}
-                height={1080}
+                width={rest[2].image.width ?? 1920}
+                height={rest[2].image.height ?? 1080}
               />
             </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -301,7 +303,7 @@ export default function Media() {
             viewport={{ once: true, margin: '-80px' as const }}
             className="columns-1 sm:columns-2 lg:columns-3 gap-4"
           >
-            {GALLERY.map((item, i) => (
+            {gallery.map((item, i) => (
               <div key={i} className="break-inside-avoid mb-4">
                 <motion.div
                   variants={staggerChild}
@@ -310,12 +312,12 @@ export default function Media() {
                   transition={{ duration: 0.2 }}
                 >
                   <img
-                    src={item.src}
+                    src={getMediaUrl(item.image.url)}
                     alt={item.alt}
                     className="w-full h-auto object-cover block transition-transform duration-500 group-hover:scale-[1.04]"
                     loading="lazy"
-                    width={item.w}
-                    height={item.h}
+                    width={item.image.width}
+                    height={item.image.height}
                   />
                   <div className="absolute inset-0 bg-[rgba(22,36,86,0.12)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
@@ -345,17 +347,17 @@ export default function Media() {
           <motion.div {...fadeUp(0)}>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Next Chapter</p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Ready to work with us?
+              {cta?.heading ?? 'Ready to work with us?'}
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              Whether you're a solar developer, utility operator, or EPC contractor — let's build the monitoring layer your project deserves.
+              {cta?.description ?? "Whether you're a solar developer, utility operator, or EPC contractor — let's build the monitoring layer your project deserves."}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/contact">
-                <Button variant="primary" size="lg">Request a Demo <ArrowForwardIcon sx={{ fontSize: 16 }} /></Button>
+              <Link to={cta?.primary_cta_link ?? '/contact'}>
+                <Button variant="primary" size="lg">{cta?.primary_cta_text ?? 'Request a Demo'} <ArrowForwardIcon sx={{ fontSize: 16 }} /></Button>
               </Link>
-              <Link to="/portfolio">
-                <Button variant="secondary" size="lg">View Our Portfolio</Button>
+              <Link to={cta?.secondary_cta_link ?? '/portfolio'}>
+                <Button variant="secondary" size="lg">{cta?.secondary_cta_text ?? 'View Our Portfolio'}</Button>
               </Link>
             </div>
           </motion.div>

@@ -16,11 +16,13 @@ from wagtail import blocks
 from .blocks import (
     AppDownloadBlock,
     AchievementBlock,
+    CapabilitiesSectionBlock,
     CardGridSectionBlock,
     CertificationBlock,
     ContactDetailBlock,
     CTABandBlock,
     CredibilityLogoBlock,
+    DeploymentStepsSectionBlock,
     DocumentSectionBlock,
     EngineeringPrincipleBlock,
     EventBannerBlock,
@@ -38,14 +40,17 @@ from .blocks import (
     MapEmbedBlock,
     MilestoneBlock,
     OpenRoleBlock,
+    OverviewSectionBlock,
     PressItemBlock,
+    ProductTestimonialSectionBlock,
+    ProductVideoSectionBlock,
     ProjectShowcaseItemBlock,
     ProjectTypeChoiceBlock,
     SideImageSectionBlock,
     StatBlock,
     StatsGridSectionBlock,
     TeamSectionBlock,
-    TechHighlightBlock,
+    TechHighlightsSectionBlock,
     TechPartnerBlock,
     TestimonialItemBlock,
     TimelineSectionBlock,
@@ -202,27 +207,29 @@ class PortfolioIndexPage(BasePage):
         verbose_name = "Portfolio Index Page"
 
 
-GRADIENT_CHOICES = [
-    ("from-amber-400/35 via-amber-200/20 to-yellow-100/10", "Amber / Yellow (SolarLive)"),
-    ("from-teal-400/35 via-cyan-300/20 to-blue-100/10", "Teal / Cyan (EMS-BESS)"),
-    ("from-sky-400/35 via-cyan-300/20 to-blue-100/10", "Sky / Cyan (Wind)"),
-    ("from-emerald-400/35 via-green-300/20 to-teal-100/10", "Emerald / Green (BMS)"),
-    ("from-orange-400/35 via-amber-300/20 to-yellow-100/10", "Orange / Amber (RMS)"),
-    ("from-indigo-400/35 via-violet-300/20 to-blue-100/10", "Indigo / Violet (SCADA)"),
-    ("from-green-400/35 via-emerald-300/20 to-teal-100/10", "Green / Teal (EV)"),
-    ("from-blue-400/35 via-sky-300/20 to-cyan-100/10", "Blue / Sky (Power Billing)"),
-    ("from-violet-400/35 via-purple-300/20 to-indigo-100/10", "Violet / Purple (Zero Export)"),
-    ("from-lime-400/35 via-green-300/20 to-emerald-100/10", "Lime / Emerald (Carbon Credit)"),
-    ("from-slate-400/35 via-gray-300/20 to-zinc-100/10", "Slate / Gray (Data Loggers)"),
-    ("from-cyan-400/35 via-sky-300/20 to-blue-100/10", "Cyan / Sky (Power Cloud)"),
-    ("from-rose-400/35 via-orange-300/20 to-amber-100/10", "Rose / Orange (RTC Power Tools)"),
-]
-
 FAMILY_CHOICES = [
     ("solar", "Solar & Monitoring"),
     ("storage", "Energy Storage"),
     ("grid", "Grid & SCADA"),
     ("ev", "EV & Power Tools"),
+]
+
+
+# Shared flexible body for ProductPage and InnovationPage — both have identical
+# content needs (same detail-page layout, same components); only their fixed
+# identity fields differ, so the body block choices are deliberately shared.
+PRODUCT_BODY_BLOCKS = [
+    ("overview", OverviewSectionBlock()),
+    ("capabilities", CapabilitiesSectionBlock()),
+    ("tech_highlights", TechHighlightsSectionBlock()),
+    ("deployment_steps", DeploymentStepsSectionBlock()),
+    ("video_section", ProductVideoSectionBlock()),
+    ("testimonials_section", ProductTestimonialSectionBlock()),
+    ("stats", StatsGridSectionBlock()),
+    ("compliance_note", IntroductionSectionBlock()),
+    ("documents", DocumentSectionBlock()),
+    ("faq_section", FAQSectionBlock()),
+    ("cta", CTABandBlock()),
 ]
 
 
@@ -235,13 +242,8 @@ class ProductPage(BasePage):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
-    gradient   = models.CharField(max_length=100, choices=GRADIENT_CHOICES, blank=True)
 
-    overview        = StreamField([("paragraph", blocks.TextBlock())], use_json_field=True)
-    capabilities    = StreamField([("item", blocks.CharBlock())], use_json_field=True)
-    tech_highlights = StreamField([("item", TechHighlightBlock())], use_json_field=True)
-    stats           = StreamField([("stat", StatBlock())], use_json_field=True)
-    cta             = StreamField([("cta", CTABandBlock())], blank=True, use_json_field=True)
+    body = StreamField(PRODUCT_BODY_BLOCKS, blank=True, use_json_field=True)
 
     content_panels = Page.content_panels + [
         MultiFieldPanel([
@@ -250,13 +252,8 @@ class ProductPage(BasePage):
             FieldPanel("headline"),
             FieldPanel("subline"),
             FieldPanel("hero_image"),
-            FieldPanel("gradient"),
         ], heading="Product Info"),
-        FieldPanel("overview"),
-        FieldPanel("capabilities"),
-        FieldPanel("tech_highlights"),
-        FieldPanel("stats"),
-        FieldPanel("cta"),
+        FieldPanel("body"),
     ]
 
     @property
@@ -268,13 +265,8 @@ class ProductPage(BasePage):
         APIField("family"),
         APIField("headline"),
         APIField("subline"),
-        APIField("gradient"),
         APIField("image_url"),
-        APIField("overview"),
-        APIField("capabilities"),
-        APIField("tech_highlights"),
-        APIField("stats"),
-        APIField("cta"),
+        APIField("body"),
     ]
 
     parent_page_types = ["pages.PortfolioIndexPage"]
@@ -342,13 +334,8 @@ class InnovationPage(BasePage):
         on_delete=models.SET_NULL, related_name="+",
         help_text="SVG icon used on the listing card",
     )
-    gradient   = models.CharField(max_length=100, blank=True, help_text="Tailwind gradient class")
 
-    overview        = StreamField([("paragraph", blocks.TextBlock())], use_json_field=True)
-    capabilities    = StreamField([("item", blocks.CharBlock())], use_json_field=True)
-    tech_highlights = StreamField([("item", TechHighlightBlock())], use_json_field=True)
-    stats           = StreamField([("stat", StatBlock())], use_json_field=True)
-    cta             = StreamField([("cta", CTABandBlock())], blank=True, use_json_field=True)
+    body = StreamField(PRODUCT_BODY_BLOCKS, blank=True, use_json_field=True)
 
     content_panels = Page.content_panels + [
         MultiFieldPanel([
@@ -359,13 +346,8 @@ class InnovationPage(BasePage):
             FieldPanel("subline"),
             FieldPanel("hero_image"),
             FieldPanel("icon_image"),
-            FieldPanel("gradient"),
         ], heading="Innovation Info"),
-        FieldPanel("overview"),
-        FieldPanel("capabilities"),
-        FieldPanel("tech_highlights"),
-        FieldPanel("stats"),
-        FieldPanel("cta"),
+        FieldPanel("body"),
     ]
 
     @property
@@ -382,14 +364,9 @@ class InnovationPage(BasePage):
         APIField("stage"),
         APIField("headline"),
         APIField("subline"),
-        APIField("gradient"),
         APIField("image_url"),
         APIField("icon_url"),
-        APIField("overview"),
-        APIField("capabilities"),
-        APIField("tech_highlights"),
-        APIField("stats"),
-        APIField("cta"),
+        APIField("body"),
     ]
 
     parent_page_types = ["pages.InnovationsIndexPage"]

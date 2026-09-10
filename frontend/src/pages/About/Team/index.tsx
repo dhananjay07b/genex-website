@@ -1,9 +1,21 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { apiFetch } from '@/lib/api/client'
+import { getMediaUrl } from '@/lib/utils'
+import type {
+  CTABandValue,
+  HeroSectionApiValue,
+  LeaderApiValue,
+  TeamMemberApiValue,
+  TeamPageData,
+  TeamSectionApiValue,
+  WagtailListResponse,
+} from '@/types/api'
 
 // ── Animation presets ─────────────────────────────────────────────────────────
 
@@ -24,43 +36,9 @@ const staggerChild = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const LEADER = {
-  name: 'Shree Kant Bohra',
-  role: 'Co-Founder & CEO',
-  image: '/images/team/founder.png',
-  quote:
-    `We built Genex because India's energy infrastructure deserved better software. Every plant we monitor is a step toward a smarter, cleaner grid.`,
-}
-
-interface TeamMember {
-  name: string
-  role: string
-  image: string
-}
-
-const DEVELOPMENT_TEAM: TeamMember[] = [
-  { name: 'Rahul Sharma',     role: 'Lead Backend Engineer',      image: '/images/team/member-1.png' },
-  { name: 'Ankit Verma',      role: 'Full Stack Developer',        image: '/images/team/member-2.png' },
-  { name: 'Priya Nair',       role: 'Frontend Engineer',           image: '/images/team/member-3.png' },
-  { name: 'Deepak Joshi',     role: 'SCADA Integration Engineer',  image: '/images/team/member-1.png' },
-  { name: 'Sneha Patel',      role: 'IoT & Embedded Systems',      image: '/images/team/member-2.png' },
-  { name: 'Nikhil Agarwal',   role: 'DevOps & Cloud Architect',    image: '/images/team/member-3.png' },
-]
-
-const OPERATIONS_TEAM: TeamMember[] = [
-  { name: 'Vikram Singh',     role: 'Project Manager',             image: '/images/team/member-2.png' },
-  { name: 'Meena Rawat',      role: 'Business Development',        image: '/images/team/member-3.png' },
-  { name: 'Ajay Choudhary',   role: 'Field Commissioning Lead',    image: '/images/team/member-1.png' },
-  { name: 'Ritu Gupta',       role: 'Client Success Manager',      image: '/images/team/member-3.png' },
-  { name: 'Suresh Malhotra',  role: 'Technical Support Engineer',  image: '/images/team/member-2.png' },
-  { name: 'Kavita Yadav',     role: 'Finance & Operations',        image: '/images/team/member-1.png' },
-]
-
 // ── Team card ─────────────────────────────────────────────────────────────────
 
-function TeamCard({ member }: { member: TeamMember }) {
+function TeamCard({ member }: { member: TeamMemberApiValue }) {
   return (
     <motion.div
       variants={staggerChild}
@@ -69,12 +47,14 @@ function TeamCard({ member }: { member: TeamMember }) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
     >
       {/* Photo */}
-      <img
-        src={member.image}
-        alt={member.name}
-        className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.05]"
-        loading="lazy"
-      />
+      {member.image && (
+        <img
+          src={getMediaUrl(member.image.url)}
+          alt={member.name}
+          className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.05]"
+          loading="lazy"
+        />
+      )}
       {/* Green gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,216,129,0.92)] from-[0%] via-[rgba(0,216,129,0)] via-[30%] to-transparent to-[30%]" />
       {/* Name + role */}
@@ -88,7 +68,7 @@ function TeamCard({ member }: { member: TeamMember }) {
 
 // ── Team section ──────────────────────────────────────────────────────────────
 
-function TeamSection({ title, description, members }: { title: string; description: string; members: TeamMember[] }) {
+function TeamSection({ title, description, members }: { title: string; description: string | null; members: TeamMemberApiValue[] }) {
   return (
     <section className="py-20 lg:py-24 border-t border-border" aria-label={title}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -118,6 +98,23 @@ function TeamSection({ title, description, members }: { title: string; descripti
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Team() {
+  const [page, setPage] = useState<TeamPageData | null | undefined>(undefined)
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<TeamPageData>>('/api/v2/pages/?type=pages.TeamPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  if (page === undefined) return null
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const leader = body.find(b => b.type === 'leader')?.value as LeaderApiValue | undefined
+  const teamSections = body.filter(b => b.type === 'section').map(b => b.value as TeamSectionApiValue)
+  const [devTeamSection, opsTeamSection] = teamSections
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
+
   return (
     <>
       <PageMeta
@@ -127,9 +124,9 @@ export default function Team() {
       />
 
       <PageHero
-        label="About Genex"
-        headline="Our Team"
-        subline="The engineers, developers, and operators powering India's energy intelligence infrastructure."
+        label={hero?.label ?? 'About Genex'}
+        headline={hero?.heading ?? 'Our Team'}
+        subline={hero?.description ?? "The engineers, developers, and operators powering India's energy intelligence infrastructure."}
       />
 
       {/* ── FOUNDER SPOTLIGHT ─────────────────────────────────────────────── */}
@@ -157,17 +154,19 @@ export default function Team() {
               whileHover={{ y: -6, boxShadow: '0 20px 50px rgba(27,175,231,0.22)' }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
             >
-              <img
-                src={LEADER.image}
-                alt={LEADER.name}
-                className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
-                loading="eager"
-              />
+              {leader?.image && (
+                <img
+                  src={getMediaUrl(leader.image.url)}
+                  alt={leader.name}
+                  className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
+                  loading="eager"
+                />
+              )}
               {/* Blue gradient — bottom 15% solid, then fades */}
               <div className="absolute inset-0 bg-gradient-to-t from-[rgba(27,175,231,0.92)] from-[0%] via-[rgba(27,175,231,0)] via-[28%] to-transparent to-[28%]" />
               <div className="absolute bottom-0 left-0 right-0 px-6 pb-5 pt-12">
-                <p className="text-white font-bold text-[24px] leading-snug">{LEADER.name}</p>
-                <p className="text-[#eeeeee] font-semibold text-[20px] leading-snug mt-1">{LEADER.role}</p>
+                <p className="text-white font-bold text-[24px] leading-snug">{leader?.name ?? 'Shree Kant Bohra'}</p>
+                <p className="text-[#eeeeee] font-semibold text-[20px] leading-snug mt-1">{leader?.role ?? 'Co-Founder & CEO'}</p>
               </div>
             </motion.div>
 
@@ -182,7 +181,7 @@ export default function Team() {
               </span>
 
               <p className="text-[#45556c] text-[22px] lg:text-[26px] font-normal leading-[1.7] text-center px-2">
-                {LEADER.quote}
+                {leader?.quote ?? "We built Genex because India's energy infrastructure deserved better software. Every plant we monitor is a step toward a smarter, cleaner grid."}
               </p>
 
               {/* Closing quote mark */}
@@ -199,16 +198,20 @@ export default function Team() {
 
       {/* ── TEAM SECTIONS ─────────────────────────────────────────────────── */}
       <div className="bg-white">
-        <TeamSection
-          title="Development Team"
-          description="The engineers behind our SCADA platforms, real-time data pipelines, and energy monitoring software."
-          members={DEVELOPMENT_TEAM}
-        />
-        <TeamSection
-          title="Operations & Business Team"
-          description="The people who deliver projects, support clients, and keep every engagement running smoothly."
-          members={OPERATIONS_TEAM}
-        />
+        {devTeamSection && (
+          <TeamSection
+            title={devTeamSection.title}
+            description={devTeamSection.description}
+            members={devTeamSection.members}
+          />
+        )}
+        {opsTeamSection && (
+          <TeamSection
+            title={opsTeamSection.title}
+            description={opsTeamSection.description}
+            members={opsTeamSection.members}
+          />
+        )}
       </div>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
@@ -230,19 +233,19 @@ export default function Team() {
           <motion.div {...fadeUp(0)}>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">Join Us</p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Want to build with us?
+              {cta?.heading ?? 'Want to build with us?'}
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              We're always looking for sharp engineers, problem-solvers, and people who care about India's energy future. Check our open roles.
+              {cta?.description ?? "We're always looking for sharp engineers, problem-solvers, and people who care about India's energy future. Check our open roles."}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/careers">
+              <Link to={cta?.primary_cta_link ?? '/careers'}>
                 <Button variant="primary" size="lg">
-                  View Open Roles <ArrowForwardIcon sx={{ fontSize: 16 }} />
+                  {cta?.primary_cta_text ?? 'View Open Roles'} <ArrowForwardIcon sx={{ fontSize: 16 }} />
                 </Button>
               </Link>
-              <Link to="/contact">
-                <Button variant="secondary" size="lg">Contact Us</Button>
+              <Link to={cta?.secondary_cta_link ?? '/contact'}>
+                <Button variant="secondary" size="lg">{cta?.secondary_cta_text ?? 'Contact Us'}</Button>
               </Link>
             </div>
           </motion.div>

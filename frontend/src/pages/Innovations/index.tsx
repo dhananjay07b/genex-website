@@ -5,7 +5,7 @@ import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
-import type { InnovationPageData, WagtailListResponse } from '@/types/api'
+import type { CapabilitiesSectionValue, InnovationPageData, WagtailListResponse } from '@/types/api'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
@@ -25,7 +25,8 @@ const staggerChild = {
 }
 
 function InnovationCard({ item }: { item: InnovationPageData }) {
-  const firstCapability = item.capabilities?.[0]?.value ?? item.subline
+  const capabilities = (item.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
+  const firstCapability = capabilities[0] ?? item.subline
   return (
     <motion.div
       variants={staggerChild}
@@ -34,7 +35,7 @@ function InnovationCard({ item }: { item: InnovationPageData }) {
       transition={{ duration: 0.22, ease: 'easeOut' }}
     >
       {/* Gradient icon placeholder */}
-      <div className={`w-12 h-12 mb-6 rounded-xl bg-linear-to-br ${item.gradient || 'from-slate-200 to-slate-300'}`} />
+      <div className="w-12 h-12 mb-6 rounded-xl bg-linear-to-br from-slate-200 to-slate-300" />
 
       <p className="text-2xl font-bold text-[#1d293d] leading-tight mb-3">
         {item.title}
@@ -59,7 +60,7 @@ export default function Innovations() {
 
   useEffect(() => {
     apiFetch<WagtailListResponse<InnovationPageData>>(
-      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,gradient,capabilities&limit=50'
+      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,body&limit=50'
     )
       .then(res => setInnovations(res.items))
       .catch(() => setInnovations([]))

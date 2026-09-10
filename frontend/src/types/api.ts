@@ -38,16 +38,100 @@ export interface TechHighlight {
   description: string
 }
 
+// ── Product / Innovation `body` block value shapes ────────────────────────────
+
+export interface OverviewSectionValue {
+  heading: string
+  paragraphs: string[]
+}
+
+export interface CapabilitiesSectionValue {
+  heading: string
+  items: string[]
+}
+
+export interface TechHighlightsSectionValue {
+  eyebrow: string
+  intro: string
+  items: TechHighlight[]
+}
+
+export interface DeploymentStepValue {
+  num: string
+  title: string
+  description: string
+  icon: string | null
+}
+
+export interface DeploymentStepsSectionValue {
+  heading: string
+  description: string | null
+  steps: DeploymentStepValue[]
+}
+
+export interface ProductVideoSectionValue {
+  heading: string | null
+  description: string | null
+  video_file: WagtailDocument | null
+  video_url: string | null
+  poster_image: WagtailImage | null
+}
+
+export interface ProductTestimonialSectionValue {
+  heading: string
+  items: TestimonialApiValue[]
+}
+
+export interface StatsGridSectionValue {
+  heading: string
+  bg: string
+  stats: ProductStat[]
+}
+
+export interface IntroductionSectionValue {
+  heading: string
+  description: string
+  note: string | null
+}
+
+export interface DocumentItemValue {
+  title: string
+  document: WagtailDocument | null
+  note: string | null
+}
+
+export interface DocumentSectionValue {
+  heading: string
+  documents: DocumentItemValue[]
+}
+
+export interface FAQItemValue {
+  section: string | null
+  q: string
+  a: string
+}
+
+export interface FAQSectionValue {
+  heading: string
+  items: FAQItemValue[]
+}
+
+export interface CTABandValue {
+  heading: string
+  description: string | null
+  primary_cta_text: string | null
+  primary_cta_link: string | null
+  secondary_cta_text: string | null
+  secondary_cta_link: string | null
+}
+
 export interface ProductPageData extends WagtailPageBase {
   badge: string
   family: string
   headline: string
   subline: string
-  gradient: string
-  overview: StreamBlock<string>[]
-  capabilities: StreamBlock<string>[]
-  tech_highlights: StreamBlock<TechHighlight>[]
-  stats: StreamBlock<ProductStat>[]
+  image_url: string | null
+  body: StreamBlock<unknown>[]
 }
 
 export interface InnovationPageData extends WagtailPageBase {
@@ -56,11 +140,99 @@ export interface InnovationPageData extends WagtailPageBase {
   stage: string
   headline: string
   subline: string
-  gradient: string
-  overview: StreamBlock<string>[]
-  capabilities: StreamBlock<string>[]
-  tech_highlights: StreamBlock<TechHighlight>[]
-  stats: StreamBlock<ProductStat>[]
+  image_url: string | null
+  icon_url: string | null
+  body: StreamBlock<unknown>[]
+}
+
+// ── About / Media / Team `body` block value shapes ────────────────────────────
+
+export interface HeroSectionApiValue {
+  label: string | null
+  heading: string
+  description: string | null
+  cta_text: string | null
+  cta_link: string | null
+  background_image: WagtailImage | null
+}
+
+export interface MilestoneApiValue {
+  year: string
+  label: string
+  title: string
+  description: string
+  is_current: boolean
+}
+
+export interface VisionMissionCardApiValue {
+  icon: string
+  title: string
+  text: string
+}
+
+export interface LeadershipCardApiValue {
+  title: string
+  bio: string
+  initials: string
+  linkedin: string | null
+}
+
+export interface CertificationApiValue {
+  name: string
+  label: string
+}
+
+export interface AchievementApiValue {
+  badge: string
+  icon_type: 'certificate' | 'award'
+  heading: string
+  body: string
+  image: WagtailImage | null
+  image_alt: string | null
+}
+
+export interface PressItemApiValue {
+  image: WagtailImage
+  alt: string
+  caption: string | null
+  subcaption: string | null
+  featured: boolean
+}
+
+export interface GalleryItemApiValue {
+  image: WagtailImage
+  alt: string
+}
+
+export interface LeaderApiValue {
+  name: string
+  role: string
+  image: WagtailImage | null
+  quote: string
+}
+
+export interface TeamMemberApiValue {
+  name: string
+  role: string
+  image: WagtailImage | null
+}
+
+export interface TeamSectionApiValue {
+  title: string
+  description: string | null
+  members: TeamMemberApiValue[]
+}
+
+export interface AboutPageData extends WagtailPageBase {
+  body: StreamBlock<unknown>[]
+}
+
+export interface MediaPageData extends WagtailPageBase {
+  body: StreamBlock<unknown>[]
+}
+
+export interface TeamPageData extends WagtailPageBase {
+  body: StreamBlock<unknown>[]
 }
 
 // ── Snippet API shapes (DRF, snake_case) ──────────────────────────────────────
@@ -153,7 +325,7 @@ export interface SnippetListResponse<T> {
 
 // ── Homepage API shapes ───────────────────────────────────────────────────────
 
-export interface WagtailImage { url: string }
+export interface WagtailImage { url: string; width?: number; height?: number; alt?: string }
 export interface WagtailDocument { url: string; title: string }
 
 export interface HeroSlideApiValue {

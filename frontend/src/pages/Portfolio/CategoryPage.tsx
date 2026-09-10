@@ -12,7 +12,14 @@ import { Button } from '@/components/ui/Button'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
 import { apiFetch } from '@/lib/api/client'
-import type { ProductPageData, WagtailListResponse } from '@/types/api'
+import type {
+  CapabilitiesSectionValue,
+  OverviewSectionValue,
+  ProductPageData,
+  StatsGridSectionValue,
+  TechHighlightsSectionValue,
+  WagtailListResponse,
+} from '@/types/api'
 
 const FAMILY_LABEL: Record<string, string> = {
   solar:   'Solar & Monitoring',
@@ -44,13 +51,13 @@ export default function CategoryPage() {
   useEffect(() => {
     if (!slug) { setProduct(null); return }
     apiFetch<WagtailListResponse<ProductPageData>>(
-      `/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,gradient,overview,capabilities,tech_highlights,stats&slug=${slug}&limit=1`
+      `/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,image_url,body&slug=${slug}&limit=1`
     )
       .then(res => setProduct(res.items[0] ?? null))
       .catch(() => setProduct(null))
 
     apiFetch<WagtailListResponse<ProductPageData>>(
-      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family,gradient&limit=50'
+      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family&limit=50'
     )
       .then(res => setAllProducts(res.items))
       .catch(() => setAllProducts([]))
@@ -61,10 +68,10 @@ export default function CategoryPage() {
 
   const related = allProducts.filter(p => p.meta.slug !== slug).slice(0, 3)
 
-  const overview = (product.overview ?? []).map(b => b.value)
-  const capabilities = (product.capabilities ?? []).map(b => b.value)
-  const techHighlights = (product.tech_highlights ?? []).map(b => b.value).slice(0, 4)
-  const stats = (product.stats ?? []).map(b => b.value)
+  const overview = (product.body.find(b => b.type === 'overview')?.value as OverviewSectionValue | undefined)?.paragraphs ?? []
+  const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
+  const techHighlights = ((product.body.find(b => b.type === 'tech_highlights')?.value as TechHighlightsSectionValue | undefined)?.items ?? []).slice(0, 4)
+  const stats = (product.body.find(b => b.type === 'stats')?.value as StatsGridSectionValue | undefined)?.stats ?? []
 
   return (
     <main>
@@ -77,7 +84,7 @@ export default function CategoryPage() {
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#f0f8ff] border-b border-[#e5e7eb] py-20 lg:py-28 overflow-hidden">
         <div
-          className={`absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br ${product.gradient}`}
+          className="absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br from-slate-200 to-slate-300"
           aria-hidden="true"
         />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
@@ -233,7 +240,7 @@ export default function CategoryPage() {
                 >
                   <Link
                     to={`/portfolio/${p.meta.slug}`}
-                    className={`group block relative h-72 rounded-3xl overflow-hidden bg-linear-to-br ${p.gradient || 'from-slate-200 to-slate-300'}`}
+                    className="group block relative h-72 rounded-3xl overflow-hidden bg-linear-to-br from-slate-200 to-slate-300"
                   >
                     <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 p-6">
