@@ -50,7 +50,7 @@ export default function Profile() {
               <p className="text-lg font-bold text-text-primary">{user.email}</p>
             </div>
             <div className="flex gap-3">
-              <Link to="/gelearn/submit-post" className="inline-flex">
+              <Link to="/submit-post" className="inline-flex">
                 <Button variant="primary" size="md">Submit a Post</Button>
               </Link>
               <Button variant="secondary" size="md" onClick={handleLogout}>Log Out</Button>

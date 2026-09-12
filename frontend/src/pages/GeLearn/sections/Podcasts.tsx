@@ -108,7 +108,7 @@ export default function Podcasts() {
       <PageMeta
         title="Podcasts & Interviews — Genex GeLearn"
         description="Conversations on India's energy transition, renewable infrastructure, and technology from the Genex Technocrats team."
-        canonical="/gelearn/podcasts"
+        canonical="/podcasts"
       />
       <PageHero
         label="Podcasts & Interviews"

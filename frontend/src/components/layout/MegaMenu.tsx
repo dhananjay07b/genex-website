@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { cn, isExternalHref } from '@/lib/utils'
 import type { NavDropdown } from '@/types/navigation'
 
 interface MegaMenuProps {
@@ -37,26 +37,35 @@ export function MegaMenu({ dropdown, isOpen }: MegaMenuProps) {
                 )}
               >
                 {section.items.map((item) => {
-                    const active = pathname === item.href
+                    const external = isExternalHref(item.href)
+                    const active = !external && pathname === item.href
+                    const linkClassName = "group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    const content = (
+                      <>
+                        <span className={cn(
+                          'text-sm font-medium transition-colors',
+                          active ? 'text-primary' : 'text-text-primary group-hover:text-primary'
+                        )}>
+                          {item.label}
+                        </span>
+                        {item.badge && (
+                          <span className="inline-flex items-center rounded-full bg-linear-to-r from-[#1AAEE8] to-[#00D97E] px-2 py-0.5 text-[10px] font-bold text-white leading-none">
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )
                     return (
                       <li key={item.href} role="none">
-                        <Link
-                          to={item.href}
-                          role="menuitem"
-                          className="group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        >
-                          <span className={cn(
-                            'text-sm font-medium transition-colors',
-                            active ? 'text-primary' : 'text-text-primary group-hover:text-primary'
-                          )}>
-                            {item.label}
-                          </span>
-                          {item.badge && (
-                            <span className="inline-flex items-center rounded-full bg-linear-to-r from-[#1AAEE8] to-[#00D97E] px-2 py-0.5 text-[10px] font-bold text-white leading-none">
-                              {item.badge}
-                            </span>
-                          )}
-                        </Link>
+                        {external ? (
+                          <a href={item.href} role="menuitem" className={linkClassName}>
+                            {content}
+                          </a>
+                        ) : (
+                          <Link to={item.href} role="menuitem" className={linkClassName}>
+                            {content}
+                          </Link>
+                        )}
                       </li>
                     )
                   })}

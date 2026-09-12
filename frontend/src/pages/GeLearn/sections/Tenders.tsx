@@ -109,7 +109,7 @@ export default function Tenders() {
       <PageMeta
         title="Tenders & Opportunities — Genex GeLearn"
         description="Active tenders and partnership opportunities in solar monitoring, SCADA, and energy management from Genex Technocrats."
-        canonical="/gelearn/tenders"
+        canonical="/tenders"
       />
       <PageHero
         label="Tenders & Opportunities"

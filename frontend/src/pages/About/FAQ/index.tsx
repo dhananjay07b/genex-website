@@ -94,7 +94,7 @@ export default function FAQ() {
       <PageMeta
         title="FAQ — Genex Technocrats"
         description="Answers to common questions about Genex products, deployment timelines, integration support, pricing, and partnerships."
-        canonical="/gelearn/faq"
+        canonical="/about/faq"
       />
       <PageHero
         label="Support"

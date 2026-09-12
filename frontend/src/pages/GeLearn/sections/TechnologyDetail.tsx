@@ -61,7 +61,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
             {article.readTime}
           </span>
           <Link
-            to={`/gelearn/technology/${article.id}`}
+            to={`/technology/${article.id}`}
             className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           >
             Read <ArrowForwardIcon style={{ fontSize: 13 }} />
@@ -90,7 +90,7 @@ export default function TechnologyDetail() {
   }, [id])
 
   if (article === undefined) return null
-  if (article === null) return <Navigate to="/gelearn/technology" replace />
+  if (article === null) return <Navigate to="/technology" replace />
 
   const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
 
@@ -99,7 +99,7 @@ export default function TechnologyDetail() {
       <PageMeta
         title={`${article.title} — Genex Technology`}
         description={article.excerpt}
-        canonical={`/gelearn/technology/${article.id}`}
+        canonical={`/technology/${article.id}`}
       />
 
       {/* ── BREADCRUMB ───────────────────────────────────────────────────── */}
@@ -107,7 +107,7 @@ export default function TechnologyDetail() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e] flex-wrap">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/gelearn/technology" className="hover:text-primary transition-colors">Technology</Link>
+          <Link to="/technology" className="hover:text-primary transition-colors">Technology</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-xs normal-case font-semibold">{article.title}</span>
         </div>
@@ -286,7 +286,7 @@ export default function TechnologyDetail() {
                 </p>
               </div>
               <Link
-                to="/gelearn/technology"
+                to="/technology"
                 className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
               >
                 View All <ArrowForwardIcon style={{ fontSize: 16 }} />

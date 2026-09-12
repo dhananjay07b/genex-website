@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import { cn } from '@/lib/utils'
 import { useScrolled } from '@/hooks/useScrolled'
-import { useAuth } from '@/context/useAuth'
 import { DesktopNav } from './DesktopNav'
 import { MobileMenu } from './MobileMenu'
 import { buttonVariants } from '@/components/ui/Button'
@@ -14,7 +12,6 @@ export function Header() {
   const scrolled = useScrolled(60)
   const [headerHovered, setHeaderHovered] = useState(false)
   const { pathname } = useLocation()
-  const { user, isLoading } = useAuth()
 
   const isHome = pathname === '/'
   const solidBg = !isHome || scrolled || headerHovered
@@ -67,16 +64,6 @@ export function Header() {
 
         {/* Desktop CTA + Mobile trigger */}
         <div className="flex items-center gap-3">
-          {!isLoading && (
-            <Link
-              to={user ? '/account' : '/login'}
-              aria-label={user ? 'My account' : 'Log in'}
-              className="hidden lg:inline-flex items-center justify-center size-9 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
-            >
-              <PersonOutlineIcon style={{ fontSize: 18 }} />
-            </Link>
-          )}
-
           <Link
             to={navConfig.cta.href}
             className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'hidden lg:inline-flex')}

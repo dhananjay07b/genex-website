@@ -1,28 +1,17 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import EngineeringOutlinedIcon from '@mui/icons-material/EngineeringOutlined'
 import MemoryOutlinedIcon from '@mui/icons-material/MemoryOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import RssFeedOutlinedIcon from '@mui/icons-material/RssFeedOutlined'
-import HelpOutlinedIcon from '@mui/icons-material/HelpOutlined'
 import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 
 export const GELEARN_SECTIONS = [
-  {
-    slug: 'how-we-work',
-    label: 'How We Work',
-    Icon: EngineeringOutlinedIcon,
-    gradient: 'from-indigo-500/30 via-blue-400/20 to-slate-400/10',
-    iconBg: 'from-indigo-500 to-blue-500',
-    count: '6 Methodology Steps',
-    description: 'Our engineering process, delivery methodology, and quality standards across every project we undertake.',
-  },
   {
     slug: 'technology',
     label: 'Technology Deep Dives',
@@ -78,15 +67,6 @@ export const GELEARN_SECTIONS = [
     description: 'Engineering perspectives, industry commentary, and technical articles from our team.',
   },
   {
-    slug: 'faq',
-    label: 'FAQ',
-    Icon: HelpOutlinedIcon,
-    gradient: 'from-sky-500/30 via-blue-400/20 to-cyan-400/10',
-    iconBg: 'from-sky-500 to-blue-500',
-    count: '16 Questions',
-    description: 'Common technical and commercial questions — answered clearly by our engineers.',
-  },
-  {
     slug: 'podcasts',
     label: 'Podcasts & Interviews',
     Icon: MicOutlinedIcon,
@@ -111,7 +91,7 @@ function DotsOverlay() {
   )
 }
 
-const RIPPLE_DELAYS = [0.35, 0.15, 0.35, 0.15, 0, 0.15, 0.35, 0.15, 0.35]
+const RIPPLE_DELAYS = [0.35, 0.15, 0.35, 0.15, 0, 0.15, 0.35]
 
 export default function GeLearn() {
   return (
@@ -119,7 +99,7 @@ export default function GeLearn() {
       <PageMeta
         title="GeLearn — Energy Knowledge Hub by Genex"
         description="Case studies, technology deep dives, whitepapers, video library, FAQs, and insights from Genex Technocrats — India's energy intelligence platform."
-        canonical="/gelearn"
+        canonical="/"
       />
       <PageHero
         label="Knowledge Hub"
@@ -142,7 +122,7 @@ export default function GeLearn() {
                   transition={{ duration: 0.45, ease: 'easeOut', delay: RIPPLE_DELAYS[i] }}
                 >
                   <Link
-                    to={`/gelearn/${section.slug}`}
+                    to={`/${section.slug}`}
                     className="group flex flex-col h-full rounded-2xl border border-border bg-white overflow-hidden hover:border-primary hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
                   >
                     {/* Gradient header with dots overlay */}

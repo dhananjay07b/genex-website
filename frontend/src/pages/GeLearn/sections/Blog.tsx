@@ -72,7 +72,7 @@ function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
 
         {/* Read More */}
         <Link
-          to={`/gelearn/blog/${post.id}`}
+          to={`/blog/${post.id}`}
           className="inline-flex items-center gap-2 text-sm font-bold text-black hover:text-primary transition-colors duration-200 self-start"
         >
           Read More <ArrowForwardIcon style={{ fontSize: 16 }} />
@@ -107,7 +107,7 @@ export default function Blog() {
       <PageMeta
         title="Blog & Insights — Genex Technocrats"
         description="Engineering perspectives on solar monitoring, SCADA, smart grid, and energy management from the Genex Technocrats team."
-        canonical="/gelearn/blog"
+        canonical="/blog"
       />
       <PageHero
         label="Blog & Insights"

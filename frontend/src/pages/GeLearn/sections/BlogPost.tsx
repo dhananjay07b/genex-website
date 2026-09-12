@@ -58,7 +58,7 @@ export default function BlogPost() {
   }, [id])
 
   if (post === undefined) return null
-  if (post === null) return <Navigate to="/gelearn/blog" replace />
+  if (post === null) return <Navigate to="/blog" replace />
 
   const postIdx = allPosts.findIndex(p => p.id === post.id)
   const heroImg    = BLOG_IMAGES[postIdx >= 0 ? postIdx % BLOG_IMAGES.length : 0]
@@ -74,7 +74,7 @@ export default function BlogPost() {
       <PageMeta
         title={`${post.title} — Genex Blog`}
         description={post.excerpt}
-        canonical={`/gelearn/blog/${post.id}`}
+        canonical={`/blog/${post.id}`}
       />
 
       {/* ── BREADCRUMB ───────────────────────────────────────────────────── */}
@@ -82,7 +82,7 @@ export default function BlogPost() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/gelearn/blog" className="hover:text-primary transition-colors">Blog</Link>
+          <Link to="/blog" className="hover:text-primary transition-colors">Blog</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-xs">{post.title}</span>
         </div>
@@ -197,7 +197,7 @@ export default function BlogPost() {
               <div className="flex items-center gap-8">
                 {prevPost && (
                   <Link
-                    to={`/gelearn/blog/${prevPost.id}`}
+                    to={`/blog/${prevPost.id}`}
                     className="flex items-center gap-3 group"
                   >
                     <div className="size-10 rounded-full border border-[#e2e8f0] flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-colors">
@@ -211,7 +211,7 @@ export default function BlogPost() {
                 )}
                 {nextPost && (
                   <Link
-                    to={`/gelearn/blog/${nextPost.id}`}
+                    to={`/blog/${nextPost.id}`}
                     className="flex items-center gap-3 group"
                   >
                     <div className="text-right">
@@ -252,7 +252,7 @@ export default function BlogPost() {
                 {recentPosts.map((p, pi) => (
                   <Link
                     key={p.id}
-                    to={`/gelearn/blog/${p.id}`}
+                    to={`/blog/${p.id}`}
                     className="flex items-center gap-4 group"
                   >
                     <div className="size-18 rounded-3xl overflow-hidden shrink-0">

@@ -69,7 +69,7 @@ function MiniCard({ cs }: { cs: CaseStudyItem }) {
               <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
             <Link
-              to={`/gelearn/case-studies/${cs.id}`}
+              to={`/case-studies/${cs.id}`}
               className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
             >
               <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />
@@ -97,7 +97,7 @@ export default function CaseStudyDetail() {
   }, [id])
 
   if (cs === undefined) return null
-  if (cs === null) return <Navigate to="/gelearn/case-studies" replace />
+  if (cs === null) return <Navigate to="/case-studies" replace />
 
   const heroImg = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
 
@@ -106,14 +106,14 @@ export default function CaseStudyDetail() {
       <PageMeta
         title={`${cs.title} — Genex Case Studies`}
         description={cs.excerpt}
-        canonical={`/gelearn/case-studies/${cs.id}`}
+        canonical={`/case-studies/${cs.id}`}
       />
 
       <div className="bg-white border-b border-[#e2e8f0] py-4">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/gelearn/case-studies" className="hover:text-primary transition-colors">Case Studies</Link>
+          <Link to="/case-studies" className="hover:text-primary transition-colors">Case Studies</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-sm">{cs.title}</span>
         </div>
@@ -206,7 +206,7 @@ export default function CaseStudyDetail() {
                   </p>
                 </div>
                 <Link
-                  to="/gelearn/case-studies"
+                  to="/case-studies"
                   className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
                 >
                   View All <ArrowForwardIcon style={{ fontSize: 16 }} />

@@ -120,7 +120,7 @@ const slideFrom = (x: number) => ({
 
 // ── StepRow ───────────────────────────────────────────────────────────────────
 
-function StepRow({ step, index }: { step: Step; index: number }) {
+function StepRow({ step }: { step: Step }) {
   const isRight = step.side === 'right' // card on right side
   const cardSlide = slideFrom(isRight ? 60 : -60)
   const imgSlide  = slideFrom(isRight ? -60 : 60)
@@ -252,7 +252,7 @@ export default function HowWeWork() {
       <PageMeta
         title="How We Work — Genex Technocrats"
         description="Six stages from site survey to long-term support — and the engineering principles that guide every Genex project."
-        canonical="/gelearn/how-we-work"
+        canonical="/about/how-we-work"
       />
       <PageHero
         label="How We Work"
@@ -293,7 +293,7 @@ export default function HowWeWork() {
             {/* Steps */}
             <div className="flex flex-col gap-24">
               {STEPS.map((step, i) => (
-                <StepRow key={i} step={step} index={i} />
+                <StepRow key={i} step={step} />
               ))}
             </div>
           </div>

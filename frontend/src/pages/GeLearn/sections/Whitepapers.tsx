@@ -83,7 +83,7 @@ export default function Whitepapers() {
       <PageMeta
         title="Whitepapers & Reports — Genex GeLearn"
         description="In-depth technical whitepapers on energy monitoring, grid reliability, and software architecture from Genex Technocrats."
-        canonical="/gelearn/whitepapers"
+        canonical="/whitepapers"
       />
       <PageHero
         label="Whitepapers & Reports"

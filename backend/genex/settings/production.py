@@ -7,9 +7,11 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", SECRET_KEY)
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
 
-# Lock CORS to the Vercel frontend domain
+# Lock CORS to the marketing site and the GeLearn subdomain (the only origin that
+# calls the auth/comments/blog-submission endpoints)
 CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "https://genextechnocrats.vercel.app"
+    "CORS_ALLOWED_ORIGINS",
+    "https://genextechnocrats.vercel.app,https://genextechnocrats.com,https://gelearn.genextechnocrats.com",
 ).split(",")
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS

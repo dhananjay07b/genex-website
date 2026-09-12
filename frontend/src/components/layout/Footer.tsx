@@ -6,6 +6,8 @@ import ChatIcon from '@mui/icons-material/Chat'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import YouTubeIcon from '@mui/icons-material/YouTube'
+import { isExternalHref } from '@/lib/utils'
+import { GELEARN_URL } from '@/lib/host'
 
 const footerSections = [
   {
@@ -32,22 +34,22 @@ const footerSections = [
   {
     title: 'GeLearn',
     links: [
-      { label: 'How We Work',          href: '/gelearn/how-we-work' },
-      { label: 'Case Studies',         href: '/gelearn/case-studies' },
-      { label: 'Whitepapers & Reports', href: '/gelearn/whitepapers' },
-      { label: 'Video Library',        href: '/gelearn/videos' },
-      { label: 'Blog & Insights',      href: '/gelearn/blog' },
-      { label: 'FAQ',                  href: '/gelearn/faq' },
+      { label: 'Case Studies',         href: `${GELEARN_URL}/case-studies` },
+      { label: 'Whitepapers & Reports', href: `${GELEARN_URL}/whitepapers` },
+      { label: 'Video Library',        href: `${GELEARN_URL}/videos` },
+      { label: 'Blog & Insights',      href: `${GELEARN_URL}/blog` },
     ],
   },
   {
     title: 'Company',
     links: [
+      { label: 'How We Work',             href: '/about/how-we-work' },
       { label: 'Our Story',               href: '/about/story' },
       { label: 'Leadership',              href: '/about/leadership' },
       { label: 'Partners & Alliances',    href: '/about/partners' },
       { label: 'Certifications & Awards', href: '/about/certifications' },
       { label: 'Media & Press',           href: '/about/media' },
+      { label: 'FAQ',                     href: '/about/faq' },
       { label: 'Careers',                 href: '/careers' },
     ],
   },
@@ -139,16 +141,18 @@ export function Footer() {
                 {section.title}
               </h3>
               <ul className="space-y-2.5">
-                {section.links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      to={link.href}
-                      className="text-sm text-text-muted hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:underline"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {section.links.map((link) => {
+                  const linkClassName = "text-sm text-text-muted hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:underline"
+                  return (
+                    <li key={link.href}>
+                      {isExternalHref(link.href) ? (
+                        <a href={link.href} className={linkClassName}>{link.label}</a>
+                      ) : (
+                        <Link to={link.href} className={linkClassName}>{link.label}</Link>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}

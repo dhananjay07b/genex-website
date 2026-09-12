@@ -1,4 +1,5 @@
 import type { NavConfig } from '@/types/navigation'
+import { GELEARN_URL } from '@/lib/host'
 
 export const navConfig: NavConfig = {
   items: [
@@ -57,15 +58,13 @@ export const navConfig: NavConfig = {
           {
             title: 'Learn & Explore',
             items: [
-              { label: 'How We Work',            href: '/gelearn/how-we-work' },
-              { label: 'Technology Deep Dives',  href: '/gelearn/technology' },
-              { label: 'Case Studies',           href: '/gelearn/case-studies' },
-              { label: 'Tenders & Opportunities', href: '/gelearn/tenders' },
-              { label: 'Whitepapers & Reports',  href: '/gelearn/whitepapers' },
-              { label: 'Video Library',          href: '/gelearn/videos' },
-              { label: 'Blog & Insights',        href: '/gelearn/blog' },
-              { label: 'FAQ',                    href: '/gelearn/faq' },
-              { label: 'Podcasts & Interviews',  href: '/gelearn/podcasts' },
+              { label: 'Technology Deep Dives',  href: `${GELEARN_URL}/technology` },
+              { label: 'Case Studies',           href: `${GELEARN_URL}/case-studies` },
+              { label: 'Tenders & Opportunities', href: `${GELEARN_URL}/tenders` },
+              { label: 'Whitepapers & Reports',  href: `${GELEARN_URL}/whitepapers` },
+              { label: 'Video Library',          href: `${GELEARN_URL}/videos` },
+              { label: 'Blog & Insights',        href: `${GELEARN_URL}/blog` },
+              { label: 'Podcasts & Interviews',  href: `${GELEARN_URL}/podcasts` },
             ],
           },
         ],
@@ -78,9 +77,11 @@ export const navConfig: NavConfig = {
           {
             title: 'The Company',
             items: [
+              { label: 'How We Work',          href: '/about/how-we-work' },
               { label: 'Media & Achievements', href: '/about/media' },
               { label: 'Our Teams',            href: '/about/teams' },
               { label: 'CSR Initiatives',      href: '/about/csr' },
+              { label: 'FAQ',                  href: '/about/faq' },
             ],
           },
         ],

@@ -13,3 +13,8 @@ export function getMediaUrl(url: string | null | undefined): string {
   if (/^https?:\/\//i.test(url)) return url
   return `${API_BASE}${url}`
 }
+
+/** True for an absolute URL (e.g. a cross-origin GeLearn subdomain link) vs an internal route. */
+export function isExternalHref(href: string): boolean {
+  return /^https?:\/\//i.test(href)
+}

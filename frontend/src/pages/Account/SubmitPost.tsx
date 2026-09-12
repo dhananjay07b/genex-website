@@ -43,7 +43,7 @@ export default function SubmitPost() {
 
   return (
     <main>
-      <PageMeta title="Submit a Post — Genex GeLearn" description="Share your expertise with the Genex GeLearn community." canonical="/gelearn/submit-post" />
+      <PageMeta title="Submit a Post — Genex GeLearn" description="Share your expertise with the Genex GeLearn community." canonical="/submit-post" />
       <PageHero label="Contribute" headline="Submit a Post" subline="Share your knowledge with the GeLearn community. Every submission is reviewed by our editorial team before publishing." />
 
       <section className="bg-white py-16 lg:py-24">

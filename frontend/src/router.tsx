@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
+import { GeLearnLayout } from '@/components/layout/GeLearnLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 const Home                  = lazy(() => import('@/pages/Home'))
@@ -10,22 +11,23 @@ const Portfolio             = lazy(() => import('@/pages/Portfolio'))
 const CategoryPage          = lazy(() => import('@/pages/Portfolio/CategoryPage'))
 const Innovations           = lazy(() => import('@/pages/Innovations'))
 const InnovationProductPage = lazy(() => import('@/pages/Innovations/ProductPage'))
+const About                 = lazy(() => import('@/pages/About'))
+const Media                 = lazy(() => import('@/pages/About/Media'))
+const Team                  = lazy(() => import('@/pages/About/Team'))
+const HowWeWork              = lazy(() => import('@/pages/About/HowWeWork'))
+const FAQ                    = lazy(() => import('@/pages/About/FAQ'))
+
 const GeLearn               = lazy(() => import('@/pages/GeLearn'))
 const CaseStudies           = lazy(() => import('@/pages/GeLearn/sections/CaseStudies'))
 const CaseStudyDetail       = lazy(() => import('@/pages/GeLearn/sections/CaseStudyDetail'))
 const Technology            = lazy(() => import('@/pages/GeLearn/sections/Technology'))
 const TechnologyDetail      = lazy(() => import('@/pages/GeLearn/sections/TechnologyDetail'))
-const HowWeWork             = lazy(() => import('@/pages/GeLearn/sections/HowWeWork'))
 const Blog                  = lazy(() => import('@/pages/GeLearn/sections/Blog'))
 const BlogPost              = lazy(() => import('@/pages/GeLearn/sections/BlogPost'))
-const FAQ                   = lazy(() => import('@/pages/GeLearn/sections/FAQ'))
 const VideoLibrary          = lazy(() => import('@/pages/GeLearn/sections/VideoLibrary'))
 const Tenders               = lazy(() => import('@/pages/GeLearn/sections/Tenders'))
 const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
-const About                 = lazy(() => import('@/pages/About'))
-const Media                 = lazy(() => import('@/pages/About/Media'))
-const Team                  = lazy(() => import('@/pages/About/Team'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))
 const Register              = lazy(() => import('@/pages/Account/Register'))
 const Profile                = lazy(() => import('@/pages/Account/Profile'))
@@ -35,7 +37,8 @@ const s = (el: React.ReactNode) => (
   <Suspense fallback={<div className="min-h-screen" />}>{el}</Suspense>
 )
 
-export const router = createBrowserRouter([
+// Marketing site — genextechnocrats.com. No GeLearn content, no accounts/auth.
+export const marketingRouter = createBrowserRouter([
   {
     element: <Layout />,
     children: [
@@ -44,31 +47,40 @@ export const router = createBrowserRouter([
       { path: '/portfolio/:category',      element: s(<CategoryPage />) },
       { path: '/innovations',              element: s(<Innovations />) },
       { path: '/innovations/:slug',        element: s(<InnovationProductPage />) },
-      { path: '/gelearn',                  element: s(<GeLearn />) },
-      { path: '/gelearn/case-studies',         element: s(<CaseStudies />) },
-      { path: '/gelearn/case-studies/:id',    element: s(<CaseStudyDetail />) },
-      { path: '/gelearn/technology',          element: s(<Technology />) },
-      { path: '/gelearn/technology/:id',     element: s(<TechnologyDetail />) },
-      { path: '/gelearn/how-we-work',      element: s(<HowWeWork />) },
-      { path: '/gelearn/blog',             element: s(<Blog />) },
-      { path: '/gelearn/blog/:id',         element: s(<BlogPost />) },
-      { path: '/gelearn/faq',              element: s(<FAQ />) },
-      { path: '/gelearn/videos',           element: s(<VideoLibrary />) },
-      { path: '/gelearn/tenders',          element: s(<Tenders />) },
-      { path: '/gelearn/whitepapers',      element: s(<Whitepapers />) },
-      { path: '/gelearn/podcasts',         element: s(<Podcasts />) },
       { path: '/about',                    element: s(<About />) },
       { path: '/about/media',              element: s(<Media />) },
       { path: '/about/teams',              element: s(<Team />) },
+      { path: '/about/how-we-work',        element: s(<HowWeWork />) },
+      { path: '/about/faq',                element: s(<FAQ />) },
       { path: '/contact',                  element: s(<Contact />) },
       { path: '/careers',                  element: s(<Careers />) },
+    ],
+  },
+])
+
+// GeLearn platform — gelearn.genextechnocrats.com. All account/auth features live here.
+export const gelearnRouter = createBrowserRouter([
+  {
+    element: <GeLearnLayout />,
+    children: [
+      { path: '/',                         element: s(<GeLearn />) },
+      { path: '/case-studies',             element: s(<CaseStudies />) },
+      { path: '/case-studies/:id',         element: s(<CaseStudyDetail />) },
+      { path: '/technology',               element: s(<Technology />) },
+      { path: '/technology/:id',           element: s(<TechnologyDetail />) },
+      { path: '/blog',                     element: s(<Blog />) },
+      { path: '/blog/:id',                 element: s(<BlogPost />) },
+      { path: '/videos',                   element: s(<VideoLibrary />) },
+      { path: '/tenders',                  element: s(<Tenders />) },
+      { path: '/whitepapers',              element: s(<Whitepapers />) },
+      { path: '/podcasts',                 element: s(<Podcasts />) },
       { path: '/login',                    element: s(<Login />) },
       { path: '/register',                 element: s(<Register />) },
       {
         element: <ProtectedRoute />,
         children: [
           { path: '/account',              element: s(<Profile />) },
-          { path: '/gelearn/submit-post',  element: s(<SubmitPost />) },
+          { path: '/submit-post',          element: s(<SubmitPost />) },
         ],
       },
     ],

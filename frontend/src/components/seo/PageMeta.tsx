@@ -1,7 +1,9 @@
 import { Helmet } from 'react-helmet-async'
 
 const SITE_NAME = 'Genex Technocrats'
-const SITE_URL  = 'https://genextechnocrats.com'
+// Resolved from the current origin so canonical/OG URLs are correct whether this
+// page is served from the marketing domain or the gelearn subdomain.
+const SITE_URL  = typeof window !== 'undefined' ? window.location.origin : 'https://genextechnocrats.com'
 const OG_IMAGE  = '/images/hero/slide2.png'
 
 interface PageMetaProps {

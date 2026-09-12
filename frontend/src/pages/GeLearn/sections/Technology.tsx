@@ -78,7 +78,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
         {/* Arrow button */}
         <div className="flex justify-end mb-6">
           <Link
-            to={`/gelearn/technology/${article.id}`}
+            to={`/technology/${article.id}`}
             className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] hover:opacity-85 transition-opacity"
           >
             <ArrowForwardIcon
@@ -121,7 +121,7 @@ export default function Technology() {
       <PageMeta
         title="Technology Deep Dives — Genex GeLearn"
         description="IEC 61850, OPC-UA, MQTT, Modbus, AI/ML for energy — technical articles from Genex engineers on the protocols and architectures powering the energy transition."
-        canonical="/gelearn/technology"
+        canonical="/technology"
       />
       <PageHero
         label="Technology Deep Dives"

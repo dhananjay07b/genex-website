@@ -61,7 +61,7 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
               <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
             <Link
-              to={`/gelearn/case-studies/${cs.id}`}
+              to={`/case-studies/${cs.id}`}
               className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
               aria-label={`Read case study: ${cs.title}`}
             >
@@ -97,7 +97,7 @@ export default function CaseStudies() {
       <PageMeta
         title="Case Studies — Genex Technocrats"
         description="Real deployments. Real outcomes. Engineering case studies from Genex projects across solar, wind, grid, BESS, EV, and industrial energy sectors."
-        canonical="/gelearn/case-studies"
+        canonical="/case-studies"
       />
       <PageHero
         label="Case Studies"

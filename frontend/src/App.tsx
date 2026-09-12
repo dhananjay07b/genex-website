@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { router } from '@/router'
+import { marketingRouter, gelearnRouter } from '@/router'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { AuthProvider } from '@/context/AuthContext'
+import { isGeLearnHost } from '@/lib/host'
 
 export default function App() {
   const [loading, setLoading] = useState(true)
@@ -13,10 +14,14 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  const onGeLearn = isGeLearnHost()
+
+  const routerProvider = <RouterProvider router={onGeLearn ? gelearnRouter : marketingRouter} />
+
   return (
-    <AuthProvider>
+    <>
       <AnimatePresence>{loading && <LoadingScreen />}</AnimatePresence>
-      <RouterProvider router={router} />
-    </AuthProvider>
+      {onGeLearn ? <AuthProvider>{routerProvider}</AuthProvider> : routerProvider}
+    </>
   )
 }
