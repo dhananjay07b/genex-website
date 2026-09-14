@@ -1,11 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import LocationOnIcon from '@mui/icons-material/LocationOn'
-import PhoneIcon from '@mui/icons-material/Phone'
-import EmailIcon from '@mui/icons-material/Email'
 import ChatIcon from '@mui/icons-material/Chat'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
@@ -15,6 +12,9 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
+import { apiFetch } from '@/lib/api/client'
+import { getMuiIcon } from '@/lib/muiIconRegistry'
+import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
 
 const schema = z.object({
   name:        z.string().min(2, 'Name is required'),
@@ -27,37 +27,45 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
-const PROJECT_TYPES = [
-  { value: 'solar-rooftop',  label: 'Solar Rooftop System'      },
-  { value: 'solar-plant',    label: 'Solar Power Plant (EPC)'   },
-  { value: 'scada-rms',      label: 'SCADA / RMS Deployment'    },
-  { value: 'wind-energy',    label: 'Wind Energy Monitoring'    },
-  { value: 'industrial',     label: 'Industrial Energy Mgmt'    },
-  { value: 'request-demo',   label: 'Request a Product Demo'    },
-  { value: 'other',          label: 'Other / General Inquiry'   },
-]
+interface ProjectTypeApiValue {
+  value: string
+  label: string
+}
 
-const CONTACT_DETAILS = [
-  {
-    icon: LocationOnIcon,
-    label: 'Office',
-    lines: ['Genex Technocrats Pvt. Ltd.', 'Pune, Maharashtra, India'],
-  },
-  {
-    icon: PhoneIcon,
-    label: 'Phone',
-    lines: ['+91 XXXXX XXXXX'],
-    note: 'Mon–Sat · 10am–7pm IST',
-  },
-  {
-    icon: EmailIcon,
-    label: 'Email',
-    lines: ['info@genextechnocrats.com'],
-  },
-]
+interface ContactDetailApiValue {
+  icon: string
+  label: string
+  lines: string[]
+  note: string | null
+}
+
+interface MapEmbedApiValue {
+  embed_url: string
+  zoom_level: number
+}
+
+interface ContactPageData {
+  id: number
+  title: string
+  body: { type: string; value: unknown; id: string }[]
+}
 
 export default function Contact() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [page, setPage] = useState<ContactPageData | null | undefined>(undefined)
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<ContactPageData>>('/api/v2/pages/?type=pages.ContactPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const contactDetails = (body.find(b => b.type === 'contact_details')?.value as ContactDetailApiValue[] | undefined) ?? []
+  const projectTypes = (body.find(b => b.type === 'project_types')?.value as ProjectTypeApiValue[] | undefined) ?? []
+  const map = body.find(b => b.type === 'map')?.value as MapEmbedApiValue | undefined
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
 
   const {
     register,
@@ -78,6 +86,8 @@ export default function Contact() {
     }
   }
 
+  if (page === undefined) return null
+
   return (
     <main>
       <PageMeta
@@ -86,9 +96,9 @@ export default function Contact() {
         canonical="/contact"
       />
       <PageHero
-        label="Get in Touch"
-        headline="Let's Build Something Together."
-        subline="Our engineering team is available Mon–Sat, 10am–7pm IST. We respond to every message within 24 hours."
+        label={hero?.label ?? 'Get in Touch'}
+        headline={hero?.heading ?? "Let's Build Something Together."}
+        subline={hero?.description ?? 'Our engineering team is available Mon–Sat, 10am–7pm IST. We respond to every message within 24 hours.'}
       />
 
       <section className="bg-white py-20 lg:py-28">
@@ -162,7 +172,7 @@ export default function Contact() {
                     <Select
                       label="Project Type"
                       placeholder="Select a project type"
-                      options={PROJECT_TYPES}
+                      options={projectTypes}
                       error={errors.projectType?.message}
                       {...register('projectType')}
                     />
@@ -217,26 +227,29 @@ export default function Contact() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.15, ease: 'easeOut' }}
             >
-              {CONTACT_DETAILS.map(({ icon: Icon, label, lines, note }) => (
-                <div key={label} className="flex gap-4">
-                  <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-primary" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">
-                      {label}
-                    </p>
-                    {lines.map(line => (
-                      <p key={line} className="text-sm font-semibold text-text-primary leading-snug">
-                        {line}
+              {contactDetails.map(({ icon, label, lines, note }) => {
+                const Icon = getMuiIcon(icon)
+                return (
+                  <div key={label} className="flex gap-4">
+                    <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-primary" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">
+                        {label}
                       </p>
-                    ))}
-                    {note && (
-                      <p className="text-xs text-text-muted mt-0.5">{note}</p>
-                    )}
+                      {lines.map(line => (
+                        <p key={line} className="text-sm font-semibold text-text-primary leading-snug">
+                          {line}
+                        </p>
+                      ))}
+                      {note && (
+                        <p className="text-xs text-text-muted mt-0.5">{note}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {/* WhatsApp */}
               <div className="flex gap-4">
@@ -264,7 +277,17 @@ export default function Contact() {
                   Location
                 </p>
                 <div className="w-full h-52 rounded-xl overflow-hidden bg-surface border border-border flex items-center justify-center">
-                  <p className="text-sm text-text-muted">Map embed goes here</p>
+                  {map?.embed_url ? (
+                    <iframe
+                      src={map.embed_url}
+                      title="Genex office location"
+                      className="w-full h-full border-0"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  ) : (
+                    <p className="text-sm text-text-muted">Map embed goes here</p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -272,6 +295,33 @@ export default function Contact() {
           </div>
         </div>
       </section>
+
+      {cta && (
+        <section className="bg-brand-tint py-20 lg:py-28">
+          <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
+            <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-4">
+              {cta.heading}
+            </h2>
+            {cta.description && (
+              <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
+                {cta.description}
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {cta.primary_cta_text && (
+                <a href={cta.primary_cta_link ?? '#'}>
+                  <Button variant="primary" size="lg">{cta.primary_cta_text}</Button>
+                </a>
+              )}
+              {cta.secondary_cta_text && (
+                <a href={cta.secondary_cta_link ?? '#'}>
+                  <Button variant="secondary" size="lg">{cta.secondary_cta_text}</Button>
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   )
 }

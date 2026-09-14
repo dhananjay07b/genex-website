@@ -1,5 +1,5 @@
 import type { NavConfig } from '@/types/navigation'
-import { GELEARN_URL } from '@/lib/host'
+import { gelearnPath } from '@/lib/host'
 
 export const navConfig: NavConfig = {
   items: [
@@ -58,13 +58,13 @@ export const navConfig: NavConfig = {
           {
             title: 'Learn & Explore',
             items: [
-              { label: 'Technology Deep Dives',  href: `${GELEARN_URL}/technology` },
-              { label: 'Case Studies',           href: `${GELEARN_URL}/case-studies` },
-              { label: 'Tenders & Opportunities', href: `${GELEARN_URL}/tenders` },
-              { label: 'Whitepapers & Reports',  href: `${GELEARN_URL}/whitepapers` },
-              { label: 'Video Library',          href: `${GELEARN_URL}/videos` },
-              { label: 'Blog & Insights',        href: `${GELEARN_URL}/blog` },
-              { label: 'Podcasts & Interviews',  href: `${GELEARN_URL}/podcasts` },
+              { label: 'Technology Deep Dives',  href: gelearnPath('/technology') },
+              { label: 'Case Studies',           href: gelearnPath('/case-studies') },
+              { label: 'Tenders & Opportunities', href: gelearnPath('/tenders') },
+              { label: 'Whitepapers & Reports',  href: gelearnPath('/whitepapers') },
+              { label: 'Video Library',          href: gelearnPath('/videos') },
+              { label: 'Blog & Insights',        href: gelearnPath('/blog') },
+              { label: 'Podcasts & Interviews',  href: gelearnPath('/podcasts') },
             ],
           },
         ],

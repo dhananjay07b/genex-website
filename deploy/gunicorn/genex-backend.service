@@ -1,0 +1,21 @@
+[Unit]
+Description=Genex backend (Django/Wagtail) gunicorn service
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/genex/backend
+Environment="DJANGO_SETTINGS_MODULE=genex.settings.production"
+# Real secrets/config belong in this env file, not in this unit — see
+# deploy/gunicorn/genex-backend.env.example for what it needs to contain.
+EnvironmentFile=/var/www/genex/backend/.env
+ExecStart=/var/www/genex/backend/venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    genex.wsgi:application
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

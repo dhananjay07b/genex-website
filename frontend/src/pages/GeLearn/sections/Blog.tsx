@@ -9,23 +9,17 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
+import { marketingPath } from '@/lib/host'
 import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
 
-const BLOG_IMAGES = [
-  '/images/blog/blog-1.jpg',
-  '/images/blog/blog-2.jpg',
-  '/images/blog/blog-3.jpg',
-  '/images/blog/blog-4.jpg',
-  '/images/blog/blog-5.jpg',
-  '/images/blog/blog-6.jpg',
-]
+const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 
 // ── Card ─────────────────────────────────────────────────────────────────────
 
 function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
-  const img = BLOG_IMAGES[index % BLOG_IMAGES.length]
+  const img = post.image_url ?? FALLBACK_IMAGE
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -195,12 +189,12 @@ export default function Blog() {
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
               If you work in power, renewables, or industrial automation and have something real to say, we want to hear from you.
             </p>
-            <Link
-              to="/contact"
+            <a
+              href={marketingPath('/contact')}
               className="inline-flex items-center gap-2 px-8 py-4 gradient-brand text-white text-sm font-bold rounded-md hover:opacity-90 transition-opacity"
             >
               Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

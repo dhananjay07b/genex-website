@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { cn } from '@/lib/utils'
-import { MARKETING_URL } from '@/lib/host'
+import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
 import { buttonVariants } from '@/components/ui/Button'
 
@@ -54,7 +54,7 @@ export function GeLearnHeader() {
         {/* Account + back-to-main-site */}
         <div className="flex items-center gap-3 shrink-0">
           <a
-            href={MARKETING_URL}
+            href={marketingPath()}
             className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
           >
             genextechnocrats.com <OpenInNewIcon style={{ fontSize: 13 }} />

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import EmailIcon from '@mui/icons-material/Email'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import { MARKETING_URL } from '@/lib/host'
+import { marketingPath } from '@/lib/host'
 
 const SECTION_LINKS = [
   { label: 'Technology Deep Dives', href: '/technology' },
@@ -27,7 +27,7 @@ export function GeLearnFooter() {
               The engineering knowledge hub from Genex Technocrats — case studies, technical deep dives, and community insights on India's power infrastructure.
             </p>
             <a
-              href={MARKETING_URL}
+              href={marketingPath()}
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
               Visit genextechnocrats.com <OpenInNewIcon style={{ fontSize: 14 }} />

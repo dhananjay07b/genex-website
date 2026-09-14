@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { apiFetch } from '@/lib/api/client'
+import { marketingPath } from '@/lib/host'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -163,12 +163,12 @@ export default function Podcasts() {
                 Our AI-monitored solar grids distribute power intelligently — book a personalised demo with our engineering team.
               </p>
             </div>
-            <Link
-              to="/contact#demo"
+            <a
+              href={marketingPath('/contact#demo')}
               className="shrink-0 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
             >
               Request a Demo
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

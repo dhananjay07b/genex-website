@@ -6,39 +6,35 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import CheckIcon from '@mui/icons-material/Check'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
-import type { CaseStudyItem, SnippetListResponse } from '@/types/api'
+import { marketingPath } from '@/lib/host'
+import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
+import type { CaseStudyItem, CaseStudySectionValue, SnippetListResponse } from '@/types/api'
 
-const CS_IMAGES = [
-  '/images/case-studies/cs-1.jpg',
-  '/images/case-studies/cs-2.jpg',
-  '/images/case-studies/cs-3.jpg',
-  '/images/case-studies/cs-4.jpg',
-  '/images/case-studies/cs-5.jpg',
-  '/images/case-studies/cs-6.jpg',
-]
+function RichTextSection({ value }: { value: unknown }) {
+  const section = value as CaseStudySectionValue
+  return (
+    <div className="mb-10">
+      <h3 className="text-2xl font-bold text-black mb-4">{section.heading}</h3>
+      <div
+        className="text-lg text-[#949494] leading-[1.63] space-y-4 [&_p]:mb-4"
+        dangerouslySetInnerHTML={{ __html: section.body }}
+      />
+    </div>
+  )
+}
 
-const LOREM_1 = "In today's competitive energy landscape, deploying robust monitoring and control infrastructure is essential for enhancing asset visibility and operational performance. By integrating real-time data acquisition with intelligent analytics, operators not only improve plant availability but also establish a verifiable track record of performance within the industry. This strategic approach involves identifying the right protocol stack, building reliable edge connectivity, and delivering dashboards that surface the right information at the right time."
+const sectionBlockMap: BlockComponentMap = {
+  section: RichTextSection,
+}
 
-const LOREM_2 = "Effective monitoring and control management not only enhances site visibility but also enables meaningful intervention when performance drifts below baseline. By actively tracking generation, consumption, and fault events in real time, engineering teams can respond before losses compound. The result is a platform that pays for itself through measurable operational improvement."
-
-const REQUIREMENTS = [
-  'System Architecture & Scoping',
-  'Analytics & Performance Monitoring',
-  'Protocol Integration Planning',
-  'Cybersecurity & Access Control',
-  'Data Acquisition Configuration',
-  'Connectivity & Edge Buffering',
-  'Acceptance Testing & Commissioning',
-  'Ongoing Adjustments & Reporting',
-]
+const FALLBACK_IMAGE = '/images/case-studies/cs-1.jpg'
 
 function MiniCard({ cs }: { cs: CaseStudyItem }) {
-  const img = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
+  const img = cs.image_url ?? FALLBACK_IMAGE
   return (
     <motion.div
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
@@ -99,7 +95,7 @@ export default function CaseStudyDetail() {
   if (cs === undefined) return null
   if (cs === null) return <Navigate to="/case-studies" replace />
 
-  const heroImg = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
+  const heroImg = cs.image_url ?? FALLBACK_IMAGE
 
   return (
     <main>
@@ -151,8 +147,12 @@ export default function CaseStudyDetail() {
 
           <div className="space-y-6 mb-12">
             <p className="text-lg text-[#949494] leading-[1.63]">{cs.excerpt}</p>
-            <p className="text-lg text-[#949494] leading-[1.63]">{LOREM_1}</p>
-            <p className="text-lg text-[#949494] leading-[1.63]">{LOREM_2}</p>
+            {cs.intro && (
+              <div
+                className="text-lg text-[#949494] leading-[1.63] [&_p]:mb-4"
+                dangerouslySetInnerHTML={{ __html: cs.intro }}
+              />
+            )}
           </div>
 
           <div className="border-t border-b border-[#e8e8e8] py-6 mb-14">
@@ -176,22 +176,11 @@ export default function CaseStudyDetail() {
             </div>
           </div>
 
-          <div className="mb-20">
-            <h3 className="text-3xl font-bold text-black capitalize mb-4">Project Deliverables</h3>
-            <p className="text-lg text-[#949494] leading-[1.63] mb-8">
-              Our approach covers the full lifecycle — from initial scoping and architecture through commissioning, acceptance testing, and ongoing operational support.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
-              {REQUIREMENTS.map(req => (
-                <div key={req} className="flex items-center gap-3">
-                  <div className="bg-[#eff6ff] size-5 rounded flex items-center justify-center shrink-0">
-                    <CheckIcon style={{ fontSize: 12 }} className="text-primary" />
-                  </div>
-                  <span className="text-base font-medium text-black">{req}</span>
-                </div>
-              ))}
+          {cs.sections.length > 0 && (
+            <div className="mb-20">
+              {renderStreamField(cs.sections, sectionBlockMap)}
             </div>
-          </div>
+          )}
 
         </div>
 
@@ -246,12 +235,12 @@ export default function CaseStudyDetail() {
               <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
                 Whether you're deploying a new plant, upgrading existing SCADA, or integrating storage — we want to hear what you're working on.
               </p>
-              <Link
-                to="/contact"
+              <a
+                href={marketingPath('/contact')}
                 className="inline-flex items-center gap-2 px-8 py-4 gradient-brand text-white text-sm font-bold rounded-md hover:opacity-90 transition-opacity"
               >
                 Start a Conversation <ArrowForwardIcon style={{ fontSize: 16 }} />
-              </Link>
+              </a>
             </motion.div>
           </div>
         </section>

@@ -473,10 +473,46 @@ class AboutPage(BasePage):
     api_fields = BasePage.api_fields + [APIField("body")]
 
     parent_page_types = ["wagtailcore.Page"]
-    subpage_types = ["pages.MediaPage", "pages.TeamPage"]
+    subpage_types = ["pages.MediaPage", "pages.TeamPage", "pages.HowWeWorkPage", "pages.FaqPage"]
 
     class Meta:
         verbose_name = "About Page"
+
+
+class HowWeWorkPage(BasePage):
+    body = StreamField([
+        ("hero", HeroSectionBlock()),
+        ("how_we_work", HowWeWorkPageBlock()),
+        ("cta", CTABandBlock()),
+    ], blank=True, use_json_field=True)
+
+    content_panels = Page.content_panels + [FieldPanel("body")]
+
+    api_fields = BasePage.api_fields + [APIField("body")]
+
+    parent_page_types = ["pages.AboutPage"]
+    subpage_types = []
+
+    class Meta:
+        verbose_name = "How We Work Page"
+
+
+class FaqPage(BasePage):
+    body = StreamField([
+        ("hero", HeroSectionBlock()),
+        ("faq_section", FAQSectionBlock()),
+        ("cta", CTABandBlock()),
+    ], blank=True, use_json_field=True)
+
+    content_panels = Page.content_panels + [FieldPanel("body")]
+
+    api_fields = BasePage.api_fields + [APIField("body")]
+
+    parent_page_types = ["pages.AboutPage"]
+    subpage_types = []
+
+    class Meta:
+        verbose_name = "FAQ Page"
 
 
 class MediaPage(BasePage):

@@ -1,38 +1,12 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const SECTIONS = ['General Questions', 'Service Details', 'Procedures'] as const
-type Section = typeof SECTIONS[number]
-
-const FAQS: { section: Section; q: string; a: string }[] = [
-  // General Questions
-  { section: 'General Questions', q: 'What does Genex Technocrats do?', a: 'Genex is a software engineering company focused on the energy and automation sector. We build monitoring platforms, SCADA systems, EMS solutions, and IoT infrastructure for solar, wind, grid, and EV deployments across India.' },
-  { section: 'General Questions', q: 'Where is Genex based and where do you deploy?', a: 'Our engineering team is based in India. We have delivered projects across 10+ states including Rajasthan, Gujarat, Maharashtra, Uttar Pradesh, Madhya Pradesh, and more. We operate at national scale.' },
-  { section: 'General Questions', q: 'Do you work with international clients?', a: 'Our primary focus is the Indian market. We are open to international engagements where our platform expertise is relevant — particularly SCADA, EMS, and solar monitoring. Contact us to discuss.' },
-  { section: 'General Questions', q: 'How do I start a project with Genex?', a: "The best starting point is a discovery call. We'll ask about your site, infrastructure, and operational needs — and tell you honestly whether our platforms are the right fit. Use the Request a Demo form to book a session." },
-  { section: 'General Questions', q: 'Is there a free trial or pilot available?', a: 'We offer a scoped pilot for qualifying projects — typically a single site or limited data set — to validate fit before full commitment. This is discussed during the discovery call.' },
-
-  // Service Details
-  { section: 'Service Details', q: 'What communication protocols do your platforms support?', a: 'Our platforms support Modbus RTU/TCP, IEC 61850 (GOOSE and SV), DNP3, OPC-UA, MQTT, REST/HTTP, CAN, RS485, and more. We are protocol-agnostic and do not lock you into proprietary hardware.' },
-  { section: 'Service Details', q: 'Can your software integrate with our existing SCADA or ERP?', a: 'Yes. Our platforms expose REST and OPC-UA APIs for third-party integration. We have integrated with SAP PM, Maximo, and custom CMMS platforms. We document integration specs before project sign-off.' },
-  { section: 'Service Details', q: 'What happens to data when connectivity is lost?', a: 'Our Data Loggers buffer data locally (up to 30 days on-device using SQLite). When connectivity is restored, data syncs automatically with no loss. For cloud platforms, we maintain a queue with automatic retry.' },
-  { section: 'Service Details', q: 'Is the platform hosted on your servers or on-premise?', a: 'Both options are available. Our default is cloud-hosted SaaS. For projects requiring on-premise deployment (air-gapped, compliance-driven, or high-security environments), we support self-hosted deployment.' },
-  { section: 'Service Details', q: 'How is pricing structured?', a: 'Pricing varies by product and deployment type. SaaS platforms are priced per site or per data point per month. Custom integrations and turnkey projects are quoted on scope. We publish no hidden costs — all pricing is in the project agreement.' },
-
-  // Procedures
-  { section: 'Procedures', q: 'What is the typical project timeline from kickoff to go-live?', a: 'Small deployments (single site, standard protocols) typically take 4–6 weeks from kickoff to live. Multi-site or custom integration projects run 8–16 weeks depending on scope. We publish a detailed timeline at the architecture stage.' },
-  { section: 'Procedures', q: 'Do you do turnkey projects or software-only?', a: 'We do both. For software-only engagements, we integrate with hardware your team procures. For turnkey projects, we can include hardware supply, cabling, and commissioning as part of scope.' },
-  { section: 'Procedures', q: 'What is the minimum project size you work with?', a: "We work with single-site pilots as well as national rollouts. For smaller projects, we offer SaaS subscriptions that do not require a custom engagement. Contact us if you're unsure which model fits." },
-  { section: 'Procedures', q: 'Can you take over a monitoring system from another vendor?', a: 'Yes. We have experience migrating from proprietary SCADA and monitoring systems. We assess the existing setup during discovery, define a migration path, and handle the cutover without operational downtime.' },
-  { section: 'Procedures', q: 'What does post-deployment support cost?', a: 'Support SLAs are tiered. Standard support (business hours, email) is included with all subscriptions. Premium support (24×7 escalation, dedicated response times) is available as an add-on. SLA terms are agreed at contract stage.' },
-]
+import { apiFetch } from '@/lib/api/client'
+import type { CTABandValue, FAQItemValue, FaqPageData, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
 
 // ── Accordion item ────────────────────────────────────────────────────────────
 
@@ -77,17 +51,31 @@ function AccordionItem({ q, a, defaultOpen = false }: { q: string; a: string; de
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FAQ() {
-  const [activeSection, setActiveSection] = useState<Section>('General Questions')
-  const sectionRefs = useRef<Record<Section, HTMLDivElement | null>>({
-    'General Questions': null,
-    'Service Details': null,
-    'Procedures': null,
-  })
+  const [page, setPage] = useState<FaqPageData | null | undefined>(undefined)
 
-  function scrollToSection(section: Section) {
-    setActiveSection(section)
+  useEffect(() => {
+    apiFetch<WagtailListResponse<FaqPageData>>('/api/v2/pages/?type=pages.FaqPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const faqSection = body.find(b => b.type === 'faq_section')?.value as { heading: string; items: FAQItemValue[] } | undefined
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
+  const items = faqSection?.items ?? []
+  const sections = Array.from(new Set(items.map(f => f.section || 'General').filter(Boolean)))
+
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const activeSection = selectedSection ?? sections[0] ?? ''
+
+  function scrollToSection(section: string) {
+    setSelectedSection(section)
     sectionRefs.current[section]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  if (page === undefined) return null
 
   return (
     <main>
@@ -97,9 +85,9 @@ export default function FAQ() {
         canonical="/about/faq"
       />
       <PageHero
-        label="Support"
-        headline="Frequently Asked Questions"
-        subline="Common technical and commercial questions — answered directly by our engineering team."
+        label={hero?.label ?? 'Support'}
+        headline={hero?.heading ?? 'Frequently Asked Questions'}
+        subline={hero?.description ?? 'Common technical and commercial questions — answered directly by our engineering team.'}
       />
 
       {/* ── MAIN LAYOUT ──────────────────────────────────────────────────── */}
@@ -108,7 +96,7 @@ export default function FAQ() {
 
           {/* Left sidebar — sticky vertical category nav */}
           <aside className="hidden lg:block w-64 shrink-0 sticky top-24">
-            {SECTIONS.map((section) => {
+            {sections.map((section) => {
               const active = activeSection === section
               return (
                 <button
@@ -128,8 +116,8 @@ export default function FAQ() {
 
           {/* Right — FAQ groups */}
           <div className="flex-1 min-w-0 flex flex-col gap-16">
-            {SECTIONS.map((section) => {
-              const items = FAQS.filter(f => f.section === section)
+            {sections.map((section) => {
+              const sectionItems = items.filter(f => (f.section || 'General') === section)
               return (
                 <div
                   key={section}
@@ -143,7 +131,7 @@ export default function FAQ() {
 
                   {/* Accordion items */}
                   <div>
-                    {items.map((item, i) => (
+                    {sectionItems.map((item, i) => (
                       <AccordionItem
                         key={i}
                         q={item.q}
@@ -173,16 +161,16 @@ export default function FAQ() {
               Still have questions?
             </p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Talk directly to our engineering team.
+              {cta?.heading ?? 'Talk directly to our engineering team.'}
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              We respond to every serious enquiry. No sales scripts — just honest answers about what we can and cannot do for your project.
+              {cta?.description ?? 'We respond to every serious enquiry. No sales scripts — just honest answers about what we can and cannot do for your project.'}
             </p>
             <Link
-              to="/contact"
+              to={cta?.primary_cta_link ?? '/contact'}
               className="inline-flex items-center gap-2 px-8 py-4 gradient-brand text-white text-sm font-bold rounded-md hover:opacity-90 transition-opacity"
             >
-              Contact Us
+              {cta?.primary_cta_text ?? 'Contact Us'}
             </Link>
           </motion.div>
         </div>

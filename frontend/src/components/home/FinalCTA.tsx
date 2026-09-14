@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/Button'
+import type { CTABandValue } from '@/types/api'
 
-export function FinalCTA() {
+interface FinalCTAProps {
+  cta?: CTABandValue
+}
+
+export function FinalCTA({ cta }: FinalCTAProps) {
   return (
     <section aria-labelledby="cta-heading">
       <motion.div
@@ -20,7 +25,7 @@ export function FinalCTA() {
           viewport={{ once: true }}
           transition={{ duration: 0.55, delay: 0.1 }}
         >
-          Ready to build smarter infrastructure?
+          {cta?.heading ?? 'Ready to build smarter infrastructure?'}
         </motion.h2>
 
         <motion.p
@@ -30,7 +35,7 @@ export function FinalCTA() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          Talk to our engineering team — no sales pitch.
+          {cta?.description ?? 'Talk to our engineering team — no sales pitch.'}
         </motion.p>
 
         <motion.div
@@ -41,10 +46,10 @@ export function FinalCTA() {
           className="mt-10"
         >
           <Link
-            to="/contact#demo"
+            to={cta?.primary_cta_link ?? '/contact#demo'}
             className={buttonVariants({ variant: 'dark', size: 'lg' })}
           >
-            Request Demo
+            {cta?.primary_cta_text ?? 'Request Demo'}
           </Link>
         </motion.div>
       </motion.div>

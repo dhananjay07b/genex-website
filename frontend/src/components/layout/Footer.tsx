@@ -7,7 +7,7 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import YouTubeIcon from '@mui/icons-material/YouTube'
 import { isExternalHref } from '@/lib/utils'
-import { GELEARN_URL } from '@/lib/host'
+import { gelearnPath } from '@/lib/host'
 
 const footerSections = [
   {
@@ -34,10 +34,10 @@ const footerSections = [
   {
     title: 'GeLearn',
     links: [
-      { label: 'Case Studies',         href: `${GELEARN_URL}/case-studies` },
-      { label: 'Whitepapers & Reports', href: `${GELEARN_URL}/whitepapers` },
-      { label: 'Video Library',        href: `${GELEARN_URL}/videos` },
-      { label: 'Blog & Insights',      href: `${GELEARN_URL}/blog` },
+      { label: 'Case Studies',         href: gelearnPath('/case-studies') },
+      { label: 'Whitepapers & Reports', href: gelearnPath('/whitepapers') },
+      { label: 'Video Library',        href: gelearnPath('/videos') },
+      { label: 'Blog & Insights',      href: gelearnPath('/blog') },
     ],
   },
   {

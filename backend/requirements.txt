@@ -5,3 +5,4 @@ Pillow>=10.0
 django-allauth>=65
 dj-rest-auth>=6
 djangorestframework-simplejwt>=5.3
+gunicorn>=23.0

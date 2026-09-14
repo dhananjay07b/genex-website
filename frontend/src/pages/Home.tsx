@@ -14,7 +14,7 @@ import { TechPartners }         from '@/components/home/TechPartners'
 import { FinalCTA }             from '@/components/home/FinalCTA'
 import { EventBanner }          from '@/components/home/EventBanner'
 import { apiFetch }             from '@/lib/api/client'
-import type { HomePageData, WagtailListResponse } from '@/types/api'
+import type { CTABandValue, HomePageData, WagtailListResponse } from '@/types/api'
 
 export default function Home() {
   const [data, setData] = useState<HomePageData | null>(null)
@@ -39,6 +39,7 @@ export default function Home() {
   const gelearnCards = data?.gelearn_teaser?.map(b => b.value) ?? []
   const partners  = data?.tech_partners?.map(b => b.value) ?? []
   const testi     = data?.testimonials?.map(b => b.value) ?? []
+  const finalCta  = data?.cta_section?.[0]?.value as CTABandValue | undefined
 
   return (
     <main>
@@ -63,7 +64,7 @@ export default function Home() {
       <Testimonials      testimonials={testi.length ? testi : undefined} />
       <GeLearnTeaser     cards={gelearnCards.length ? gelearnCards : undefined} />
       <TechPartners      partners={partners.length ? partners : undefined} />
-      <FinalCTA />
+      <FinalCTA cta={finalCta} />
     </main>
   )
 }

@@ -11,34 +11,42 @@ import SearchIcon from '@mui/icons-material/Search'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
-import type { BlogPostItem, SnippetListResponse } from '@/types/api'
+import { marketingPath } from '@/lib/host'
+import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
+import type { BlogPostBodyImageValue, BlogPostItem, SnippetListResponse } from '@/types/api'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 
-const BLOG_IMAGES = [
-  '/images/blog/blog-1.jpg',
-  '/images/blog/blog-2.jpg',
-  '/images/blog/blog-3.jpg',
-  '/images/blog/blog-4.jpg',
-  '/images/blog/blog-5.jpg',
-  '/images/blog/blog-6.jpg',
-]
+const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 
-// ── Placeholder lorem ipsum body paragraphs ──────────────────────────────────
-const LOREM_P1 = 'At Genex, we build monitoring and control platforms that integrate across every facet of power infrastructure. Our goal is straightforward: to enable plant operators, utilities, and developers to deploy advanced software with confidence — enhancing visibility, decision-making, and operational resilience across India\'s energy sector.'
+function RichTextParagraph({ value }: { value: unknown }) {
+  return (
+    <div
+      className="text-[17px] text-[#45556c] leading-[1.63] space-y-5 mb-8 [&_p]:mb-5"
+      dangerouslySetInnerHTML={{ __html: value as string }}
+    />
+  )
+}
 
-const LOREM_P2 = 'Nisl eget tellus ultrices velit at elit. Ipsum fermentum fusce platea neque blandit. Ultrices volutpat mi in vitae viverra et ullamcorper lorem. Malesuada malesuada lorem eget in nec pellentesque pellentesque enim. Sapien sed pulvinar nulla lobortis. At vulputate suspendisse quam sit ut dui ac. Sed scelerisque eget vitae morbi a feugiat eleifend aliquam commodo. Viverra dolor tortor vestibulum sed orci quam. Non placerat laoreet sed lacinia leo. Enim amet nulla sed elementum et quis consectetur consequat risus. Facilisi enim dui quis ut vitae elit.'
+function InlineImage({ value }: { value: unknown }) {
+  const img = value as BlogPostBodyImageValue
+  return (
+    <figure className="mb-8">
+      <div className="rounded-2xl overflow-hidden aspect-video shadow-sm">
+        <img src={img.image} alt={img.caption ?? ''} className="w-full h-full object-cover" />
+      </div>
+      {img.caption && (
+        <figcaption className="text-sm text-[#90a1b9] mt-2 text-center">{img.caption}</figcaption>
+      )}
+    </figure>
+  )
+}
 
-const LOREM_P3 = 'Nisl eget tellus ultrices velit at elit. Ipsum fermentum fusce platea neque blandit. Ultrices volutpat mi in vitae viverra et ullamcorper lorem. Malesuada malesuada lorem eget in nec pellentesque pellentesque enim. Sapien sed pulvinar nulla lobortis. At vulputate suspendisse quam sit ut dui ac. Sed scelerisque eget vitae morbi a feugiat eleifend aliquam commodo. Viverra dolor tortor vestibulum sed orci quam.'
-
-const LOREM_P4 = 'Sit ut non scelerisque magna cras etiam suspendisse. Eget leo nunc purus in vitae ut vestibulum tristique. Tortor nascetur morbi tincidunt ornare dignissim. Massa amet tellus mauris pharetra egestas. Lorem netus tincidunt commodo ac condimentum eget dui mauris sit.'
-
-const BLOCKQUOTE = '"Our monitoring platform revealed performance gaps we had never quantified before. We corrected a systemic soiling loss, improved energy yield by 8%, and reduced O&M response time by over 60%."'
-
-// ── Tags ─────────────────────────────────────────────────────────────────────
-const TAGS = ['SCADA', 'Solar', 'Wind', 'EMS', 'Grid', 'Monitoring', 'IoT', 'Renewables', 'Automation', 'BESS', 'EV', 'Protocols']
+const blogBlockMap: BlockComponentMap = {
+  rich_text: RichTextParagraph,
+  image: InlineImage,
+}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -61,13 +69,12 @@ export default function BlogPost() {
   if (post === null) return <Navigate to="/blog" replace />
 
   const postIdx = allPosts.findIndex(p => p.id === post.id)
-  const heroImg    = BLOG_IMAGES[postIdx >= 0 ? postIdx % BLOG_IMAGES.length : 0]
-  const inlineImg1 = BLOG_IMAGES[(postIdx + 1) % BLOG_IMAGES.length]
-  const inlineImg2 = BLOG_IMAGES[(postIdx + 2) % BLOG_IMAGES.length]
+  const heroImg = post.image_url ?? FALLBACK_IMAGE
 
   const prevPost = postIdx > 0 ? allPosts[postIdx - 1] : undefined
   const nextPost = postIdx >= 0 && postIdx < allPosts.length - 1 ? allPosts[postIdx + 1] : undefined
   const recentPosts = allPosts.filter(p => p.id !== post.id).slice(0, 3)
+  const tags = Array.from(new Set(allPosts.map(p => p.topic).filter(Boolean)))
 
   return (
     <main>
@@ -125,51 +132,9 @@ export default function BlogPost() {
               <img src={heroImg} alt={post.title} className="w-full h-full object-cover" />
             </div>
 
-            {/* Body paragraphs */}
-            <div className="space-y-5 mb-8">
-              <p className="text-[17px] text-[#45556c] leading-[1.63]">{LOREM_P1}</p>
-              <p className="text-[17px] text-[#45556c] leading-[1.63]">{LOREM_P2}</p>
-            </div>
-
-            {/* 2-col inline images */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="rounded-2xl overflow-hidden aspect-4/3 shadow-sm">
-                <img src={inlineImg1} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="rounded-2xl overflow-hidden aspect-4/3 shadow-sm">
-                <img src={inlineImg2} alt="" className="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            {/* More body */}
-            <div className="space-y-5 mb-8">
-              <p className="text-[17px] text-[#45556c] leading-[1.63]">{LOREM_P3}</p>
-              <p className="text-[17px] text-[#45556c] leading-[1.63]">{LOREM_P4}</p>
-            </div>
-
-            {/* Blockquote */}
-            <div className="bg-[#f8fafc] rounded-3xl p-12 mb-8 relative">
-              <FormatQuoteIcon
-                style={{ fontSize: 64 }}
-                className="absolute top-8 left-8 text-[#0f172a] opacity-10"
-              />
-              <div className="border-l-4 border-[#0f172a] pl-10">
-                <p className="text-xl font-bold text-[#0f172a] leading-[1.6] mb-8">{BLOCKQUOTE}</p>
-                <div className="flex items-center gap-4">
-                  <div className="size-12 rounded-full bg-[#e2e8f0] flex items-center justify-center text-sm font-bold text-[#62748e] shrink-0">
-                    R
-                  </div>
-                  <div>
-                    <p className="text-base font-bold text-[#0f172a]">Rakesh Tiwari</p>
-                    <p className="text-sm text-[#62748e]">Plant Manager, 50 MW Solar Asset</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Final paragraphs */}
-            <div className="space-y-5 mb-10">
-              <p className="text-[17px] text-[#45556c] leading-[1.63]">{LOREM_P4}</p>
+            {/* Body */}
+            <div className="mb-2">
+              {renderStreamField(post.body, blogBlockMap)}
             </div>
 
             {/* ── SHARE + PREV/NEXT ───────────────────────────────────────── */}
@@ -249,7 +214,7 @@ export default function BlogPost() {
             <div className="bg-[#fcfcfc] border border-[#f1f5f9] rounded-2xl p-8">
               <h3 className="text-xl font-bold text-[#0f172a] mb-6">Recent Posts</h3>
               <div className="space-y-6">
-                {recentPosts.map((p, pi) => (
+                {recentPosts.map((p) => (
                   <Link
                     key={p.id}
                     to={`/blog/${p.id}`}
@@ -257,7 +222,7 @@ export default function BlogPost() {
                   >
                     <div className="size-18 rounded-3xl overflow-hidden shrink-0">
                       <img
-                        src={BLOG_IMAGES[pi % BLOG_IMAGES.length]}
+                        src={p.image_url ?? FALLBACK_IMAGE}
                         alt={p.title}
                         className="w-full h-full object-cover opacity-80"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -278,7 +243,7 @@ export default function BlogPost() {
             <div className="bg-[#fcfcfc] border border-[#f1f5f9] rounded-2xl p-8">
               <h3 className="text-xl font-bold text-[#0f172a] mb-6">Tags</h3>
               <div className="flex flex-wrap gap-2">
-                {TAGS.map(tag => (
+                {tags.map(tag => (
                   <span
                     key={tag}
                     className="bg-white border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-medium text-[#62748e]"
@@ -311,12 +276,12 @@ export default function BlogPost() {
                   </div>
                 ))}
               </div>
-              <Link
-                to="/contact"
+              <a
+                href={marketingPath('/contact')}
                 className="block w-full bg-white text-[#0b1b22] text-base font-bold text-center py-3.5 rounded-2xl hover:opacity-90 transition-opacity"
               >
                 Get In Touch
-              </Link>
+              </a>
             </div>
 
           </aside>

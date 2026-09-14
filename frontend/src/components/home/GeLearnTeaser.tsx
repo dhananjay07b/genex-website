@@ -9,7 +9,7 @@ import RssFeedOutlinedIcon from '@mui/icons-material/RssFeedOutlined'
 import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
 import type { SvgIconProps } from '@mui/material/SvgIcon'
 import { buttonVariants } from '../ui/Button'
-import { GELEARN_URL } from '@/lib/host'
+import { gelearnPath } from '@/lib/host'
 import type { GeLearnTeaserCardApiValue } from '@/types/api'
 
 // Icon field is a free-choice CMS field shared across many blocks (see ICON_CHOICES in
@@ -83,7 +83,7 @@ export function GeLearnTeaser({ cards }: { cards?: GeLearnTeaserCardApiValue[] }
             </p>
 
             <a
-              href={GELEARN_URL}
+              href={gelearnPath()}
               className={buttonVariants({ variant: 'primary', size: 'lg' })}
             >
               Explore GeLearn
@@ -109,7 +109,7 @@ export function GeLearnTeaser({ cards }: { cards?: GeLearnTeaserCardApiValue[] }
                   viewport={{ once: true, margin: '-40px' }}
                 >
                   <a
-                    href={`${GELEARN_URL}/${slug}`}
+                    href={gelearnPath(`/${slug}`)}
                     className="group flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-white p-4 hover:border-primary/40 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label={label}
                   >

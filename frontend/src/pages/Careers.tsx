@@ -1,77 +1,51 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
-import BoltIcon from '@mui/icons-material/Bolt'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import GroupsIcon from '@mui/icons-material/Groups'
+import { apiFetch } from '@/lib/api/client'
+import { getMuiIcon } from '@/lib/muiIconRegistry'
+import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
 
-const WHY_GENEX = [
-  {
-    icon: <BoltIcon sx={{ fontSize: 28 }} />,
-    title: 'Real-World Impact',
-    description: 'Your code runs live across hundreds of MW of India\'s renewable energy infrastructure — not in a demo environment. What you build matters.',
-  },
-  {
-    icon: <TrendingUpIcon sx={{ fontSize: 28 }} />,
-    title: 'Ownership & Growth',
-    description: 'Small teams, large scope. Engineers at Genex own full features — architecture, implementation, deployment, and iteration — from day one.',
-  },
-  {
-    icon: <GroupsIcon sx={{ fontSize: 28 }} />,
-    title: 'Engineering Culture',
-    description: 'We debate decisions openly, ship production code carefully, and invest in the team. Reading time, tool budgets, and internal talks are standard.',
-  },
-]
+interface WhyGenexCardApiValue {
+  icon: string
+  title: string
+  description: string
+}
 
-const OPEN_ROLES = [
-  {
-    title: 'Full-Stack Engineer (React + Django)',
-    department: 'Engineering',
-    location: 'Jaipur / Remote',
-    type: 'Full-time',
-    description: 'Build and maintain the frontend and API layer for SolarLive™ and our next-generation monitoring platforms. You\'ll own features end-to-end — from UI components to backend REST endpoints and database queries.',
-  },
-  {
-    title: 'Embedded Systems Engineer',
-    department: 'Hardware & Firmware',
-    location: 'Jaipur',
-    type: 'Full-time',
-    description: 'Design and develop firmware for Genex data loggers and edge devices. Work with Modbus, RS485, MQTT, and 4G communication stacks in C/C++ on industrial-grade hardware.',
-  },
-  {
-    title: 'ML / Data Engineer — Energy Systems',
-    department: 'AI & Innovations',
-    location: 'Jaipur / Remote',
-    type: 'Full-time',
-    description: 'Develop and deploy time-series machine learning models for fault prediction, performance anomaly detection, and energy optimization across solar and storage assets.',
-  },
-  {
-    title: 'SCADA / Control Systems Engineer',
-    department: 'Engineering',
-    location: 'Jaipur',
-    type: 'Full-time',
-    description: 'Design and deploy SCADA architectures for power generation and distribution clients. Deep experience with IEC 61850, DNP3, OPC-UA, or Modbus required.',
-  },
-  {
-    title: 'Technical Project Manager — Energy',
-    department: 'Delivery',
-    location: 'Jaipur / Field',
-    type: 'Full-time',
-    description: 'Lead end-to-end delivery of monitoring and automation projects — from client requirement gathering and technical scoping to site commissioning and handover.',
-  },
-]
+interface OpenRoleApiValue {
+  title: string
+  department: string
+  location: string
+  type: string
+  description: string
+}
 
-const PERKS = [
-  'Health Insurance (family floater)',
-  'Learning & Tool Budget',
-  'Flexible Working Hours',
-  'Performance ESOPs',
-]
+interface CareersPageData {
+  id: number
+  title: string
+  body: { type: string; value: unknown; id: string }[]
+}
 
 export default function Careers() {
   const subject = encodeURIComponent('Open Application — Genex Technocrats')
+  const [page, setPage] = useState<CareersPageData | null | undefined>(undefined)
+
+  useEffect(() => {
+    apiFetch<WagtailListResponse<CareersPageData>>('/api/v2/pages/?type=pages.CareersPage&fields=body&limit=1')
+      .then(res => setPage(res.items[0] ?? null))
+      .catch(() => setPage(null))
+  }, [])
+
+  if (page === undefined) return null
+
+  const body = page?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const whyGenex = (body.find(b => b.type === 'why_genex')?.value as WhyGenexCardApiValue[] | undefined) ?? []
+  const openRoles = (body.find(b => b.type === 'open_roles')?.value as OpenRoleApiValue[] | undefined) ?? []
+  const perks = (body.find(b => b.type === 'perks')?.value as string[] | undefined) ?? []
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
 
   return (
     <main>
@@ -81,9 +55,9 @@ export default function Careers() {
         canonical="/careers"
       />
       <PageHero
-        label="Join Genex"
-        headline="Build the Future of Energy"
-        subline="We're a small, senior team solving hard engineering problems in India's energy sector. If you want your work to matter, you're in the right place."
+        label={hero?.label ?? 'Join Genex'}
+        headline={hero?.heading ?? 'Build the Future of Energy'}
+        subline={hero?.description ?? "We're a small, senior team solving hard engineering problems in India's energy sector. If you want your work to matter, you're in the right place."}
       />
 
       {/* Why Genex */}
@@ -103,22 +77,25 @@ export default function Careers() {
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {WHY_GENEX.map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="bg-surface rounded-2xl border border-border p-8"
-              >
-                <div className="text-primary mb-5" aria-hidden="true">
-                  {item.icon}
-                </div>
-                <h3 className="text-base font-extrabold text-text-primary mb-3">{item.title}</h3>
-                <p className="text-sm text-text-muted leading-relaxed">{item.description}</p>
-              </motion.div>
-            ))}
+            {whyGenex.map((item, i) => {
+              const Icon = getMuiIcon(item.icon)
+              return (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="bg-surface rounded-2xl border border-border p-8"
+                >
+                  <div className="text-primary mb-5" aria-hidden="true">
+                    <Icon sx={{ fontSize: 28 }} />
+                  </div>
+                  <h3 className="text-base font-extrabold text-text-primary mb-3">{item.title}</h3>
+                  <p className="text-sm text-text-muted leading-relaxed">{item.description}</p>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -171,7 +148,7 @@ export default function Careers() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-6">Perks & Benefits</p>
           <div className="flex flex-wrap gap-3">
-            {PERKS.map(perk => (
+            {perks.map(perk => (
               <span
                 key={perk}
                 className="px-5 py-2.5 rounded-full border border-border bg-surface text-sm font-semibold text-text-primary"
@@ -200,7 +177,7 @@ export default function Careers() {
           </motion.div>
 
           <div className="space-y-4">
-            {OPEN_ROLES.map((role, i) => (
+            {openRoles.map((role, i) => (
               <motion.div
                 key={role.title}
                 initial={{ opacity: 0, y: 16 }}
@@ -249,20 +226,20 @@ export default function Careers() {
               Open Application
             </p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-4">
-              Don't see your role listed?
+              {cta?.heading ?? "Don't see your role listed?"}
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              We hire for exceptional engineers and domain experts regardless of open postings. Send us your CV and a short note on what you'd like to build.
+              {cta?.description ?? "We hire for exceptional engineers and domain experts regardless of open postings. Send us your CV and a short note on what you'd like to build."}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href={`mailto:careers@genextechnocrats.com?subject=${subject}`}
                 rel="noopener noreferrer"
               >
-                <Button variant="primary" size="lg">Send Your Profile</Button>
+                <Button variant="primary" size="lg">{cta?.primary_cta_text ?? 'Send Your Profile'}</Button>
               </a>
-              <Link to="/contact">
-                <Button variant="secondary" size="lg">Contact Us</Button>
+              <Link to={cta?.secondary_cta_link ?? '/contact'}>
+                <Button variant="secondary" size="lg">{cta?.secondary_cta_text ?? 'Contact Us'}</Button>
               </Link>
             </div>
           </motion.div>

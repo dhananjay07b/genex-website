@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
@@ -7,6 +6,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
+import { marketingPath } from '@/lib/host'
 import type { TenderItem, SnippetListResponse } from '@/types/api'
 
 const STATUSES = ['All', 'Open', 'Upcoming', 'Closed'] as const
@@ -76,12 +76,12 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
         <p className="text-base font-semibold text-[#0f172b]">{tender.value}</p>
 
         {!isClosed ? (
-          <Link
-            to="/contact"
+          <a
+            href={marketingPath('/contact')}
             className="self-start flex items-center gap-2 text-base font-semibold text-primary hover:underline transition-colors pt-2"
           >
             Enquire <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+          </a>
         ) : (
           <span className="self-start flex items-center gap-2 text-base font-semibold text-[#9ca3af] pt-2 cursor-not-allowed">
             Closed
@@ -178,12 +178,12 @@ export default function Tenders() {
                 Need pre-bid consultation or technical documentation support for a tender response? Our engineering team is ready.
               </p>
             </div>
-            <Link
-              to="/contact#demo"
+            <a
+              href={marketingPath('/contact#demo')}
               className="shrink-0 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
             >
               Request a Demo
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

@@ -10,6 +10,7 @@ import MicOutlinedIcon from '@mui/icons-material/MicOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { marketingPath } from '@/lib/host'
 
 export const GELEARN_SECTIONS = [
   {
@@ -167,12 +168,12 @@ export default function GeLearn() {
             <h2 className="text-xl font-extrabold text-text-primary">Have content to contribute or a topic to suggest?</h2>
             <p className="mt-1 text-sm text-text-muted">We collaborate with engineers, researchers, and operators across the energy sector.</p>
           </div>
-          <Link
-            to="/contact"
+          <a
+            href={marketingPath('/contact')}
             className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-sm font-semibold text-text-primary hover:border-primary hover:text-primary transition-all duration-200"
           >
             Get in Touch <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </Link>
+          </a>
         </div>
       </section>
     </main>

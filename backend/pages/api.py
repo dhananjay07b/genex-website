@@ -33,16 +33,52 @@ class GenexPagination(LimitOffsetPagination):
 # Serializers
 # ---------------------------------------------------------------------------
 
-class CaseStudySerializer(serializers.ModelSerializer):
+class ImageUrlSerializerMixin:
+    """Exposes a ForeignKey(wagtailimages.Image) field named `image` as a plain `image_url` string."""
+    def get_image_url(self, obj):
+        return obj.image.file.url if obj.image else None
+
+
+class StreamFieldSerializerMixin:
+    """Renders a StreamField in the same {type, value, id} shape the Wagtail Page API uses."""
+    def _stream_api_representation(self, obj, field_name):
+        value = getattr(obj, field_name)
+        return value.stream_block.get_api_representation(value)
+
+
+class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    sections = serializers.SerializerMethodField()
+
     class Meta:
         model = CaseStudy
-        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time"]
+        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "image_url", "intro", "sections"]
+
+    def get_sections(self, obj):
+        return self._stream_api_representation(obj, "sections")
 
 
-class TechArticleSerializer(serializers.ModelSerializer):
+class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
+    sections = serializers.SerializerMethodField()
+    takeaways = serializers.SerializerMethodField()
+
     class Meta:
         model = TechArticle
-        fields = ["id", "title", "topic", "difficulty", "read_time", "date", "excerpt", "featured"]
+        fields = [
+            "id", "title", "topic", "difficulty", "read_time", "date", "excerpt", "featured",
+            "image_url", "tags", "intro", "sections", "callout_label", "callout_content", "takeaways",
+        ]
+
+    def get_tags(self, obj):
+        return [tag.name for tag in obj.tags.all()]
+
+    def get_sections(self, obj):
+        return self._stream_api_representation(obj, "sections")
+
+    def get_takeaways(self, obj):
+        return self._stream_api_representation(obj, "takeaways")
 
 
 class TenderSerializer(serializers.ModelSerializer):
@@ -52,9 +88,14 @@ class TenderSerializer(serializers.ModelSerializer):
 
 
 class WhitepaperSerializer(serializers.ModelSerializer):
+    document_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "category", "category_bg", "category_text", "date", "pages", "description"]
+        fields = ["id", "title", "category", "category_bg", "category_text", "date", "pages", "description", "document_url"]
+
+    def get_document_url(self, obj):
+        return obj.document.url if obj.document else None
 
 
 class GatedContentSerializerMixin:
@@ -75,31 +116,39 @@ class GatedContentSerializerMixin:
         return self._is_locked(obj)
 
 
-class VideoItemSerializer(GatedContentSerializerMixin, serializers.ModelSerializer):
+class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VideoItem
-        fields = ["id", "title", "category", "category_color", "category_text_color", "date", "duration", "excerpt", "video_url", "is_locked"]
+        fields = ["id", "title", "category", "category_color", "category_text_color", "date", "duration", "excerpt", "image_url", "video_url", "is_locked"]
 
     def get_video_url(self, obj):
         return None if self._is_locked(obj) else obj.video_url
 
 
-class BlogPostSerializer(serializers.ModelSerializer):
+class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    body = serializers.SerializerMethodField()
+
     class Meta:
         model = BlogPost
-        fields = ["id", "title", "topic", "date", "excerpt"]
+        fields = ["id", "title", "topic", "date", "excerpt", "image_url", "body"]
+
+    def get_body(self, obj):
+        return self._stream_api_representation(obj, "body")
 
 
-class PodcastEpisodeSerializer(GatedContentSerializerMixin, serializers.ModelSerializer):
+class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
     audio_url = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PodcastEpisode
-        fields = ["id", "title", "category", "category_bg", "category_text", "date", "duration", "description", "guest", "guest_role", "audio_url", "is_locked"]
+        fields = ["id", "title", "category", "category_bg", "category_text", "date", "duration", "description", "guest", "guest_role", "image_url", "audio_url", "is_locked"]
 
     def get_audio_url(self, obj):
         return None if self._is_locked(obj) else obj.audio_url

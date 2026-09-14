@@ -235,7 +235,42 @@ export interface TeamPageData extends WagtailPageBase {
   body: StreamBlock<unknown>[]
 }
 
+export interface HowWeWorkStepApiValue {
+  num: string
+  title: string
+  desc: string
+  badge_color: string
+  dot_color: string
+  connector_color: string
+  card_border: string
+  image: WagtailImage | null
+  side: 'right' | 'left'
+}
+
+export interface EngineeringPrincipleApiValue {
+  title: string
+  desc: string
+}
+
+export interface HowWeWorkPageBlockValue {
+  steps: HowWeWorkStepApiValue[]
+  principles: EngineeringPrincipleApiValue[]
+}
+
+export interface HowWeWorkPageData extends WagtailPageBase {
+  body: StreamBlock<unknown>[]
+}
+
+export interface FaqPageData extends WagtailPageBase {
+  body: StreamBlock<unknown>[]
+}
+
 // ── Snippet API shapes (DRF, snake_case) ──────────────────────────────────────
+
+export interface CaseStudySectionValue {
+  heading: string
+  body: string
+}
 
 export interface CaseStudyItem {
   id: number
@@ -245,6 +280,9 @@ export interface CaseStudyItem {
   excerpt: string
   date: string
   read_time: string
+  image_url: string | null
+  intro: string
+  sections: StreamBlock<CaseStudySectionValue>[]
 }
 
 export interface TechArticleItem {
@@ -256,6 +294,13 @@ export interface TechArticleItem {
   date: string
   excerpt: string
   featured: boolean
+  image_url: string | null
+  tags: string[]
+  intro: string
+  sections: StreamBlock<CaseStudySectionValue>[]
+  callout_label: string
+  callout_content: string
+  takeaways: StreamBlock<string>[]
 }
 
 export interface TenderItem {
@@ -278,6 +323,12 @@ export interface WhitepaperItem {
   date: string
   pages: string
   description: string
+  document_url: string | null
+}
+
+export interface BlogPostBodyImageValue {
+  image: string
+  caption: string | null
 }
 
 export interface BlogPostItem {
@@ -286,6 +337,8 @@ export interface BlogPostItem {
   topic: string
   date: string
   excerpt: string
+  image_url: string | null
+  body: StreamBlock<string | BlogPostBodyImageValue>[]
 }
 
 export interface VideoItem {
@@ -297,6 +350,7 @@ export interface VideoItem {
   date: string
   duration: string
   excerpt: string
+  image_url: string | null
   video_url: string | null
   is_locked: boolean
 }
@@ -312,6 +366,7 @@ export interface PodcastItem {
   description: string
   guest: string
   guest_role: string
+  image_url: string | null
   audio_url: string | null
   is_locked: boolean
 }

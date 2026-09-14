@@ -8,21 +8,15 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
+import { marketingPath } from '@/lib/host'
 import type { CaseStudyItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
 
-const CS_IMAGES = [
-  '/images/case-studies/cs-1.jpg',
-  '/images/case-studies/cs-2.jpg',
-  '/images/case-studies/cs-3.jpg',
-  '/images/case-studies/cs-4.jpg',
-  '/images/case-studies/cs-5.jpg',
-  '/images/case-studies/cs-6.jpg',
-]
+const FALLBACK_IMAGE = '/images/case-studies/cs-1.jpg'
 
 function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
-  const img = CS_IMAGES[(cs.id - 1) % CS_IMAGES.length]
+  const img = cs.image_url ?? FALLBACK_IMAGE
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -189,12 +183,12 @@ export default function CaseStudies() {
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
               Whether you're deploying a new plant, upgrading existing SCADA, or integrating storage — we want to hear what you're working on.
             </p>
-            <Link
-              to="/contact"
+            <a
+              href={marketingPath('/contact')}
               className="inline-flex items-center gap-2 px-8 py-4 gradient-brand text-white text-sm font-bold rounded-md hover:opacity-90 transition-opacity"
             >
               Start a Conversation <ArrowForwardIcon style={{ fontSize: 16 }} />
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

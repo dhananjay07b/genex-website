@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
+import { marketingPath } from '@/lib/host'
 import type { WhitepaperItem, SnippetListResponse } from '@/types/api'
 
 // ── Animations ────────────────────────────────────────────────────────────────
@@ -54,13 +54,15 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <Link
-          to="/contact"
+        <a
+          href={doc.document_url ?? marketingPath('/contact')}
+          target={doc.document_url ? '_blank' : undefined}
+          rel={doc.document_url ? 'noopener noreferrer' : undefined}
           className="flex items-center gap-2 bg-[#f7f7f7] hover:bg-primary/10 text-[#6a6a6a] hover:text-primary text-sm font-bold px-4 py-2 rounded-full transition-colors duration-200"
         >
           <DownloadOutlinedIcon style={{ fontSize: 15 }} />
           Download
-        </Link>
+        </a>
         <span className="text-xs font-medium text-[#62748e]">{doc.pages}</span>
       </div>
     </motion.div>
@@ -138,12 +140,12 @@ export default function Whitepapers() {
                 Our AI-monitored solar grids distribute power intelligently — book a personalised demo with our engineering team.
               </p>
             </div>
-            <Link
-              to="/contact#demo"
+            <a
+              href={marketingPath('/contact#demo')}
               className="shrink-0 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
             >
               Request a Demo
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

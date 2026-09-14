@@ -682,7 +682,7 @@ class TimelineSectionBlock(blocks.StructBlock):
         icon = "date"
 
 
-class DocumentItemBlock(blocks.StructBlock):
+class DocumentItemBlock(ImageApiStructBlock):
     title    = blocks.CharBlock()
     document = DocumentChooserBlock(required=False)
     note     = blocks.CharBlock(required=False)

@@ -11,11 +11,25 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
+import { DeploymentStepsSection } from '@/components/product/DeploymentStepsSection'
+import { ProductVideoSection } from '@/components/product/ProductVideoSection'
+import { ProductTestimonialsSection } from '@/components/product/ProductTestimonialsSection'
+import { IntroductionNoteSection } from '@/components/product/IntroductionNoteSection'
+import { DocumentsSection } from '@/components/product/DocumentsSection'
+import { FAQAccordionSection } from '@/components/product/FAQAccordionSection'
+import { ProductCTASection } from '@/components/product/ProductCTASection'
 import { apiFetch } from '@/lib/api/client'
 import type {
   CapabilitiesSectionValue,
+  CTABandValue,
+  DeploymentStepsSectionValue,
+  DocumentSectionValue,
+  FAQSectionValue,
+  IntroductionSectionValue,
   OverviewSectionValue,
   ProductPageData,
+  ProductTestimonialSectionValue,
+  ProductVideoSectionValue,
   StatsGridSectionValue,
   TechHighlightsSectionValue,
   WagtailListResponse,
@@ -72,6 +86,14 @@ export default function CategoryPage() {
   const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
   const techHighlights = ((product.body.find(b => b.type === 'tech_highlights')?.value as TechHighlightsSectionValue | undefined)?.items ?? []).slice(0, 4)
   const stats = (product.body.find(b => b.type === 'stats')?.value as StatsGridSectionValue | undefined)?.stats ?? []
+  const deploymentSteps = product.body.find(b => b.type === 'deployment_steps')?.value as DeploymentStepsSectionValue | undefined
+  const videoSection = product.body.find(b => b.type === 'video_section')?.value as ProductVideoSectionValue | undefined
+  const testimonialsSection = product.body.find(b => b.type === 'testimonials_section')?.value as ProductTestimonialSectionValue | undefined
+  const complianceNote = product.body.find(b => b.type === 'compliance_note')?.value as IntroductionSectionValue | undefined
+  const documentsSection = product.body.find(b => b.type === 'documents')?.value as DocumentSectionValue | undefined
+  const faqSection = product.body.find(b => b.type === 'faq_section')?.value as FAQSectionValue | undefined
+  const ctaBlock = product.body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
+  const hasVideo = !!(videoSection?.video_file?.url || videoSection?.video_url)
 
   return (
     <main>
@@ -173,6 +195,26 @@ export default function CategoryPage() {
       {/* ── TECHNICAL HIGHLIGHTS ──────────────────────────────────────────────── */}
       <TechHighlightsSection highlights={techHighlights} />
 
+      {/* ── DEPLOYMENT STEPS ──────────────────────────────────────────────────── */}
+      {deploymentSteps && deploymentSteps.steps.length > 0 && (
+        <DeploymentStepsSection
+          heading={deploymentSteps.heading}
+          description={deploymentSteps.description}
+          steps={deploymentSteps.steps}
+        />
+      )}
+
+      {/* ── VIDEO ─────────────────────────────────────────────────────────────── */}
+      {videoSection && hasVideo && (
+        <ProductVideoSection
+          heading={videoSection.heading}
+          description={videoSection.description}
+          video_file={videoSection.video_file}
+          video_url={videoSection.video_url}
+          poster_image={videoSection.poster_image}
+        />
+      )}
+
       {/* ── STATS BAR ─────────────────────────────────────────────────────────── */}
       {stats.length > 0 && (
         <section className="bg-white border-t border-b border-[#e5e7eb] py-8">
@@ -201,6 +243,30 @@ export default function CategoryPage() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* ── TESTIMONIALS ──────────────────────────────────────────────────────── */}
+      {testimonialsSection && testimonialsSection.items.length > 0 && (
+        <ProductTestimonialsSection heading={testimonialsSection.heading} items={testimonialsSection.items} />
+      )}
+
+      {/* ── COMPLIANCE / INTRO NOTE ───────────────────────────────────────────── */}
+      {complianceNote && (
+        <IntroductionNoteSection
+          heading={complianceNote.heading}
+          description={complianceNote.description}
+          note={complianceNote.note}
+        />
+      )}
+
+      {/* ── DOCUMENTS ─────────────────────────────────────────────────────────── */}
+      {documentsSection && documentsSection.documents.length > 0 && (
+        <DocumentsSection heading={documentsSection.heading} documents={documentsSection.documents} />
+      )}
+
+      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
+      {faqSection && faqSection.items.length > 0 && (
+        <FAQAccordionSection heading={faqSection.heading} items={faqSection.items} />
       )}
 
       {/* ── MORE FROM PORTFOLIO ───────────────────────────────────────────────── */}
@@ -258,34 +324,16 @@ export default function CategoryPage() {
       )}
 
       {/* ── CTA ───────────────────────────────────────────────────────────────── */}
-      <section className="bg-brand-tint py-20 lg:py-28">
-        <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' as const }}
-            transition={{ duration: 0.5, ease: 'easeOut' as const }}
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
-              Start a Project
-            </p>
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Want to see {product.title} in action?
-            </h2>
-            <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              Talk to our engineering team. We scope, plan, and deliver — from a single site to a national rollout.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/contact#demo">
-                <Button variant="primary" size="lg">Request a Demo</Button>
-              </Link>
-              <Link to="/contact">
-                <Button variant="secondary" size="lg">Contact Us</Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <ProductCTASection
+        cta={ctaBlock}
+        eyebrow="Start a Project"
+        heading={`Want to see ${product.title} in action?`}
+        description="Talk to our engineering team. We scope, plan, and deliver — from a single site to a national rollout."
+        primaryText="Request a Demo"
+        primaryLink="/contact#demo"
+        secondaryText="Contact Us"
+        secondaryLink="/contact"
+      />
     </main>
   )
 }

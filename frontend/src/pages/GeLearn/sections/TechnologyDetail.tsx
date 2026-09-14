@@ -10,7 +10,9 @@ import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
-import type { TechArticleItem, SnippetListResponse } from '@/types/api'
+import { marketingPath } from '@/lib/host'
+import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
+import type { CaseStudySectionValue, TechArticleItem, SnippetListResponse } from '@/types/api'
 
 // ── Difficulty styles ─────────────────────────────────────────────────────────
 
@@ -18,6 +20,23 @@ const DIFFICULTY_STYLE: Record<string, { bg: string; text: string }> = {
   Beginner:     { bg: '#e9ffe8', text: '#2c8502' },
   Intermediate: { bg: '#fff8e8', text: '#855a02' },
   Advanced:     { bg: '#ffe8e8', text: '#8b0000' },
+}
+
+function ArticleSection({ value }: { value: unknown }) {
+  const section = value as CaseStudySectionValue
+  return (
+    <div className="mb-10">
+      <h3 className="text-2xl font-bold text-black mb-4">{section.heading}</h3>
+      <div
+        className="text-[#45556c] leading-[1.75] space-y-4 [&_p]:mb-4"
+        dangerouslySetInnerHTML={{ __html: section.body }}
+      />
+    </div>
+  )
+}
+
+const sectionBlockMap: BlockComponentMap = {
+  section: ArticleSection,
 }
 
 // ── Related article mini-card ─────────────────────────────────────────────────
@@ -58,7 +77,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#ebebeb]">
           <span className="flex items-center gap-1 text-xs text-[#62748e]">
             <AccessTimeOutlinedIcon style={{ fontSize: 13 }} />
-            {article.readTime}
+            {article.read_time}
           </span>
           <Link
             to={`/technology/${article.id}`}
@@ -167,7 +186,7 @@ export default function TechnologyDetail() {
           </motion.div>
         </div>
 
-        {/* ── HERO PLACEHOLDER ─────────────────────────────────────────── */}
+        {/* ── HERO IMAGE ───────────────────────────────────────────────── */}
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -175,7 +194,11 @@ export default function TechnologyDetail() {
             transition={{ duration: 0.55, delay: 0.18, ease: 'easeOut' as const }}
             className="rounded-3xl overflow-hidden aspect-21/9 mb-16 bg-[#f0f4f8] flex items-center justify-center"
           >
-            <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+            {article.image_url ? (
+              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+            )}
           </motion.div>
         </div>
 
@@ -196,24 +219,65 @@ export default function TechnologyDetail() {
                 {article.excerpt}
               </motion.p>
 
-              {/* Placeholder technical callout */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' as const }}
-                transition={{ duration: 0.5, ease: 'easeOut' as const }}
-                className="bg-[#f0f9ff] border border-primary/20 rounded-2xl p-7 mb-12"
-              >
-                <div className="flex items-center gap-2.5 mb-4">
-                  <TipsAndUpdatesOutlinedIcon style={{ fontSize: 18, color: '#1AAEE8' }} />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-                    Key Insight
-                  </p>
+              {article.intro && (
+                <div
+                  className="text-[#45556c] leading-[1.75] mb-10 [&_p]:mb-4"
+                  dangerouslySetInnerHTML={{ __html: article.intro }}
+                />
+              )}
+
+              {article.sections.length > 0 && (
+                <div className="mb-12">
+                  {renderStreamField(article.sections, sectionBlockMap)}
                 </div>
-                <p className="text-sm text-[#314158] leading-7">
-                  {article.topic} is a critical area of expertise for teams deploying modern energy infrastructure in India. Genex engineers document real-world lessons from field deployments across the country.
-                </p>
-              </motion.div>
+              )}
+
+              {article.callout_content && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' as const }}
+                  transition={{ duration: 0.5, ease: 'easeOut' as const }}
+                  className="bg-[#f0f9ff] border border-primary/20 rounded-2xl p-7 mb-12"
+                >
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <TipsAndUpdatesOutlinedIcon style={{ fontSize: 18, color: '#1AAEE8' }} />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                      {article.callout_label || 'Key Insight'}
+                    </p>
+                  </div>
+                  <p className="text-sm text-[#314158] leading-7">
+                    {article.callout_content}
+                  </p>
+                </motion.div>
+              )}
+
+              {article.takeaways.length > 0 && (
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl p-7 mb-12">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-5">Key Takeaways</p>
+                  <ul className="space-y-3">
+                    {article.takeaways.map((t) => (
+                      <li key={t.id} className="flex items-start gap-3">
+                        <CheckCircleOutlinedIcon style={{ fontSize: 18 }} className="text-primary shrink-0 mt-0.5" />
+                        <span className="text-sm text-[#314158] leading-6">{t.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {article.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {article.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -263,12 +327,12 @@ export default function TechnologyDetail() {
                 <p className="text-base font-bold leading-snug mb-5">
                   Have a project that needs this expertise?
                 </p>
-                <Link
-                  to="/contact"
+                <a
+                  href={marketingPath('/contact')}
                   className="inline-flex items-center gap-1.5 bg-white text-primary text-sm font-bold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity"
                 >
                   Get in Touch <ArrowForwardIcon style={{ fontSize: 15 }} />
-                </Link>
+                </a>
               </div>
             </div>
           </div>
@@ -327,12 +391,12 @@ export default function TechnologyDetail() {
               <p className="text-base text-[#6b7280] leading-relaxed mb-10 max-w-lg mx-auto">
                 Our AI-monitored solar grids distribute power intelligently — book a personalised demo with our engineering team.
               </p>
-              <Link
-                to="/contact#demo"
+              <a
+                href={marketingPath('/contact#demo')}
                 className="inline-flex items-center gap-2 bg-[#18afdf] text-white text-base font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
               >
                 Request a Demo <ArrowForwardIcon style={{ fontSize: 18 }} />
-              </Link>
+              </a>
             </motion.div>
           </div>
         </section>
