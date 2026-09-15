@@ -296,7 +296,7 @@ class TechHighlightBlock(blocks.StructBlock):
 # SECTION C-2 — Product / Innovation Body Blocks (flexible `body` StreamField)
 # ===========================================================================
 #
-# Wrapper blocks below carry forward the exact content shape of ProductPage/
+# Wrapper blocks below carry forward the exact content shape of PortfolioPage/
 # InnovationPage's old bare `overview`/`capabilities`/`tech_highlights` fields,
 # so a data migration can map old values onto these 1:1 with no visual change.
 # The remaining blocks are new, original additions for these two page types —
@@ -312,9 +312,17 @@ class OverviewSectionBlock(blocks.StructBlock):
         label = "Overview Section"
 
 
+class CapabilityItemBlock(blocks.StructBlock):
+    icon = blocks.ChoiceBlock(choices=ICON_CHOICES, required=False)
+    text = blocks.CharBlock()
+
+    class Meta:
+        icon = "tag"
+
+
 class CapabilitiesSectionBlock(blocks.StructBlock):
     heading = blocks.CharBlock(required=False, default="Capabilities")
-    items   = blocks.ListBlock(blocks.CharBlock(), min_num=1)
+    items   = blocks.ListBlock(CapabilityItemBlock(), min_num=1)
 
     class Meta:
         icon = "list-ul"

@@ -7,7 +7,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { apiFetch } from '@/lib/api/client'
-import type { CapabilitiesSectionValue, ProductPageData, WagtailListResponse } from '@/types/api'
+import type { CapabilitiesSectionValue, PortfolioPageData, WagtailListResponse } from '@/types/api'
 
 // ── Animation presets ─────────────────────────────────────────────────────────
 
@@ -48,10 +48,10 @@ const STATS = [
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
-function ProductCard({ product, index }: { product: ProductPageData; index: number }) {
+function ProductCard({ product, index }: { product: PortfolioPageData; index: number }) {
   const slug = product.meta.slug
   const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
-  const firstCapability = capabilities[0] ?? product.subline
+  const firstCapability = capabilities[0]?.text ?? product.subline
 
   return (
     <motion.div
@@ -100,12 +100,12 @@ function ProductCard({ product, index }: { product: ProductPageData; index: numb
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Portfolio() {
-  const [products, setProducts] = useState<ProductPageData[]>([])
+  const [products, setProducts] = useState<PortfolioPageData[]>([])
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
 
   useEffect(() => {
-    apiFetch<WagtailListResponse<ProductPageData>>(
-      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,body&limit=50'
+    apiFetch<WagtailListResponse<PortfolioPageData>>(
+      '/api/v2/pages/?type=pages.PortfolioPage&fields=badge,family,headline,subline,body&limit=50'
     )
       .then(res => setProducts(res.items))
       .catch(() => setProducts([]))

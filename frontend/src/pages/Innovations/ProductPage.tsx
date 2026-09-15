@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff'
-import RemoveRedEyeOutlinedIcon from '@mui/icons-material/RemoveRedEyeOutlined'
-import SpeedIcon from '@mui/icons-material/Speed'
-import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import CloudQueueIcon from '@mui/icons-material/CloudQueue'
-import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined'
 import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined'
 import BiotechOutlinedIcon from '@mui/icons-material/BiotechOutlined'
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined'
@@ -15,30 +9,11 @@ import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
-import { DeploymentStepsSection } from '@/components/product/DeploymentStepsSection'
-import { ProductVideoSection } from '@/components/product/ProductVideoSection'
-import { ProductTestimonialsSection } from '@/components/product/ProductTestimonialsSection'
-import { IntroductionNoteSection } from '@/components/product/IntroductionNoteSection'
-import { DocumentsSection } from '@/components/product/DocumentsSection'
-import { FAQAccordionSection } from '@/components/product/FAQAccordionSection'
-import { ProductCTASection } from '@/components/product/ProductCTASection'
+import { CTABand } from '@/components/ui/CTABand'
+import { renderStreamField } from '@/lib/streamfield/renderStreamField'
+import { blockRegistry } from '@/lib/streamfield/blockRegistry'
 import { apiFetch } from '@/lib/api/client'
-import type {
-  CapabilitiesSectionValue,
-  CTABandValue,
-  DeploymentStepsSectionValue,
-  DocumentSectionValue,
-  FAQSectionValue,
-  InnovationPageData,
-  IntroductionSectionValue,
-  OverviewSectionValue,
-  ProductTestimonialSectionValue,
-  ProductVideoSectionValue,
-  StatsGridSectionValue,
-  TechHighlightsSectionValue,
-  WagtailListResponse,
-} from '@/types/api'
+import type { CTABandValue, InnovationPageData, WagtailListResponse } from '@/types/api'
 
 const CATEGORY_LABEL: Record<string, string> = {
   monitoring: 'Monitoring',
@@ -71,21 +46,6 @@ const STAGE_LABEL: Record<InnovationStage, string> = {
   scaled:    'Scaled',
 }
 
-const CAP_ICONS = [
-  FlightTakeoffIcon,
-  RemoveRedEyeOutlinedIcon,
-  SpeedIcon,
-  LocationOnOutlinedIcon,
-  CloudQueueIcon,
-  BuildOutlinedIcon,
-]
-
-function splitStat(value: string): { num: string; unit: string } {
-  const m = value.match(/^([<>]?[\d,]+(?:\.\d+)?)([+%\s]*)(.*)$/)
-  if (m) return { num: m[1], unit: (m[2] + m[3]).trim() }
-  return { num: value, unit: '' }
-}
-
 export default function InnovationProductPage() {
   const { slug } = useParams<{ slug: string }>()
   const [product, setProduct] = useState<InnovationPageData | null | undefined>(undefined)
@@ -94,7 +54,7 @@ export default function InnovationProductPage() {
   useEffect(() => {
     if (!slug) { setProduct(null); return }
     apiFetch<WagtailListResponse<InnovationPageData>>(
-      `/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,image_url,icon_url,body&slug=${slug}&limit=1`
+      `/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,image_url,icon_url,meta_title,meta_description,hide_footer_cta,body&slug=${slug}&limit=1`
     )
       .then(res => setProduct(res.items[0] ?? null))
       .catch(() => setProduct(null))
@@ -110,19 +70,8 @@ export default function InnovationProductPage() {
   if (product === null) return <Navigate to="/innovations" replace />
 
   const related = allProducts.filter(p => p.meta.slug !== slug).slice(0, 3)
-
-  const overview = (product.body.find(b => b.type === 'overview')?.value as OverviewSectionValue | undefined)?.paragraphs ?? []
-  const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
-  const techHighlights = (product.body.find(b => b.type === 'tech_highlights')?.value as TechHighlightsSectionValue | undefined)?.items ?? []
-  const stats = (product.body.find(b => b.type === 'stats')?.value as StatsGridSectionValue | undefined)?.stats ?? []
-  const deploymentSteps = product.body.find(b => b.type === 'deployment_steps')?.value as DeploymentStepsSectionValue | undefined
-  const videoSection = product.body.find(b => b.type === 'video_section')?.value as ProductVideoSectionValue | undefined
-  const testimonialsSection = product.body.find(b => b.type === 'testimonials_section')?.value as ProductTestimonialSectionValue | undefined
-  const complianceNote = product.body.find(b => b.type === 'compliance_note')?.value as IntroductionSectionValue | undefined
-  const documentsSection = product.body.find(b => b.type === 'documents')?.value as DocumentSectionValue | undefined
-  const faqSection = product.body.find(b => b.type === 'faq_section')?.value as FAQSectionValue | undefined
+  const bodyBlocks = product.body.filter(b => b.type !== 'cta')
   const ctaBlock = product.body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
-  const hasVideo = !!(videoSection?.video_file?.url || videoSection?.video_url)
 
   const stage = product.stage as InnovationStage
   const stagePill = STAGE_PILL[stage] ?? 'bg-slate-100 text-slate-700 border-slate-200'
@@ -132,17 +81,31 @@ export default function InnovationProductPage() {
   return (
     <main>
       <PageMeta
-        title={product.headline}
-        description={product.subline}
+        title={product.meta_title || product.headline}
+        description={product.meta_description || product.subline}
         canonical={`/innovations/${slug}`}
+        image={product.icon_url || product.image_url}
       />
 
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#f0f8ff] border-b border-[#e5e7eb] py-20 lg:py-28 overflow-hidden">
-        <div
-          className="absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br from-slate-200 to-slate-300"
-          aria-hidden="true"
-        />
+        {product.image_url ? (
+          <>
+            <img
+              src={product.image_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Light overlay keeps hero text legible over the product image */}
+            <div className="absolute inset-0 bg-white/80" aria-hidden="true" />
+          </>
+        ) : (
+          <div
+            className="absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br from-slate-200 to-slate-300"
+            aria-hidden="true"
+          />
+        )}
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -168,7 +131,7 @@ export default function InnovationProductPage() {
               )}
             </div>
             <h1 className="text-5xl lg:text-6xl font-extrabold text-[#162456] leading-tight mb-5 max-w-3xl">
-              {product.title}
+              {product.headline || product.title}
             </h1>
             <p className="text-lg text-[#45556c] leading-relaxed max-w-2xl mb-10">
               {product.subline}
@@ -185,130 +148,8 @@ export default function InnovationProductPage() {
         </div>
       </section>
 
-      {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
-      <section className="bg-white py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' as const }}
-            transition={{ duration: 0.5, ease: 'easeOut' as const }}
-          >
-            <h2 className="text-4xl font-bold text-[#162456] leading-tight capitalize mb-6">
-              Overview
-            </h2>
-            <div className="space-y-5 max-w-4xl">
-              {overview.map((para, i) => (
-                <p key={i} className="text-lg text-[#45556c] leading-7.25">{para}</p>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── CAPABILITIES GRID ─────────────────────────────────────────────────── */}
-      <section className="bg-white border-t border-b border-[#e0e6ed] py-14">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' as const }}
-            transition={{ duration: 0.5, ease: 'easeOut' as const }}
-            className="grid grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10"
-          >
-            {capabilities.map((cap, i) => {
-              const Icon = CAP_ICONS[i % CAP_ICONS.length]
-              return (
-                <div key={i} className="flex flex-col gap-3">
-                  <div className="bg-[#f0f4f8] size-12 rounded-2xl flex items-center justify-center shrink-0">
-                    <Icon style={{ fontSize: 24 }} className="text-[#62748e]" />
-                  </div>
-                  <p className="text-sm text-[#62748e] leading-snug">{cap}</p>
-                </div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── TECHNICAL HIGHLIGHTS ──────────────────────────────────────────────── */}
-      {techHighlights.length > 0 && (
-        <TechHighlightsSection highlights={techHighlights} />
-      )}
-
-      {/* ── DEPLOYMENT STEPS ──────────────────────────────────────────────────── */}
-      {deploymentSteps && deploymentSteps.steps.length > 0 && (
-        <DeploymentStepsSection
-          heading={deploymentSteps.heading}
-          description={deploymentSteps.description}
-          steps={deploymentSteps.steps}
-        />
-      )}
-
-      {/* ── VIDEO ─────────────────────────────────────────────────────────────── */}
-      {videoSection && hasVideo && (
-        <ProductVideoSection
-          heading={videoSection.heading}
-          description={videoSection.description}
-          video_file={videoSection.video_file}
-          video_url={videoSection.video_url}
-          poster_image={videoSection.poster_image}
-        />
-      )}
-
-      {/* ── STATS BAR ─────────────────────────────────────────────────────────── */}
-      {stats.length > 0 && (
-        <section className="bg-white border-t border-b border-[#e5e7eb] py-8">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className={`grid grid-cols-${stats.length} divide-x divide-[#e5e7eb]`}>
-              {stats.map(({ value, suffix, label }, i) => {
-                const display = `${value}${suffix ?? ''}`
-                const { num, unit } = splitStat(display)
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
-                    className="flex flex-col items-center gap-1.5 py-4 px-4 lg:px-10"
-                  >
-                    <div className="flex items-baseline gap-1.5 justify-center">
-                      <span className="text-4xl font-bold text-[#1d4ed8] leading-tight">{num}</span>
-                      {unit && <span className="text-xl font-medium text-[#111827]">{unit}</span>}
-                    </div>
-                    <span className="text-sm text-[#6b7280] text-center">{label}</span>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── TESTIMONIALS ──────────────────────────────────────────────────────── */}
-      {testimonialsSection && testimonialsSection.items.length > 0 && (
-        <ProductTestimonialsSection heading={testimonialsSection.heading} items={testimonialsSection.items} />
-      )}
-
-      {/* ── COMPLIANCE / INTRO NOTE ───────────────────────────────────────────── */}
-      {complianceNote && (
-        <IntroductionNoteSection
-          heading={complianceNote.heading}
-          description={complianceNote.description}
-          note={complianceNote.note}
-        />
-      )}
-
-      {/* ── DOCUMENTS ─────────────────────────────────────────────────────────── */}
-      {documentsSection && documentsSection.documents.length > 0 && (
-        <DocumentsSection heading={documentsSection.heading} documents={documentsSection.documents} />
-      )}
-
-      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
-      {faqSection && faqSection.items.length > 0 && (
-        <FAQAccordionSection heading={faqSection.heading} items={faqSection.items} />
-      )}
+      {/* ── BODY (stream order — whatever order the editor arranged blocks in) ──── */}
+      {renderStreamField(bodyBlocks, blockRegistry)}
 
       {/* ── MORE FROM INNOVATIONS ─────────────────────────────────────────────── */}
       {related.length > 0 && (
@@ -365,7 +206,7 @@ export default function InnovationProductPage() {
       )}
 
       {/* ── CTA ───────────────────────────────────────────────────────────────── */}
-      <ProductCTASection
+      <CTABand
         cta={ctaBlock}
         eyebrow="Get Early Access"
         heading={`Interested in ${product.title}?`}
@@ -374,6 +215,7 @@ export default function InnovationProductPage() {
         primaryLink="/contact#demo"
         secondaryText="Contact Us"
         secondaryLink="/contact"
+        hideFooterCta={product.hide_footer_cta}
       />
     </main>
   )

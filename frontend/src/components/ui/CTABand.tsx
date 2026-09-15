@@ -3,18 +3,20 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import type { CTABandValue } from '@/types/api'
 
-interface ProductCTASectionProps {
+interface CTABandProps {
   cta?: CTABandValue
-  eyebrow: string
+  eyebrow?: string
   heading: string
   description: string
   primaryText: string
   primaryLink: string
-  secondaryText: string
-  secondaryLink: string
+  secondaryText?: string
+  secondaryLink?: string
+  /** Skip rendering entirely — driven by a page's BasePage.hide_footer_cta flag. */
+  hideFooterCta?: boolean
 }
 
-export function ProductCTASection({
+export function CTABand({
   cta,
   eyebrow,
   heading,
@@ -23,7 +25,10 @@ export function ProductCTASection({
   primaryLink,
   secondaryText,
   secondaryLink,
-}: ProductCTASectionProps) {
+  hideFooterCta,
+}: CTABandProps) {
+  if (hideFooterCta) return null
+
   const resolvedHeading = cta?.heading || heading
   const resolvedDescription = cta?.description || description
   const resolvedPrimaryText = cta?.primary_cta_text || primaryText
@@ -40,9 +45,11 @@ export function ProductCTASection({
           viewport={{ once: true, margin: '-60px' as const }}
           transition={{ duration: 0.5, ease: 'easeOut' as const }}
         >
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
-            {eyebrow}
-          </p>
+          {eyebrow && (
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
+              {eyebrow}
+            </p>
+          )}
           <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
             {resolvedHeading}
           </h2>
@@ -53,9 +60,11 @@ export function ProductCTASection({
             <Link to={resolvedPrimaryLink}>
               <Button variant="primary" size="lg">{resolvedPrimaryText}</Button>
             </Link>
-            <Link to={resolvedSecondaryLink}>
-              <Button variant="secondary" size="lg">{resolvedSecondaryText}</Button>
-            </Link>
+            {resolvedSecondaryText && resolvedSecondaryLink && (
+              <Link to={resolvedSecondaryLink}>
+                <Button variant="secondary" size="lg">{resolvedSecondaryText}</Button>
+              </Link>
+            )}
           </div>
         </motion.div>
       </div>

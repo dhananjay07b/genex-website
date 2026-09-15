@@ -16,6 +16,8 @@ export function ProductVideoSection({ heading, description, video_file, video_ur
   const embed = !fileUrl && video_url ? embedUrl(video_url) : null
   const directUrl = !fileUrl && video_url && !embed ? video_url : null
 
+  if (!fileUrl && !directUrl && !embed) return null
+
   return (
     <section className="bg-white py-16 lg:py-24 border-t border-[#f1f5f9]">
       <div className="max-w-5xl mx-auto px-6 lg:px-8">

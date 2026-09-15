@@ -201,7 +201,7 @@ class PortfolioIndexPage(BasePage):
     ]
 
     parent_page_types = ["wagtailcore.Page"]
-    subpage_types = ["pages.ProductPage"]
+    subpage_types = ["pages.PortfolioPage"]
 
     class Meta:
         verbose_name = "Portfolio Index Page"
@@ -215,7 +215,7 @@ FAMILY_CHOICES = [
 ]
 
 
-# Shared flexible body for ProductPage and InnovationPage — both have identical
+# Shared flexible body for PortfolioPage and InnovationPage — both have identical
 # content needs (same detail-page layout, same components); only their fixed
 # identity fields differ, so the body block choices are deliberately shared.
 PRODUCT_BODY_BLOCKS = [
@@ -233,7 +233,7 @@ PRODUCT_BODY_BLOCKS = [
 ]
 
 
-class ProductPage(BasePage):
+class PortfolioPage(BasePage):
     badge      = models.CharField(max_length=50, blank=True)
     family     = models.CharField(max_length=20, choices=FAMILY_CHOICES, blank=True)
     headline   = models.CharField(max_length=255, blank=True)
@@ -273,7 +273,7 @@ class ProductPage(BasePage):
     subpage_types = []
 
     class Meta:
-        verbose_name = "Product Page"
+        verbose_name = "Portfolio Page"
 
 
 # ===========================================================================
@@ -405,14 +405,12 @@ class GeLearnIndexPage(BasePage):
 
 
 GELEARN_SECTION_TYPE_CHOICES = [
-    ("how-we-work", "How We Work"),
     ("technology", "Technology Deep Dives"),
     ("case-studies", "Case Studies"),
     ("tenders", "Tenders"),
     ("whitepapers", "Whitepapers"),
     ("videos", "Videos"),
     ("blog", "Blog"),
-    ("faq", "FAQ"),
     ("podcasts", "Podcasts"),
 ]
 
@@ -422,11 +420,11 @@ class GeLearnSectionPage(BasePage):
         max_length=30, choices=GELEARN_SECTION_TYPE_CHOICES, blank=True,
         help_text="Controls which snippet list the frontend queries",
     )
+    # "How We Work" and "FAQ" live under AboutPage (HowWeWorkPage/FaqPage below) —
+    # not offered here, to avoid the same content existing in two places.
     body = StreamField([
         ("hero", HeroSectionBlock()),
-        ("how_we_work", HowWeWorkPageBlock()),
         ("card_section", CardGridSectionBlock()),
-        ("faq_section", FAQSectionBlock()),
         ("stats", StatsGridSectionBlock()),
         ("side_section", SideImageSectionBlock()),
         ("intro", IntroductionSectionBlock()),

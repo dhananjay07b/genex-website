@@ -26,7 +26,7 @@ const staggerChild = {
 
 function InnovationCard({ item }: { item: InnovationPageData }) {
   const capabilities = (item.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
-  const firstCapability = capabilities[0] ?? item.subline
+  const firstCapability = capabilities[0]?.text ?? item.subline
   return (
     <motion.div
       variants={staggerChild}
@@ -34,8 +34,11 @@ function InnovationCard({ item }: { item: InnovationPageData }) {
       whileHover={{ y: -6, boxShadow: 'inset 0 3px 0 #1AAEE8, 0 16px 32px rgba(0,0,0,0.10)' }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
     >
-      {/* Gradient icon placeholder */}
-      <div className="w-12 h-12 mb-6 rounded-xl bg-linear-to-br from-slate-200 to-slate-300" />
+      {item.icon_url ? (
+        <img src={item.icon_url} alt="" aria-hidden="true" className="w-12 h-12 mb-6 rounded-xl object-cover" />
+      ) : (
+        <div className="w-12 h-12 mb-6 rounded-xl bg-linear-to-br from-slate-200 to-slate-300" />
+      )}
 
       <p className="text-2xl font-bold text-[#1d293d] leading-tight mb-3">
         {item.title}
@@ -60,7 +63,7 @@ export default function Innovations() {
 
   useEffect(() => {
     apiFetch<WagtailListResponse<InnovationPageData>>(
-      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,body&limit=50'
+      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,icon_url,body&limit=50'
     )
       .then(res => setInnovations(res.items))
       .catch(() => setInnovations([]))

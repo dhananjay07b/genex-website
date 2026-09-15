@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { getIcon } from '@/lib/iconMap'
+import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { DeploymentStepValue } from '@/types/api'
 
 interface DeploymentStepsSectionProps {
@@ -25,7 +25,7 @@ export function DeploymentStepsSection({ heading, description, steps }: Deployme
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step, i) => {
-            const Icon = getIcon(step.icon)
+            const Icon = getMuiIcon(step.icon)
             return (
               <motion.div
                 key={i}

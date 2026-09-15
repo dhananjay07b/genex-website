@@ -11,11 +11,13 @@ interface PageMetaProps {
   description: string
   canonical?: string
   noIndex?: boolean
+  image?: string | null
 }
 
-export function PageMeta({ title, description, canonical, noIndex = false }: PageMetaProps) {
+export function PageMeta({ title, description, canonical, noIndex = false, image }: PageMetaProps) {
   const fullTitle    = `${title} | ${SITE_NAME}`
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined
+  const ogImageUrl   = image ? (image.startsWith('http') ? image : `${SITE_URL}${image}`) : `${SITE_URL}${OG_IMAGE}`
 
   return (
     <Helmet>
@@ -29,14 +31,14 @@ export function PageMeta({ title, description, canonical, noIndex = false }: Pag
       <meta property="og:site_name"   content={SITE_NAME} />
       <meta property="og:title"       content={fullTitle} />
       <meta property="og:description" content={description} />
-      <meta property="og:image"       content={`${SITE_URL}${OG_IMAGE}`} />
+      <meta property="og:image"       content={ogImageUrl} />
       {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
 
       {/* Twitter */}
       <meta name="twitter:card"        content="summary_large_image" />
       <meta name="twitter:title"       content={fullTitle} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image"       content={`${SITE_URL}${OG_IMAGE}`} />
+      <meta name="twitter:image"       content={ogImageUrl} />
     </Helmet>
   )
 }

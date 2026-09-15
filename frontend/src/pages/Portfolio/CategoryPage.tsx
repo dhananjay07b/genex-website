@@ -1,39 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import CloudQueueIcon from '@mui/icons-material/CloudQueue'
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
-import DashboardIcon from '@mui/icons-material/Dashboard'
-import BuildOutlinedIcon from '@mui/icons-material/BuildOutlined'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import DeviceHubIcon from '@mui/icons-material/DeviceHub'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
-import { DeploymentStepsSection } from '@/components/product/DeploymentStepsSection'
-import { ProductVideoSection } from '@/components/product/ProductVideoSection'
-import { ProductTestimonialsSection } from '@/components/product/ProductTestimonialsSection'
-import { IntroductionNoteSection } from '@/components/product/IntroductionNoteSection'
-import { DocumentsSection } from '@/components/product/DocumentsSection'
-import { FAQAccordionSection } from '@/components/product/FAQAccordionSection'
-import { ProductCTASection } from '@/components/product/ProductCTASection'
+import { CTABand } from '@/components/ui/CTABand'
+import { renderStreamField } from '@/lib/streamfield/renderStreamField'
+import { blockRegistry } from '@/lib/streamfield/blockRegistry'
 import { apiFetch } from '@/lib/api/client'
-import type {
-  CapabilitiesSectionValue,
-  CTABandValue,
-  DeploymentStepsSectionValue,
-  DocumentSectionValue,
-  FAQSectionValue,
-  IntroductionSectionValue,
-  OverviewSectionValue,
-  ProductPageData,
-  ProductTestimonialSectionValue,
-  ProductVideoSectionValue,
-  StatsGridSectionValue,
-  TechHighlightsSectionValue,
-  WagtailListResponse,
-} from '@/types/api'
+import type { CTABandValue, PortfolioPageData, WagtailListResponse } from '@/types/api'
 
 const FAMILY_LABEL: Record<string, string> = {
   solar:   'Solar & Monitoring',
@@ -42,36 +17,21 @@ const FAMILY_LABEL: Record<string, string> = {
   ev:      'EV & Power Tools',
 }
 
-const CAP_ICONS = [
-  CloudQueueIcon,
-  NotificationsNoneIcon,
-  DashboardIcon,
-  BuildOutlinedIcon,
-  BarChartIcon,
-  DeviceHubIcon,
-]
-
-function splitStat(value: string): { num: string; unit: string } {
-  const m = value.match(/^([<>]?[\d,]+(?:\.\d+)?)([+%\s]*)(.*)$/)
-  if (m) return { num: m[1], unit: (m[2] + m[3]).trim() }
-  return { num: value, unit: '' }
-}
-
 export default function CategoryPage() {
   const { category: slug } = useParams<{ category: string }>()
-  const [product, setProduct] = useState<ProductPageData | null | undefined>(undefined)
-  const [allProducts, setAllProducts] = useState<ProductPageData[]>([])
+  const [product, setProduct] = useState<PortfolioPageData | null | undefined>(undefined)
+  const [allProducts, setAllProducts] = useState<PortfolioPageData[]>([])
 
   useEffect(() => {
     if (!slug) { setProduct(null); return }
-    apiFetch<WagtailListResponse<ProductPageData>>(
-      `/api/v2/pages/?type=pages.ProductPage&fields=badge,family,headline,subline,image_url,body&slug=${slug}&limit=1`
+    apiFetch<WagtailListResponse<PortfolioPageData>>(
+      `/api/v2/pages/?type=pages.PortfolioPage&fields=badge,family,headline,subline,image_url,meta_title,meta_description,hide_footer_cta,body&slug=${slug}&limit=1`
     )
       .then(res => setProduct(res.items[0] ?? null))
       .catch(() => setProduct(null))
 
-    apiFetch<WagtailListResponse<ProductPageData>>(
-      '/api/v2/pages/?type=pages.ProductPage&fields=badge,family&limit=50'
+    apiFetch<WagtailListResponse<PortfolioPageData>>(
+      '/api/v2/pages/?type=pages.PortfolioPage&fields=badge,family&limit=50'
     )
       .then(res => setAllProducts(res.items))
       .catch(() => setAllProducts([]))
@@ -81,34 +41,37 @@ export default function CategoryPage() {
   if (product === null) return <Navigate to="/portfolio" replace />
 
   const related = allProducts.filter(p => p.meta.slug !== slug).slice(0, 3)
-
-  const overview = (product.body.find(b => b.type === 'overview')?.value as OverviewSectionValue | undefined)?.paragraphs ?? []
-  const capabilities = (product.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
-  const techHighlights = ((product.body.find(b => b.type === 'tech_highlights')?.value as TechHighlightsSectionValue | undefined)?.items ?? []).slice(0, 4)
-  const stats = (product.body.find(b => b.type === 'stats')?.value as StatsGridSectionValue | undefined)?.stats ?? []
-  const deploymentSteps = product.body.find(b => b.type === 'deployment_steps')?.value as DeploymentStepsSectionValue | undefined
-  const videoSection = product.body.find(b => b.type === 'video_section')?.value as ProductVideoSectionValue | undefined
-  const testimonialsSection = product.body.find(b => b.type === 'testimonials_section')?.value as ProductTestimonialSectionValue | undefined
-  const complianceNote = product.body.find(b => b.type === 'compliance_note')?.value as IntroductionSectionValue | undefined
-  const documentsSection = product.body.find(b => b.type === 'documents')?.value as DocumentSectionValue | undefined
-  const faqSection = product.body.find(b => b.type === 'faq_section')?.value as FAQSectionValue | undefined
+  const bodyBlocks = product.body.filter(b => b.type !== 'cta')
   const ctaBlock = product.body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
-  const hasVideo = !!(videoSection?.video_file?.url || videoSection?.video_url)
 
   return (
     <main>
       <PageMeta
-        title={product.headline}
-        description={product.subline}
+        title={product.meta_title || product.headline}
+        description={product.meta_description || product.subline}
         canonical={`/portfolio/${slug}`}
+        image={product.image_url}
       />
 
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#f0f8ff] border-b border-[#e5e7eb] py-20 lg:py-28 overflow-hidden">
-        <div
-          className="absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br from-slate-200 to-slate-300"
-          aria-hidden="true"
-        />
+        {product.image_url ? (
+          <>
+            <img
+              src={product.image_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Light overlay keeps hero text legible over the product image */}
+            <div className="absolute inset-0 bg-white/80" aria-hidden="true" />
+          </>
+        ) : (
+          <div
+            className="absolute -top-40 -right-40 w-md h-112 rounded-full blur-3xl opacity-30 bg-linear-to-br from-slate-200 to-slate-300"
+            aria-hidden="true"
+          />
+        )}
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -126,7 +89,7 @@ export default function CategoryPage() {
               </span>
             </div>
             <h1 className="text-5xl lg:text-6xl font-extrabold text-[#162456] leading-tight mb-5 max-w-3xl">
-              {product.title}
+              {product.headline || product.title}
             </h1>
             <p className="text-lg text-[#45556c] leading-relaxed max-w-2xl mb-10">
               {product.subline}
@@ -143,131 +106,8 @@ export default function CategoryPage() {
         </div>
       </section>
 
-      {/* ── OVERVIEW ──────────────────────────────────────────────────────────── */}
-      <section className="bg-white py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-
-            {/* Left: text */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' as const }}
-              transition={{ duration: 0.5, ease: 'easeOut' as const }}
-            >
-              <h2 className="text-4xl font-bold text-[#162456] leading-tight capitalize mb-6">
-                Overview
-              </h2>
-              <div className="space-y-5">
-                {overview.map((para, i) => (
-                  <p key={i} className="text-lg text-[#45556c] leading-7.25">{para}</p>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Right: capability grid */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-60px' as const }}
-              transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' as const }}
-              className="border-t border-b border-[#eaf0f6] py-10"
-            >
-              <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-                {capabilities.map((cap, i) => {
-                  const Icon = CAP_ICONS[i % CAP_ICONS.length]
-                  return (
-                    <div key={i} className="flex flex-col gap-3">
-                      <div className="bg-[#f0f4f8] size-12 rounded-2xl flex items-center justify-center shrink-0">
-                        <Icon style={{ fontSize: 24 }} className="text-[#62748e]" />
-                      </div>
-                      <p className="text-sm text-[#62748e] leading-snug">{cap}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </motion.div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── TECHNICAL HIGHLIGHTS ──────────────────────────────────────────────── */}
-      <TechHighlightsSection highlights={techHighlights} />
-
-      {/* ── DEPLOYMENT STEPS ──────────────────────────────────────────────────── */}
-      {deploymentSteps && deploymentSteps.steps.length > 0 && (
-        <DeploymentStepsSection
-          heading={deploymentSteps.heading}
-          description={deploymentSteps.description}
-          steps={deploymentSteps.steps}
-        />
-      )}
-
-      {/* ── VIDEO ─────────────────────────────────────────────────────────────── */}
-      {videoSection && hasVideo && (
-        <ProductVideoSection
-          heading={videoSection.heading}
-          description={videoSection.description}
-          video_file={videoSection.video_file}
-          video_url={videoSection.video_url}
-          poster_image={videoSection.poster_image}
-        />
-      )}
-
-      {/* ── STATS BAR ─────────────────────────────────────────────────────────── */}
-      {stats.length > 0 && (
-        <section className="bg-white border-t border-b border-[#e5e7eb] py-8">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className={`grid grid-cols-${stats.length} divide-x divide-[#e5e7eb]`}>
-              {stats.map(({ value, suffix, label }, i) => {
-                const display = `${value}${suffix ?? ''}`
-                const { num, unit } = splitStat(display)
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
-                    className="flex flex-col items-center gap-1.5 py-4 px-4 lg:px-10"
-                  >
-                    <div className="flex items-baseline gap-1.5 justify-center">
-                      <span className="text-4xl font-bold text-[#1d4ed8] leading-tight">{num}</span>
-                      {unit && <span className="text-xl font-medium text-[#111827]">{unit}</span>}
-                    </div>
-                    <span className="text-sm text-[#6b7280] text-center">{label}</span>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── TESTIMONIALS ──────────────────────────────────────────────────────── */}
-      {testimonialsSection && testimonialsSection.items.length > 0 && (
-        <ProductTestimonialsSection heading={testimonialsSection.heading} items={testimonialsSection.items} />
-      )}
-
-      {/* ── COMPLIANCE / INTRO NOTE ───────────────────────────────────────────── */}
-      {complianceNote && (
-        <IntroductionNoteSection
-          heading={complianceNote.heading}
-          description={complianceNote.description}
-          note={complianceNote.note}
-        />
-      )}
-
-      {/* ── DOCUMENTS ─────────────────────────────────────────────────────────── */}
-      {documentsSection && documentsSection.documents.length > 0 && (
-        <DocumentsSection heading={documentsSection.heading} documents={documentsSection.documents} />
-      )}
-
-      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
-      {faqSection && faqSection.items.length > 0 && (
-        <FAQAccordionSection heading={faqSection.heading} items={faqSection.items} />
-      )}
+      {/* ── BODY (stream order — whatever order the editor arranged blocks in) ──── */}
+      {renderStreamField(bodyBlocks, blockRegistry)}
 
       {/* ── MORE FROM PORTFOLIO ───────────────────────────────────────────────── */}
       {related.length > 0 && (
@@ -324,7 +164,7 @@ export default function CategoryPage() {
       )}
 
       {/* ── CTA ───────────────────────────────────────────────────────────────── */}
-      <ProductCTASection
+      <CTABand
         cta={ctaBlock}
         eyebrow="Start a Project"
         heading={`Want to see ${product.title} in action?`}
@@ -333,6 +173,7 @@ export default function CategoryPage() {
         primaryLink="/contact#demo"
         secondaryText="Contact Us"
         secondaryLink="/contact"
+        hideFooterCta={product.hide_footer_cta}
       />
     </main>
   )

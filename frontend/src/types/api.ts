@@ -18,6 +18,9 @@ export interface WagtailPageBase {
   id: number
   meta: WagtailMeta
   title: string
+  meta_title?: string
+  meta_description?: string
+  hide_footer_cta?: boolean
 }
 
 export interface WagtailListResponse<T> {
@@ -45,9 +48,14 @@ export interface OverviewSectionValue {
   paragraphs: string[]
 }
 
+export interface CapabilityItemValue {
+  icon: string | null
+  text: string
+}
+
 export interface CapabilitiesSectionValue {
   heading: string
-  items: string[]
+  items: CapabilityItemValue[]
 }
 
 export interface TechHighlightsSectionValue {
@@ -125,7 +133,7 @@ export interface CTABandValue {
   secondary_cta_link: string | null
 }
 
-export interface ProductPageData extends WagtailPageBase {
+export interface PortfolioPageData extends WagtailPageBase {
   badge: string
   family: string
   headline: string
