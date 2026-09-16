@@ -53,7 +53,6 @@ from .blocks import (
     TechHighlightsSectionBlock,
     TechPartnerBlock,
     TestimonialItemBlock,
-    TimelineSectionBlock,
     VisionMissionCardBlock,
     WhatWeBuildTabBlock,
     WhyGenexCardBlock,
@@ -178,202 +177,97 @@ class HomePage(BasePage):
 
 
 # ===========================================================================
-# PORTFOLIO
+# GENERIC SECTION / CONTENT PAGES
 # ===========================================================================
-class PortfolioIndexPage(BasePage):
-    intro_headline = models.CharField(max_length=255, blank=True)
-    intro_body     = models.TextField(blank=True)
-    stats          = StreamField([("stat", StatBlock())], blank=True, use_json_field=True)
-    cta            = StreamField([("cta", CTABandBlock())], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [
-        FieldPanel("intro_headline"),
-        FieldPanel("intro_body"),
-        FieldPanel("stats"),
-        FieldPanel("cta"),
-    ]
-
-    api_fields = BasePage.api_fields + [
-        APIField("intro_headline"),
-        APIField("intro_body"),
-        APIField("stats"),
-        APIField("cta"),
-    ]
-
-    parent_page_types = ["wagtailcore.Page"]
-    subpage_types = ["pages.PortfolioPage"]
-
-    class Meta:
-        verbose_name = "Portfolio Index Page"
-
-
-FAMILY_CHOICES = [
-    ("solar", "Solar & Monitoring"),
-    ("storage", "Energy Storage"),
-    ("grid", "Grid & SCADA"),
-    ("ev", "EV & Power Tools"),
-]
-
-
-# Shared flexible body for PortfolioPage and InnovationPage — both have identical
-# content needs (same detail-page layout, same components); only their fixed
-# identity fields differ, so the body block choices are deliberately shared.
-PRODUCT_BODY_BLOCKS = [
+# Shared by Portfolio, Innovations, and About: one SectionPage per section
+# landing (e.g. /portfolio, /innovations, /about), with ContentPage instances
+# as its children (and grandchildren — ContentPage can nest under itself) for
+# every inner page. Both share the exact same body block palette below, so
+# any block can be added to any Section/Content page with zero backend code
+# changes. GeLearn, Careers, and Contact are intentionally NOT part of this —
+# they keep their own dedicated models with page-specific block choices.
+CONTENT_BODY_BLOCKS = [
+    ("hero", HeroSectionBlock()),
+    ("intro", IntroductionSectionBlock()),
+    ("card_section", CardGridSectionBlock()),
+    ("stats", StatsGridSectionBlock()),
+    ("side_section", SideImageSectionBlock()),
     ("overview", OverviewSectionBlock()),
     ("capabilities", CapabilitiesSectionBlock()),
     ("tech_highlights", TechHighlightsSectionBlock()),
     ("deployment_steps", DeploymentStepsSectionBlock()),
     ("video_section", ProductVideoSectionBlock()),
     ("testimonials_section", ProductTestimonialSectionBlock()),
-    ("stats", StatsGridSectionBlock()),
-    ("compliance_note", IntroductionSectionBlock()),
     ("documents", DocumentSectionBlock()),
     ("faq_section", FAQSectionBlock()),
+    ("how_we_work", HowWeWorkPageBlock()),
+    ("milestones", blocks.ListBlock(MilestoneBlock(), label="Milestones")),
+    ("vision_cards", blocks.ListBlock(VisionMissionCardBlock(), label="Vision Cards")),
+    ("mission_points", blocks.ListBlock(VisionMissionCardBlock(), label="Mission Points")),
+    ("leadership", blocks.ListBlock(LeadershipCardBlock(), label="Leadership Cards")),
+    ("certifications", blocks.ListBlock(CertificationBlock(), label="Certifications")),
+    ("partner_names", blocks.ListBlock(blocks.CharBlock(), label="Partner Names")),
+    ("achievements", blocks.ListBlock(AchievementBlock(), label="Achievements")),
+    ("press_items", blocks.ListBlock(PressItemBlock(), label="Press Items")),
+    ("gallery", blocks.ListBlock(GalleryItemBlock(), label="Gallery")),
+    ("leader", LeaderBlock()),
+    ("team_section", TeamSectionBlock()),
     ("cta", CTABandBlock()),
 ]
 
 
-class PortfolioPage(BasePage):
-    badge      = models.CharField(max_length=50, blank=True)
-    family     = models.CharField(max_length=20, choices=FAMILY_CHOICES, blank=True)
-    headline   = models.CharField(max_length=255, blank=True)
-    subline    = models.CharField(max_length=255, blank=True)
-    hero_image = models.ForeignKey(
-        "wagtailimages.Image", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
-    )
+class SectionPage(BasePage):
+    """A top-level section landing page — e.g. Portfolio, Innovations, About."""
+    body = StreamField(CONTENT_BODY_BLOCKS, blank=True, use_json_field=True)
 
-    body = StreamField(PRODUCT_BODY_BLOCKS, blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [
-        MultiFieldPanel([
-            FieldPanel("badge"),
-            FieldPanel("family"),
-            FieldPanel("headline"),
-            FieldPanel("subline"),
-            FieldPanel("hero_image"),
-        ], heading="Product Info"),
-        FieldPanel("body"),
-    ]
-
-    @property
-    def image_url(self):
-        return self.hero_image.file.url if self.hero_image else None
-
-    api_fields = BasePage.api_fields + [
-        APIField("badge"),
-        APIField("family"),
-        APIField("headline"),
-        APIField("subline"),
-        APIField("image_url"),
-        APIField("body"),
-    ]
-
-    parent_page_types = ["pages.PortfolioIndexPage"]
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "Portfolio Page"
-
-
-# ===========================================================================
-# INNOVATIONS
-# ===========================================================================
-class InnovationsIndexPage(BasePage):
-    intro_headline = models.CharField(max_length=255, blank=True)
-    intro_body     = models.TextField(blank=True)
-    cta            = StreamField([("cta", CTABandBlock())], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [
-        FieldPanel("intro_headline"),
-        FieldPanel("intro_body"),
-        FieldPanel("cta"),
-    ]
-
-    api_fields = BasePage.api_fields + [
-        APIField("intro_headline"),
-        APIField("intro_body"),
-        APIField("cta"),
-    ]
+    content_panels = Page.content_panels + [FieldPanel("body")]
+    api_fields = BasePage.api_fields + [APIField("body")]
 
     parent_page_types = ["wagtailcore.Page"]
-    subpage_types = ["pages.InnovationPage"]
+    subpage_types = ["pages.ContentPage"]
 
     class Meta:
-        verbose_name = "Innovations Index Page"
+        verbose_name = "Section Page"
 
 
-INNOVATION_CATEGORY_CHOICES = [
-    ("monitoring", "Monitoring"),
-    ("ai", "AI & Analytics"),
-    ("storage", "Energy Storage"),
-    ("grid", "Grid & Utilities"),
-    ("ev", "EV"),
-]
-
-INNOVATION_STAGE_CHOICES = [
-    ("research", "Research"),
-    ("prototype", "Prototype"),
-    ("deployed", "Deployed"),
-    ("scaled", "Scaled"),
-]
-
-
-class InnovationPage(BasePage):
-    badge      = models.CharField(max_length=50)
-    category   = models.CharField(max_length=20, choices=INNOVATION_CATEGORY_CHOICES, blank=True)
-    stage      = models.CharField(max_length=20, choices=INNOVATION_STAGE_CHOICES, blank=True)
-    headline   = models.CharField(max_length=255, blank=True)
-    subline    = models.CharField(max_length=255, blank=True)
-    hero_image = models.ForeignKey(
-        "wagtailimages.Image", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
+class ContentPage(BasePage):
+    """
+    A generic inner page under any SectionPage (Portfolio/Innovations/About).
+    Can also nest under another ContentPage, to arbitrary depth.
+    """
+    tags = StreamField(
+        [("tag", blocks.CharBlock())], blank=True, use_json_field=True,
+        help_text="Freeform labels for listing/filter UI (e.g. product family, innovation stage). Leave blank if not applicable.",
     )
     icon_image = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
-        help_text="SVG icon used on the listing card",
+        help_text="Small icon used on listing cards, where applicable. Leave blank otherwise.",
     )
 
-    body = StreamField(PRODUCT_BODY_BLOCKS, blank=True, use_json_field=True)
+    body = StreamField(CONTENT_BODY_BLOCKS, blank=True, use_json_field=True)
 
     content_panels = Page.content_panels + [
-        MultiFieldPanel([
-            FieldPanel("badge"),
-            FieldPanel("category"),
-            FieldPanel("stage"),
-            FieldPanel("headline"),
-            FieldPanel("subline"),
-            FieldPanel("hero_image"),
-            FieldPanel("icon_image"),
-        ], heading="Innovation Info"),
+        FieldPanel("tags"),
+        FieldPanel("icon_image"),
         FieldPanel("body"),
     ]
-
-    @property
-    def image_url(self):
-        return self.hero_image.file.url if self.hero_image else None
 
     @property
     def icon_url(self):
         return self.icon_image.file.url if self.icon_image else None
 
     api_fields = BasePage.api_fields + [
-        APIField("badge"),
-        APIField("category"),
-        APIField("stage"),
-        APIField("headline"),
-        APIField("subline"),
-        APIField("image_url"),
+        APIField("tags"),
         APIField("icon_url"),
         APIField("body"),
     ]
 
-    parent_page_types = ["pages.InnovationsIndexPage"]
-    subpage_types = []
+    parent_page_types = ["pages.SectionPage", "pages.ContentPage"]
+    subpage_types = ["pages.ContentPage"]
 
     class Meta:
-        verbose_name = "Innovation Page"
+        verbose_name = "Content Page"
 
 
 # ===========================================================================
@@ -420,8 +314,9 @@ class GeLearnSectionPage(BasePage):
         max_length=30, choices=GELEARN_SECTION_TYPE_CHOICES, blank=True,
         help_text="Controls which snippet list the frontend queries",
     )
-    # "How We Work" and "FAQ" live under AboutPage (HowWeWorkPage/FaqPage below) —
-    # not offered here, to avoid the same content existing in two places.
+    # "How We Work" and "FAQ" live as ContentPage instances under the About
+    # SectionPage instead — not offered here, to avoid the same content
+    # existing in two places.
     body = StreamField([
         ("hero", HeroSectionBlock()),
         ("card_section", CardGridSectionBlock()),
@@ -446,108 +341,6 @@ class GeLearnSectionPage(BasePage):
 
     class Meta:
         verbose_name = "GeLearn Section Page"
-
-
-# ===========================================================================
-# ABOUT
-# ===========================================================================
-class AboutPage(BasePage):
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("stats_section", StatsGridSectionBlock()),
-        ("side_section", SideImageSectionBlock()),
-        ("milestones", blocks.ListBlock(MilestoneBlock(), label="Milestones")),
-        ("vision_cards", blocks.ListBlock(VisionMissionCardBlock(), label="Vision Cards")),
-        ("mission_points", blocks.ListBlock(VisionMissionCardBlock(), label="Mission Points")),
-        ("leadership", blocks.ListBlock(LeadershipCardBlock(), label="Leadership Cards")),
-        ("partner_names", blocks.ListBlock(blocks.CharBlock(), label="Partner Names")),
-        ("certifications", blocks.ListBlock(CertificationBlock(), label="Certifications")),
-        ("timeline", TimelineSectionBlock()),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [FieldPanel("body")]
-
-    api_fields = BasePage.api_fields + [APIField("body")]
-
-    parent_page_types = ["wagtailcore.Page"]
-    subpage_types = ["pages.MediaPage", "pages.TeamPage", "pages.HowWeWorkPage", "pages.FaqPage"]
-
-    class Meta:
-        verbose_name = "About Page"
-
-
-class HowWeWorkPage(BasePage):
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("how_we_work", HowWeWorkPageBlock()),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [FieldPanel("body")]
-
-    api_fields = BasePage.api_fields + [APIField("body")]
-
-    parent_page_types = ["pages.AboutPage"]
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "How We Work Page"
-
-
-class FaqPage(BasePage):
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("faq_section", FAQSectionBlock()),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [FieldPanel("body")]
-
-    api_fields = BasePage.api_fields + [APIField("body")]
-
-    parent_page_types = ["pages.AboutPage"]
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "FAQ Page"
-
-
-class MediaPage(BasePage):
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("achievements", blocks.ListBlock(AchievementBlock(), label="Achievements")),
-        ("press_items", blocks.ListBlock(PressItemBlock(), label="Press Items")),
-        ("gallery", blocks.ListBlock(GalleryItemBlock(), label="Gallery")),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [FieldPanel("body")]
-    api_fields = BasePage.api_fields + [APIField("body")]
-
-    parent_page_types = ["pages.AboutPage"]
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "Media Page"
-
-
-class TeamPage(BasePage):
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("leader", LeaderBlock()),
-        ("section", TeamSectionBlock()),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
-
-    content_panels = Page.content_panels + [FieldPanel("body")]
-    api_fields = BasePage.api_fields + [APIField("body")]
-
-    parent_page_types = ["pages.AboutPage"]
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "Team Page"
 
 
 # ===========================================================================

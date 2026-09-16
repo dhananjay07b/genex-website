@@ -3,16 +3,16 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { Button } from '@/components/ui/Button'
+import { CTABand } from '@/components/ui/CTABand'
 import { apiFetch } from '@/lib/api/client'
-import type { CapabilitiesSectionValue, InnovationPageData, WagtailListResponse } from '@/types/api'
-
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 28 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-60px' as const },
-  transition: { duration: 0.55, ease: 'easeOut' as const, delay },
-})
+import type {
+  CapabilitiesSectionValue,
+  ContentPageData,
+  CTABandValue,
+  HeroSectionApiValue,
+  SectionPageData,
+  WagtailListResponse,
+} from '@/types/api'
 
 const staggerContainer = {
   hidden: {},
@@ -24,9 +24,9 @@ const staggerChild = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 }
 
-function InnovationCard({ item }: { item: InnovationPageData }) {
+function InnovationCard({ item }: { item: ContentPageData }) {
   const capabilities = (item.body.find(b => b.type === 'capabilities')?.value as CapabilitiesSectionValue | undefined)?.items ?? []
-  const firstCapability = capabilities[0]?.text ?? item.subline
+  const summary = capabilities[0]?.text ?? ''
   return (
     <motion.div
       variants={staggerChild}
@@ -40,13 +40,8 @@ function InnovationCard({ item }: { item: InnovationPageData }) {
         <div className="w-12 h-12 mb-6 rounded-xl bg-linear-to-br from-slate-200 to-slate-300" />
       )}
 
-      <p className="text-2xl font-bold text-[#1d293d] leading-tight mb-3">
-        {item.title}
-      </p>
-
-      <p className="text-[15px] text-[#45556c] leading-7 flex-1">
-        {firstCapability}
-      </p>
+      <p className="text-2xl font-bold text-[#1d293d] leading-tight mb-3">{item.title}</p>
+      <p className="text-[15px] text-[#45556c] leading-7 flex-1">{summary}</p>
 
       <Link
         to={`/innovations/${item.meta.slug}`}
@@ -59,41 +54,44 @@ function InnovationCard({ item }: { item: InnovationPageData }) {
 }
 
 export default function Innovations() {
-  const [innovations, setInnovations] = useState<InnovationPageData[]>([])
+  const [section, setSection] = useState<SectionPageData | null | undefined>(undefined)
+  const [innovations, setInnovations] = useState<ContentPageData[]>([])
 
   useEffect(() => {
-    apiFetch<WagtailListResponse<InnovationPageData>>(
-      '/api/v2/pages/?type=pages.InnovationPage&fields=badge,category,stage,headline,subline,icon_url,body&limit=50'
-    )
-      .then(res => setInnovations(res.items))
-      .catch(() => setInnovations([]))
+    apiFetch<WagtailListResponse<SectionPageData>>('/api/v2/pages/?type=pages.SectionPage&slug=innovations&fields=*&limit=1')
+      .then(res => {
+        const page = res.items[0]
+        setSection(page ?? null)
+        if (page) {
+          apiFetch<WagtailListResponse<ContentPageData>>(
+            `/api/v2/pages/?type=pages.ContentPage&child_of=${page.id}&fields=tags,icon_url,body&limit=100`
+          )
+            .then(r => setInnovations(r.items))
+            .catch(() => setInnovations([]))
+        }
+      })
+      .catch(() => setSection(null))
   }, [])
+
+  if (section === undefined) return null
+
+  const body = section?.body ?? []
+  const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
+  const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
 
   return (
     <main>
       <PageMeta
-        title="Innovations — Genex Technocrats"
-        description="11 innovation platforms built for India's power sector — from Advanced SCADA and AI monitoring to drone inspection, EV management, and smart grid utilities."
+        title={section?.meta_title || 'Innovations — Genex Technocrats'}
+        description={section?.meta_description || "Innovation platforms built for India's power sector."}
         canonical="/innovations"
       />
 
       <PageHero
-        label="Innovation"
-        headline="Our Innovations"
-        subline="Engineering platforms that push what's possible in India's energy infrastructure — built in-house, deployed at scale."
+        label={hero?.label ?? 'Innovation'}
+        headline={hero?.heading ?? 'Our Innovations'}
+        subline={hero?.description ?? "Engineering platforms that push what's possible in India's energy infrastructure — built in-house, deployed at scale."}
       />
-
-      {/* ── INTRO ──────────────────────────────────────────────────────────── */}
-      <section className="bg-white pt-16 pb-4">
-        <motion.div {...fadeUp(0)} className="max-w-150 mx-auto px-6 text-center">
-          <h2 className="text-[36px] font-bold text-[#162456] leading-tight capitalize mb-4">
-            Our Innovations
-          </h2>
-          <p className="text-[18px] text-[#45556c] leading-7.25">
-            From real-time network management to AI-driven diagnostics and autonomous drone inspection — every platform is purpose-built for the complexity of India&apos;s power sector.
-          </p>
-        </motion.div>
-      </section>
 
       {/* ── CARD GRID ──────────────────────────────────────────────────────── */}
       <section className="bg-white py-12 lg:py-16">
@@ -112,42 +110,17 @@ export default function Innovations() {
         </div>
       </section>
 
-      {/* ── CTA ────────────────────────────────────────────────────────────── */}
-      <section className="bg-brand-tint py-20 lg:py-28 relative overflow-hidden">
-        <motion.div
-          className="absolute -top-32 -left-32 w-md h-112 rounded-full bg-primary/10 blur-3xl pointer-events-none"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          aria-hidden="true"
-        />
-        <motion.div
-          className="absolute -bottom-32 -right-32 w-md h-112 rounded-full bg-secondary/10 blur-3xl pointer-events-none"
-          animate={{ opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          aria-hidden="true"
-        />
-        <div className="relative max-w-2xl mx-auto px-6 lg:px-8 text-center">
-          <motion.div {...fadeUp(0)}>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
-              Partner With Genex
-            </p>
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Interested in early access or a pilot?
-            </h2>
-            <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              Our engineering team works directly with operators, utilities, and developers to scope, pilot, and deploy — from a single site to a national rollout.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/contact#demo">
-                <Button variant="primary" size="lg">Request a Demo</Button>
-              </Link>
-              <Link to="/contact">
-                <Button variant="secondary" size="lg">Contact Us</Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <CTABand
+        cta={cta}
+        eyebrow="Partner With Genex"
+        heading="Interested in early access or a pilot?"
+        description="Our engineering team works directly with operators, utilities, and developers to scope, pilot, and deploy — from a single site to a national rollout."
+        primaryText="Request a Demo"
+        primaryLink="/contact#demo"
+        secondaryText="Contact Us"
+        secondaryLink="/contact"
+        hideFooterCta={section?.hide_footer_cta}
+      />
     </main>
   )
 }

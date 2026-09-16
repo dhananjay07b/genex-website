@@ -133,24 +133,34 @@ export interface CTABandValue {
   secondary_cta_link: string | null
 }
 
-export interface PortfolioPageData extends WagtailPageBase {
-  badge: string
-  family: string
-  headline: string
-  subline: string
-  image_url: string | null
+export interface SectionPageData extends WagtailPageBase {
   body: StreamBlock<unknown>[]
 }
 
-export interface InnovationPageData extends WagtailPageBase {
-  badge: string
-  category: string
-  stage: string
-  headline: string
-  subline: string
-  image_url: string | null
+export interface ContentPageData extends WagtailPageBase {
+  tags: StreamBlock<string>[]
   icon_url: string | null
   body: StreamBlock<unknown>[]
+}
+
+export interface SimpleCardValue {
+  icon: string | null
+  title: string
+  description: string
+  note: string | null
+  link: string | null
+}
+
+export interface CardGridSectionValue {
+  heading: string | null
+  description: string | null
+  cards: SimpleCardValue[]
+}
+
+export interface SideImageSectionValue {
+  heading: string | null
+  description: string | null
+  image: { url: string; alt: string | null; position: 'left' | 'right' } | null
 }
 
 // ── About / Media / Team `body` block value shapes ────────────────────────────
@@ -231,18 +241,6 @@ export interface TeamSectionApiValue {
   members: TeamMemberApiValue[]
 }
 
-export interface AboutPageData extends WagtailPageBase {
-  body: StreamBlock<unknown>[]
-}
-
-export interface MediaPageData extends WagtailPageBase {
-  body: StreamBlock<unknown>[]
-}
-
-export interface TeamPageData extends WagtailPageBase {
-  body: StreamBlock<unknown>[]
-}
-
 export interface HowWeWorkStepApiValue {
   num: string
   title: string
@@ -263,14 +261,6 @@ export interface EngineeringPrincipleApiValue {
 export interface HowWeWorkPageBlockValue {
   steps: HowWeWorkStepApiValue[]
   principles: EngineeringPrincipleApiValue[]
-}
-
-export interface HowWeWorkPageData extends WagtailPageBase {
-  body: StreamBlock<unknown>[]
-}
-
-export interface FaqPageData extends WagtailPageBase {
-  body: StreamBlock<unknown>[]
 }
 
 // ── Snippet API shapes (DRF, snake_case) ──────────────────────────────────────

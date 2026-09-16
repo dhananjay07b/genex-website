@@ -4,18 +4,14 @@ import { Layout } from '@/components/layout/Layout'
 import { GeLearnLayout } from '@/components/layout/GeLearnLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
+const NotFound               = lazy(() => import('@/pages/NotFound'))
 const Home                  = lazy(() => import('@/pages/Home'))
 const Contact               = lazy(() => import('@/pages/Contact'))
-const Careers               = lazy(() => import('@/pages/Careers'))
+const Careers                = lazy(() => import('@/pages/Careers'))
 const Portfolio             = lazy(() => import('@/pages/Portfolio'))
-const CategoryPage          = lazy(() => import('@/pages/Portfolio/CategoryPage'))
 const Innovations           = lazy(() => import('@/pages/Innovations'))
-const InnovationProductPage = lazy(() => import('@/pages/Innovations/ProductPage'))
 const About                 = lazy(() => import('@/pages/About'))
-const Media                 = lazy(() => import('@/pages/About/Media'))
-const Team                  = lazy(() => import('@/pages/About/Team'))
-const HowWeWork              = lazy(() => import('@/pages/About/HowWeWork'))
-const FAQ                    = lazy(() => import('@/pages/About/FAQ'))
+const DynamicContentPage    = lazy(() => import('@/pages/DynamicContentPage'))
 
 const GeLearn               = lazy(() => import('@/pages/GeLearn'))
 const CaseStudies           = lazy(() => import('@/pages/GeLearn/sections/CaseStudies'))
@@ -41,19 +37,18 @@ const s = (el: React.ReactNode) => (
 export const marketingRouter = createBrowserRouter([
   {
     element: <Layout />,
+    errorElement: s(<NotFound />),
     children: [
       { path: '/',                         element: s(<Home />) },
       { path: '/portfolio',                element: s(<Portfolio />) },
-      { path: '/portfolio/:category',      element: s(<CategoryPage />) },
+      { path: '/portfolio/*',              element: s(<DynamicContentPage sectionSlug="portfolio" fallbackPath="/portfolio" />) },
       { path: '/innovations',              element: s(<Innovations />) },
-      { path: '/innovations/:slug',        element: s(<InnovationProductPage />) },
+      { path: '/innovations/*',            element: s(<DynamicContentPage sectionSlug="innovations" fallbackPath="/innovations" />) },
       { path: '/about',                    element: s(<About />) },
-      { path: '/about/media',              element: s(<Media />) },
-      { path: '/about/teams',              element: s(<Team />) },
-      { path: '/about/how-we-work',        element: s(<HowWeWork />) },
-      { path: '/about/faq',                element: s(<FAQ />) },
+      { path: '/about/*',                  element: s(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
       { path: '/contact',                  element: s(<Contact />) },
       { path: '/careers',                  element: s(<Careers />) },
+      { path: '*',                         element: s(<NotFound />) },
     ],
   },
 ])
@@ -62,6 +57,7 @@ export const marketingRouter = createBrowserRouter([
 export const gelearnRouter = createBrowserRouter([
   {
     element: <GeLearnLayout />,
+    errorElement: s(<NotFound />),
     children: [
       { path: '/',                         element: s(<GeLearn />) },
       { path: '/case-studies',             element: s(<CaseStudies />) },
@@ -83,6 +79,7 @@ export const gelearnRouter = createBrowserRouter([
           { path: '/submit-post',          element: s(<SubmitPost />) },
         ],
       },
+      { path: '*',                         element: s(<NotFound />) },
     ],
   },
 ])

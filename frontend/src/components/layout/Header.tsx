@@ -3,15 +3,16 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useScrolled } from '@/hooks/useScrolled'
+import { useNavConfig } from '@/hooks/useNavConfig'
 import { DesktopNav } from './DesktopNav'
 import { MobileMenu } from './MobileMenu'
 import { buttonVariants } from '@/components/ui/Button'
-import { navConfig } from '@/config/navigation'
 
 export function Header() {
   const scrolled = useScrolled(60)
   const [headerHovered, setHeaderHovered] = useState(false)
   const { pathname } = useLocation()
+  const navConfig = useNavConfig()
 
   const isHome = pathname === '/'
   const solidBg = !isHome || scrolled || headerHovered
