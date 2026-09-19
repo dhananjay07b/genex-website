@@ -12,6 +12,7 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
@@ -22,9 +23,9 @@ const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 
 function RichTextParagraph({ value }: { value: unknown }) {
   return (
-    <div
-      className="text-[17px] text-[#45556c] leading-[1.63] space-y-5 mb-8 [&_p]:mb-5"
-      dangerouslySetInnerHTML={{ __html: value as string }}
+    <RichText
+      html={value as string}
+      className="text-[17px] text-[#45556c] leading-[1.63] mb-8 [&_h2]:text-[#0f172a] [&_h3]:text-[#0f172a] [&_h4]:text-[#0f172a] [&_strong]:text-[#0f172a] [&_b]:text-[#0f172a]"
     />
   )
 }

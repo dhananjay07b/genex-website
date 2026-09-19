@@ -9,6 +9,7 @@ import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlin
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
@@ -27,9 +28,9 @@ function ArticleSection({ value }: { value: unknown }) {
   return (
     <div className="mb-10">
       <h3 className="text-2xl font-bold text-black mb-4">{section.heading}</h3>
-      <div
-        className="text-[#45556c] leading-[1.75] space-y-4 [&_p]:mb-4"
-        dangerouslySetInnerHTML={{ __html: section.body }}
+      <RichText
+        html={section.body}
+        className="text-[#45556c] leading-[1.75] [&_h2]:text-black [&_h3]:text-black [&_h4]:text-black [&_strong]:text-black [&_b]:text-black"
       />
     </div>
   )
@@ -220,9 +221,9 @@ export default function TechnologyDetail() {
               </motion.p>
 
               {article.intro && (
-                <div
-                  className="text-[#45556c] leading-[1.75] mb-10 [&_p]:mb-4"
-                  dangerouslySetInnerHTML={{ __html: article.intro }}
+                <RichText
+                  html={article.intro}
+                  className="text-[#45556c] leading-[1.75] mb-10 [&_h2]:text-black [&_h3]:text-black [&_h4]:text-black [&_strong]:text-black [&_b]:text-black"
                 />
               )}
 

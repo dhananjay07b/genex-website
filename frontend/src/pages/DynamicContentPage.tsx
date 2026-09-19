@@ -39,8 +39,8 @@ export default function DynamicContentPage({ sectionSlug, fallbackPath }: Dynami
   return (
     <main>
       <PageMeta
-        title={page.meta_title || page.title}
-        description={page.meta_description || ''}
+        title={page.seo_title || page.title}
+        description={page.search_description || ''}
         canonical={location.pathname}
         image={page.icon_url}
       />

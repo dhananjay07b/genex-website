@@ -82,8 +82,8 @@ export default function Innovations() {
   return (
     <main>
       <PageMeta
-        title={section?.meta_title || 'Innovations — Genex Technocrats'}
-        description={section?.meta_description || "Innovation platforms built for India's power sector."}
+        title={section?.seo_title || 'Innovations — Genex Technocrats'}
+        description={section?.search_description || "Innovation platforms built for India's power sector."}
         canonical="/innovations"
       />
 

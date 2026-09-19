@@ -1,5 +1,9 @@
 import { motion } from 'framer-motion'
+import { getMediaUrl } from '@/lib/utils'
 import type { HowWeWorkPageBlockValue, HowWeWorkStepApiValue } from '@/types/api'
+
+// Hardcoded per-step accent — cycles through the 3 brand colors, never CMS-editable.
+const STEP_COLORS = ['#2CCEFB', '#00BBA7', '#1C398E']
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -11,8 +15,9 @@ const slideFrom = (x: number) => ({
   visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: 'easeOut' as const } },
 })
 
-function StepRow({ step }: { step: HowWeWorkStepApiValue }) {
-  const isRight = step.side === 'right'
+function StepRow({ step, index }: { step: HowWeWorkStepApiValue; index: number }) {
+  const isRight = index % 2 === 0
+  const color = STEP_COLORS[index % STEP_COLORS.length]
   const cardSlide = slideFrom(isRight ? 60 : -60)
   const imgSlide = slideFrom(isRight ? -60 : 60)
 
@@ -26,7 +31,7 @@ function StepRow({ step }: { step: HowWeWorkStepApiValue }) {
     >
       {step.image && (
         <motion.img
-          src={step.image.url}
+          src={getMediaUrl(step.image.url)}
           alt={step.title}
           className="w-full h-full object-cover"
           whileHover={{ scale: 1.06 }}
@@ -42,17 +47,16 @@ function StepRow({ step }: { step: HowWeWorkStepApiValue }) {
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: '-80px' as const }}
-      whileHover={{ y: -5, transition: { duration: 0.2, ease: 'easeOut' } }}
-      className="relative rounded-3xl p-8 shadow-[0px_10px_15px_-3px_rgba(28,57,142,0.05),0px_4px_6px_-4px_rgba(28,57,142,0.05)] bg-white w-full"
-      style={{ border: `1px solid ${step.card_border}` }}
+      whileHover={{ y: -5 }}
+      className="relative z-20 rounded-3xl p-8 border border-[#e2e8f0] bg-white w-full transition-[border-color,box-shadow] duration-300 hover:border-primary/30 hover:shadow-[0_20px_40px_-12px_rgba(26,174,232,0.15)]"
     >
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         whileInView={{ scale: 1, opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.4, delay: 0.2, type: 'spring', bounce: 0.4 }}
-        className={`absolute top-8 size-12 rounded-full flex items-center justify-center text-white text-lg font-bold z-10 ${isRight ? '-left-6' : '-right-6'}`}
-        style={{ background: step.badge_color }}
+        className={`absolute top-1/2 -translate-y-1/2 size-12 rounded-full flex items-center justify-center text-white text-lg font-bold z-10 ${isRight ? '-left-6' : '-right-6'}`}
+        style={{ background: color }}
       >
         {step.num}
       </motion.div>
@@ -73,11 +77,11 @@ function StepRow({ step }: { step: HowWeWorkStepApiValue }) {
           viewport={{ once: true }}
           transition={{ duration: 0.35, delay: 0.1, type: 'spring', bounce: 0.5 }}
           className="size-4 rounded-full bg-white border-4 relative"
-          style={{ borderColor: step.dot_color }}
+          style={{ borderColor: color }}
         >
           <div
             className="absolute top-1/2 -translate-y-1/2 h-px w-12"
-            style={{ background: step.connector_color, left: isRight ? '100%' : 'auto', right: isRight ? 'auto' : '100%' }}
+            style={{ background: color, left: isRight ? '100%' : 'auto', right: isRight ? 'auto' : '100%' }}
           />
         </motion.div>
       </div>
@@ -86,19 +90,20 @@ function StepRow({ step }: { step: HowWeWorkStepApiValue }) {
   )
 }
 
-function MobileStep({ step }: { step: HowWeWorkStepApiValue }) {
+function MobileStep({ step, index }: { step: HowWeWorkStepApiValue; index: number }) {
+  const color = STEP_COLORS[index % STEP_COLORS.length]
   return (
     <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' as const }} className="flex gap-5">
       <div className="flex flex-col items-center">
-        <div className="size-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: step.badge_color }}>
+        <div className="size-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: color }}>
           {step.num}
         </div>
-        <div className="flex-1 w-0.5 mt-3" style={{ background: step.connector_color }} />
+        <div className="flex-1 w-0.5 mt-3" style={{ background: color }} />
       </div>
       <div className="pb-10 flex-1 min-w-0">
         {step.image && (
           <div className="rounded-2xl overflow-hidden aspect-video mb-4">
-            <img src={step.image.url} alt={step.title} className="w-full h-full object-cover" />
+            <img src={getMediaUrl(step.image.url)} alt={step.title} className="w-full h-full object-cover" />
           </div>
         )}
         <h3 className="text-lg font-bold text-black mb-2">{step.title}</h3>
@@ -117,9 +122,9 @@ export function HowWeWorkSection({ value }: { value: HowWeWorkPageBlockValue }) 
       <section className="bg-white py-16 lg:py-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' as const }} className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-black mb-4">Preparing For Your Success</h2>
+            <h2 className="text-4xl font-bold text-black mb-4">{value.heading}</h2>
             <p className="text-sm text-[#949494] max-w-lg mx-auto leading-6">
-              Every Genex engagement follows a repeatable, transparent process — from the first discovery call to the final SLA handover.
+              {value.description}
             </p>
           </motion.div>
 
@@ -134,14 +139,14 @@ export function HowWeWorkSection({ value }: { value: HowWeWorkPageBlockValue }) 
             />
             <div className="flex flex-col gap-24">
               {steps.map((step, i) => (
-                <StepRow key={i} step={step} />
+                <StepRow key={i} step={step} index={i} />
               ))}
             </div>
           </div>
 
           <div className="lg:hidden">
             {steps.map((step, i) => (
-              <MobileStep key={i} step={step} />
+              <MobileStep key={i} step={step} index={i} />
             ))}
           </div>
         </div>
@@ -152,6 +157,9 @@ export function HowWeWorkSection({ value }: { value: HowWeWorkPageBlockValue }) 
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' as const }} className="mb-10">
               <h2 className="text-4xl font-bold text-[#111827] mb-4">Engineering Principles</h2>
+              <p className="text-sm text-[#6b7280] max-w-lg leading-6">
+                We combine decentralized renewable energy with smart monitoring tools to ensure long-term sustainability and transparency in rural development.
+              </p>
             </motion.div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {principles.map((p, i) => (

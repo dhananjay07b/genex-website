@@ -3,44 +3,32 @@ import type { ProductStat } from '@/types/api'
 
 interface StatsGridSectionProps {
   heading?: string | null
-  bg?: string | null
   stats: ProductStat[]
 }
 
-function splitStat(value: string): { num: string; unit: string } {
-  const m = value.match(/^([<>]?[\d,]+(?:\.\d+)?)([+%\s]*)(.*)$/)
-  if (m) return { num: m[1], unit: (m[2] + m[3]).trim() }
-  return { num: value, unit: '' }
-}
-
-export function StatsGridSection({ heading, bg, stats }: StatsGridSectionProps) {
+export function StatsGridSection({ heading, stats }: StatsGridSectionProps) {
   return (
-    <section className={`${bg || 'bg-white'} border-t border-b border-[#e5e7eb] py-8`}>
+    <section className="bg-white py-16 lg:py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         {heading && (
-          <h2 className="text-xl font-bold text-[#162456] text-center mb-6">{heading}</h2>
+          <h2 className="text-xl font-bold text-[#162456] text-center mb-10">{heading}</h2>
         )}
-        <div className={`grid grid-cols-${stats.length} divide-x divide-[#e5e7eb]`}>
-          {stats.map(({ value, suffix, label }, i) => {
-            const display = `${value}${suffix ?? ''}`
-            const { num, unit } = splitStat(display)
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="flex flex-col items-center gap-1.5 py-4 px-4 lg:px-10"
-              >
-                <div className="flex items-baseline gap-1.5 justify-center">
-                  <span className="text-4xl font-bold text-[#1d4ed8] leading-tight">{num}</span>
-                  {unit && <span className="text-xl font-medium text-[#111827]">{unit}</span>}
-                </div>
-                <span className="text-sm text-[#6b7280] text-center">{label}</span>
-              </motion.div>
-            )
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {stats.map(({ value, suffix, label }, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 28, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: '-60px' as const }}
+              transition={{ duration: 0.55, delay: i * 0.08, ease: 'easeOut' as const }}
+              className="flex flex-col items-center text-center gap-2 rounded-2xl bg-surface px-6 py-10"
+            >
+              <span className="gradient-brand-text text-5xl lg:text-6xl font-extrabold leading-none tracking-tight">
+                {value}{suffix ?? ''}
+              </span>
+              <span className="text-sm font-semibold text-[#6b7280]">{label}</span>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

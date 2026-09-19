@@ -11,6 +11,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
+from wagtail.rich_text import expand_db_html
 
 from .models import (
     BlogPost,
@@ -46,21 +47,34 @@ class StreamFieldSerializerMixin:
         return value.stream_block.get_api_representation(value)
 
 
-class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+class RichTextFieldSerializerMixin:
+    """Expands a RichTextField's raw DB-format HTML (e.g. `<embed embedtype="image" id="5">`)
+    into real <img>/<iframe>/<a href> HTML the frontend can render."""
+    def _expand_richtext(self, obj, field_name):
+        value = getattr(obj, field_name)
+        return expand_db_html(value) if value else value
+
+
+class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    intro = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
 
     class Meta:
         model = CaseStudy
         fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "image_url", "intro", "sections"]
 
+    def get_intro(self, obj):
+        return self._expand_richtext(obj, "intro")
+
     def get_sections(self, obj):
         return self._stream_api_representation(obj, "sections")
 
 
-class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
+    intro = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
     takeaways = serializers.SerializerMethodField()
 
@@ -73,6 +87,9 @@ class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin,
 
     def get_tags(self, obj):
         return [tag.name for tag in obj.tags.all()]
+
+    def get_intro(self, obj):
+        return self._expand_richtext(obj, "intro")
 
     def get_sections(self, obj):
         return self._stream_api_representation(obj, "sections")

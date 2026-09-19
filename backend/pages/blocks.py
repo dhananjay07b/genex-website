@@ -1,6 +1,8 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.documents.blocks import DocumentChooserBlock
+from wagtail.snippets.blocks import SnippetChooserBlock
+from wagtail.rich_text import expand_db_html
 
 # ---------------------------------------------------------------------------
 # Icon choices — MUI icon names used in the Genex frontend
@@ -64,6 +66,18 @@ ICON_CHOICES = [
     ("EmojiEventsOutlined", "Trophy / Event"),
     ("LinkedIn", "LinkedIn"),
 ]
+
+
+# ---------------------------------------------------------------------------
+# RichTextBlock that expands to real HTML in the API
+# ---------------------------------------------------------------------------
+class RichTextBlock(blocks.RichTextBlock):
+    """blocks.RichTextBlock's API representation defaults to the raw DB source
+    (e.g. `<embed embedtype="image" id="5">`, `<a linktype="document" id="3">`),
+    which the frontend can't render. Expand it to real <img>/<iframe>/<a href>
+    HTML instead — use this in place of blocks.RichTextBlock everywhere."""
+    def get_api_representation(self, value, context=None):
+        return expand_db_html(value.source)
 
 
 # ---------------------------------------------------------------------------
@@ -284,9 +298,26 @@ class EventBannerBlock(blocks.StructBlock):
 # ===========================================================================
 
 class TechHighlightBlock(blocks.StructBlock):
-    """Maps exactly to { title, description } in techHighlights arrays."""
-    title       = blocks.CharBlock(help_text="e.g. 'Protocol Support'")
+    card_type = blocks.ChoiceBlock(
+        choices=[
+            ("icon", "Icon Card"),
+            ("ring_stat", "Ring Stat Card"),
+            ("diagram", "Diagram Card"),
+            ("chat", "Chat Card"),
+            ("security", "Security Card"),
+            ("signal", "Signal Card"),
+            ("timeline", "Timeline Card"),
+        ],
+        default="icon",
+        help_text="Controls this card's visual design",
+    )
+    icon        = blocks.ChoiceBlock(choices=ICON_CHOICES, required=False)
+    heading     = blocks.CharBlock(help_text="e.g. 'Protocol Support'")
     description = blocks.CharBlock(help_text="e.g. 'Modbus, DNP3, IEC 61850'")
+    sub_text    = blocks.CharBlock(
+        required=False,
+        help_text="Short caption — the stat shown in the Ring Stat card (e.g. '<10ms'), or a small footnote for other card types",
+    )
 
     class Meta:
         icon = "tag"
@@ -405,19 +436,12 @@ class HeroSectionBlock(ImageApiStructBlock):
 
 
 class HowWeWorkStepBlock(ImageApiStructBlock):
-    """Exact match for Step interface in HowWeWork.tsx."""
-    num             = blocks.CharBlock(max_length=3, help_text="'01' through '06'")
-    title           = blocks.CharBlock()
-    desc            = blocks.TextBlock()
-    badge_color     = blocks.CharBlock(help_text="Hex color for step number badge")
-    dot_color       = blocks.CharBlock(help_text="Hex color for timeline dot border")
-    connector_color = blocks.CharBlock(help_text="Hex color for connector line")
-    card_border     = blocks.CharBlock(help_text="Hex color for card border")
-    image           = ImageChooserBlock(required=False)
-    side            = blocks.ChoiceBlock(
-        choices=[("right", "Right"), ("left", "Left")],
-        default="right",
-    )
+    """Exact match for Step interface in HowWeWork.tsx. Colors and image side are
+    hardcoded on the frontend (looped/alternating) — not CMS-editable."""
+    num   = blocks.CharBlock(max_length=3, help_text="'01' through '06'")
+    title = blocks.CharBlock()
+    desc  = blocks.TextBlock()
+    image = ImageChooserBlock(required=False)
 
     class Meta:
         icon = "order"
@@ -432,8 +456,13 @@ class EngineeringPrincipleBlock(blocks.StructBlock):
 
 
 class HowWeWorkPageBlock(blocks.StructBlock):
-    steps      = blocks.ListBlock(HowWeWorkStepBlock(), min_num=1)
-    principles = blocks.ListBlock(EngineeringPrincipleBlock(), required=False)
+    heading     = blocks.CharBlock(required=False, default="Preparing For Your Success")
+    description = blocks.TextBlock(
+        required=False,
+        default="Every Genex engagement follows a repeatable, transparent process — from the first discovery call to the final SLA handover.",
+    )
+    steps       = blocks.ListBlock(HowWeWorkStepBlock(), min_num=1)
+    principles  = blocks.ListBlock(EngineeringPrincipleBlock(), required=False)
 
     class Meta:
         icon = "list-ul"
@@ -485,7 +514,7 @@ class AchievementBlock(ImageApiStructBlock):
     badge      = blocks.CharBlock(help_text="'Certificate' or 'Award'")
     icon_type  = blocks.ChoiceBlock(choices=[("certificate", "Certificate"), ("award", "Award")])
     heading    = blocks.CharBlock()
-    body       = blocks.RichTextBlock()
+    body       = RichTextBlock()
     image      = ImageChooserBlock(required=False)
     image_alt  = blocks.CharBlock(required=False)
 
@@ -516,9 +545,16 @@ class GalleryItemBlock(ImageApiStructBlock):
 
 class TeamMemberBlock(ImageApiStructBlock):
     """Maps to TeamMember interface in About/Team."""
-    name  = blocks.CharBlock()
-    role  = blocks.CharBlock()
-    image = ImageChooserBlock(required=False)
+    name     = blocks.CharBlock()
+    role     = blocks.CharBlock()
+    image    = ImageChooserBlock(required=False)
+    category = SnippetChooserBlock("pages.TeamCategory", required=False)
+
+    def get_api_representation(self, value, context=None):
+        data = super().get_api_representation(value, context)
+        category = value.get("category")
+        data["category"] = {"name": category.name, "priority": category.priority} if category else None
+        return data
 
     class Meta:
         icon = "user"
@@ -526,10 +562,12 @@ class TeamMemberBlock(ImageApiStructBlock):
 
 class LeaderBlock(ImageApiStructBlock):
     """Founder/leader spotlight block."""
-    name  = blocks.CharBlock()
-    role  = blocks.CharBlock()
-    image = ImageChooserBlock(required=False)
-    quote = blocks.TextBlock()
+    heading     = blocks.CharBlock(required=False, default="Meet Our Team")
+    description = blocks.TextBlock(required=False)
+    name        = blocks.CharBlock()
+    role        = blocks.CharBlock()
+    image       = ImageChooserBlock(required=False)
+    quote       = blocks.TextBlock()
 
     class Meta:
         icon = "user"
@@ -597,8 +635,6 @@ class SimpleCardBlock(blocks.StructBlock):
     description = blocks.TextBlock()
     note        = blocks.CharBlock(required=False)
     link        = blocks.CharBlock(required=False)
-    gradient    = blocks.CharBlock(required=False)
-    icon_bg     = blocks.CharBlock(required=False)
 
     class Meta:
         icon = "snippet"
@@ -615,7 +651,6 @@ class CardGridSectionBlock(blocks.StructBlock):
 
 class StatsGridSectionBlock(blocks.StructBlock):
     heading = blocks.CharBlock(required=False)
-    bg      = blocks.CharBlock(required=False, help_text="Tailwind bg class e.g. 'bg-primary'")
     stats   = blocks.ListBlock(StatBlock(), min_num=1)
 
     class Meta:
@@ -636,7 +671,7 @@ class SideImageBlock(ImageApiStructBlock):
 
 class SideImageSectionBlock(blocks.StructBlock):
     heading     = blocks.CharBlock(required=False)
-    description = blocks.RichTextBlock(required=False)
+    description = RichTextBlock(required=False)
     image       = SideImageBlock()
     body_blocks = blocks.StreamBlock(
         [("bullet", BulletPointBlock()), ("text", blocks.TextBlock())],
@@ -649,7 +684,7 @@ class SideImageSectionBlock(blocks.StructBlock):
 
 class IntroductionSectionBlock(blocks.StructBlock):
     heading     = blocks.CharBlock(required=False)
-    description = blocks.RichTextBlock()
+    description = RichTextBlock()
     note        = blocks.CharBlock(required=False)
 
     class Meta:

@@ -18,8 +18,8 @@ export interface WagtailPageBase {
   id: number
   meta: WagtailMeta
   title: string
-  meta_title?: string
-  meta_description?: string
+  seo_title?: string
+  search_description?: string
   hide_footer_cta?: boolean
 }
 
@@ -36,9 +36,14 @@ export interface ProductStat {
   label: string
 }
 
-export interface TechHighlight {
-  title: string
+export type TechHighlightCardType = 'icon' | 'ring_stat' | 'diagram' | 'chat' | 'security' | 'signal' | 'timeline'
+
+export interface TechHighlightItemValue {
+  card_type: TechHighlightCardType
+  icon: string | null
+  heading: string
   description: string
+  sub_text: string | null
 }
 
 // ── Product / Innovation `body` block value shapes ────────────────────────────
@@ -61,7 +66,7 @@ export interface CapabilitiesSectionValue {
 export interface TechHighlightsSectionValue {
   eyebrow: string
   intro: string
-  items: TechHighlight[]
+  items: TechHighlightItemValue[]
 }
 
 export interface DeploymentStepValue {
@@ -92,7 +97,6 @@ export interface ProductTestimonialSectionValue {
 
 export interface StatsGridSectionValue {
   heading: string
-  bg: string
   stats: ProductStat[]
 }
 
@@ -157,10 +161,16 @@ export interface CardGridSectionValue {
   cards: SimpleCardValue[]
 }
 
+export interface BulletPointValue {
+  bold_title: string
+  point: string
+}
+
 export interface SideImageSectionValue {
   heading: string | null
   description: string | null
-  image: { url: string; alt: string | null; position: 'left' | 'right' } | null
+  image: { image: WagtailImage; alt: string | null; position: 'left' | 'right' } | null
+  body_blocks: StreamBlock<string | BulletPointValue>[]
 }
 
 // ── About / Media / Team `body` block value shapes ────────────────────────────
@@ -223,16 +233,24 @@ export interface GalleryItemApiValue {
 }
 
 export interface LeaderApiValue {
+  heading: string
+  description: string | null
   name: string
   role: string
   image: WagtailImage | null
   quote: string
 }
 
+export interface TeamCategoryValue {
+  name: string
+  priority: number
+}
+
 export interface TeamMemberApiValue {
   name: string
   role: string
   image: WagtailImage | null
+  category: TeamCategoryValue | null
 }
 
 export interface TeamSectionApiValue {
@@ -245,12 +263,7 @@ export interface HowWeWorkStepApiValue {
   num: string
   title: string
   desc: string
-  badge_color: string
-  dot_color: string
-  connector_color: string
-  card_border: string
   image: WagtailImage | null
-  side: 'right' | 'left'
 }
 
 export interface EngineeringPrincipleApiValue {
@@ -259,6 +272,8 @@ export interface EngineeringPrincipleApiValue {
 }
 
 export interface HowWeWorkPageBlockValue {
+  heading: string
+  description: string
   steps: HowWeWorkStepApiValue[]
   principles: EngineeringPrincipleApiValue[]
 }

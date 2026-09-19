@@ -99,8 +99,8 @@ export default function Portfolio() {
   return (
     <main>
       <PageMeta
-        title={section?.meta_title || 'Software Products for Power & Energy'}
-        description={section?.meta_description || "Production-grade software products for India's energy sector, engineered by Genex Technocrats."}
+        title={section?.seo_title || 'Software Products for Power & Energy'}
+        description={section?.search_description || "Production-grade software products for India's energy sector, engineered by Genex Technocrats."}
         canonical="/portfolio"
       />
 

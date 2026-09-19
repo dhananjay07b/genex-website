@@ -23,7 +23,7 @@ export async function resolveContentPage(
 
   for (const segment of innerSegments) {
     const res = await apiFetch<WagtailListResponse<ContentPageData>>(
-      `/api/v2/pages/?type=pages.ContentPage&child_of=${parentId}&slug=${segment}&fields=tags,icon_url,meta_title,meta_description,hide_footer_cta,body&limit=1`
+      `/api/v2/pages/?type=pages.ContentPage&child_of=${parentId}&slug=${segment}&fields=tags,icon_url,seo_title,search_description,hide_footer_cta,body&limit=1`
     )
     const page = res.items[0]
     if (!page) return null

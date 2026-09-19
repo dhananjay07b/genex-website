@@ -1,225 +1,326 @@
-import { motion } from 'framer-motion'
-import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet'
-import CloudQueueIcon from '@mui/icons-material/CloudQueue'
-import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
-import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
-import WifiIcon from '@mui/icons-material/Wifi'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import type SvgIcon from '@mui/material/SvgIcon'
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { getMuiIcon } from '@/lib/muiIconRegistry'
+import type { TechHighlightCardType, TechHighlightItemValue } from '@/types/api'
 
-type SvgIconComponent = typeof SvgIcon
-
-export interface TechHighlight {
-  title: string
+interface CardBodyProps {
+  icon: string | null
+  heading: string
   description: string
+  sub_text: string | null
 }
 
-type Category = 'protocol' | 'security' | 'ai' | 'connectivity' | 'integration' | 'analytics' | 'redundancy' | 'default'
-
-interface ClassifyRule {
-  test: RegExp
-  icon: SvgIconComponent
-  category: Category
+const CARD_BG: Record<TechHighlightCardType, string> = {
+  icon: 'bg-white',
+  ring_stat: 'bg-[#F0F9FF]',
+  diagram: 'bg-[#EAF4FB]',
+  chat: 'bg-[#E8F8F5]',
+  security: 'bg-[#F1F5F9]',
+  signal: 'bg-[#EBFBF7]',
+  timeline: 'bg-[#FAFAF9]',
 }
 
-// ── Keyword → {icon, category} inference (no per-item metadata exists in the data) ──
-// Icon and accent share the same classification, so a card's bottom accent always
-// matches what its icon is actually about instead of just its position in the grid.
-const RULES: ClassifyRule[] = [
-  { test: /iec|dnp3|modbus|opc-?ua|bacnet|can bus|rs485|protocol/i, icon: SettingsEthernetIcon, category: 'protocol' },
-  { test: /security|auth|encrypt|dsc|signature|pci|sha-256/i, icon: LockOutlinedIcon, category: 'security' },
-  { test: /\bai\b|\bml\b|model|predict|lstm|transformer|reinforcement|random forest|xgboost|explainable|scikit|pytorch/i, icon: PsychologyOutlinedIcon, category: 'ai' },
-  { test: /4g|lte|wi-?fi|nb-iot|gprs|fiber|connectivity|ethernet/i, icon: WifiIcon, category: 'connectivity' },
-  { test: /cloud|sync|stream|websocket|mqtt|api|rest|graphql|integration/i, icon: CloudQueueIcon, category: 'integration' },
-  { test: /report|dashboard|analytics|forecast|calculation|scoring|kpi|reporting/i, icon: BarChartIcon, category: 'analytics' },
-  { test: /redundan|failover|standby|protection|overcurrent|overvoltage|verified|compliance/i, icon: VerifiedOutlinedIcon, category: 'redundancy' },
-]
-
-function classify(title: string): { Icon: SvgIconComponent; category: Category } {
-  const rule = RULES.find(r => r.test.test(title))
-  return rule ? { Icon: rule.icon, category: rule.category } : { Icon: BoltOutlinedIcon, category: 'default' }
+// Shared caption used by several card types: a pill when sub_text is present,
+// otherwise a thin divider so card height rhythm stays consistent either way.
+function SubTextCaption({ sub_text }: { sub_text: string | null }) {
+  return sub_text ? (
+    <span className="inline-flex px-2.5 py-1 rounded-full bg-white/70 text-[11px] font-semibold text-[#62748e] w-fit border border-[#e2e8f0]">
+      {sub_text}
+    </span>
+  ) : (
+    <div className="h-px bg-[#e2e8f0]" aria-hidden="true" />
+  )
 }
 
-const CATEGORY_VALUE_COLOR: Record<Category, string> = {
-  protocol: 'text-sky-700',
-  security: 'text-emerald-700',
-  ai: 'text-violet-700',
-  connectivity: 'text-sky-700',
-  integration: 'text-blue-700',
-  analytics: 'text-primary',
-  redundancy: 'text-[#0f2930]',
-  default: 'text-[#62748e]',
-}
+// ── Icon Card — plain baseline: icon chip, heading, description, caption ──
 
-// ── Real number extraction — when a highlight's own title states an actual figure
-// (a latency, a scale, a version, a buffer window), surface that instead of a
-// generic decoration, so the accent reflects this specific highlight, not just its slot ──
-interface Metric {
-  value: string
-  label: string
-}
-
-function extractMetric(title: string): Metric | null {
-  let m = title.match(/<\s?(\d+(?:\.\d+)?)\s?(ms|s|sec|seconds|min|minutes|hrs?|hours)\b/i)
-  if (m) {
-    const isMinutesOrHours = /min|hr/i.test(m[2])
-    const unit = /ms/i.test(m[2]) ? 'ms' : isMinutesOrHours ? (/hr/i.test(m[2]) ? ' hr' : ' min') : 's'
-    return { value: `< ${m[1]}${unit}`, label: isMinutesOrHours ? 'Turnaround' : 'Response Time' }
-  }
-
-  m = title.match(/\bsub-(second|minute)\b/i)
-  if (m) return { value: `Sub-${m[1].toLowerCase()}`, label: 'Cycle Time' }
-
-  m = title.match(/\b(\d+)\s?days?\b/i)
-  if (m) return { value: `${m[1]} Days`, label: 'Data Buffer' }
-
-  m = title.match(/\bv(\d+(?:\.\d+)*)\b/i)
-  if (m) return { value: `v${m[1]}`, label: 'Version' }
-
-  // Only treat comma-grouped or explicitly "+"-suffixed numbers as a scale metric —
-  // avoids misreading standard/protocol numbers like "IEC 61850" or "ISO 15765" as stats.
-  m = title.match(/\b(\d{1,3}(?:,\d{3})+\+?|\d{4,}\+)\b/)
-  if (m) return { value: m[1], label: 'Scale' }
-
-  return null
-}
-
-// ── Category-driven fallback accents (used when no explicit number is present) ──
-
-function ProtocolAccent() {
+function IconCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
   return (
-    <div className="flex items-center gap-1.5" aria-hidden="true">
-      {[0, 1, 2, 3, 4].map(i => (
-        <div
-          key={i}
-          className={`h-1.5 rounded-full ${i === 1 ? 'bg-primary flex-[2.5]' : 'bg-[#e2e8f0] flex-1'}`}
+    <>
+      <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
+        <Icon style={{ fontSize: 24 }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <SubTextCaption sub_text={sub_text} />
+    </>
+  )
+}
+
+// ── Ring Stat Card — icon inside an animated gauge ring, stat + label centered ──
+
+function RingStatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  const r = 27
+  return (
+    <div className="flex flex-col items-center text-center gap-3">
+      <div className="relative size-20">
+        <svg viewBox="0 0 64 64" className="size-20 -rotate-90">
+          <circle cx={32} cy={32} r={r} strokeWidth={5} className="stroke-white fill-none" />
+          <motion.circle
+            cx={32}
+            cy={32}
+            r={r}
+            strokeWidth={5}
+            strokeLinecap="round"
+            className="stroke-primary fill-none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 0.75 }}
+            viewport={{ once: true, margin: '-40px' as const }}
+            transition={{ duration: 1, ease: 'easeOut' as const }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Icon style={{ fontSize: 22 }} className="text-primary" />
+        </div>
+      </div>
+      {sub_text && (
+        <span className="gradient-brand-text text-2xl font-extrabold leading-none">{sub_text}</span>
+      )}
+      <h3 className="text-sm font-bold uppercase tracking-wide text-[#0f2930]">{heading}</h3>
+      <p className="text-xs text-[#62748e] leading-relaxed">{description}</p>
+    </div>
+  )
+}
+
+// ── Diagram Card — a real bar + trend-line combo chart ──
+
+const DIAGRAM_BAR_HEIGHTS = [10, 18, 14, 26, 20, 30]
+
+function DiagramCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  const barW = 12
+  const gap = 10
+  const chartH = 32
+  const chartW = DIAGRAM_BAR_HEIGHTS.length * (barW + gap) - gap
+  const linePath = `M${DIAGRAM_BAR_HEIGHTS
+    .map((h, i) => `${i * (barW + gap) + barW / 2},${chartH - h}`)
+    .join(' L')}`
+
+  return (
+    <>
+      <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
+        <Icon style={{ fontSize: 24 }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-10" aria-hidden="true">
+        {DIAGRAM_BAR_HEIGHTS.map((h, i) => (
+          <motion.rect
+            key={i}
+            x={i * (barW + gap)}
+            width={barW}
+            rx={2}
+            className="fill-primary/25"
+            initial={{ height: 0, y: chartH }}
+            whileInView={{ height: h, y: chartH - h }}
+            viewport={{ once: true, margin: '-40px' as const }}
+            transition={{ duration: 0.5, delay: i * 0.06, ease: 'easeOut' as const }}
+          />
+        ))}
+        <motion.path
+          d={linePath}
+          className="stroke-secondary fill-none"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: 1 }}
+          viewport={{ once: true, margin: '-40px' as const }}
+          transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' as const }}
         />
-      ))}
-    </div>
+      </svg>
+      {sub_text && <span className="text-[11px] font-semibold text-[#62748e]">{sub_text}</span>}
+    </>
   )
 }
 
-function SecurityAccent() {
-  return (
-    <div className="flex items-center gap-2" aria-hidden="true">
-      <LockOutlinedIcon style={{ fontSize: 14 }} className="text-emerald-600 shrink-0" />
-      <span className="text-xs font-medium text-emerald-700">Encrypted</span>
-      <div className="flex-1 h-1.5 rounded-full bg-emerald-100 overflow-hidden">
-        <div className="h-full w-full bg-emerald-500 rounded-full" />
-      </div>
-    </div>
-  )
-}
+// ── Chat Card — support mockup: message bubbles rotating through canned Q&A ──
 
-function AIAccent() {
-  return (
-    <div className="flex items-center gap-2" aria-hidden="true">
-      <PsychologyOutlinedIcon style={{ fontSize: 14 }} className="text-violet-600 shrink-0" />
-      <span className="text-xs font-medium text-violet-700">Model-Driven</span>
-      <div className="flex-1 h-1.5 rounded-full bg-violet-100 overflow-hidden">
-        <div className="h-full w-2/3 bg-violet-500 rounded-full" />
-      </div>
-    </div>
-  )
-}
-
-function ConnectivityAccent() {
-  return (
-    <div className="flex items-end gap-1" aria-hidden="true">
-      {[6, 10, 14, 18].map((h, i) => (
-        <div key={i} className="flex-1 bg-sky-400 rounded-sm" style={{ height: h }} />
-      ))}
-      <span className="text-xs font-medium text-sky-700 ml-2">Connected</span>
-    </div>
-  )
-}
-
-function IntegrationAccent() {
-  return (
-    <div className="flex items-center gap-2" aria-hidden="true">
-      <span className="relative flex size-2.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
-        <span className="relative inline-flex size-2.5 rounded-full bg-sky-500" />
-      </span>
-      <span className="text-xs font-medium text-sky-700">Live Sync</span>
-      <div className="flex-1 h-px bg-[#e2e8f0]" />
-    </div>
-  )
-}
-
-function AnalyticsAccent() {
-  return (
-    <div className="flex items-center gap-3" aria-hidden="true">
-      <div className="border-4 border-primary rounded-full size-9 flex items-center justify-center shrink-0">
-        <span className="text-[9px] font-bold text-[#0f2930]">Live</span>
-      </div>
-      <div className="flex-1 flex items-end gap-1 h-6">
-        <div className="flex-1 bg-[#e2e8f0] rounded-t-sm h-3" />
-        <div className="flex-1 bg-[#0f2930] rounded-t-sm h-full" />
-        <div className="flex-1 bg-primary rounded-t-sm h-4" />
-        <div className="flex-1 bg-[#e2e8f0] rounded-t-sm h-2.5" />
-      </div>
-    </div>
-  )
-}
-
-function RedundancyAccent() {
-  return (
-    <div className="flex items-center gap-2" aria-hidden="true">
-      <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide bg-[#0f2930] text-white rounded-full">
-        Verified
-      </span>
-      <div className="flex-1 h-px bg-[#e2e8f0]" />
-    </div>
-  )
-}
-
-function DefaultAccent() {
-  return <div className="h-px bg-[#e2e8f0]" aria-hidden="true" />
-}
-
-const CATEGORY_ACCENTS: Record<Category, () => React.JSX.Element> = {
-  protocol: ProtocolAccent,
-  security: SecurityAccent,
-  ai: AIAccent,
-  connectivity: ConnectivityAccent,
-  integration: IntegrationAccent,
-  analytics: AnalyticsAccent,
-  redundancy: RedundancyAccent,
-  default: DefaultAccent,
-}
-
-function MetricAccent({ value, label, category }: Metric & { category: Category }) {
-  return (
-    <div className="flex items-end justify-between pt-1" aria-hidden="true">
-      <span className={`text-2xl font-extrabold tabular-nums ${CATEGORY_VALUE_COLOR[category]}`}>
-        {value}
-      </span>
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9aa5b1] pb-0.5">
-        {label}
-      </span>
-    </div>
-  )
-}
-
-const CARD_TINTS = [
-  'bg-white border border-[#e2e8f0] shadow-sm',
-  'bg-[#f0f9ff] border border-[#e0f2fe]',
-  'bg-[#f0fdf4] border border-[#dcfce7]',
-  'bg-white border border-[#e2e8f0] shadow-sm',
+const SUPPORT_CHAT_PAIRS: { q: string; a: string }[] = [
+  { q: 'Does this support Modbus and IEC 61850?', a: 'Yes — both, out of the box.' },
+  { q: "What's the typical response time?", a: 'Under 10ms in the field.' },
+  { q: 'Can we get a live demo?', a: "Absolutely, let's set one up." },
+  { q: 'Is 24/7 support included?', a: 'Yes, our engineers are always on call.' },
+  { q: 'Does it scale to multi-site deployments?', a: 'Built for it from day one.' },
 ]
 
-const ICON_TINTS = [
-  'bg-[#f0f4f8] text-[#0f2930]',
-  'bg-[#e0f2fe] text-[#1c398e]',
-  'bg-[#dcfce7] text-[#0d542b]',
-  'bg-[#f0f4f8] text-[#0f2930]',
-]
+function ChatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  const [pairIndex, setPairIndex] = useState(() => Math.floor(Math.random() * SUPPORT_CHAT_PAIRS.length))
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPairIndex((prev) => {
+        if (SUPPORT_CHAT_PAIRS.length <= 1) return prev
+        let next = Math.floor(Math.random() * SUPPORT_CHAT_PAIRS.length)
+        while (next === prev) next = Math.floor(Math.random() * SUPPORT_CHAT_PAIRS.length)
+        return next
+      })
+    }, 4500)
+    return () => clearInterval(id)
+  }, [])
+
+  const pair = SUPPORT_CHAT_PAIRS[pairIndex]
+
+  return (
+    <>
+      <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
+        <Icon style={{ fontSize: 24 }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <div className="min-h-16">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pairIndex}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35, ease: 'easeOut' as const }}
+            className="flex flex-col gap-1.5"
+          >
+            <div className="self-start max-w-[85%] bg-white border border-[#e2e8f0] rounded-2xl rounded-bl-sm px-3 py-1.5">
+              <p className="text-[11px] text-[#45556c] leading-snug">{pair.q}</p>
+            </div>
+            <div className="self-end max-w-[85%] bg-primary rounded-2xl rounded-br-sm px-3 py-1.5">
+              <p className="text-[11px] text-white leading-snug">{pair.a}</p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      {sub_text && <span className="text-[11px] font-semibold text-[#62748e]">{sub_text}</span>}
+    </>
+  )
+}
+
+// ── Security Card — icon inside a shield outline that pulses once on scroll-in ──
+
+function SecurityCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  return (
+    <>
+      <div className="relative size-14 shrink-0">
+        <motion.svg
+          viewBox="0 0 40 44"
+          className="size-14"
+          initial={{ scale: 0.85, opacity: 0.6 }}
+          whileInView={{ scale: [0.85, 1.08, 1], opacity: 1 }}
+          viewport={{ once: true, margin: '-40px' as const }}
+          transition={{ duration: 0.6, ease: 'easeOut' as const }}
+        >
+          <path
+            d="M20 2 L36 9 V21 C36 32 29 39 20 42 C11 39 4 32 4 21 V9 Z"
+            className="stroke-primary fill-white"
+            strokeWidth={2}
+          />
+        </motion.svg>
+        <div className="absolute inset-0 flex items-center justify-center pb-1">
+          <Icon style={{ fontSize: 20 }} className="text-primary" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <SubTextCaption sub_text={sub_text} />
+    </>
+  )
+}
+
+// ── Signal Card — ascending bars filling in, like a signal-strength indicator ──
+
+const SIGNAL_BAR_HEIGHTS = [8, 14, 20, 26]
+
+function SignalCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
+          <Icon style={{ fontSize: 24 }} />
+        </div>
+        <div className="flex items-end gap-1 h-7" aria-hidden="true">
+          {SIGNAL_BAR_HEIGHTS.map((h, i) => (
+            <motion.div
+              key={i}
+              className={`w-2 rounded-sm ${i === SIGNAL_BAR_HEIGHTS.length - 1 ? 'bg-primary' : 'bg-primary/50'}`}
+              initial={{ height: 0 }}
+              whileInView={{ height: h }}
+              viewport={{ once: true, margin: '-40px' as const }}
+              transition={{ duration: 0.4, delay: i * 0.1, ease: 'easeOut' as const }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <SubTextCaption sub_text={sub_text} />
+    </>
+  )
+}
+
+// ── Timeline Card — 3 dots connected by a line that draws in, for process highlights ──
+
+function TimelineCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
+  const Icon = getMuiIcon(icon)
+  return (
+    <>
+      <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
+        <Icon style={{ fontSize: 24 }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
+        <p className="text-sm text-[#62748e] leading-relaxed">{description}</p>
+      </div>
+      <div className="flex items-center" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`flex items-center ${i < 2 ? 'flex-1' : ''}`}>
+            <motion.span
+              className="size-2.5 rounded-full bg-primary shrink-0"
+              initial={{ opacity: 0, scale: 0.5 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: '-40px' as const }}
+              transition={{ duration: 0.3, delay: i * 0.15, ease: 'easeOut' as const }}
+            />
+            {i < 2 && (
+              <motion.div
+                className="flex-1 h-px bg-primary origin-left"
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, margin: '-40px' as const }}
+                transition={{ duration: 0.4, delay: i * 0.15 + 0.15, ease: 'easeOut' as const }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      {sub_text && <span className="text-[11px] font-semibold text-[#62748e]">{sub_text}</span>}
+    </>
+  )
+}
+
+const CARD_BODY: Record<TechHighlightCardType, (props: CardBodyProps) => React.JSX.Element> = {
+  icon: IconCardBody,
+  ring_stat: RingStatCardBody,
+  diagram: DiagramCardBody,
+  chat: ChatCardBody,
+  security: SecurityCardBody,
+  signal: SignalCardBody,
+  timeline: TimelineCardBody,
+}
 
 interface TechHighlightsSectionProps {
-  highlights: TechHighlight[]
+  highlights: TechHighlightItemValue[]
   eyebrow?: string
   intro?: string
 }
@@ -252,35 +353,25 @@ export function TechHighlightsSection({
 
         <div className="grid sm:grid-cols-2 gap-6">
           {highlights.map((item, i) => {
-            const { Icon, category } = classify(item.title)
-            const metric = extractMetric(item.title)
-            const Accent = CATEGORY_ACCENTS[category]
+            const CardBody = CARD_BODY[item.card_type] ?? IconCardBody
             return (
               <motion.div
                 key={i}
-                className={`rounded-3xl p-8 flex flex-col gap-6 ${CARD_TINTS[i % CARD_TINTS.length]}`}
+                className={`relative rounded-3xl p-8 flex flex-col gap-6 border border-[#e2e8f0] ${CARD_BG[item.card_type] ?? 'bg-white'}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' as const }}
                 transition={{ duration: 0.45, delay: i * 0.08, ease: 'easeOut' as const }}
               >
-                <div className="flex items-start justify-between">
-                  <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 ${ICON_TINTS[i % ICON_TINTS.length]}`}>
-                    <Icon style={{ fontSize: 24 }} />
-                  </div>
-                  <span className="text-xs font-bold text-[#9aa5b1] tabular-nums">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-[#62748e] leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-                {metric ? <MetricAccent {...metric} category={category} /> : <Accent />}
+                <span className="absolute top-8 right-8 text-xs font-bold text-[#9aa5b1] tabular-nums">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <CardBody
+                  icon={item.icon}
+                  heading={item.heading}
+                  description={item.description}
+                  sub_text={item.sub_text}
+                />
               </motion.div>
             )
           })}

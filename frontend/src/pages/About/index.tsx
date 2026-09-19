@@ -21,8 +21,8 @@ export default function About() {
   return (
     <main>
       <PageMeta
-        title={page?.meta_title || "About Genex Technocrats — India's Energy Intelligence Platform"}
-        description={page?.meta_description || "Genex Technocrats builds the software and systems that run India's renewable energy infrastructure."}
+        title={page?.seo_title || "About Genex Technocrats — India's Energy Intelligence Platform"}
+        description={page?.search_description || "Genex Technocrats builds the software and systems that run India's renewable energy infrastructure."}
         canonical="/about"
       />
       {renderStreamField(body, blockRegistry)}

@@ -9,6 +9,7 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
@@ -19,9 +20,9 @@ function RichTextSection({ value }: { value: unknown }) {
   return (
     <div className="mb-10">
       <h3 className="text-2xl font-bold text-black mb-4">{section.heading}</h3>
-      <div
-        className="text-lg text-[#949494] leading-[1.63] space-y-4 [&_p]:mb-4"
-        dangerouslySetInnerHTML={{ __html: section.body }}
+      <RichText
+        html={section.body}
+        className="text-lg text-[#949494] leading-[1.63] [&_h2]:text-black [&_h3]:text-black [&_h4]:text-black [&_strong]:text-black [&_b]:text-black"
       />
     </div>
   )
@@ -148,9 +149,9 @@ export default function CaseStudyDetail() {
           <div className="space-y-6 mb-12">
             <p className="text-lg text-[#949494] leading-[1.63]">{cs.excerpt}</p>
             {cs.intro && (
-              <div
-                className="text-lg text-[#949494] leading-[1.63] [&_p]:mb-4"
-                dangerouslySetInnerHTML={{ __html: cs.intro }}
+              <RichText
+                html={cs.intro}
+                className="text-lg text-[#949494] leading-[1.63] [&_h2]:text-black [&_h3]:text-black [&_h4]:text-black [&_strong]:text-black [&_b]:text-black"
               />
             )}
           </div>

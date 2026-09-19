@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import { getMediaUrl } from '@/lib/utils'
+import { RichText } from '@/components/ui/RichText'
 import type { AchievementApiValue } from '@/types/api'
 
 const fadeUp = (delay = 0) => ({
@@ -30,24 +31,19 @@ export function AchievementsSection({ value }: { value: AchievementApiValue[] })
                 i === 0 ? 'py-20 lg:py-28' : 'pb-20 lg:pb-28 pt-16 lg:pt-24 border-t border-border'
               }`}
             >
-              <motion.div {...fadeUp(0)} className={`relative ${isOdd ? 'lg:order-2' : 'lg:order-1'}`}>
-                <div className="absolute -inset-3 bg-[rgba(220,235,254,0.55)] rounded-3xl rotate-3" aria-hidden="true" />
-                <motion.div
-                  whileHover={{ y: -6, boxShadow: '0 24px 60px rgba(26,174,232,0.18)' }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="relative overflow-hidden rounded-2xl border border-[#dcebfe] shadow-2xl aspect-video"
-                >
+              <motion.div {...fadeUp(0)} className={`group relative ${isOdd ? 'lg:order-2' : 'lg:order-1'}`}>
+                <div className="relative overflow-hidden rounded-2xl border border-[#dcebfe] shadow-lg aspect-video transition-shadow duration-300 group-hover:shadow-xl">
                   {ach.image && (
                     <img
                       src={getMediaUrl(ach.image.url)}
                       alt={ach.image_alt ?? ach.heading}
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       loading={i === 0 ? 'eager' : 'lazy'}
                       width={ach.image.width}
                       height={ach.image.height}
                     />
                   )}
-                </motion.div>
+                </div>
               </motion.div>
 
               <motion.div {...fadeUp(0.14)} className={`space-y-6 ${isOdd ? 'lg:order-1' : 'lg:order-2'}`}>
@@ -56,7 +52,10 @@ export function AchievementsSection({ value }: { value: AchievementApiValue[] })
                   <span className="text-[11px] font-bold uppercase tracking-widest text-primary">{ach.badge}</span>
                 </div>
                 <h2 className="text-2xl lg:text-[32px] font-extrabold text-text-primary leading-tight">{ach.heading}</h2>
-                <div className="text-[17px] text-text-muted leading-relaxed" dangerouslySetInnerHTML={{ __html: ach.body }} />
+                <RichText
+                  html={ach.body}
+                  className="text-[17px] text-text-muted leading-relaxed [&_h2]:text-text-primary [&_h3]:text-text-primary [&_h4]:text-text-primary [&_strong]:text-text-primary [&_b]:text-text-primary"
+                />
               </motion.div>
             </div>
           )

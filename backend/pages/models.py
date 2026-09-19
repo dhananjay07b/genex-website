@@ -46,6 +46,7 @@ from .blocks import (
     ProductVideoSectionBlock,
     ProjectShowcaseItemBlock,
     ProjectTypeChoiceBlock,
+    RichTextBlock,
     SideImageSectionBlock,
     StatBlock,
     StatsGridSectionBlock,
@@ -64,24 +65,20 @@ from .blocks import (
 # Abstract base — shared SEO fields on every page
 # ---------------------------------------------------------------------------
 class BasePage(Page):
-    meta_title       = models.CharField(max_length=255, blank=True)
-    meta_description = models.TextField(blank=True)
-    meta_keywords    = models.TextField(blank=True)
-    hide_footer_cta  = models.BooleanField(default=False)
+    """SEO fields deliberately reuse Wagtail's own built-in seo_title/search_description
+    (shown by default on every page's Promote tab) instead of duplicating them with
+    custom fields — a previous version defined meta_title/meta_description/meta_keywords
+    here, which just shadowed the built-ins with a second set of fields the frontend
+    actually read, leaving the built-ins visible in the admin but silently ignored."""
+    hide_footer_cta = models.BooleanField(default=False)
 
     promote_panels = Page.promote_panels + [
-        MultiFieldPanel([
-            FieldPanel("meta_title"),
-            FieldPanel("meta_description"),
-            FieldPanel("meta_keywords"),
-            FieldPanel("hide_footer_cta"),
-        ], heading="SEO & Layout"),
+        FieldPanel("hide_footer_cta"),
     ]
 
     api_fields = [
-        APIField("meta_title"),
-        APIField("meta_description"),
-        APIField("meta_keywords"),
+        APIField("seo_title"),
+        APIField("search_description"),
         APIField("hide_footer_cta"),
     ]
 
@@ -431,6 +428,27 @@ class ContactPage(BasePage):
 # ===========================================================================
 
 @register_snippet
+class TeamCategory(models.Model):
+    """A named team grouping (e.g. 'Development Team') with a display order.
+    Assigned to TeamMemberBlock items; the frontend groups/sorts members by this."""
+    name     = models.CharField(max_length=100)
+    priority = models.IntegerField(default=0, help_text="Lower numbers show first")
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("priority"),
+    ]
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Team Category"
+        verbose_name_plural = "Team Categories"
+        ordering = ["priority", "name"]
+
+
+@register_snippet
 class CaseStudy(models.Model):
     title          = models.CharField(max_length=255)
     category       = models.CharField(max_length=50)
@@ -446,7 +464,7 @@ class CaseStudy(models.Model):
     sections       = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", blocks.RichTextBlock()),
+            ("body", RichTextBlock()),
         ]))
     ], blank=True, use_json_field=True)
 
@@ -497,7 +515,7 @@ class TechArticle(models.Model):
     sections        = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", blocks.RichTextBlock()),
+            ("body", RichTextBlock()),
         ]))
     ], blank=True, use_json_field=True)
     callout_label   = models.CharField(max_length=100, blank=True)
@@ -656,7 +674,7 @@ class BlogPost(models.Model):
         on_delete=models.SET_NULL, related_name="+",
     )
     body    = StreamField([
-        ("rich_text", blocks.RichTextBlock()),
+        ("rich_text", RichTextBlock()),
         ("image", blocks.StructBlock([
             ("image", blocks.CharBlock(help_text="Image URL or path")),
             ("caption", blocks.CharBlock(required=False)),
