@@ -9,6 +9,7 @@ import type { UserVideoPost } from '@/types/auth'
 import { EmptyState } from './EmptyState'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
 import { STATUS_BADGE_CLASS, STATUS_LABEL } from './types'
+import Add from '@mui/icons-material/Add'
 
 export function VideosTab() {
   const [videos, setVideos] = useState<UserVideoPost[] | null>(null)
@@ -38,7 +39,10 @@ export function VideosTab() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-extrabold text-text-primary">My Videos</h1>
         <Link to="/submit-video">
-          <Button variant="primary" size="md">+ Submit a Video</Button>
+          <Button variant="primary" size="md">
+            <Add sx={{ fontSize: 18 }} />
+            Submit a Video
+          </Button>
         </Link>
       </div>
 
@@ -49,7 +53,10 @@ export function VideosTab() {
           description="Field walkthroughs, demos, and training clips all belong here — submit your first one."
           action={
             <Link to="/submit-video">
-              <Button variant="primary" size="md">+ Submit a Video</Button>
+              <Button variant="primary" size="md">
+                <Add sx={{ fontSize: 18 }} />
+                Submit a Video
+              </Button>
             </Link>
           }
         />

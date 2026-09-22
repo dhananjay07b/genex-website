@@ -37,7 +37,7 @@ export function RichTextEditor({ value, onChange, error, label }: RichTextEditor
     onUpdate: ({ editor: e }) => onChange(e.getHTML()),
     editorProps: {
       attributes: {
-        class: 'rich-text min-h-[280px] px-4 py-3 outline-none text-sm text-text-primary',
+        class: 'rich-text min-h-96 px-6 py-5 outline-none text-sm text-text-primary',
       },
     },
   })
@@ -47,7 +47,7 @@ export function RichTextEditor({ value, onChange, error, label }: RichTextEditor
   return (
     <div>
       {label && <label className="block text-sm font-semibold text-text-primary mb-1.5">{label}</label>}
-      <div className={cn('border rounded-md overflow-hidden bg-white', error ? 'border-red-500' : 'border-border')}>
+      <div className={cn('border rounded-xl overflow-hidden bg-white', error ? 'border-red-500' : 'border-border')}>
         <Toolbar editor={editor} />
         <EditorContent editor={editor} />
       </div>

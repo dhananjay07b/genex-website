@@ -1,9 +1,14 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
+import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
+import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
+import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
 import type { User } from '@/types/auth'
 
@@ -67,15 +72,18 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
-      <h1 className="text-xl font-extrabold text-text-primary">Edit Profile &amp; Settings</h1>
+    <div>
+      <h1 className="text-xl font-extrabold text-text-primary mb-5">Edit Profile &amp; Settings</h1>
+
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col gap-5 max-w-2xl flex-1 min-w-0">
 
       {/* Profile */}
       <section className="border border-border rounded-2xl p-5">
         <p className="text-sm font-bold text-text-primary mb-4">Profile</p>
 
         <div
-          className="h-20 rounded-xl relative overflow-hidden -mb-7 bg-gradient-to-br from-primary to-secondary bg-cover bg-center"
+          className="h-28 rounded-t-xl relative overflow-hidden -mb-7 bg-gradient-to-br from-primary to-secondary bg-cover bg-center"
           style={user.cover_photo_url ? { backgroundImage: `url(${getMediaUrl(user.cover_photo_url)})` } : undefined}
         >
           <button
@@ -100,7 +108,7 @@ export function SettingsTab() {
           />
         </div>
 
-        <div className="flex items-center gap-4 mb-5 relative">
+        <div className="mb-5 relative w-16">
           <div className="w-16 h-16 rounded-full border-4 border-white bg-primary text-white font-extrabold flex items-center justify-center text-lg shrink-0 shadow-sm overflow-hidden">
             {user.avatar_url ? (
               <img src={getMediaUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
@@ -108,9 +116,15 @@ export function SettingsTab() {
               (user.display_name || user.username).slice(0, 2).toUpperCase()
             )}
           </div>
-          <Button variant="secondary" size="sm" disabled={uploadingAvatar} onClick={() => avatarInputRef.current?.click()}>
-            {uploadingAvatar ? 'Uploading…' : 'Change Photo'}
-          </Button>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            aria-label={uploadingAvatar ? 'Uploading photo…' : 'Change photo'}
+            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-border text-text-muted flex items-center justify-center shadow-sm hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
+          >
+            <PhotoCameraOutlinedIcon sx={{ fontSize: 12 }} />
+          </button>
           <input
             ref={avatarInputRef}
             type="file"
@@ -199,6 +213,60 @@ export function SettingsTab() {
           grow email preferences once that&apos;s built.
         </p>
       </section>
+
+      {/* Need help */}
+      <section className="border border-border rounded-2xl p-5 bg-surface">
+        <div className="flex items-center gap-2 mb-2.5">
+          <HelpOutlineOutlinedIcon sx={{ fontSize: 16 }} className="text-primary" />
+          <p className="text-sm font-bold text-text-primary">Need help?</p>
+        </div>
+        <p className="text-xs text-text-muted leading-relaxed mb-3">
+          Questions about your account, a submission, or anything else — reach out any time.
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <a
+            href="mailto:info@genextechnocrats.com"
+            className="flex items-center gap-2 text-xs font-semibold text-text-primary hover:text-primary transition-colors"
+          >
+            <MailOutlinedIcon sx={{ fontSize: 14 }} className="shrink-0 text-text-muted" />
+            info@genextechnocrats.com
+          </a>
+          <a
+            href={marketingPath('/contact')}
+            className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-secondary transition-colors"
+          >
+            Contact Us <ArrowForwardIcon sx={{ fontSize: 12 }} />
+          </a>
+        </div>
+      </section>
+
+      </div>
+
+      {/* How others see you */}
+      <div className="w-full lg:w-72 shrink-0 border border-border rounded-2xl p-5">
+        <p className="text-xs font-bold uppercase tracking-wide text-text-muted mb-4">How others see you</p>
+
+        <div
+          className="h-14 rounded-xl bg-gradient-to-br from-primary to-secondary bg-cover bg-center"
+          style={user.cover_photo_url ? { backgroundImage: `url(${getMediaUrl(user.cover_photo_url)})` } : undefined}
+        />
+        <div className="w-11 h-11 rounded-full ring-4 ring-white bg-primary text-white font-extrabold flex items-center justify-center text-sm overflow-hidden -mt-5 ml-3 relative mb-3">
+          {user.avatar_url ? (
+            <img src={getMediaUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
+          ) : (
+            (user.display_name || user.username).slice(0, 2).toUpperCase()
+          )}
+        </div>
+        <p className="font-bold text-sm text-text-primary">{user.display_name || user.username}</p>
+        {user.bio && (
+          <p className="text-xs text-text-muted leading-relaxed mt-1.5 line-clamp-3">{user.bio}</p>
+        )}
+        <Link to={`/u/${user.username}`} className="block mt-4">
+          <Button variant="secondary" size="sm" className="w-full justify-center">View Full Public Profile</Button>
+        </Link>
+      </div>
+
+      </div>
     </div>
   )
 }

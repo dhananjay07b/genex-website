@@ -42,7 +42,7 @@ export default function SubmitVideo() {
   }
 
   return (
-    <main>
+    <main className="min-h-screen pb-10">
       <PageMeta title="Submit a Video — Genex GeLearn" description="Share a video with the Genex GeLearn community." canonical="/submit-video" />
       <PageHero label="Contribute" headline="Submit a Video" subline="Field walkthroughs, demos, and training clips — every submission is reviewed by our editorial team before publishing." />
 

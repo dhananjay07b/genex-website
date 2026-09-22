@@ -4,6 +4,7 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
+import Add from '@mui/icons-material/Add'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime } from '@/lib/utils'
@@ -47,7 +48,10 @@ export function BlogPostsTab() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-extrabold text-text-primary">My Blog Posts</h1>
         <Link to="/submit-post">
-          <Button variant="primary" size="md">+ Submit a Post</Button>
+          <Button variant="primary" size="md">
+            <Add sx={{ fontSize: 18 }} />
+            Submit a Post
+          </Button>
         </Link>
       </div>
 
@@ -58,7 +62,10 @@ export function BlogPostsTab() {
           description="Share what you know with the GeLearn community — your first post is a click away."
           action={
             <Link to="/submit-post">
-              <Button variant="primary" size="md">+ Submit a Post</Button>
+              <Button variant="primary" size="md">
+                <Add sx={{ fontSize: 18 }} />
+                Submit a Post
+              </Button>
             </Link>
           }
         />

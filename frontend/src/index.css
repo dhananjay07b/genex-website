@@ -31,6 +31,12 @@
   box-sizing: border-box;
 }
 
+/* Browsers don't give <button> a pointer cursor by default (unlike <a>) —
+   apply it globally instead of per-component so it's never inconsistent. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -98,6 +104,11 @@ body {
   }
 }
 
+/* Same .bg-brand-tint background, drift animation switched off */
+.bg-brand-tint.bg-brand-tint-static {
+  animation: none;
+}
+
 /* Marquee — duplicate items for seamless loop */
 @keyframes marquee {
   from { transform: translateX(0); }
@@ -121,6 +132,32 @@ body {
 .animate-gradient-pan {
   background-size: 200% 200%;
   animation: gradient-pan 10s ease infinite;
+}
+
+/* Auth pages (Login/Register) — dark brand panel grid + floating orbs */
+.auth-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  animation: auth-grid-drift 26s linear infinite;
+}
+@keyframes auth-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 36px 36px, 36px 36px; }
+}
+.auth-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(2px);
+  opacity: 0.55;
+  animation: auth-orb-float 9s ease-in-out infinite;
+}
+@keyframes auth-orb-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-16px); }
 }
 
 /* Loading screen — shimmer sweep across logo */

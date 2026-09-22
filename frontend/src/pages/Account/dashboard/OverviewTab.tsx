@@ -75,13 +75,6 @@ export function OverviewTab({ onSelectTab }: OverviewTabProps) {
           )
         })}
       </div>
-
-      <div className="border border-border rounded-2xl p-5 bg-surface">
-        <p className="text-sm font-bold text-text-primary mb-1">Coming to GeLearn</p>
-        <p className="text-xs text-text-muted leading-relaxed">
-          Course progress &amp; certificates. This account is ready for it — same profile, more to track.
-        </p>
-      </div>
     </div>
   )
 }

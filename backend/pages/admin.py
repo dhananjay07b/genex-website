@@ -22,6 +22,10 @@ class UserBlogPostAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("title", "author__username", "author__display_name")
     actions = ["approve_and_publish", "reject"]
+    # status/published_post/reviewed_* only change via the actions above — a
+    # plain form edit would flip the badge without ever creating the BlogPost
+    # or notifying the author, which is exactly the bug that bit us once.
+    readonly_fields = ("status", "published_post", "reviewed_at", "reviewed_by")
 
     @admin.action(description="Approve and publish selected submissions")
     def approve_and_publish(self, request, queryset):
@@ -58,6 +62,7 @@ class UserVideoPostAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("title", "author__username", "author__display_name")
     actions = ["approve_and_publish", "reject"]
+    readonly_fields = ("status", "published_video", "reviewed_at", "reviewed_by")
 
     @admin.action(description="Approve and publish selected submissions")
     def approve_and_publish(self, request, queryset):

@@ -29,8 +29,8 @@ export function GeLearnHeader() {
           aria-label="GeLearn — Home"
           className="flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
         >
-          <img src="/images/logo/logo-mark.svg" alt="" className="h-7 w-auto" />
-          <span className="text-lg font-extrabold text-text-primary">GeLearn</span>
+          <img src="/favicon1:1.svg" alt="" className="h-14 w-auto" />
+          <span className="text-2xl font-extrabold text-text-primary">GeLearn</span>
         </Link>
 
         {/* Nav links */}
