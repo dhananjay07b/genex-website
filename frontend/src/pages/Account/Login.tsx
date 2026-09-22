@@ -51,6 +51,9 @@ export default function Login() {
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6 bg-white rounded-2xl shadow-sm border border-border p-8">
             <Input label="Username" placeholder="yourname" error={errors.username?.message} {...register('username')} />
             <Input label="Password" type="password" placeholder="••••••••" error={errors.password?.message} {...register('password')} />
+            <div className="-mt-4 text-right">
+              <Link to="/forgot-password" className="text-sm text-primary font-semibold">Forgot password?</Link>
+            </div>
 
             {status === 'error' && (
               <p className="text-sm text-red-500">Invalid username or password.</p>

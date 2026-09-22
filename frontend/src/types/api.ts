@@ -161,6 +161,32 @@ export interface CardGridSectionValue {
   cards: SimpleCardValue[]
 }
 
+export interface LinkedPageCardValue {
+  id: number
+  title: string
+  slug: string
+  url: string
+  tag: string | null
+  summary: string | null
+  icon_url: string | null
+}
+
+export interface PortfolioSectionValue {
+  heading: string | null
+  description: string | null
+  items: LinkedPageCardValue[]
+}
+
+export interface InnovationCardValue extends LinkedPageCardValue {
+  icon: string | null
+}
+
+export interface InnovationsSectionValue {
+  heading: string | null
+  description: string | null
+  items: InnovationCardValue[]
+}
+
 export interface BulletPointValue {
   bold_title: string
   point: string

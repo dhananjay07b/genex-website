@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 
@@ -83,10 +84,13 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       </p>
 
       {/* Guest */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-bold text-[#314158]">{ep.guest}</span>
-        <span className="text-[#62748e] text-xs">•</span>
-        <span className="text-xs font-medium text-[#62748e]">{ep.guest_role}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-bold text-[#314158] truncate">{ep.guest}</span>
+          <span className="text-[#62748e] text-xs shrink-0">•</span>
+          <span className="text-xs font-medium text-[#62748e] truncate">{ep.guest_role}</span>
+        </div>
+        <SaveButton contentType="podcastepisode" objectId={ep.id} className="h-8 px-2.5 shrink-0" />
       </div>
     </motion.div>
   )

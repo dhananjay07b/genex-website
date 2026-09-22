@@ -29,17 +29,20 @@ async function refreshSession(): Promise<boolean> {
 async function request<T>(path: string, options: ApiOptions = {}, isRetry = false): Promise<T> {
   const method = options.method ?? 'GET'
   const isMutation = method !== 'GET'
+  const isFormData = options.body instanceof FormData
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     method,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      // Omitted for FormData — the browser sets multipart/form-data with the
+      // correct boundary itself; a manual Content-Type here breaks the upload.
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(isMutation ? { 'X-CSRFToken': getCookie('csrftoken') ?? '' } : {}),
       ...options.headers,
     },
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: isFormData ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
   })
 
   if (res.status === 401 && !isRetry) {

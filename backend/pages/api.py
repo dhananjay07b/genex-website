@@ -20,6 +20,7 @@ from .models import (
     TechArticle,
     Tender,
     UserBlogPost,
+    UserVideoPost,
     VideoItem,
     Whitepaper,
 )
@@ -235,7 +236,8 @@ class BlogSubmissionThrottle(ScopedRateThrottle):
 
 
 class UserBlogPostViewSet(
-    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet,
+    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserBlogPostSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -247,6 +249,44 @@ class UserBlogPostViewSet(
 
     def get_queryset(self):
         return UserBlogPost.objects.filter(author=self.request.user).order_by("-created_at")
+
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data)
+
+
+class UserVideoPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserVideoPost
+        fields = ["id", "title", "excerpt", "video_url", "topic", "status", "rejection_reason", "created_at", "submitted_at"]
+        read_only_fields = ["id", "status", "rejection_reason", "created_at", "submitted_at"]
+
+    def create(self, validated_data):
+        validated_data["author"] = self.context["request"].user
+        validated_data["status"] = "pending"
+        validated_data["submitted_at"] = timezone.now()
+        return super().create(validated_data)
+
+
+class VideoSubmissionThrottle(ScopedRateThrottle):
+    scope = "video-submission"
+
+
+class UserVideoPostViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin, viewsets.GenericViewSet,
+):
+    serializer_class = UserVideoPostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [VideoSubmissionThrottle()]
+        return super().get_throttles()
+
+    def get_queryset(self):
+        return UserVideoPost.objects.filter(author=self.request.user).order_by("-created_at")
 
     @action(detail=False, methods=["get"])
     def mine(self, request):
@@ -267,5 +307,6 @@ router.register(r"videos", VideoItemViewSet, basename="videoitem")
 router.register(r"blog-posts", BlogPostViewSet, basename="blogpost")
 router.register(r"podcasts", PodcastEpisodeViewSet, basename="podcast")
 router.register(r"blog-submissions", UserBlogPostViewSet, basename="userblogpost")
+router.register(r"video-submissions", UserVideoPostViewSet, basename="uservideopost")
 
 urlpatterns = router.urls

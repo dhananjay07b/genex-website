@@ -5,6 +5,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 
@@ -98,9 +99,11 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
         </h3>
 
         {/* Excerpt */}
-        <p className="text-base text-[#62748e] leading-6 flex-1">
+        <p className="text-base text-[#62748e] leading-6 flex-1 mb-4">
           {video.excerpt}
         </p>
+
+        <SaveButton contentType="videoitem" objectId={video.id} className="self-start" />
       </div>
     </motion.div>
   )

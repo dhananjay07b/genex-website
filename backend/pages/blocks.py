@@ -2,6 +2,7 @@ from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.snippets.blocks import SnippetChooserBlock
+from wagtail.blocks import PageChooserBlock
 from wagtail.rich_text import expand_db_html
 
 # ---------------------------------------------------------------------------
@@ -647,6 +648,80 @@ class CardGridSectionBlock(blocks.StructBlock):
 
     class Meta:
         icon = "grip"
+
+
+def _serialize_linked_content_page(page):
+    """Resolve a chosen pages.ContentPage into the display data its listing
+    cards need — title/tag/summary/image are read from the page itself so
+    editors never re-enter them."""
+    page = page.specific
+    tags = [t.value for t in page.tags]
+    hero = next((b.value for b in page.body if b.block_type == "hero"), None)
+    summary = hero["description"] if hero else None
+    parent = page.get_parent()
+    return {
+        "id": page.id,
+        "title": page.title,
+        "slug": page.slug,
+        "url": f"/{parent.slug}/{page.slug}",
+        "tag": tags[0] if tags else None,
+        "summary": summary,
+        "icon_url": page.icon_url,
+    }
+
+
+class PortfolioCardBlock(blocks.StructBlock):
+    page = PageChooserBlock(
+        page_type="pages.ContentPage",
+        help_text="Link to an existing Portfolio product page.",
+    )
+
+    def get_api_representation(self, value, context=None):
+        return _serialize_linked_content_page(value["page"])
+
+    class Meta:
+        icon = "link"
+        label = "Portfolio Card"
+
+
+class PortfolioSectionBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(required=False, default="See Our Work")
+    description = blocks.TextBlock(required=False, blank=True)
+    items = blocks.ListBlock(PortfolioCardBlock(), min_num=1)
+
+    class Meta:
+        icon = "grip"
+        label = "Portfolio Section"
+
+
+class InnovationCardBlock(blocks.StructBlock):
+    page = PageChooserBlock(
+        page_type="pages.ContentPage",
+        help_text="Link to an existing Innovations page.",
+    )
+    icon = blocks.ChoiceBlock(
+        choices=ICON_CHOICES, required=False,
+        help_text="Icon shown on this card. Leave blank to use the linked page's image instead.",
+    )
+
+    def get_api_representation(self, value, context=None):
+        data = _serialize_linked_content_page(value["page"])
+        data["icon"] = value.get("icon")
+        return data
+
+    class Meta:
+        icon = "link"
+        label = "Innovation Card"
+
+
+class InnovationsSectionBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(required=False, default="Our Innovations")
+    description = blocks.TextBlock(required=False, blank=True)
+    items = blocks.ListBlock(InnovationCardBlock(), min_num=1)
+
+    class Meta:
+        icon = "grip"
+        label = "Innovations Section"
 
 
 class StatsGridSectionBlock(blocks.StructBlock):

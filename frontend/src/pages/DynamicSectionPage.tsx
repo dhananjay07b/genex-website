@@ -5,14 +5,24 @@ import { renderStreamField } from '@/lib/streamfield/renderStreamField'
 import { blockRegistry } from '@/lib/streamfield/blockRegistry'
 import type { SectionPageData, WagtailListResponse } from '@/types/api'
 
-export default function About() {
+interface DynamicSectionPageProps {
+  /** The SectionPage's own slug — e.g. "portfolio", "innovations", "about". */
+  sectionSlug: string
+  fallbackTitle: string
+  fallbackDescription: string
+}
+
+export default function DynamicSectionPage({ sectionSlug, fallbackTitle, fallbackDescription }: DynamicSectionPageProps) {
   const [page, setPage] = useState<SectionPageData | null | undefined>(undefined)
 
   useEffect(() => {
-    apiFetch<WagtailListResponse<SectionPageData>>('/api/v2/pages/?type=pages.SectionPage&slug=about&fields=*&limit=1')
+    setPage(undefined)
+    apiFetch<WagtailListResponse<SectionPageData>>(
+      `/api/v2/pages/?type=pages.SectionPage&slug=${sectionSlug}&fields=*&limit=1`
+    )
       .then(res => setPage(res.items[0] ?? null))
       .catch(() => setPage(null))
-  }, [])
+  }, [sectionSlug])
 
   if (page === undefined) return null
 
@@ -21,9 +31,9 @@ export default function About() {
   return (
     <main>
       <PageMeta
-        title={page?.seo_title || "About Genex Technocrats — India's Energy Intelligence Platform"}
-        description={page?.search_description || "Genex Technocrats builds the software and systems that run India's renewable energy infrastructure."}
-        canonical="/about"
+        title={page?.seo_title || fallbackTitle}
+        description={page?.search_description || fallbackDescription}
+        canonical={`/${sectionSlug}`}
       />
       {renderStreamField(body, blockRegistry)}
     </main>

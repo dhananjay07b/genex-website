@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from engagement.models import Notification
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
@@ -17,6 +18,18 @@ class CommentViewSet(viewsets.ModelViewSet):
         if self.request.method == "POST":
             return [CommentCreateThrottle()]
         return super().get_throttles()
+
+    def perform_create(self, serializer):
+        comment = serializer.save()
+        parent = comment.parent
+        if parent and parent.author_id != comment.author_id:
+            Notification.objects.create(
+                recipient=parent.author,
+                kind="comment_reply",
+                text=f"{comment.author.display_name or comment.author.username} replied to your comment.",
+                content_type=ContentType.objects.get_for_model(comment),
+                object_id=comment.pk,
+            )
 
     def get_queryset(self):
         qs = Comment.objects.filter(status="visible").select_related("author")

@@ -34,6 +34,7 @@ from .blocks import (
     HeroSlideBlock,
     HowWeWorkPageBlock,
     IntroductionSectionBlock,
+    InnovationsSectionBlock,
     InnovationsTeaserItemBlock,
     LeaderBlock,
     LeadershipCardBlock,
@@ -41,6 +42,7 @@ from .blocks import (
     MilestoneBlock,
     OpenRoleBlock,
     OverviewSectionBlock,
+    PortfolioSectionBlock,
     PressItemBlock,
     ProductTestimonialSectionBlock,
     ProductVideoSectionBlock,
@@ -187,6 +189,8 @@ CONTENT_BODY_BLOCKS = [
     ("hero", HeroSectionBlock()),
     ("intro", IntroductionSectionBlock()),
     ("card_section", CardGridSectionBlock()),
+    ("portfolio_section", PortfolioSectionBlock()),
+    ("innovations_section", InnovationsSectionBlock()),
     ("stats", StatsGridSectionBlock()),
     ("side_section", SideImageSectionBlock()),
     ("overview", OverviewSectionBlock()),
@@ -467,6 +471,10 @@ class CaseStudy(models.Model):
             ("body", RichTextBlock()),
         ]))
     ], blank=True, use_json_field=True)
+    updated_by     = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
 
     panels = [
         FieldPanel("title"),
@@ -566,6 +574,10 @@ class Tender(models.Model):
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Open")
     sector      = models.CharField(max_length=100)
     description = models.TextField()
+    updated_by  = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
 
     panels = [
         FieldPanel("title"),
@@ -597,6 +609,10 @@ class Whitepaper(models.Model):
     description   = models.TextField()
     document      = models.ForeignKey(
         "wagtaildocs.Document", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    updated_by    = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
 
@@ -711,6 +727,11 @@ class PodcastEpisode(models.Model):
     description   = models.TextField()
     guest         = models.CharField(max_length=200)
     guest_role    = models.CharField(max_length=300)
+    guest_user    = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="podcast_appearances",
+        help_text="Link to a GeLearn account if the guest has one, to show this episode on their profile.",
+    )
     image         = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -734,6 +755,7 @@ class PodcastEpisode(models.Model):
         MultiFieldPanel([
             FieldPanel("guest"),
             FieldPanel("guest_role"),
+            FieldPanel("guest_user"),
         ], heading="Guest"),
         FieldPanel("image"),
         FieldPanel("description"),
@@ -868,4 +890,53 @@ class UserBlogPost(models.Model):
 
     class Meta:
         verbose_name = "User Blog Submission"
+        ordering = ["-created_at"]
+
+
+@register_snippet
+class UserVideoPost(models.Model):
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("pending", "Pending Review"),
+        ("published", "Published"),
+        ("rejected", "Rejected"),
+    ]
+
+    author = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="video_submissions",
+    )
+    title = models.CharField(max_length=255)
+    excerpt = models.TextField()
+    video_url = models.URLField(help_text="YouTube/Vimeo/CDN link — matches VideoItem.video_url")
+    topic = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    rejection_reason = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    published_video = models.OneToOneField(
+        "pages.VideoItem", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="submission_source",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    panels = [
+        FieldPanel("title"),
+        FieldPanel("topic"),
+        FieldPanel("excerpt"),
+        FieldPanel("video_url"),
+        MultiFieldPanel([
+            FieldPanel("status"),
+            FieldPanel("rejection_reason"),
+        ], heading="Review"),
+    ]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+
+    class Meta:
+        verbose_name = "User Video Submission"
         ordering = ["-created_at"]

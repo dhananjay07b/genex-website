@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
@@ -10,13 +10,14 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { apiFetch } from '@/lib/api/client'
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
   topic: z.string().min(1, 'Please add a topic, e.g. Policy, Engineering'),
   excerpt: z.string().min(20, 'Excerpt must be at least 20 characters').max(300, 'Keep the excerpt under 300 characters'),
-  body: z.string().min(200, 'Post body must be at least 200 characters'),
+  body: z.string().min(200, 'Post body must be at least 200 characters (formatting tags included)'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -28,8 +29,9 @@ export default function SubmitPost() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '' } })
 
   async function onSubmit(data: FormData) {
     setStatus('loading')
@@ -62,7 +64,13 @@ export default function SubmitPost() {
               <Input label="Title" placeholder="How we cut O&M response time by 60%" error={errors.title?.message} {...register('title')} />
               <Input label="Topic" placeholder="Policy, Engineering, Field Notes…" error={errors.topic?.message} {...register('topic')} />
               <Textarea label="Excerpt" placeholder="A short summary shown in listings" rows={3} error={errors.excerpt?.message} {...register('excerpt')} />
-              <Textarea label="Post Body" placeholder="Write your full post here" rows={12} error={errors.body?.message} {...register('body')} />
+              <Controller
+                name="body"
+                control={control}
+                render={({ field }) => (
+                  <RichTextEditor label="Post Body" value={field.value} onChange={field.onChange} error={errors.body?.message} />
+                )}
+              />
 
               {status === 'error' && (
                 <p className="text-sm text-red-500">Something went wrong. Please try again.</p>

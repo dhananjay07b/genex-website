@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import type { WhitepaperItem, SnippetListResponse } from '@/types/api'
@@ -53,7 +54,7 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
       </p>
 
       {/* Footer */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <a
           href={doc.document_url ?? marketingPath('/contact')}
           target={doc.document_url ? '_blank' : undefined}
@@ -63,7 +64,10 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
           <DownloadOutlinedIcon style={{ fontSize: 15 }} />
           Download
         </a>
-        <span className="text-xs font-medium text-[#62748e]">{doc.pages}</span>
+        <span className="text-xs font-medium text-[#62748e] shrink-0">{doc.pages}</span>
+      </div>
+      <div className="mt-3">
+        <SaveButton contentType="whitepaper" objectId={doc.id} className="w-full justify-center" />
       </div>
     </motion.div>
   )

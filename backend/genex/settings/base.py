@@ -1,7 +1,14 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Loads backend/.env if present (local dev). In production, real env vars are
+# set by the host/process manager instead, so a missing file here is fine —
+# load_dotenv() no-ops silently when the file doesn't exist.
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = "django-insecure-change-this-in-production"
 
@@ -12,6 +19,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "accounts",
     "comments",
+    "engagement",
     "pages",
     "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
@@ -136,6 +144,7 @@ REST_FRAMEWORK = {
         "dj_rest_auth_login_failed": "5/hour",
         "comment-create": "20/hour",
         "blog-submission": "5/day",
+        "video-submission": "5/day",
     },
 }
 
@@ -145,6 +154,13 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
+ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
+
+# Base URL of the GeLearn React app. Emailed links (password reset, email
+# verification) point here instead of allauth's server-rendered pages, since
+# those flows are handled by dedicated frontend pages. Overridden per
+# environment in dev.py / production.py.
+GELEARN_FRONTEND_URL = os.environ.get("GELEARN_FRONTEND_URL", "http://localhost:5173")
 
 REST_AUTH = {
     "USE_JWT": True,
@@ -155,6 +171,7 @@ REST_AUTH = {
     "JWT_AUTH_COOKIE_USE_CSRF": True,
     "REGISTER_SERIALIZER": "accounts.serializers.GenexRegisterSerializer",
     "USER_DETAILS_SERIALIZER": "accounts.serializers.UserSerializer",
+    "PASSWORD_RESET_SERIALIZER": "accounts.serializers.GenexPasswordResetSerializer",
     "SESSION_LOGIN": False,
     "TOKEN_MODEL": None,
 }

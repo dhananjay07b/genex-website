@@ -18,6 +18,7 @@ import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { BlogPostBodyImageValue, BlogPostItem, SnippetListResponse } from '@/types/api'
 import { CommentSection } from '@/components/gelearn/CommentSection'
+import { SaveButton } from '@/components/engagement/SaveButton'
 
 const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 
@@ -158,6 +159,7 @@ export default function BlogPost() {
                     </button>
                   ))}
                 </div>
+                <SaveButton contentType="blogpost" objectId={post.id} />
               </div>
 
               <div className="flex items-center gap-8">

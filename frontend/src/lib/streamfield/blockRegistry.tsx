@@ -10,6 +10,8 @@ import { StatsGridSection } from '@/components/product/StatsGridSection'
 import { TechHighlightsSection } from '@/components/product/TechHighlightsSection'
 import { HeroBlockSection } from '@/components/content-blocks/HeroBlockSection'
 import { CardGridSection } from '@/components/content-blocks/CardGridSection'
+import { PortfolioSection } from '@/components/content-blocks/PortfolioSection'
+import { InnovationsSection } from '@/components/content-blocks/InnovationsSection'
 import { SideImageSection } from '@/components/content-blocks/SideImageSection'
 import { MilestonesSection } from '@/components/content-blocks/MilestonesSection'
 import { VisionCardsSection, MissionPointsSection } from '@/components/content-blocks/VisionMissionSection'
@@ -35,11 +37,13 @@ import type {
   GalleryItemApiValue,
   HeroSectionApiValue,
   HowWeWorkPageBlockValue,
+  InnovationsSectionValue,
   IntroductionSectionValue,
   LeaderApiValue,
   LeadershipCardApiValue,
   MilestoneApiValue,
   OverviewSectionValue,
+  PortfolioSectionValue,
   PressItemApiValue,
   ProductTestimonialSectionValue,
   ProductVideoSectionValue,
@@ -63,6 +67,8 @@ export const blockRegistry: BlockComponentMap = {
   hero: ({ value }) => <HeroBlockSection value={value as HeroSectionApiValue} />,
   intro: ({ value }) => <IntroductionNoteSection {...(value as IntroductionSectionValue)} />,
   card_section: ({ value }) => <CardGridSection value={value as CardGridSectionValue} />,
+  portfolio_section: ({ value }) => <PortfolioSection value={value as PortfolioSectionValue} />,
+  innovations_section: ({ value }) => <InnovationsSection value={value as InnovationsSectionValue} />,
   stats: ({ value }) => <StatsGridSection {...(value as StatsGridSectionValue)} />,
   side_section: ({ value }) => <SideImageSection value={value as SideImageSectionValue} />,
   overview: ({ value }) => <OverviewSection {...(value as OverviewSectionValue)} />,

@@ -20,3 +20,5 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 
 WAGTAILADMIN_BASE_URL = os.environ.get("WAGTAILADMIN_BASE_URL", "https://cms.genextechnocrats.com")
+
+GELEARN_FRONTEND_URL = os.environ.get("GELEARN_FRONTEND_URL", "https://gelearn.genextechnocrats.com")

@@ -5,6 +5,7 @@ import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import type { TenderItem, SnippetListResponse } from '@/types/api'
@@ -75,18 +76,21 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
 
         <p className="text-base font-semibold text-[#0f172b]">{tender.value}</p>
 
-        {!isClosed ? (
-          <a
-            href={marketingPath('/contact')}
-            className="self-start flex items-center gap-2 text-base font-semibold text-primary hover:underline transition-colors pt-2"
-          >
-            Enquire <ArrowForwardIcon style={{ fontSize: 16 }} />
-          </a>
-        ) : (
-          <span className="self-start flex items-center gap-2 text-base font-semibold text-[#9ca3af] pt-2 cursor-not-allowed">
-            Closed
-          </span>
-        )}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          {!isClosed ? (
+            <a
+              href={marketingPath('/contact')}
+              className="flex items-center gap-2 text-base font-semibold text-primary hover:underline transition-colors"
+            >
+              Enquire <ArrowForwardIcon style={{ fontSize: 16 }} />
+            </a>
+          ) : (
+            <span className="flex items-center gap-2 text-base font-semibold text-[#9ca3af] cursor-not-allowed">
+              Closed
+            </span>
+          )}
+          <SaveButton contentType="tender" objectId={tender.id} />
+        </div>
       </div>
     </motion.div>
   )
