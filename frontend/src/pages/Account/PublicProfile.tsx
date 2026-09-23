@@ -373,7 +373,11 @@ export default function PublicProfile() {
                   <p className="text-sm font-extrabold text-text-primary mb-3">Published Videos</p>
                   <div className="flex flex-col gap-2.5">
                     {videos.map(video => (
-                      <div key={video.id} className="border border-border rounded-2xl overflow-hidden flex items-center gap-3.5">
+                      <Link
+                        key={video.id}
+                        to={`/videos/${video.id}`}
+                        className="border border-border rounded-2xl overflow-hidden flex items-center gap-3.5 hover:border-primary hover:shadow-sm transition-all"
+                      >
                         <div className="w-32 sm:w-36 h-20 bg-linear-to-br from-rose-500 to-pink-600 flex items-center justify-center shrink-0 relative overflow-hidden">
                           {video.image_url && (
                             <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -388,7 +392,7 @@ export default function PublicProfile() {
                             {video.category}{video.duration ? ` · ${video.duration}` : ''} · Published {formatRelativeTime(video.date)}
                           </p>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>

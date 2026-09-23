@@ -3,12 +3,15 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
-import { PageHero } from '@/components/ui/PageHero'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
+import LockResetOutlinedIcon from '@mui/icons-material/LockResetOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
+import { AuthLayout } from './AuthLayout'
 
 const schema = z
   .object({
@@ -51,30 +54,58 @@ export default function ResetPasswordConfirm() {
   }
 
   return (
-    <main>
+    <>
       <PageMeta title="Reset Password — Genex GeLearn" description="Set a new password for your Genex GeLearn account." canonical="/reset-password" />
-      <PageHero label="Account" headline="Reset Password" subline="Choose a new password for your account." />
 
-      <section className="bg-white py-16 lg:py-24">
-        <div className="max-w-md mx-auto px-6">
-          {status === 'done' ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-border p-8 text-center space-y-3">
-              <p className="text-text-primary font-semibold">Password updated</p>
-              <p className="text-sm text-text-muted">You can now log in with your new password.</p>
-              <Button variant="primary" size="lg" className="w-full justify-center mt-2" onClick={() => navigate('/login', { replace: true })}>
-                Go to Log In
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6 bg-white rounded-2xl shadow-sm border border-border p-8">
-              <Input label="New Password" type="password" placeholder="At least 8 characters" error={errors.password1?.message} {...register('password1')} />
-              <Input label="Confirm New Password" type="password" placeholder="Re-enter password" error={errors.password2?.message} {...register('password2')} />
+      <AuthLayout
+        eyebrow="Account Recovery"
+        headline="Choose a new password."
+        description="Pick something strong and memorable — it's the key to your blogs, saved posts, and GeLearn activity."
+        panelExtra={
+          <div className="bg-white/6 border border-white/10 rounded-2xl px-4 py-4 flex items-start gap-3">
+            <LockResetOutlinedIcon sx={{ fontSize: 18 }} className="text-secondary shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-white/70">
+              Use at least 8 characters, and avoid reusing a password from another account.
+            </p>
+          </div>
+        }
+        footerIcon={<CheckCircleOutlineIcon sx={{ fontSize: 16 }} />}
+        footerText="Your new password takes effect immediately"
+      >
+        {status === 'done' ? (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="text-center">
+            <span className="inline-flex size-12 rounded-full bg-secondary/10 text-secondary items-center justify-center mb-4">
+              <CheckCircleOutlineIcon sx={{ fontSize: 24 }} />
+            </span>
+            <h2 className="text-2xl font-extrabold text-text-primary mb-1.5">Password updated</h2>
+            <p className="text-sm text-text-muted mb-6 leading-relaxed">You can now log in with your new password.</p>
+            <Button variant="primary" size="lg" className="w-full justify-center" onClick={() => navigate('/login', { replace: true })}>
+              Go to Log In
+            </Button>
+          </motion.div>
+        ) : (
+          <>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.02 }}>
+              <h2 className="text-2xl font-extrabold text-text-primary mb-1.5">Reset password</h2>
+              <p className="text-sm text-text-muted mb-7">Choose a new password for your account.</p>
+            </motion.div>
+
+            <motion.form
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.06 }}
+              className="space-y-4"
+            >
+              <PasswordInput label="New Password" placeholder="At least 8 characters" error={errors.password1?.message} {...register('password1')} />
+              <PasswordInput label="Confirm New Password" placeholder="Re-enter password" error={errors.password2?.message} {...register('password2')} />
 
               {status === 'error' && (
                 <p className="text-sm text-red-500">This reset link is invalid or has expired. Request a new one below.</p>
               )}
 
-              <Button type="submit" variant="primary" size="lg" disabled={status === 'loading'} className="w-full justify-center">
+              <Button type="submit" variant="primary" size="lg" disabled={status === 'loading'} className="w-full justify-center mt-2">
                 {status === 'loading' ? (
                   <>
                     <AutorenewIcon className="w-4 h-4 animate-spin mr-2" sx={{ fontSize: 16 }} />
@@ -84,14 +115,19 @@ export default function ResetPasswordConfirm() {
                   'Reset Password'
                 )}
               </Button>
+            </motion.form>
 
-              <p className="text-sm text-text-muted text-center">
-                <Link to="/forgot-password" className="text-primary font-semibold">Request a new link</Link>
-              </p>
-            </form>
-          )}
-        </div>
-      </section>
-    </main>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.1 }}
+              className="text-sm text-text-muted text-center mt-6"
+            >
+              <Link to="/forgot-password" className="text-primary font-bold">Request a new link</Link>
+            </motion.p>
+          </>
+        )}
+      </AuthLayout>
+    </>
   )
 }

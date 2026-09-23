@@ -19,6 +19,15 @@ export function isExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href)
 }
 
+/** YouTube/Vimeo watch URL → its embeddable iframe URL, or null if it's neither (e.g. a direct file/CDN link). */
+export function embedVideoUrl(url: string): string | null {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
+  const vimeo = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
+  return null
+}
+
 /** "3 days ago" style relative time for dashboard timestamps. */
 export function formatRelativeTime(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime()

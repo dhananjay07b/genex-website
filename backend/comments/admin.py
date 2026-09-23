@@ -12,8 +12,15 @@ class CommentAdmin(admin.ModelAdmin):
 
     @admin.action(description="Hide selected comments")
     def mark_hidden(self, request, queryset):
-        queryset.update(status="hidden")
+        # Iterated (not bulk .update()) so any future per-instance hook —
+        # e.g. a notification — actually fires for every row. Bulk .update()
+        # bypassed this exact way for UserBlogPost/UserVideoPost earlier.
+        for comment in queryset:
+            comment.status = "hidden"
+            comment.save(update_fields=["status"])
 
     @admin.action(description="Make selected comments visible")
     def mark_visible(self, request, queryset):
-        queryset.update(status="visible")
+        for comment in queryset:
+            comment.status = "visible"
+            comment.save(update_fields=["status"])

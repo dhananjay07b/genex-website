@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
+import { getMediaUrl } from '@/lib/utils'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +22,7 @@ interface Video {
   date: string
   duration: string
   excerpt: string
+  image_url: string | null
   video_url: string | null
   is_locked: boolean
 }
@@ -53,14 +56,28 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
       className="bg-white rounded-3xl shadow-[0px_4px_16px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col group"
     >
       {/* Thumbnail */}
-      <div
-        className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0"
-        style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
-      >
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
-        {/* Play button */}
-        {!video.is_locked && (
+      {video.is_locked ? (
+        <div
+          className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0"
+          style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
+        >
+          {video.image_url && (
+            <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <LockedOverlay />
+        </div>
+      ) : (
+        <Link
+          to={`/videos/${video.id}`}
+          className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0 block"
+          style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
+        >
+          {video.image_url && (
+            <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-300" />
+          {/* Play button */}
           <div className="absolute inset-0 flex items-center justify-center">
             <motion.div
               whileHover={{
@@ -68,15 +85,14 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
                 boxShadow: '0px 0px 0px 10px rgba(26,174,232,0.2), 0px 16px_48px_rgba(26,174,232,0.75)',
               }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="size-16 gradient-brand rounded-full flex items-center justify-center cursor-pointer"
+              className="size-16 gradient-brand rounded-full flex items-center justify-center"
               style={{ boxShadow: '0px 8px 28px rgba(26,174,232,0.55)' }}
             >
               <PlayArrowIcon style={{ fontSize: 30, color: '#fff', marginLeft: 3 }} />
             </motion.div>
           </div>
-        )}
-        {video.is_locked && <LockedOverlay />}
-      </div>
+        </Link>
+      )}
 
       {/* Body */}
       <div className="px-6 pt-5 pb-6 flex flex-col flex-1">
@@ -103,7 +119,15 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
           {video.excerpt}
         </p>
 
-        <SaveButton contentType="videoitem" objectId={video.id} className="self-start" />
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            to={`/videos/${video.id}`}
+            className="inline-flex items-center gap-2 text-sm font-bold text-black hover:text-primary transition-colors duration-200"
+          >
+            Watch Video <ArrowForwardIcon style={{ fontSize: 16 }} />
+          </Link>
+          <SaveButton contentType="videoitem" objectId={video.id} />
+        </div>
       </div>
     </motion.div>
   )

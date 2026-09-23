@@ -36,6 +36,7 @@ class UserBlogPostAdmin(admin.ModelAdmin):
                 date=timezone.now().date(),
                 excerpt=submission.excerpt,
                 body=[("rich_text", submission.body)],
+                image=submission.image,
             )
             submission.status = "published"
             submission.published_post = post
@@ -76,6 +77,7 @@ class UserVideoPostAdmin(admin.ModelAdmin):
                 duration="",
                 excerpt=submission.excerpt,
                 video_url=submission.video_url,
+                image=submission.thumbnail,
             )
             submission.status = "published"
             submission.published_video = video

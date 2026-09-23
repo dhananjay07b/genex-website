@@ -1,19 +1,11 @@
 import { motion } from 'framer-motion'
-import { getMediaUrl } from '@/lib/utils'
+import { getMediaUrl, embedVideoUrl } from '@/lib/utils'
 import type { ProductVideoSectionValue } from '@/types/api'
-
-function embedUrl(url: string): string | null {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
-  const vimeo = url.match(/vimeo\.com\/(\d+)/)
-  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
-  return null
-}
 
 export function ProductVideoSection({ heading, description, video_file, video_url, poster_image }: ProductVideoSectionValue) {
   const fileUrl = video_file?.url ? getMediaUrl(video_file.url) : null
   const posterUrl = poster_image?.url ? getMediaUrl(poster_image.url) : undefined
-  const embed = !fileUrl && video_url ? embedUrl(video_url) : null
+  const embed = !fileUrl && video_url ? embedVideoUrl(video_url) : null
   const directUrl = !fileUrl && video_url && !embed ? video_url : null
 
   if (!fileUrl && !directUrl && !embed) return null

@@ -19,6 +19,7 @@ const TechnologyDetail      = lazy(() => import('@/pages/GeLearn/sections/Techno
 const Blog                  = lazy(() => import('@/pages/GeLearn/sections/Blog'))
 const BlogPost              = lazy(() => import('@/pages/GeLearn/sections/BlogPost'))
 const VideoLibrary          = lazy(() => import('@/pages/GeLearn/sections/VideoLibrary'))
+const VideoDetail           = lazy(() => import('@/pages/GeLearn/sections/VideoDetail'))
 const Tenders               = lazy(() => import('@/pages/GeLearn/sections/Tenders'))
 const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
@@ -97,6 +98,7 @@ export const gelearnRouter = createBrowserRouter([
       { path: '/blog',                     element: s(<Blog />) },
       { path: '/blog/:id',                 element: s(<BlogPost />) },
       { path: '/videos',                   element: s(<VideoLibrary />) },
+      { path: '/videos/:id',               element: s(<VideoDetail />) },
       { path: '/tenders',                  element: s(<Tenders />) },
       { path: '/whitepapers',              element: s(<Whitepapers />) },
       { path: '/podcasts',                 element: s(<Podcasts />) },

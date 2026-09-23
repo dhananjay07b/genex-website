@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,6 +9,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined'
 import PhotoLibraryOutlinedIcon from '@mui/icons-material/PhotoLibraryOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
+import CloseIcon from '@mui/icons-material/Close'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -43,6 +45,9 @@ const COMING_SOON = [
 export default function SubmitPost() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [thumbnail, setThumbnail] = useState<File | null>(null)
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
+  const thumbnailInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -51,10 +56,23 @@ export default function SubmitPost() {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '' } })
 
+  function handleThumbnailChange(file: File | null) {
+    setThumbnail(file)
+    setThumbnailPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return file ? URL.createObjectURL(file) : null
+    })
+  }
+
   async function onSubmit(data: FormData) {
     setStatus('loading')
     try {
-      await apiFetch('/api/snippets/blog-submissions/', { method: 'POST', body: data })
+      const submission = await apiFetch<{ id: number }>('/api/snippets/blog-submissions/', { method: 'POST', body: data })
+      if (thumbnail) {
+        const formData = new FormData()
+        formData.append('file', thumbnail)
+        await apiFetch(`/api/snippets/blog-submissions/${submission.id}/image/`, { method: 'POST', body: formData })
+      }
       setStatus('success')
     } catch {
       setStatus('error')
@@ -128,6 +146,39 @@ export default function SubmitPost() {
               <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
                 <Input label="Topic" placeholder="Policy, Engineering, Field Notes…" error={errors.topic?.message} {...register('topic')} />
                 <Textarea label="Excerpt" placeholder="A short summary shown in listings" rows={4} error={errors.excerpt?.message} {...register('excerpt')} />
+
+                <div>
+                  <label className="text-sm font-semibold text-text-primary block mb-1.5">Cover image (optional)</label>
+                  {thumbnailPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-border h-32">
+                      <img src={thumbnailPreview} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleThumbnailChange(null)}
+                        aria-label="Remove cover image"
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/90 border border-border text-text-muted flex items-center justify-center hover:text-red-500 hover:border-red-500"
+                      >
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      className="w-full h-24 rounded-xl border border-dashed border-border text-text-muted flex flex-col items-center justify-center gap-1 hover:border-primary hover:text-primary transition-colors"
+                    >
+                      <ImageOutlinedIcon sx={{ fontSize: 20 }} />
+                      <span className="text-xs font-semibold">Upload cover image</span>
+                    </button>
+                  )}
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => handleThumbnailChange(e.target.files?.[0] ?? null)}
+                  />
+                </div>
               </div>
 
               <div className="border border-secondary/25 rounded-2xl p-5 bg-secondary/10">

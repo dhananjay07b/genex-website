@@ -4,13 +4,16 @@ Exposed at /api/snippets/<model>/ — separate from the Wagtail v2 router.
 All list views support ?limit= and ?offset= pagination.
 """
 
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework import mixins, permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
+from wagtail.images import get_image_model
 from wagtail.rich_text import expand_db_html
 
 from .models import (
@@ -24,6 +27,35 @@ from .models import (
     VideoItem,
     Whitepaper,
 )
+
+
+Image = get_image_model()
+
+
+def _upload_submission_image(request, obj, field_name):
+    """
+    Shared body for the per-submission image/thumbnail upload actions below —
+    same pattern as accounts/media_views.py's avatar/cover-photo upload,
+    scoped to one submission instead of the current user.
+    """
+    upload = request.FILES.get("file")
+    if not upload:
+        return Response({"detail": "No file uploaded."}, status=400)
+
+    image = Image(title=upload.name, file=upload, uploaded_by_user=request.user)
+    try:
+        image.full_clean()
+    except ValidationError as exc:
+        return Response({"detail": exc.messages}, status=400)
+    image.save()
+
+    old_image = getattr(obj, field_name)
+    setattr(obj, field_name, image)
+    obj.save(update_fields=[field_name])
+    if old_image:
+        old_image.delete()
+
+    return image
 
 
 class GenexPagination(LimitOffsetPagination):
@@ -173,10 +205,15 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
 
 
 class UserBlogPostSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = UserBlogPost
-        fields = ["id", "title", "excerpt", "body", "topic", "status", "rejection_reason", "created_at", "submitted_at"]
-        read_only_fields = ["id", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "body", "topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
+
+    def get_image_url(self, obj):
+        return obj.image.file.url if obj.image else None
 
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user
@@ -255,12 +292,25 @@ class UserBlogPostViewSet(
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    def image(self, request, pk=None):
+        submission = self.get_object()
+        result = _upload_submission_image(request, submission, "image")
+        if isinstance(result, Response):
+            return result
+        return Response(self.get_serializer(submission).data)
+
 
 class UserVideoPostSerializer(serializers.ModelSerializer):
+    thumbnail_url = serializers.SerializerMethodField()
+
     class Meta:
         model = UserVideoPost
-        fields = ["id", "title", "excerpt", "video_url", "topic", "status", "rejection_reason", "created_at", "submitted_at"]
-        read_only_fields = ["id", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "video_url", "topic", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
+
+    def get_thumbnail_url(self, obj):
+        return obj.thumbnail.file.url if obj.thumbnail else None
 
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user
@@ -292,6 +342,14 @@ class UserVideoPostViewSet(
     def mine(self, request):
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    def thumbnail(self, request, pk=None):
+        submission = self.get_object()
+        result = _upload_submission_image(request, submission, "thumbnail")
+        if isinstance(result, Response):
+            return result
+        return Response(self.get_serializer(submission).data)
 
 
 # ---------------------------------------------------------------------------

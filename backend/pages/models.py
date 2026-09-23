@@ -860,6 +860,10 @@ class UserBlogPost(models.Model):
     excerpt = models.TextField()
     body = models.TextField()
     topic = models.CharField(max_length=100, blank=True)
+    image = models.ForeignKey(
+        "wagtailimages.Image", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
     rejection_reason = models.TextField(blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -878,6 +882,7 @@ class UserBlogPost(models.Model):
         FieldPanel("title"),
         FieldPanel("topic"),
         FieldPanel("excerpt"),
+        FieldPanel("image"),
         FieldPanel("body"),
         MultiFieldPanel([
             FieldPanel("status"),
@@ -909,6 +914,10 @@ class UserVideoPost(models.Model):
     excerpt = models.TextField()
     video_url = models.URLField(help_text="YouTube/Vimeo/CDN link — matches VideoItem.video_url")
     topic = models.CharField(max_length=100, blank=True)
+    thumbnail = models.ForeignKey(
+        "wagtailimages.Image", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
     rejection_reason = models.TextField(blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -928,6 +937,7 @@ class UserVideoPost(models.Model):
         FieldPanel("topic"),
         FieldPanel("excerpt"),
         FieldPanel("video_url"),
+        FieldPanel("thumbnail"),
         MultiFieldPanel([
             FieldPanel("status"),
             FieldPanel("rejection_reason"),
