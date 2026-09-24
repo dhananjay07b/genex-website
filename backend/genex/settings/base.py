@@ -140,8 +140,12 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
         "registration": "5/hour",
-        "dj_rest_auth": "10/hour",
-        "dj_rest_auth_login_failed": "5/hour",
+        # None (not removed) — dj-rest-auth's Login/Logout/PasswordChange/
+        # PasswordReset views all hardcode throttle_scope="dj_rest_auth", so
+        # the scope must stay registered; a missing key raises
+        # ImproperlyConfigured, but an explicit None rate disables the
+        # throttle cleanly (DRF's documented way to opt a scope out).
+        "dj_rest_auth": None,
         "comment-create": "20/hour",
         "blog-submission": "5/day",
         "video-submission": "5/day",

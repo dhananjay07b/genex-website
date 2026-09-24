@@ -46,6 +46,14 @@ class User(AbstractUser):
     )
     display_name = models.CharField(max_length=150, blank=True)
     bio = models.TextField(blank=True)
+    company = models.CharField(max_length=150, blank=True)
+    role_title = models.CharField(max_length=150, blank=True, help_text="Job title/role at their company, e.g. 'Deputy GM, Grid Operations'")
+    years_experience = models.PositiveSmallIntegerField(null=True, blank=True)
+    linkedin_url = models.URLField(blank=True)
+    expertise = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="expert_users",
+        help_text="Up to 3 — shown on the public profile and author cards.",
+    )
     avatar = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",

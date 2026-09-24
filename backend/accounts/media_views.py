@@ -40,6 +40,14 @@ class _UserImageUploadView(APIView):
 
         return Response(UserSerializer(request.user).data)
 
+    def delete(self, request):
+        old_image = getattr(request.user, self.user_field_name)
+        if old_image:
+            setattr(request.user, self.user_field_name, None)
+            request.user.save(update_fields=[self.user_field_name])
+            old_image.delete()
+        return Response(UserSerializer(request.user).data)
+
 
 class AvatarUploadView(_UserImageUploadView):
     user_field_name = "avatar"

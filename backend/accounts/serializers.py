@@ -3,6 +3,8 @@ from allauth.account.utils import setup_user_email, user_pk_to_url_str
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer
 from django.conf import settings
+from pages.api import TopicSerializer
+from pages.models import Topic
 from rest_framework import serializers
 
 from .models import MembershipTier, User
@@ -18,10 +20,14 @@ class UserSerializer(serializers.ModelSerializer):
     membership_tier = MembershipTierSerializer(read_only=True)
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
+    expertise = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "display_name", "bio", "membership_tier", "avatar_url", "cover_photo_url"]
+        fields = [
+            "id", "username", "email", "display_name", "bio", "membership_tier", "avatar_url", "cover_photo_url",
+            "company", "role_title", "years_experience", "linkedin_url", "expertise",
+        ]
         read_only_fields = ["id", "email", "membership_tier", "avatar_url", "cover_photo_url"]
 
     def get_avatar_url(self, obj):
@@ -29,6 +35,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_cover_photo_url(self, obj):
         return obj.cover_photo.file.url if obj.cover_photo else None
+
+    def validate_expertise(self, value):
+        if len(value) > 3:
+            raise serializers.ValidationError("Select at most 3 areas of expertise.")
+        return value
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -56,6 +67,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
     membership_tier = MembershipTierSerializer(read_only=True)
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
+    expertise = TopicSerializer(many=True, read_only=True)
     published_blog_count = serializers.SerializerMethodField()
     published_video_count = serializers.SerializerMethodField()
     podcast_appearance_count = serializers.SerializerMethodField()
@@ -67,6 +79,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "display_name", "bio", "avatar_url", "cover_photo_url",
             "membership_tier", "date_joined",
+            "company", "role_title", "years_experience", "linkedin_url", "expertise",
             "published_blog_count", "published_video_count", "podcast_appearance_count",
             "followers_count", "following_count",
         ]

@@ -22,6 +22,7 @@ from .models import (
     PodcastEpisode,
     TechArticle,
     Tender,
+    Topic,
     UserBlogPost,
     UserVideoPost,
     VideoItem,
@@ -148,6 +149,36 @@ class WhitepaperSerializer(serializers.ModelSerializer):
         return obj.document.url if obj.document else None
 
 
+class AuthorSerializerMixin:
+    """
+    Resolves the real submitter behind a published BlogPost/VideoItem via the
+    reverse `submission_source` OneToOne (set by approve_and_publish) — falls
+    back to None (frontend shows the generic editorial byline) for content
+    created directly in Wagtail with no submission behind it.
+    """
+    def get_author(self, obj):
+        submission = getattr(obj, "submission_source", None)
+        if submission is None or submission.author is None:
+            return None
+        author = submission.author
+        return {
+            "username": author.username,
+            "display_name": author.display_name,
+            "avatar_url": author.avatar.file.url if author.avatar else None,
+            "company": author.company,
+            "role_title": author.role_title,
+            "years_experience": author.years_experience,
+            "bio": author.bio,
+            "expertise": [{"id": t.id, "name": t.name, "slug": t.slug} for t in author.expertise.all()[:3]],
+        }
+
+
+class TopicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Topic
+        fields = ["id", "name", "slug"]
+
+
 class GatedContentSerializerMixin:
     """
     Never trust the frontend alone: the lock state and the actual media URL
@@ -166,26 +197,29 @@ class GatedContentSerializerMixin:
         return self._is_locked(obj)
 
 
-class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
+class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
 
     class Meta:
         model = VideoItem
-        fields = ["id", "title", "category", "category_color", "category_text_color", "date", "duration", "excerpt", "image_url", "video_url", "is_locked"]
+        fields = ["id", "title", "category", "date", "duration", "excerpt", "image_url", "video_url", "is_locked", "author"]
 
     def get_video_url(self, obj):
         return None if self._is_locked(obj) else obj.video_url
 
 
-class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, serializers.ModelSerializer):
+class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     body = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+    topics = TopicSerializer(many=True, read_only=True)
 
     class Meta:
         model = BlogPost
-        fields = ["id", "title", "topic", "date", "excerpt", "image_url", "body"]
+        fields = ["id", "title", "topic", "topics", "date", "excerpt", "image_url", "body", "author"]
 
     def get_body(self, obj):
         return self._stream_api_representation(obj, "body")
@@ -195,31 +229,70 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
     is_locked = serializers.SerializerMethodField()
     audio_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    guest_account = serializers.SerializerMethodField()
 
     class Meta:
         model = PodcastEpisode
-        fields = ["id", "title", "category", "category_bg", "category_text", "date", "duration", "description", "guest", "guest_role", "image_url", "audio_url", "is_locked"]
+        fields = [
+            "id", "title", "category", "date", "duration", "description", "guest", "guest_role",
+            "image_url", "audio_url", "is_locked", "guest_account",
+        ]
 
     def get_audio_url(self, obj):
         return None if self._is_locked(obj) else obj.audio_url
 
+    def get_guest_account(self, obj):
+        if not obj.guest_user_id:
+            return None
+        guest = obj.guest_user
+        return {
+            "username": guest.username,
+            "display_name": guest.display_name,
+            "avatar_url": guest.avatar.file.url if guest.avatar else None,
+            "company": guest.company,
+            "role_title": guest.role_title,
+            "years_experience": guest.years_experience,
+            "bio": guest.bio,
+            "expertise": [{"id": t.id, "name": t.name, "slug": t.slug} for t in guest.expertise.all()[:3]],
+        }
+
 
 class UserBlogPostSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    topics = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
 
     class Meta:
         model = UserBlogPost
-        fields = ["id", "title", "excerpt", "body", "topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
         read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_image_url(self, obj):
         return obj.image.file.url if obj.image else None
 
+    def validate_topics(self, value):
+        if len(value) > 3:
+            raise serializers.ValidationError("Select at most 3 topics.")
+        return value
+
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user
-        validated_data["status"] = "pending"
+        requested_status = self.initial_data.get("status")
+        validated_data["status"] = requested_status if requested_status in ("draft", "pending") else "pending"
         validated_data["submitted_at"] = timezone.now()
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if instance.status == "published":
+            validated_data["status"] = "pending"
+            validated_data["reviewed_at"] = None
+            validated_data["reviewed_by"] = None
+            validated_data["rejection_reason"] = ""
+        else:
+            requested_status = self.initial_data.get("status")
+            if requested_status in ("draft", "pending"):
+                validated_data["status"] = requested_status
+        validated_data["submitted_at"] = timezone.now()
+        return super().update(instance, validated_data)
 
 
 # ---------------------------------------------------------------------------
@@ -257,9 +330,21 @@ class VideoItemViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class BlogPostViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = BlogPost.objects.all().order_by("-date")
     serializer_class = BlogPostSerializer
     pagination_class = GenexPagination
+
+    def get_queryset(self):
+        queryset = BlogPost.objects.all().order_by("-date")
+        topic_slug = self.request.query_params.get("topic")
+        if topic_slug:
+            queryset = queryset.filter(topics__slug=topic_slug)
+        return queryset
+
+
+class TopicViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Topic.objects.all().order_by("name")
+    serializer_class = TopicSerializer
+    pagination_class = None
 
 
 class PodcastEpisodeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -274,7 +359,7 @@ class BlogSubmissionThrottle(ScopedRateThrottle):
 
 class UserBlogPostViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin, viewsets.GenericViewSet,
+    mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserBlogPostSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -306,7 +391,7 @@ class UserVideoPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserVideoPost
-        fields = ["id", "title", "excerpt", "video_url", "topic", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "video_url", "topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_thumbnail_url(self, obj):
@@ -314,9 +399,23 @@ class UserVideoPostSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user
-        validated_data["status"] = "pending"
+        requested_status = self.initial_data.get("status")
+        validated_data["status"] = requested_status if requested_status in ("draft", "pending") else "pending"
         validated_data["submitted_at"] = timezone.now()
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if instance.status == "published":
+            validated_data["status"] = "pending"
+            validated_data["reviewed_at"] = None
+            validated_data["reviewed_by"] = None
+            validated_data["rejection_reason"] = ""
+        else:
+            requested_status = self.initial_data.get("status")
+            if requested_status in ("draft", "pending"):
+                validated_data["status"] = requested_status
+        validated_data["submitted_at"] = timezone.now()
+        return super().update(instance, validated_data)
 
 
 class VideoSubmissionThrottle(ScopedRateThrottle):
@@ -325,7 +424,7 @@ class VideoSubmissionThrottle(ScopedRateThrottle):
 
 class UserVideoPostViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin, viewsets.GenericViewSet,
+    mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserVideoPostSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -363,6 +462,7 @@ router.register(r"tenders", TenderViewSet, basename="tender")
 router.register(r"whitepapers", WhitepaperViewSet, basename="whitepaper")
 router.register(r"videos", VideoItemViewSet, basename="videoitem")
 router.register(r"blog-posts", BlogPostViewSet, basename="blogpost")
+router.register(r"topics", TopicViewSet, basename="topic")
 router.register(r"podcasts", PodcastEpisodeViewSet, basename="podcast")
 router.register(r"blog-submissions", UserBlogPostViewSet, basename="userblogpost")
 router.register(r"video-submissions", UserVideoPostViewSet, basename="uservideopost")

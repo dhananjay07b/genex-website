@@ -1,5 +1,7 @@
 import json
+from django import forms
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from taggit.managers import TaggableManager
@@ -640,8 +642,6 @@ class Whitepaper(models.Model):
 class VideoItem(models.Model):
     title               = models.CharField(max_length=255)
     category            = models.CharField(max_length=100)
-    category_color      = models.CharField(max_length=20, help_text="Hex bg")
-    category_text_color = models.CharField(max_length=20, help_text="Hex text")
     date                = models.DateField()
     duration            = models.CharField(max_length=20, help_text="e.g. '14:32 min'")
     excerpt             = models.TextField()
@@ -660,8 +660,6 @@ class VideoItem(models.Model):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("category"),
-            FieldPanel("category_color"),
-            FieldPanel("category_text_color"),
             FieldPanel("date"),
             FieldPanel("duration"),
         ], heading="Metadata"),
@@ -680,9 +678,30 @@ class VideoItem(models.Model):
 
 
 @register_snippet
+class Topic(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=110, unique=True, blank=True)
+
+    panels = [FieldPanel("name")]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Topic"
+        ordering = ["name"]
+
+
+@register_snippet
 class BlogPost(models.Model):
     title   = models.CharField(max_length=255)
-    topic   = models.CharField(max_length=100, help_text="e.g. 'Policy', 'Engineering'")
+    topic   = models.CharField(max_length=100, help_text="e.g. 'Policy', 'Engineering' — legacy, superseded by Topics below")
+    topics  = models.ManyToManyField(Topic, blank=True, related_name="posts")
     date    = models.DateField()
     excerpt = models.TextField()
     image   = models.ForeignKey(
@@ -701,6 +720,11 @@ class BlogPost(models.Model):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("topic"),
+            # Wagtail's default widget for a ManyToManyField is a plain HTML
+            # <select multiple> — picking more than one requires ctrl/cmd-
+            # click, which reads as "only one topic sticks" to anyone who
+            # just clicks normally. Checkboxes make multi-select obvious.
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
         ], heading="Metadata"),
         FieldPanel("image"),
@@ -720,8 +744,6 @@ class BlogPost(models.Model):
 class PodcastEpisode(models.Model):
     title         = models.CharField(max_length=255)
     category      = models.CharField(max_length=100)
-    category_bg   = models.CharField(max_length=20, help_text="Hex bg")
-    category_text = models.CharField(max_length=20, help_text="Hex text")
     date          = models.DateField()
     duration      = models.CharField(max_length=20, help_text="e.g. '48 min'")
     description   = models.TextField()
@@ -747,8 +769,6 @@ class PodcastEpisode(models.Model):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("category"),
-            FieldPanel("category_bg"),
-            FieldPanel("category_text"),
             FieldPanel("date"),
             FieldPanel("duration"),
         ], heading="Metadata"),
@@ -844,8 +864,14 @@ class JobApplication(models.Model):
 # editorial team retains full control over what's publicly visible.
 # ---------------------------------------------------------------------------
 
-@register_snippet
 class UserBlogPost(models.Model):
+    # Deliberately NOT @register_snippet — that gave it a second, unprotected
+    # edit form in the Wagtail admin (/cms/snippets/...) where a staffer
+    # could edit topics/title/body/etc. directly, silently diverging an
+    # already-published submission from its live BlogPost without ever
+    # going through approve_and_publish's sync (or Django admin's
+    # readonly_fields, which only apply to /admin/, not this one).
+    # Reviewers use the Django admin below; authors use the DRF API.
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("pending", "Pending Review"),
@@ -859,7 +885,9 @@ class UserBlogPost(models.Model):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     body = models.TextField()
-    topic = models.CharField(max_length=100, blank=True)
+    topic = models.CharField(max_length=100, blank=True, help_text="Legacy — superseded by Topics below")
+    topics = models.ManyToManyField(Topic, blank=True, related_name="submissions")
+    other_topic = models.CharField(max_length=100, blank=True, help_text="Author-suggested new topic, reviewed alongside the rest of the submission")
     image = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -880,7 +908,8 @@ class UserBlogPost(models.Model):
 
     panels = [
         FieldPanel("title"),
-        FieldPanel("topic"),
+        FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
+        FieldPanel("other_topic"),
         FieldPanel("excerpt"),
         FieldPanel("image"),
         FieldPanel("body"),
@@ -898,8 +927,8 @@ class UserBlogPost(models.Model):
         ordering = ["-created_at"]
 
 
-@register_snippet
 class UserVideoPost(models.Model):
+    # Not @register_snippet — same reasoning as UserBlogPost above.
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("pending", "Pending Review"),
@@ -914,6 +943,7 @@ class UserVideoPost(models.Model):
     excerpt = models.TextField()
     video_url = models.URLField(help_text="YouTube/Vimeo/CDN link — matches VideoItem.video_url")
     topic = models.CharField(max_length=100, blank=True)
+    duration = models.CharField(max_length=20, blank=True, help_text="e.g. '14:32 min' — matches VideoItem.duration")
     thumbnail = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -937,6 +967,7 @@ class UserVideoPost(models.Model):
         FieldPanel("topic"),
         FieldPanel("excerpt"),
         FieldPanel("video_url"),
+        FieldPanel("duration"),
         FieldPanel("thumbnail"),
         MultiFieldPanel([
             FieldPanel("status"),
