@@ -28,6 +28,15 @@ export function embedVideoUrl(url: string): string | null {
   return null
 }
 
+/** "23 Sept, 2026" style display date for detail pages. */
+export function formatDisplayDate(isoDate: string): string {
+  const parts = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(new Date(isoDate))
+  const day = parts.find(p => p.type === 'day')?.value ?? ''
+  const month = parts.find(p => p.type === 'month')?.value ?? ''
+  const year = parts.find(p => p.type === 'year')?.value ?? ''
+  return `${day} ${month}, ${year}`
+}
+
 /** "3 days ago" style relative time for dashboard timestamps. */
 export function formatRelativeTime(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime()

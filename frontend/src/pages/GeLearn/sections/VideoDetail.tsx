@@ -9,16 +9,23 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { CommentSection } from '@/components/gelearn/CommentSection'
+import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
+import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
-import { getMediaUrl, embedVideoUrl } from '@/lib/utils'
+import { getMediaUrl, embedVideoUrl, formatDisplayDate } from '@/lib/utils'
+import { useHoverIntent } from '@/lib/useHoverIntent'
 import type { VideoItem, SnippetListResponse } from '@/types/api'
+
+const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 export default function VideoDetail() {
   const { id } = useParams<{ id: string }>()
   const [video, setVideo] = useState<VideoItem | null | undefined>(undefined)
   const [allVideos, setAllVideos] = useState<VideoItem[]>([])
+  const [authorPanelUser, setAuthorPanelUser] = useState<string | null>(null)
+  const authorHover = useHoverIntent()
 
   useEffect(() => {
     if (!id) { setVideo(null); return }
@@ -69,13 +76,10 @@ export default function VideoDetail() {
             </motion.h1>
 
             <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8">
-              <span
-                className="px-3 py-1 rounded-full text-xs font-bold"
-                style={{ background: video.category_color, color: video.category_text_color }}
-              >
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary text-white">
                 {video.category}
               </span>
-              <span className="text-sm text-[#62748e]">{video.date}</span>
+              <span className="text-sm text-[#62748e]">{formatDisplayDate(video.date)}</span>
               {video.duration && (
                 <span className="flex items-center gap-1.5 text-sm text-[#62748e]">
                   <AccessTimeOutlinedIcon style={{ fontSize: 14 }} />
@@ -84,9 +88,43 @@ export default function VideoDetail() {
               )}
             </div>
 
+            {video.author ? (
+              <button
+                type="button"
+                onClick={() => setAuthorPanelUser(video.author!.username)}
+                className="flex items-center gap-3 mb-8 group"
+              >
+                <span className="size-9 rounded-full bg-primary text-white text-xs font-extrabold flex items-center justify-center overflow-hidden shrink-0">
+                  {video.author.avatar_url ? (
+                    <img src={getMediaUrl(video.author.avatar_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    video.author.display_name.slice(0, 2).toUpperCase()
+                  )}
+                </span>
+                <span className="text-sm text-[#45556c]">
+                  Posted by{' '}
+                  <b
+                    className="relative text-[#0f172a] group-hover:text-primary transition-colors"
+                    onMouseEnter={authorHover.onMouseEnter}
+                    onMouseLeave={authorHover.onMouseLeave}
+                  >
+                    {video.author.display_name}
+                    <MiniProfileCard author={video.author} visible={authorHover.active} />
+                  </b>
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 mb-8">
+                <span className="size-9 rounded-full bg-[#0f2930] text-white text-xs font-extrabold flex items-center justify-center shrink-0">G</span>
+                <span className="text-sm text-[#45556c]">
+                  Posted by <b className="text-[#0f172a]">Genex Engineering</b>
+                </span>
+              </div>
+            )}
+
             <div
               className="relative rounded-3xl overflow-hidden aspect-video mb-8 shadow-sm bg-[#0f2930]"
-              style={!video.image_url ? { background: `linear-gradient(135deg, ${video.category_color}, #0f2930)` } : undefined}
+              style={!video.image_url ? { background: PLACEHOLDER_GRADIENT } : undefined}
             >
               {video.is_locked ? (
                 <>
@@ -140,7 +178,7 @@ export default function VideoDetail() {
                   <Link key={v.id} to={`/videos/${v.id}`} className="flex items-center gap-4 group">
                     <div
                       className="size-18 rounded-3xl overflow-hidden shrink-0 flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, ${v.category_color}, #f3f4f6)` }}
+                      style={{ background: PLACEHOLDER_GRADIENT }}
                     >
                       {v.image_url ? (
                         <img src={getMediaUrl(v.image_url)} alt="" className="w-full h-full object-cover" />
@@ -152,7 +190,7 @@ export default function VideoDetail() {
                       <p className="text-sm font-bold text-[#0f172a] leading-snug group-hover:text-primary transition-colors line-clamp-2">
                         {v.title}
                       </p>
-                      <p className="text-xs text-[#90a1b9] mt-1">{v.date}</p>
+                      <p className="text-xs text-[#90a1b9] mt-1">{formatDisplayDate(v.date)}</p>
                     </div>
                   </Link>
                 ))}
@@ -190,6 +228,8 @@ export default function VideoDetail() {
           </aside>
         </div>
       </section>
+
+      <AuthorPanel username={authorPanelUser} onClose={() => setAuthorPanelUser(null)} />
     </main>
   )
 }

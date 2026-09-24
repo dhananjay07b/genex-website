@@ -11,6 +11,7 @@ import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
+import { formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudyItem, CaseStudySectionValue, SnippetListResponse } from '@/types/api'
@@ -58,7 +59,7 @@ function MiniCard({ cs }: { cs: CaseStudyItem }) {
         <div className="border-t border-[#e8e8e8] pt-6 flex items-end justify-between">
           <div className="flex flex-col gap-1">
             <p className="text-base font-bold text-black">{cs.category}</p>
-            <p className="text-sm text-[#949494]">{cs.date}</p>
+            <p className="text-sm text-[#949494]">{formatDisplayDate(cs.date)}</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
@@ -161,7 +162,7 @@ export default function CaseStudyDetail() {
               {[
                 { Icon: PersonOutlinedIcon,       label: 'Client',         value: 'Confidential' },
                 { Icon: BuildOutlinedIcon,         label: 'Services',       value: cs.category },
-                { Icon: CalendarTodayOutlinedIcon, label: 'Completed',      value: cs.date },
+                { Icon: CalendarTodayOutlinedIcon, label: 'Completed',      value: formatDisplayDate(cs.date) },
                 { Icon: LocationOnOutlinedIcon,    label: 'Location',       value: 'India' },
               ].map(({ Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3">

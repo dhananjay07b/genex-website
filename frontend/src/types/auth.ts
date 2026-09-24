@@ -1,3 +1,5 @@
+import type { Topic } from './api'
+
 export interface MembershipTier {
   slug: string
   name: string
@@ -13,6 +15,11 @@ export interface User {
   membership_tier: MembershipTier
   avatar_url: string | null
   cover_photo_url: string | null
+  company: string
+  role_title: string
+  years_experience: number | null
+  linkedin_url: string
+  expertise: number[]
 }
 
 export interface PublicUser {
@@ -32,6 +39,11 @@ export interface PublicProfile {
   cover_photo_url: string | null
   membership_tier: MembershipTier
   date_joined: string
+  company: string
+  role_title: string
+  years_experience: number | null
+  linkedin_url: string
+  expertise: Topic[]
   published_blog_count: number
   published_video_count: number
   podcast_appearance_count: number
@@ -66,7 +78,9 @@ export interface UserBlogPost {
   title: string
   excerpt: string
   body: string
-  topic: string
+  topics: number[]
+  other_topic: string
+  image_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
   rejection_reason: string
   created_at: string
@@ -79,6 +93,8 @@ export interface UserVideoPost {
   excerpt: string
   video_url: string
   topic: string
+  duration: string
+  thumbnail_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
   rejection_reason: string
   created_at: string

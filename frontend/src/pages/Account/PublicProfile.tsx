@@ -187,9 +187,9 @@ export default function PublicProfile() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-5 -mt-6 sm:-mt-8 pb-6 border-b border-border">
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0">
-            <span className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-white bg-primary text-white text-2xl font-extrabold flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-5 -mt-10 sm:-mt-12 pb-6 border-b border-border">
+          <div className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0">
+            <span className="w-32 h-32 sm:w-36 sm:h-36 rounded-full ring-4 ring-white bg-primary text-white text-3xl font-extrabold flex items-center justify-center overflow-hidden">
               {profile.avatar_url ? (
                 <img src={getMediaUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -203,9 +203,9 @@ export default function PublicProfile() {
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={uploadingAvatar}
                   aria-label={uploadingAvatar ? 'Uploading photo…' : 'Change photo'}
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border border-border text-primary flex items-center justify-center shadow-sm hover:border-primary transition-colors disabled:opacity-60"
+                  className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-white border border-border text-primary flex items-center justify-center shadow-sm hover:border-primary transition-colors disabled:opacity-60"
                 >
-                  <PhotoCameraOutlinedIcon sx={{ fontSize: 14 }} />
+                  <PhotoCameraOutlinedIcon sx={{ fontSize: 15 }} />
                 </button>
                 <input
                   ref={avatarInputRef}

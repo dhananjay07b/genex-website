@@ -9,7 +9,9 @@ import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
-import { getMediaUrl } from '@/lib/utils'
+import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+
+const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #f3f4f6)'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -17,8 +19,6 @@ interface Video {
   id: number
   title: string
   category: string
-  category_color: string
-  category_text_color: string
   date: string
   duration: string
   excerpt: string
@@ -59,7 +59,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
       {video.is_locked ? (
         <div
           className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0"
-          style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
+          style={{ background: PLACEHOLDER_GRADIENT }}
         >
           {video.image_url && (
             <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -70,7 +70,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
         <Link
           to={`/videos/${video.id}`}
           className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0 block"
-          style={{ background: `linear-gradient(135deg, ${video.category_color}, #f3f4f6)` }}
+          style={{ background: PLACEHOLDER_GRADIENT }}
         >
           {video.image_url && (
             <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -98,14 +98,11 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
       <div className="px-6 pt-5 pb-6 flex flex-col flex-1">
         {/* Category + meta */}
         <div className="flex items-center gap-4 mb-4">
-          <span
-            className="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap"
-            style={{ background: video.category_color, color: video.category_text_color }}
-          >
+          <span className="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap bg-primary text-white">
             {video.category}
           </span>
           <span className="text-base font-medium text-[#62748e] whitespace-nowrap">
-            {video.date}&nbsp;&nbsp;|&nbsp;&nbsp;{video.duration}
+            {formatDisplayDate(video.date)}&nbsp;&nbsp;|&nbsp;&nbsp;{video.duration}
           </span>
         </div>
 

@@ -16,11 +16,17 @@ import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
-import type { BlogPostBodyImageValue, BlogPostItem, SnippetListResponse } from '@/types/api'
+import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+import type { BlogPostBodyImageValue, BlogPostItem, SnippetListResponse, Topic } from '@/types/api'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 import { SaveButton } from '@/components/engagement/SaveButton'
+import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
+import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
+import { TagBlogsModal } from '@/components/gelearn/TagBlogsModal'
+import { useHoverIntent } from '@/lib/useHoverIntent'
 
 const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
+const TAGS_PAGE_SIZE = 10
 
 function RichTextParagraph({ value }: { value: unknown }) {
   return (
@@ -50,12 +56,28 @@ const blogBlockMap: BlockComponentMap = {
   image: InlineImage,
 }
 
+function shareUrl(kind: 'twitter' | 'linkedin' | 'facebook' | 'whatsapp', pageUrl: string, title: string) {
+  const encodedUrl = encodeURIComponent(pageUrl)
+  const encodedTitle = encodeURIComponent(title)
+  switch (kind) {
+    case 'twitter': return `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`
+    case 'linkedin': return `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
+    case 'facebook': return `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+    case 'whatsapp': return `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`
+  }
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BlogPost() {
   const { id } = useParams<{ id: string }>()
   const [post, setPost] = useState<BlogPostItem | null | undefined>(undefined)
   const [allPosts, setAllPosts] = useState<BlogPostItem[]>([])
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [visibleTagCount, setVisibleTagCount] = useState(TAGS_PAGE_SIZE)
+  const [authorPanelUser, setAuthorPanelUser] = useState<string | null>(null)
+  const authorHover = useHoverIntent()
+  const [activeTag, setActiveTag] = useState<Topic | null>(null)
 
   useEffect(() => {
     if (!id) { setPost(null); return }
@@ -65,18 +87,23 @@ export default function BlogPost() {
     apiFetch<SnippetListResponse<BlogPostItem>>('/api/snippets/blog-posts/?limit=50')
       .then(res => setAllPosts(res.results))
       .catch(() => {})
+    apiFetch<Topic[]>('/api/snippets/topics/')
+      .then(setTopics)
+      .catch(() => {})
   }, [id])
 
   if (post === undefined) return null
   if (post === null) return <Navigate to="/blog" replace />
 
   const postIdx = allPosts.findIndex(p => p.id === post.id)
-  const heroImg = post.image_url ?? FALLBACK_IMAGE
+  const heroImg = post.image_url ? getMediaUrl(post.image_url) : FALLBACK_IMAGE
 
-  const prevPost = postIdx > 0 ? allPosts[postIdx - 1] : undefined
-  const nextPost = postIdx >= 0 && postIdx < allPosts.length - 1 ? allPosts[postIdx + 1] : undefined
+  // allPosts is ordered newest-first, so the previous array entry is the newer post.
+  const newerPost = postIdx > 0 ? allPosts[postIdx - 1] : undefined
+  const olderPost = postIdx >= 0 && postIdx < allPosts.length - 1 ? allPosts[postIdx + 1] : undefined
   const recentPosts = allPosts.filter(p => p.id !== post.id).slice(0, 3)
-  const tags = Array.from(new Set(allPosts.map(p => p.topic).filter(Boolean)))
+  const visibleTags = topics.slice(0, visibleTagCount)
+  const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
 
   return (
     <main>
@@ -109,24 +136,56 @@ export default function BlogPost() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' as const }}
-              className="text-5xl font-bold text-[#0f172a] leading-tight mb-8"
+              className="text-5xl font-bold text-[#0f172a] leading-tight mb-6"
             >
               {post.title}
             </motion.h1>
 
-            {/* Author / date meta */}
-            <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-[#e2e8f0] shrink-0 flex items-center justify-center text-sm font-bold text-[#62748e]">
-                  G
-                </div>
-                <span className="text-sm text-[#62748e]">
-                  Post by <span className="font-bold text-[#0f172a]">Genex Engineering</span>
-                </span>
+            {post.topics.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {post.topics.map(t => (
+                  <span key={t.id} className="px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-full">
+                    {t.name}
+                  </span>
+                ))}
               </div>
+            )}
+
+            {/* Author / date meta */}
+            <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8 flex-wrap">
+              {post.author ? (
+                <button type="button" onClick={() => setAuthorPanelUser(post.author!.username)} className="flex items-center gap-3 group">
+                  <span className="size-10 rounded-full bg-primary text-white text-sm font-bold shrink-0 flex items-center justify-center overflow-hidden">
+                    {post.author.avatar_url ? (
+                      <img src={getMediaUrl(post.author.avatar_url)} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      post.author.display_name.slice(0, 2).toUpperCase()
+                    )}
+                  </span>
+                  <span className="text-sm text-[#62748e]">
+                    Post by{' '}
+                    <span
+                      className="relative font-bold text-[#0f172a] group-hover:text-primary transition-colors"
+                      onMouseEnter={authorHover.onMouseEnter}
+                      onMouseLeave={authorHover.onMouseLeave}
+                    >
+                      {post.author.display_name}
+                      <MiniProfileCard author={post.author} visible={authorHover.active} />
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-[#e2e8f0] shrink-0 flex items-center justify-center text-sm font-bold text-[#62748e]">
+                    G
+                  </div>
+                  <span className="text-sm text-[#62748e]">
+                    Post by <span className="font-bold text-[#0f172a]">Genex Engineering</span>
+                  </span>
+                </div>
+              )}
               <div className="w-px h-4 bg-[#cad5e2]" />
-              <span className="text-sm text-[#62748e]">{post.date}</span>
-              <span className="ml-auto px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-full">{post.topic}</span>
+              <span className="text-sm text-[#62748e]">{formatDisplayDate(post.date)}</span>
             </div>
 
             {/* Hero image */}
@@ -140,51 +199,54 @@ export default function BlogPost() {
             </div>
 
             {/* ── SHARE + PREV/NEXT ───────────────────────────────────────── */}
-            <div className="border-t border-b border-[#e2e8f0] py-6 flex items-center justify-between gap-6">
+            <div className="border-t border-b border-[#e2e8f0] py-6 flex items-center justify-between gap-6 flex-wrap">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-bold text-[#0f172a]">Share post:</span>
                 <div className="flex items-center gap-2">
                   {[
-                    { Icon: TwitterIcon,  label: 'Twitter' },
-                    { Icon: LinkedInIcon, label: 'LinkedIn' },
-                    { Icon: FacebookIcon, label: 'Facebook' },
-                    { Icon: WhatsAppIcon, label: 'WhatsApp' },
-                  ].map(({ Icon, label }) => (
-                    <button
+                    { Icon: TwitterIcon,  label: 'Twitter',  kind: 'twitter' as const },
+                    { Icon: LinkedInIcon, label: 'LinkedIn', kind: 'linkedin' as const },
+                    { Icon: FacebookIcon, label: 'Facebook', kind: 'facebook' as const },
+                    { Icon: WhatsAppIcon, label: 'WhatsApp', kind: 'whatsapp' as const },
+                  ].map(({ Icon, label, kind }) => (
+                    <a
                       key={label}
+                      href={shareUrl(kind, pageUrl, post.title)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       title={label}
                       className="size-10 rounded-full bg-[#f1f5f9] flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-colors duration-150"
                     >
                       <Icon style={{ fontSize: 16 }} />
-                    </button>
+                    </a>
                   ))}
                 </div>
                 <SaveButton contentType="blogpost" objectId={post.id} />
               </div>
 
               <div className="flex items-center gap-8">
-                {prevPost && (
+                {newerPost && (
                   <Link
-                    to={`/blog/${prevPost.id}`}
+                    to={`/blog/${newerPost.id}`}
                     className="flex items-center gap-3 group"
                   >
                     <div className="size-10 rounded-full border border-[#e2e8f0] flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-colors">
                       <ChevronLeftIcon style={{ fontSize: 18 }} />
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#62748e]">Older Post</p>
-                      <p className="text-sm font-bold text-[#0f172a] max-w-45 truncate">{prevPost.title}</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#62748e]">Newer Post</p>
+                      <p className="text-sm font-bold text-[#0f172a] max-w-45 truncate">{newerPost.title}</p>
                     </div>
                   </Link>
                 )}
-                {nextPost && (
+                {olderPost && (
                   <Link
-                    to={`/blog/${nextPost.id}`}
+                    to={`/blog/${olderPost.id}`}
                     className="flex items-center gap-3 group"
                   >
                     <div className="text-right">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#62748e]">Newer Post</p>
-                      <p className="text-sm font-bold text-[#0f172a] max-w-45 truncate">{nextPost.title}</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#62748e]">Older Post</p>
+                      <p className="text-sm font-bold text-[#0f172a] max-w-45 truncate">{olderPost.title}</p>
                     </div>
                     <div className="size-10 rounded-full border border-[#e2e8f0] flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-colors">
                       <ChevronRightIcon style={{ fontSize: 18 }} />
@@ -225,7 +287,7 @@ export default function BlogPost() {
                   >
                     <div className="size-18 rounded-3xl overflow-hidden shrink-0">
                       <img
-                        src={p.image_url ?? FALLBACK_IMAGE}
+                        src={p.image_url ? getMediaUrl(p.image_url) : FALLBACK_IMAGE}
                         alt={p.title}
                         className="w-full h-full object-cover opacity-80"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -235,7 +297,7 @@ export default function BlogPost() {
                       <p className="text-sm font-bold text-[#0f172a] leading-snug group-hover:text-primary transition-colors line-clamp-2">
                         {p.title}
                       </p>
-                      <p className="text-xs text-[#90a1b9] mt-1">{p.date}</p>
+                      <p className="text-xs text-[#90a1b9] mt-1">{formatDisplayDate(p.date)}</p>
                     </div>
                   </Link>
                 ))}
@@ -244,17 +306,30 @@ export default function BlogPost() {
 
             {/* Tags */}
             <div className="bg-[#fcfcfc] border border-[#f1f5f9] rounded-2xl p-8">
-              <h3 className="text-xl font-bold text-[#0f172a] mb-6">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="bg-white border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-medium text-[#62748e]"
-                  >
-                    {tag}
-                  </span>
-                ))}
+              <h3 className="text-xl font-bold text-[#0f172a] mb-6">Topics</h3>
+              <div className="max-h-80 overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-2">
+                  {visibleTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setActiveTag(tag)}
+                      className="bg-white border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-medium text-[#62748e] hover:border-primary hover:text-primary transition-colors"
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {visibleTagCount < topics.length && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleTagCount(c => c + TAGS_PAGE_SIZE)}
+                  className="mt-4 text-xs font-bold text-primary"
+                >
+                  See more
+                </button>
+              )}
             </div>
 
             {/* Contact card */}
@@ -290,6 +365,9 @@ export default function BlogPost() {
           </aside>
         </div>
       </section>
+
+      <AuthorPanel username={authorPanelUser} onClose={() => setAuthorPanelUser(null)} />
+      <TagBlogsModal topic={activeTag} onClose={() => setActiveTag(null)} />
     </main>
   )
 }

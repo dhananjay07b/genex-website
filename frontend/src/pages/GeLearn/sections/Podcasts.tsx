@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
+import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+
+const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -13,13 +18,12 @@ interface Episode {
   id: number
   title: string
   category: string
-  category_bg: string
-  category_text: string
   date: string
   duration: string
   description: string
   guest: string
   guest_role: string
+  image_url: string | null
   audio_url: string | null
   is_locked: boolean
 }
@@ -50,28 +54,40 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       whileInView="visible"
       viewport={{ once: true, margin: '-40px' as const }}
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
-      className="bg-white border border-[#e9e9e9] rounded-3xl p-8 flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/30 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 group cursor-pointer"
+      className="bg-white border border-[#e9e9e9] rounded-3xl p-8 flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/30 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 group"
     >
       {/* Category + date/duration */}
       <div className="flex items-center gap-3 mb-5">
-        <span
-          className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-          style={{ background: ep.category_bg, color: ep.category_text }}
-        >
+        <span className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-primary text-white">
           {ep.category}
         </span>
         <span className="text-xs font-medium text-[#62748e]">
-          {ep.date}&nbsp;&nbsp;|&nbsp;&nbsp;{ep.duration}
+          {formatDisplayDate(ep.date)}&nbsp;&nbsp;|&nbsp;&nbsp;{ep.duration}
         </span>
       </div>
 
       {/* Thumbnail */}
-      <div
-        className="w-full h-36 rounded-2xl overflow-hidden mb-5 shrink-0 relative"
-        style={{ background: `linear-gradient(135deg, ${ep.category_bg}, #c5bebe)` }}
-      >
-        {ep.is_locked && <LockedOverlay />}
-      </div>
+      {ep.is_locked ? (
+        <div
+          className="w-full h-36 rounded-2xl overflow-hidden mb-5 shrink-0 relative"
+          style={!ep.image_url ? { background: PLACEHOLDER_GRADIENT } : undefined}
+        >
+          {ep.image_url && (
+            <img src={getMediaUrl(ep.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <LockedOverlay />
+        </div>
+      ) : (
+        <Link
+          to={`/podcasts/${ep.id}`}
+          className="w-full h-36 rounded-2xl overflow-hidden mb-5 shrink-0 relative block"
+          style={!ep.image_url ? { background: PLACEHOLDER_GRADIENT } : undefined}
+        >
+          {ep.image_url && (
+            <img src={getMediaUrl(ep.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+        </Link>
+      )}
 
       {/* Title */}
       <h3 className="text-xl font-semibold text-black leading-7 mb-4 flex-1 group-hover:text-primary transition-colors duration-200">
@@ -84,12 +100,19 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       </p>
 
       {/* Guest */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-bold text-[#314158] truncate">{ep.guest}</span>
-          <span className="text-[#62748e] text-xs shrink-0">•</span>
-          <span className="text-xs font-medium text-[#62748e] truncate">{ep.guest_role}</span>
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm font-bold text-[#314158] truncate">{ep.guest}</span>
+        <span className="text-[#62748e] text-xs shrink-0">•</span>
+        <span className="text-xs font-medium text-[#62748e] truncate">{ep.guest_role}</span>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          to={`/podcasts/${ep.id}`}
+          className="inline-flex items-center gap-2 text-sm font-bold text-black hover:text-primary transition-colors duration-200"
+        >
+          Listen Now <ArrowForwardIcon style={{ fontSize: 16 }} />
+        </Link>
         <SaveButton contentType="podcastepisode" objectId={ep.id} className="h-8 px-2.5 shrink-0" />
       </div>
     </motion.div>

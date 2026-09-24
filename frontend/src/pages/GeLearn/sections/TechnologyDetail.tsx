@@ -11,6 +11,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
+import { formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudySectionValue, TechArticleItem, SnippetListResponse } from '@/types/api'
@@ -179,7 +180,7 @@ export default function TechnologyDetail() {
             </span>
             <span className="flex items-center gap-1.5">
               <CalendarTodayOutlinedIcon style={{ fontSize: 16 }} />
-              {article.date}
+              {formatDisplayDate(article.date)}
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-[#0f172b]">
               Genex Engineering Team
@@ -315,7 +316,7 @@ export default function TechnologyDetail() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-[#949494] uppercase tracking-widest mb-1">Published</p>
-                    <p className="text-sm font-bold text-[#0f172b]">{article.date}</p>
+                    <p className="text-sm font-bold text-[#0f172b]">{formatDisplayDate(article.date)}</p>
                   </div>
                 </div>
               </div>

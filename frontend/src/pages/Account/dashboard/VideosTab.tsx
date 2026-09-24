@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { UserVideoPost } from '@/types/auth'
 import { EmptyState } from './EmptyState'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
-import { STATUS_BADGE_CLASS, STATUS_LABEL } from './types'
+import { STATUS_BADGE_CLASS, STATUS_GRADIENT, STATUS_LABEL } from './types'
 import Add from '@mui/icons-material/Add'
 
 export function VideosTab() {
@@ -64,17 +66,32 @@ export function VideosTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {videos.map(video => (
             <div key={video.id} className="relative border border-border rounded-2xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setPendingDelete(video)}
-                aria-label="Remove this video"
-                className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-white/90 border border-border text-text-muted flex items-center justify-center hover:border-red-500 hover:text-red-500 z-10 transition-colors"
-              >
-                <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-              </button>
-              <div className="h-32 bg-surface flex items-center justify-center">
-                <VideocamOutlinedIcon sx={{ fontSize: 28 }} className="text-primary" />
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                <Link
+                  to={`/submit-video/${video.id}/edit`}
+                  aria-label="Edit this video"
+                  className="w-7 h-7 rounded-lg bg-white/90 border border-border text-text-muted flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
+                >
+                  <EditOutlinedIcon sx={{ fontSize: 15 }} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(video)}
+                  aria-label="Remove this video"
+                  className="w-7 h-7 rounded-lg bg-white/90 border border-border text-text-muted flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-colors"
+                >
+                  <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+                </button>
               </div>
+
+              <div className={`h-32 flex items-center justify-center relative overflow-hidden ${STATUS_GRADIENT[video.status]}`}>
+                {video.thumbnail_url ? (
+                  <img src={getMediaUrl(video.thumbnail_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <VideocamOutlinedIcon sx={{ fontSize: 28 }} className="text-white/55" />
+                )}
+              </div>
+
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-bold text-text-primary text-sm">{video.title}</p>
@@ -89,6 +106,14 @@ export function VideosTab() {
                   <div className="mt-2.5 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-800">
                     Reviewer note: {video.rejection_reason}
                   </div>
+                )}
+                {video.status === 'draft' && (
+                  <Link
+                    to={`/submit-video/${video.id}/edit`}
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-primary"
+                  >
+                    Continue Editing <ArrowForwardIcon sx={{ fontSize: 13 }} />
+                  </Link>
                 )}
               </div>
             </div>

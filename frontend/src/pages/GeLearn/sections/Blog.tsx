@@ -10,6 +10,7 @@ import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
+import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
@@ -19,7 +20,8 @@ const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 // ── Card ─────────────────────────────────────────────────────────────────────
 
 function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
-  const img = post.image_url ?? FALLBACK_IMAGE
+  const img = post.image_url ? getMediaUrl(post.image_url) : FALLBACK_IMAGE
+  const topicLabel = post.topics[0]?.name ?? post.topic
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -36,7 +38,7 @@ function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <span className="absolute top-4 left-4 bg-secondary text-white text-xs font-bold px-4 py-1.5 rounded">
-          {post.topic}
+          {topicLabel}
         </span>
       </div>
 
@@ -46,11 +48,11 @@ function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
         <div className="flex items-center gap-6 mb-4">
           <span className="flex items-center gap-2 text-xs text-[#949494]">
             <PersonOutlinedIcon style={{ fontSize: 14 }} />
-            Posted By - Genex
+            Posted By {post.author?.display_name ?? 'Genex Engineering'}
           </span>
           <span className="flex items-center gap-2 text-xs text-[#949494]">
             <CalendarTodayOutlinedIcon style={{ fontSize: 14 }} />
-            {post.date}
+            {formatDisplayDate(post.date)}
           </span>
         </div>
 

@@ -23,6 +23,7 @@ const VideoDetail           = lazy(() => import('@/pages/GeLearn/sections/VideoD
 const Tenders               = lazy(() => import('@/pages/GeLearn/sections/Tenders'))
 const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
+const PodcastDetail         = lazy(() => import('@/pages/GeLearn/sections/PodcastDetail'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))
 const Register              = lazy(() => import('@/pages/Account/Register'))
 const ForgotPassword        = lazy(() => import('@/pages/Account/ForgotPassword'))
@@ -102,6 +103,7 @@ export const gelearnRouter = createBrowserRouter([
       { path: '/tenders',                  element: s(<Tenders />) },
       { path: '/whitepapers',              element: s(<Whitepapers />) },
       { path: '/podcasts',                 element: s(<Podcasts />) },
+      { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
       { path: '/login',                    element: s(<Login />) },
       { path: '/register',                 element: s(<Register />) },
       { path: '/forgot-password',          element: s(<ForgotPassword />) },
@@ -113,7 +115,9 @@ export const gelearnRouter = createBrowserRouter([
         children: [
           { path: '/account',              element: s(<Profile />) },
           { path: '/submit-post',          element: s(<SubmitPost />) },
+          { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
           { path: '/submit-video',         element: s(<SubmitVideo />) },
+          { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
         ],
       },
       { path: '*',                         element: s(<NotFound />) },

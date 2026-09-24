@@ -12,10 +12,11 @@ import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 import { useAuth } from '@/context/useAuth'
+import { ApiError } from '@/lib/api/client'
 import { AuthLayout } from './AuthLayout'
 
 const schema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -26,6 +27,7 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const {
     register,
@@ -36,11 +38,12 @@ export default function Login() {
   async function onSubmit(data: FormData) {
     setStatus('loading')
     try {
-      await login(data.username, data.password)
+      await login(data.email, data.password)
       const from = (location.state as { from?: string } | null)?.from ?? '/account'
       navigate(from, { replace: true })
-    } catch {
+    } catch (err) {
       setStatus('error')
+      setErrorMessage(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
     }
   }
 
@@ -99,17 +102,15 @@ export default function Login() {
           transition={{ duration: 0.35, delay: 0.14 }}
           className="space-y-4"
         >
-          <Input label="Username or email" placeholder="you@company.com" error={errors.username?.message} {...register('username')} />
+          <Input label="Email" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="login-password" className="text-sm font-semibold text-text-primary">Password</label>
-              <Link to="/forgot-password" className="text-xs font-bold text-primary">Forgot password?</Link>
-            </div>
+            <label htmlFor="login-password" className="text-sm font-semibold text-text-primary block mb-1.5">Password</label>
             <PasswordInput id="login-password" placeholder="••••••••" error={errors.password?.message} {...register('password')} />
+            <Link to="/forgot-password" className="inline-block text-xs font-bold text-primary mt-1.5">Forgot password?</Link>
           </div>
 
           {status === 'error' && (
-            <p className="text-sm text-red-500">Invalid username or password.</p>
+            <p className="text-sm text-red-500">{errorMessage}</p>
           )}
 
           <Button type="submit" variant="primary" size="lg" disabled={status === 'loading'} className="w-full justify-center mt-2">

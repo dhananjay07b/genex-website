@@ -24,8 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void hydrate()
   }, [refetch])
 
-  const login = useCallback(async (username: string, password: string) => {
-    await apiFetch('/api/auth/login/', { method: 'POST', body: { username, password } })
+  const login = useCallback(async (email: string, password: string) => {
+    // The backend is configured for email-only login (ACCOUNT_LOGIN_METHODS
+    // = {"email"}) — dj-rest-auth's LoginSerializer only ever looks at the
+    // "email" key in that mode, so sending "username" here always 400s
+    // regardless of whether the credentials are correct.
+    await apiFetch('/api/auth/login/', { method: 'POST', body: { email, password } })
     await refetch()
   }, [refetch])
 

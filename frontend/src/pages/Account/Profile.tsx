@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
@@ -8,9 +7,6 @@ import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
-import KeyboardArrowDownOutlinedIcon from '@mui/icons-material/KeyboardArrowDownOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { useAuth } from '@/context/useAuth'
 import { getMediaUrl, cn } from '@/lib/utils'
@@ -37,22 +33,8 @@ const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
 const VALID_TABS = new Set<TabKey>(NAV_ITEMS.map(n => n.key))
 
 export default function Profile() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function handleClickOutside(e: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [menuOpen])
 
   // The sidebar is "stuck" once its sentinel (placed right where sticky
   // engages) scrolls past the sticky offset — only then is its natural top
@@ -98,12 +80,6 @@ export default function Profile() {
 
   function selectTab(next: TabKey) {
     setSearchParams(next === 'overview' ? {} : { tab: next })
-    setMenuOpen(false)
-  }
-
-  async function handleLogout() {
-    await logout()
-    navigate('/')
   }
 
   if (!user) return null
@@ -125,66 +101,27 @@ export default function Profile() {
           <div className="flex items-center gap-3 shrink-0">
             <NotificationBell />
 
-            <div className="relative" ref={profileMenuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-3 bg-white/75 border border-border rounded-full pl-2 pr-3.5 py-2 hover:border-primary transition-colors"
-              >
-                <span className="w-9 h-9 rounded-full bg-primary text-white text-sm font-extrabold flex items-center justify-center overflow-hidden shrink-0">
-                  {user.avatar_url ? (
-                    <img src={getMediaUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    initials
-                  )}
-                </span>
-                <span className="text-left hidden sm:block">
-                  <span className="block text-sm font-bold text-text-primary leading-tight">{user.display_name || user.username}</span>
-                  <span className="block text-[11px] font-bold uppercase tracking-wide text-primary">{user.membership_tier.name}</span>
-                </span>
-                <KeyboardArrowDownOutlinedIcon
-                  sx={{ fontSize: 16 }}
-                  className={cn('text-text-muted transition-transform duration-200', menuOpen && 'rotate-180')}
-                />
-              </button>
+            <button
+              type="button"
+              onClick={() => selectTab('settings')}
+              aria-label="Settings"
+              className="inline-flex items-center justify-center size-9 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
+            >
+              <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
+            </button>
 
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                    transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="absolute top-14 right-0 w-56 bg-white border border-border rounded-2xl shadow-lg p-2 z-20 origin-top-right"
-                  >
-                    <Link
-                      to={`/u/${user.username}`}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-text-primary hover:bg-surface transition-colors"
-                    >
-                      <PersonOutlineOutlinedIcon sx={{ fontSize: 17 }} className="text-primary" />
-                      View Public Profile
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => selectTab('settings')}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-text-primary hover:bg-surface transition-colors"
-                    >
-                      <SettingsOutlinedIcon sx={{ fontSize: 17 }} className="text-primary" />
-                      Edit Profile &amp; Settings
-                    </button>
-                    <div className="h-px bg-border my-1.5" />
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <LogoutOutlinedIcon sx={{ fontSize: 17 }} />
-                      Log Out
-                    </button>
-                  </motion.div>
+            <div className="flex items-center gap-3 bg-white/75 border border-border rounded-full pl-2 pr-3.5 py-2">
+              <span className="w-9 h-9 rounded-full bg-primary text-white text-sm font-extrabold flex items-center justify-center overflow-hidden shrink-0">
+                {user.avatar_url ? (
+                  <img src={getMediaUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  initials
                 )}
-              </AnimatePresence>
+              </span>
+              <span className="text-left hidden sm:block">
+                <span className="block text-sm font-bold text-text-primary leading-tight">{user.display_name || user.username}</span>
+                <span className="block text-[11px] font-bold uppercase tracking-wide text-primary">{user.membership_tier.name}</span>
+              </span>
             </div>
           </div>
         </div>

@@ -1,13 +1,36 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import { apiFetch } from '@/lib/api/client'
+import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { SavedItem, UserBlogPost, UserVideoPost } from '@/types/auth'
 import type { SnippetListResponse } from '@/types/api'
 import type { TabKey } from './types'
+
+interface ActivityEntry {
+  id: string
+  type: string
+  title: string
+  description: string | null
+  image_url: string | null
+  timestamp: string
+  link: string
+}
+
+const ACTIVITY_ICON: Record<string, typeof ArticleOutlinedIcon> = {
+  blog_status: ArticleOutlinedIcon,
+  blog_submission: ArticleOutlinedIcon,
+  video_status: VideocamOutlinedIcon,
+  video_submission: VideocamOutlinedIcon,
+  comment_reply: ChatBubbleOutlineOutlinedIcon,
+  comment: ChatBubbleOutlineOutlinedIcon,
+}
 
 interface OverviewTabProps {
   onSelectTab: (tab: TabKey) => void
@@ -29,6 +52,7 @@ const STATS: { key: keyof Counts; label: string; icon: typeof ArticleOutlinedIco
 
 export function OverviewTab({ onSelectTab }: OverviewTabProps) {
   const [counts, setCounts] = useState<Counts | null>(null)
+  const [activity, setActivity] = useState<ActivityEntry[] | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -44,6 +68,7 @@ export function OverviewTab({ onSelectTab }: OverviewTabProps) {
         saved: saved.length,
       })
     })
+    apiFetch<ActivityEntry[]>('/api/accounts/me/activity/').then(setActivity).catch(() => setActivity([]))
   }, [])
 
   return (
@@ -75,6 +100,42 @@ export function OverviewTab({ onSelectTab }: OverviewTabProps) {
           )
         })}
       </div>
+
+      <h2 className="text-base font-extrabold text-text-primary mb-4">Recent Activity</h2>
+      {!activity || activity.length === 0 ? (
+        <div className="border border-dashed border-border rounded-2xl p-8 flex flex-col items-center text-center gap-2">
+          <HistoryOutlinedIcon sx={{ fontSize: 22 }} className="text-text-muted" />
+          <p className="text-sm text-text-muted">Nothing here yet — your submissions, comments, and updates will show up as they happen.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {activity.map(entry => {
+            const Icon = ACTIVITY_ICON[entry.type] ?? ArticleOutlinedIcon
+            return (
+              <Link
+                key={entry.id}
+                to={entry.link}
+                className="flex items-center gap-3.5 border border-border rounded-2xl p-3.5 hover:border-primary hover:shadow-sm transition-all"
+              >
+                <span className="w-11 h-11 rounded-xl bg-surface text-primary flex items-center justify-center overflow-hidden shrink-0">
+                  {entry.image_url ? (
+                    <img src={getMediaUrl(entry.image_url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Icon sx={{ fontSize: 18 }} />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-text-primary truncate">{entry.title}</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {entry.description ? `${entry.description} · ` : ''}{formatRelativeTime(entry.timestamp)}
+                  </p>
+                </div>
+                <ArrowForwardIcon sx={{ fontSize: 15 }} className="text-text-muted shrink-0" />
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

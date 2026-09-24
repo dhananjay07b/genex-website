@@ -370,36 +370,52 @@ export interface BlogPostBodyImageValue {
   caption: string | null
 }
 
+export interface Topic {
+  id: number
+  name: string
+  slug: string
+}
+
+export interface ContentAuthor {
+  username: string
+  display_name: string
+  avatar_url: string | null
+  company: string
+  role_title: string
+  years_experience: number | null
+  bio: string
+  expertise: Topic[]
+}
+
 export interface BlogPostItem {
   id: number
   title: string
   topic: string
+  topics: Topic[]
   date: string
   excerpt: string
   image_url: string | null
   body: StreamBlock<string | BlogPostBodyImageValue>[]
+  author: ContentAuthor | null
 }
 
 export interface VideoItem {
   id: number
   title: string
   category: string
-  category_color: string
-  category_text_color: string
   date: string
   duration: string
   excerpt: string
   image_url: string | null
   video_url: string | null
   is_locked: boolean
+  author: ContentAuthor | null
 }
 
 export interface PodcastItem {
   id: number
   title: string
   category: string
-  category_bg: string
-  category_text: string
   date: string
   duration: string
   description: string
@@ -408,6 +424,7 @@ export interface PodcastItem {
   image_url: string | null
   audio_url: string | null
   is_locked: boolean
+  guest_account: ContentAuthor | null
 }
 
 export interface SnippetListResponse<T> {

@@ -1,10 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
-import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { cn } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
-import { useAuth } from '@/context/useAuth'
-import { buttonVariants } from '@/components/ui/Button'
+import { AccountMenu } from './AccountMenu'
 
 const GELEARN_NAV_LINKS = [
   { label: 'Technology', href: '/technology' },
@@ -18,7 +16,6 @@ const GELEARN_NAV_LINKS = [
 
 export function GeLearnHeader() {
   const { pathname } = useLocation()
-  const { user, isLoading } = useAuth()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white/95 backdrop-blur-sm border-b border-border">
@@ -60,21 +57,7 @@ export function GeLearnHeader() {
             genextechnocrats.com <OpenInNewIcon style={{ fontSize: 13 }} />
           </a>
 
-          {!isLoading && (
-            <Link
-              to={user ? '/account' : '/login'}
-              aria-label={user ? 'My account' : 'Log in'}
-              className="inline-flex items-center justify-center size-9 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
-            >
-              <PersonOutlineIcon style={{ fontSize: 18 }} />
-            </Link>
-          )}
-
-          {!user && (
-            <Link to="/register" className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'hidden sm:inline-flex')}>
-              Sign Up
-            </Link>
-          )}
+          <AccountMenu />
         </div>
       </div>
     </header>
