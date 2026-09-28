@@ -13,6 +13,8 @@ interface AuthLayoutProps {
   footerIcon: ReactNode
   footerText: string
   children: ReactNode
+  /** Overrides the form panel's max-width (default `max-w-sm`) — e.g. a wider form that lays fields out in two columns. */
+  panelWidthClassName?: string
 }
 
 const ORBS = [
@@ -21,7 +23,7 @@ const ORBS = [
   { className: 'w-24 h-24 bottom-56 right-8', color: 'rgba(0,197,176,0.35)', delay: '2.6s' },
 ]
 
-export function AuthLayout({ eyebrow, headline, description, panelExtra, footerIcon, footerText, children }: AuthLayoutProps) {
+export function AuthLayout({ eyebrow, headline, description, panelExtra, footerIcon, footerText, children, panelWidthClassName = 'max-w-sm' }: AuthLayoutProps) {
   return (
     <main className="h-screen overflow-hidden flex flex-col lg:flex-row">
       {/* Brand panel — hidden on small screens so the form alone fills the viewport without stacking overflow */}
@@ -83,7 +85,7 @@ export function AuthLayout({ eyebrow, headline, description, panelExtra, footerI
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-sm"
+          className={`w-full ${panelWidthClassName}`}
         >
           {children}
         </motion.div>

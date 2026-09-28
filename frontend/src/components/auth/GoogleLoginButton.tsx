@@ -72,7 +72,7 @@ export function GoogleLoginButton() {
   return <div ref={containerRef} className="flex justify-center" />
 }
 
-function GoogleGlyph() {
+export function GoogleGlyph() {
   return (
     <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
       <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.8 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />

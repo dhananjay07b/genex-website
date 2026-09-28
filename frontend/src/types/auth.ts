@@ -6,6 +6,18 @@ export interface MembershipTier {
   rank: number
 }
 
+export type Occupation = 'learner' | 'professional'
+
+export interface RegisterInput {
+  username: string
+  email: string
+  password: string
+  displayName: string
+  occupation: Occupation
+  company?: string
+  roleTitle?: string
+}
+
 export interface User {
   id: number
   username: string
@@ -15,6 +27,7 @@ export interface User {
   membership_tier: MembershipTier
   avatar_url: string | null
   cover_photo_url: string | null
+  occupation: Occupation
   company: string
   role_title: string
   years_experience: number | null
@@ -104,6 +117,13 @@ export interface UserVideoPost {
 export interface FollowRow {
   user: PublicUser
   created_at: string
+}
+
+export interface SocialAccount {
+  id: number
+  provider: string
+  email: string
+  date_joined: string
 }
 
 export interface Notification {

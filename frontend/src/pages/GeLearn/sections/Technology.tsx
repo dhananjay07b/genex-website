@@ -7,6 +7,7 @@ import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
+import { getMediaUrl } from '@/lib/utils'
 import type { TechArticleItem, SnippetListResponse } from '@/types/api'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -40,19 +41,17 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
       whileInView="visible"
       viewport={{ once: true, margin: '-40px' as const }}
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
-      className="bg-white border border-[#e9e9e9] rounded-3xl flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/40 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 overflow-hidden"
+      className="relative bg-white border border-[#e9e9e9] rounded-3xl flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] hover:border-primary/40 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300 overflow-hidden"
     >
-      {/* Featured tab */}
+      {/* Featured ribbon */}
       {article.featured && (
-        <div className="bg-white px-8 pt-4 pb-0">
-          <span className="inline-block text-[13px] font-semibold text-primary bg-primary/8 px-4 py-1.5 rounded-t-xl border border-b-0 border-primary/20">
-            Featured
-          </span>
-        </div>
+        <span className="absolute top-0 right-6 z-10 bg-linear-to-br from-primary to-secondary text-white text-[11px] font-bold uppercase tracking-wider px-3 py-2 shadow-md [clip-path:polygon(0_0,100%_0,100%_65%,50%_100%,0_65%)]">
+          Featured
+        </span>
       )}
 
       {/* Card body */}
-      <div className={`px-8 pb-8 flex flex-col flex-1 ${article.featured ? 'pt-4' : 'pt-8'}`}>
+      <div className="px-8 pb-8 pt-8 flex flex-col flex-1">
         {/* Difficulty + topic badges */}
         <div className="flex items-center gap-2 mb-5 flex-wrap">
           <span
@@ -67,14 +66,29 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
         </div>
 
         {/* Title */}
-        <h3 className="text-[22px] font-semibold text-[#0f172b] leading-[1.35] mb-4 flex-1">
+        <h3 className="text-[22px] font-semibold text-[#0f172b] leading-[1.35] mb-5 line-clamp-2 min-h-14.75">
           {article.title}
         </h3>
 
+        {/* Hero image */}
+        <div className="aspect-video rounded-2xl overflow-hidden mb-5 bg-[#f0f4f8] flex items-center justify-center">
+          {article.image_url ? (
+            <img
+              src={getMediaUrl(article.image_url)}
+              alt={article.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="max-w-[85%] truncate px-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+          )}
+        </div>
+
         {/* Excerpt */}
-        <p className="text-[15px] text-[#45556c] leading-[1.6] mb-6">
+        <p className="text-[15px] text-[#45556c] leading-[1.6] mb-6 line-clamp-3">
           {article.excerpt}
         </p>
+
+        <div className="flex-1" />
 
         {/* Arrow button */}
         <div className="flex justify-end mb-6">
@@ -91,7 +105,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
         {/* Divider */}
         <div className="border-t border-[#e8e8e8] pt-5 flex items-center justify-between gap-4">
           {/* Topic */}
-          <p className="text-sm font-semibold text-[#0f172b] leading-5">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#0f172b] leading-5">
             {article.topic}
           </p>
 

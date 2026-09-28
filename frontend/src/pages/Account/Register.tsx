@@ -27,9 +27,20 @@ const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: passwordSchema,
   confirmPassword: z.string().min(1, 'Please retype your password'),
+  occupation: z.enum(['learner', 'professional']),
+  company: z.string().optional(),
+  roleTitle: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords don\'t match',
   path: ['confirmPassword'],
+}).superRefine((data, ctx) => {
+  if (data.occupation !== 'professional') return
+  if (!data.company?.trim()) {
+    ctx.addIssue({ code: 'custom', message: 'Company is required', path: ['company'] })
+  }
+  if (!data.roleTitle?.trim()) {
+    ctx.addIssue({ code: 'custom', message: 'Role is required', path: ['roleTitle'] })
+  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -49,13 +60,24 @@ export default function Register() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { occupation: 'learner' } })
+
+  const occupation = watch('occupation')
 
   async function onSubmit(data: FormData) {
     setStatus('loading')
     try {
-      await registerUser(data.username, data.email, data.password, data.displayName)
+      await registerUser({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        displayName: data.displayName,
+        occupation: data.occupation,
+        company: data.company,
+        roleTitle: data.roleTitle,
+      })
       navigate('/account', { replace: true })
     } catch {
       setStatus('error')
@@ -83,6 +105,7 @@ export default function Register() {
         }
         footerIcon={<LockOutlinedIcon sx={{ fontSize: 16 }} />}
         footerText="Free to join — GeLearn is Genex Technocrats' knowledge hub"
+        panelWidthClassName="max-w-2xl"
       >
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.02 }}>
           <h2 className="text-2xl font-extrabold text-text-primary mb-1.5">Create your account</h2>
@@ -112,13 +135,44 @@ export default function Register() {
           transition={{ duration: 0.35, delay: 0.14 }}
           className="space-y-4"
         >
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Display name" placeholder="Jane Doe" error={errors.displayName?.message} {...register('displayName')} />
-            <Input label="Username" placeholder="janedoe" error={errors.username?.message} {...register('username')} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            {/* Left column — identity */}
+            <div className="flex flex-col gap-4">
+              <Input label="Display name" placeholder="Jane Doe" error={errors.displayName?.message} {...register('displayName')} />
+              <Input label="Username" placeholder="janedoe" error={errors.username?.message} {...register('username')} />
+
+              <div>
+                <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['learner', 'professional'] as const).map(option => (
+                    <label
+                      key={option}
+                      className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${
+                        occupation === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <input type="radio" value={option} className="accent-primary" {...register('occupation')} />
+                      <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {occupation === 'professional' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Company" placeholder="e.g. Genex Technocrats" error={errors.company?.message} {...register('company')} />
+                  <Input label="Role" placeholder="e.g. Grid Engineer" error={errors.roleTitle?.message} {...register('roleTitle')} />
+                </div>
+              )}
+            </div>
+
+            {/* Right column — credentials */}
+            <div className="flex flex-col gap-4">
+              <Input label="Email" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
+              <PasswordInput label="Password" placeholder="At least 8 characters" error={errors.password?.message} {...register('password')} />
+              <PasswordInput label="Retype password" placeholder="Re-enter your password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
+            </div>
           </div>
-          <Input label="Email" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
-          <PasswordInput label="Password" placeholder="At least 8 characters" error={errors.password?.message} {...register('password')} />
-          <PasswordInput label="Retype password" placeholder="Re-enter your password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
 
           {status === 'error' && <p className="text-sm text-red-500">{errorMessage}</p>}
 

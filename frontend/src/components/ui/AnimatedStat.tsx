@@ -5,6 +5,7 @@ interface AnimatedStatProps {
   value: string
   label: string
   accent?: string
+  labelClassName?: string
 }
 
 function parseNumeric(value: string): { prefix: string; number: number; suffix: string } {
@@ -13,7 +14,7 @@ function parseNumeric(value: string): { prefix: string; number: number; suffix: 
   return { prefix: match[1], number: parseFloat(match[2]), suffix: match[3] }
 }
 
-export function AnimatedStat({ value, label, accent }: AnimatedStatProps) {
+export function AnimatedStat({ value, label, accent, labelClassName }: AnimatedStatProps) {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-40px' })
   const [display, setDisplay] = useState('0')
@@ -21,11 +22,16 @@ export function AnimatedStat({ value, label, accent }: AnimatedStatProps) {
 
   useEffect(() => {
     if (!inView) return
-    const duration = 1400
+    // A fast cubic ease-out reaches small targets (e.g. 3, 9) within the
+    // first fraction of the duration, then holds — reading as "no animation"
+    // for low counts even though it technically ran. Scaling duration by the
+    // number of integer steps (with a floor/ceiling) and using a gentler
+    // ease-out keeps every step visible regardless of magnitude.
+    const duration = Math.min(1800, Math.max(700, number * 110))
     const start = performance.now()
     const frame = (now: number) => {
       const progress = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
+      const eased = 1 - Math.pow(1 - progress, 1.6)
       const current = Math.round(eased * number)
       setDisplay(current.toString())
       if (progress < 1) requestAnimationFrame(frame)
@@ -39,7 +45,7 @@ export function AnimatedStat({ value, label, accent }: AnimatedStatProps) {
       <div className={`text-4xl lg:text-5xl font-extrabold mb-1 ${accent ?? 'text-white'}`}>
         {prefix}{display}{suffix}
       </div>
-      <div className="text-sm uppercase tracking-widest text-white/60 font-medium">{label}</div>
+      <div className={`text-sm uppercase tracking-widest font-medium ${labelClassName ?? 'text-white/60'}`}>{label}</div>
     </div>
   )
 }

@@ -319,6 +319,7 @@ export interface CaseStudyItem {
   excerpt: string
   date: string
   read_time: string
+  featured: boolean
   image_url: string | null
   intro: string
   sections: StreamBlock<CaseStudySectionValue>[]
@@ -394,6 +395,7 @@ export interface BlogPostItem {
   topics: Topic[]
   date: string
   excerpt: string
+  featured: boolean
   image_url: string | null
   body: StreamBlock<string | BlogPostBodyImageValue>[]
   author: ContentAuthor | null
@@ -406,6 +408,7 @@ export interface VideoItem {
   date: string
   duration: string
   excerpt: string
+  featured: boolean
   image_url: string | null
   video_url: string | null
   is_locked: boolean
@@ -421,6 +424,7 @@ export interface PodcastItem {
   description: string
   guest: string
   guest_role: string
+  featured: boolean
   image_url: string | null
   audio_url: string | null
   is_locked: boolean

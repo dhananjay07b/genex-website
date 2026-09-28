@@ -11,7 +11,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
-import { formatDisplayDate } from '@/lib/utils'
+import { formatDisplayDate, getMediaUrl } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudySectionValue, TechArticleItem, SnippetListResponse } from '@/types/api'
@@ -197,7 +197,7 @@ export default function TechnologyDetail() {
             className="rounded-3xl overflow-hidden aspect-21/9 mb-16 bg-[#f0f4f8] flex items-center justify-center"
           >
             {article.image_url ? (
-              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+              <img src={getMediaUrl(article.image_url)} alt={article.title} className="w-full h-full object-cover" />
             ) : (
               <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
             )}
@@ -268,30 +268,27 @@ export default function TechnologyDetail() {
                 </div>
               )}
 
-              {article.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {article.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Sidebar */}
             <div className="lg:sticky lg:top-24 space-y-6">
 
-              {/* Topic */}
-              <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-4">Topic</p>
-                <span className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]">
-                  {article.topic}
-                </span>
-              </div>
+              {/* Tags */}
+              {article.tags.length > 0 && (
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-4">Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {article.tags.map(tag => (
+                      <span
+                        key={tag}
+                        className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Article meta summary */}
               <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 space-y-5">

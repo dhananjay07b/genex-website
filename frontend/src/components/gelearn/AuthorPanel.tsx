@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl, formatRelativeTime } from '@/lib/utils'
 import { useAuth } from '@/context/useAuth'
 import { Button } from '@/components/ui/Button'
+import { MembershipTierBadge } from '@/components/gelearn/MembershipTierBadge'
 import type { PublicProfile, FollowRow } from '@/types/auth'
 import type { BlogPostItem, VideoItem, SnippetListResponse } from '@/types/api'
 
@@ -151,7 +152,7 @@ export function AuthorPanel({ username, onClose }: AuthorPanelProps) {
 
                 <div className="px-6 pt-4 flex-1 overflow-y-auto">
                   <h3 className="text-lg font-extrabold text-text-primary">{profile.display_name || profile.username}</h3>
-                  <p className="text-xs font-bold uppercase tracking-wide text-primary mt-0.5">{profile.membership_tier.name}</p>
+                  <MembershipTierBadge tier={profile.membership_tier} className="mt-1" />
                   {(profile.role_title || profile.company) && (
                     <p className="text-sm text-text-primary font-semibold mt-2">
                       {profile.role_title}{profile.role_title && profile.company ? ' at ' : ''}{profile.company}

@@ -96,7 +96,7 @@ class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, R
 
     class Meta:
         model = CaseStudy
-        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "image_url", "intro", "sections"]
+        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "featured", "image_url", "intro", "sections"]
 
     def get_intro(self, obj):
         return self._expand_richtext(obj, "intro")
@@ -186,7 +186,13 @@ class GatedContentSerializerMixin:
     of what the client renders.
     """
     def _is_locked(self, obj):
-        if obj.required_tier_id is None:
+        # rank 0 (the "Free" tier) means public by definition — no real User
+        # row is ever actually assigned it (see get_default_tier_id's
+        # docstring), so gating on it would only ever block anonymous
+        # visitors while every real account sails through regardless,
+        # silently defeating the CMS's own "leave blank for public access"
+        # rule the moment someone picks "Free" from the dropdown instead.
+        if obj.required_tier_id is None or obj.required_tier.rank == 0:
             return False
         user = self.context["request"].user
         if not user.is_authenticated:
@@ -205,7 +211,7 @@ class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, 
 
     class Meta:
         model = VideoItem
-        fields = ["id", "title", "category", "date", "duration", "excerpt", "image_url", "video_url", "is_locked", "author"]
+        fields = ["id", "title", "category", "date", "duration", "excerpt", "featured", "image_url", "video_url", "is_locked", "author"]
 
     def get_video_url(self, obj):
         return None if self._is_locked(obj) else obj.video_url
@@ -219,7 +225,7 @@ class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, Au
 
     class Meta:
         model = BlogPost
-        fields = ["id", "title", "topic", "topics", "date", "excerpt", "image_url", "body", "author"]
+        fields = ["id", "title", "topic", "topics", "date", "excerpt", "featured", "image_url", "body", "author"]
 
     def get_body(self, obj):
         return self._stream_api_representation(obj, "body")
@@ -234,7 +240,7 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
     class Meta:
         model = PodcastEpisode
         fields = [
-            "id", "title", "category", "date", "duration", "description", "guest", "guest_role",
+            "id", "title", "category", "date", "duration", "description", "guest", "guest_role", "featured",
             "image_url", "audio_url", "is_locked", "guest_account",
         ]
 

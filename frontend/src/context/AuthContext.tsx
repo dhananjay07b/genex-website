@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { apiFetch } from '@/lib/api/client'
-import type { User } from '@/types/auth'
+import type { RegisterInput, User } from '@/types/auth'
 import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refetch])
 
   const register = useCallback(
-    async (username: string, email: string, password: string, displayName: string) => {
+    async ({ username, email, password, displayName, occupation, company, roleTitle }: RegisterInput) => {
       await apiFetch('/api/auth/registration/', {
         method: 'POST',
         body: {
@@ -43,6 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password1: password,
           password2: password,
           display_name: displayName,
+          occupation,
+          company: occupation === 'professional' ? company : '',
+          role_title: occupation === 'professional' ? roleTitle : '',
         },
       })
       await refetch()

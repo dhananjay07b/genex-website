@@ -18,6 +18,7 @@ import { useAuth } from '@/context/useAuth'
 import type { PublicProfile as PublicProfileType, FollowRow, User } from '@/types/auth'
 import type { BlogPostItem, VideoItem, PodcastItem, SnippetListResponse } from '@/types/api'
 import { EmptyState } from './dashboard/EmptyState'
+import { MembershipTierBadge } from '@/components/gelearn/MembershipTierBadge'
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>()
@@ -225,9 +226,7 @@ export default function PublicProfile() {
           <div className="flex-1 min-w-0 sm:pb-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-extrabold text-text-primary">{profile.display_name || profile.username}</h1>
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                {profile.membership_tier.name}
-              </span>
+              <MembershipTierBadge tier={profile.membership_tier} />
             </div>
             <p className="text-sm text-text-muted mt-0.5">@{profile.username}</p>
           </div>

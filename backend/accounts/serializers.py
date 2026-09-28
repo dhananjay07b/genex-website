@@ -26,7 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "display_name", "bio", "membership_tier", "avatar_url", "cover_photo_url",
-            "company", "role_title", "years_experience", "linkedin_url", "expertise",
+            "occupation", "company", "role_title", "years_experience", "linkedin_url", "expertise",
         ]
         read_only_fields = ["id", "email", "membership_tier", "avatar_url", "cover_photo_url"]
 
@@ -40,6 +40,17 @@ class UserSerializer(serializers.ModelSerializer):
         if len(value) > 3:
             raise serializers.ValidationError("Select at most 3 areas of expertise.")
         return value
+
+    def validate(self, attrs):
+        occupation = attrs.get("occupation", getattr(self.instance, "occupation", User.OCCUPATION_LEARNER))
+        if occupation == User.OCCUPATION_PROFESSIONAL:
+            company = attrs.get("company", getattr(self.instance, "company", ""))
+            role_title = attrs.get("role_title", getattr(self.instance, "role_title", ""))
+            if not company:
+                raise serializers.ValidationError({"company": "Company is required for a Professional profile."})
+            if not role_title:
+                raise serializers.ValidationError({"role_title": "Role is required for a Professional profile."})
+        return attrs
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -126,14 +137,36 @@ class GenexPasswordResetSerializer(PasswordResetSerializer):
 
 class GenexRegisterSerializer(RegisterSerializer):
     display_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    occupation = serializers.ChoiceField(choices=User.OCCUPATION_CHOICES, required=False, default=User.OCCUPATION_LEARNER)
+    company = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    role_title = serializers.CharField(max_length=150, required=False, allow_blank=True)
+
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("occupation") == User.OCCUPATION_PROFESSIONAL:
+            if not data.get("company"):
+                raise serializers.ValidationError({"company": "Company is required for a Professional profile."})
+            if not data.get("role_title"):
+                raise serializers.ValidationError({"role_title": "Role is required for a Professional profile."})
+        return data
 
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
         data["display_name"] = self.validated_data.get("display_name", "")
+        data["occupation"] = self.validated_data.get("occupation", User.OCCUPATION_LEARNER)
+        data["company"] = self.validated_data.get("company", "")
+        data["role_title"] = self.validated_data.get("role_title", "")
         return data
 
     def save(self, request):
         user = super().save(request)
         user.display_name = self.cleaned_data.get("display_name", "")
-        user.save(update_fields=["display_name"])
+        user.occupation = self.cleaned_data.get("occupation", User.OCCUPATION_LEARNER)
+        # A Learner's stray company/role_title (if any were somehow sent) are
+        # intentionally dropped, not stored — those fields describe a
+        # Professional's workplace, not a Learner's.
+        if user.occupation == User.OCCUPATION_PROFESSIONAL:
+            user.company = self.cleaned_data.get("company", "")
+            user.role_title = self.cleaned_data.get("role_title", "")
+        user.save(update_fields=["display_name", "occupation", "company", "role_title"])
         return user

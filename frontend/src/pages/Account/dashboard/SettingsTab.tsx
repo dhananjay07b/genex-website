@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
@@ -6,19 +6,25 @@ import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import LinkOffIcon from '@mui/icons-material/LinkOff'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { apiFetch } from '@/lib/api/client'
-import { getMediaUrl } from '@/lib/utils'
+import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
-import type { User } from '@/types/auth'
+import type { Occupation, SocialAccount, User } from '@/types/auth'
 import type { Topic } from '@/types/api'
+
+const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
+const PROVIDER_ICON: Record<string, () => ReactElement> = { google: GoogleGlyph }
 
 export function SettingsTab() {
   const { user, refetch } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
+  const [occupation, setOccupation] = useState<Occupation>(user?.occupation ?? 'learner')
   const [company, setCompany] = useState(user?.company ?? '')
   const [roleTitle, setRoleTitle] = useState(user?.role_title ?? '')
   const [yearsExperience, setYearsExperience] = useState(user?.years_experience?.toString() ?? '')
@@ -32,6 +38,10 @@ export function SettingsTab() {
   const [newPassword1, setNewPassword1] = useState('')
   const [newPassword2, setNewPassword2] = useState('')
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
+  const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
+  const [disconnectError, setDisconnectError] = useState('')
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -50,10 +60,27 @@ export function SettingsTab() {
     apiFetch<Topic[]>('/api/snippets/topics/').then(setTopics).catch(() => setTopics([]))
   }, [])
 
+  useEffect(() => {
+    apiFetch<SocialAccount[]>('/api/accounts/me/social-accounts/').then(setSocialAccounts).catch(() => setSocialAccounts([]))
+  }, [])
+
   useEffect(() => () => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview)
     if (coverPreview) URL.revokeObjectURL(coverPreview)
   }, [avatarPreview, coverPreview])
+
+  async function handleDisconnect(id: number) {
+    setDisconnectingId(id)
+    setDisconnectError('')
+    try {
+      await apiFetch(`/api/accounts/me/social-accounts/${id}/`, { method: 'DELETE' })
+      setSocialAccounts(prev => prev.filter(a => a.id !== id))
+    } catch (err) {
+      setDisconnectError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
+    } finally {
+      setDisconnectingId(null)
+    }
+  }
 
   if (!user) return null
 
@@ -117,8 +144,9 @@ export function SettingsTab() {
         body: {
           display_name: displayName,
           bio,
-          company,
-          role_title: roleTitle,
+          occupation,
+          company: occupation === 'professional' ? company : '',
+          role_title: occupation === 'professional' ? roleTitle : '',
           years_experience: yearsExperience ? Number(yearsExperience) : null,
           linkedin_url: linkedinUrl,
           expertise,
@@ -166,6 +194,7 @@ export function SettingsTab() {
   const hasUnsavedChanges =
     displayName !== (user.display_name ?? '') ||
     bio !== (user.bio ?? '') ||
+    occupation !== (user.occupation ?? 'learner') ||
     company !== (user.company ?? '') ||
     roleTitle !== (user.role_title ?? '') ||
     yearsExperience !== (user.years_experience?.toString() ?? '') ||
@@ -266,10 +295,36 @@ export function SettingsTab() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Company" placeholder="e.g. Genex Technocrats" value={company} onChange={e => setCompany(e.target.value)} />
-            <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
+          <div>
+            <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(['learner', 'professional'] as const).map(option => (
+                <label
+                  key={option}
+                  className={`flex items-center gap-2.5 rounded-md border px-3.5 py-2.5 cursor-pointer transition-colors ${
+                    occupation === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="occupation"
+                    value={option}
+                    checked={occupation === option}
+                    onChange={() => setOccupation(option)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
+                </label>
+              ))}
+            </div>
           </div>
+
+          {occupation === 'professional' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="Company" placeholder="e.g. Genex Technocrats" value={company} onChange={e => setCompany(e.target.value)} />
+              <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Years of Experience"
@@ -363,6 +418,45 @@ export function SettingsTab() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Connected Socials */}
+      <section className="border border-border rounded-2xl p-5">
+        <p className="text-sm font-bold text-text-primary mb-1.5">Connected Socials</p>
+        <p className="text-xs text-text-muted leading-relaxed mb-4">
+          Accounts you can sign in with, besides your password.
+        </p>
+
+        {socialAccounts.length === 0 ? (
+          <p className="text-sm text-text-muted">No connected accounts yet.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {socialAccounts.map(account => {
+              const Icon = PROVIDER_ICON[account.provider]
+              return (
+                <div key={account.id} className="flex items-center gap-3 border border-border rounded-xl px-4 py-3">
+                  <span className="shrink-0">{Icon ? <Icon /> : null}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text-primary">{PROVIDER_LABEL[account.provider] ?? account.provider}</p>
+                    <p className="text-xs text-text-muted truncate">
+                      {account.email} · connected {formatDisplayDate(account.date_joined)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={disconnectingId === account.id}
+                    onClick={() => handleDisconnect(account.id)}
+                  >
+                    <LinkOffIcon sx={{ fontSize: 15 }} className="mr-1.5" />
+                    {disconnectingId === account.id ? 'Disconnecting…' : 'Disconnect'}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {disconnectError && <p className="text-xs font-semibold text-red-600 mt-3">{disconnectError}</p>}
       </section>
 
       {/* Notifications */}

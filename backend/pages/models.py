@@ -462,6 +462,7 @@ class CaseStudy(models.Model):
     excerpt        = models.TextField()
     date           = models.DateField()
     read_time      = models.CharField(max_length=30, default="4 Mins Read")
+    featured       = models.BooleanField(default=False)
     image          = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -485,6 +486,7 @@ class CaseStudy(models.Model):
             FieldPanel("category_color"),
             FieldPanel("date"),
             FieldPanel("read_time"),
+            FieldPanel("featured"),
         ], heading="Metadata"),
         FieldPanel("image"),
         FieldPanel("excerpt"),
@@ -645,6 +647,7 @@ class VideoItem(models.Model):
     date                = models.DateField()
     duration            = models.CharField(max_length=20, help_text="e.g. '14:32 min'")
     excerpt             = models.TextField()
+    featured            = models.BooleanField(default=False)
     image               = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -662,6 +665,7 @@ class VideoItem(models.Model):
             FieldPanel("category"),
             FieldPanel("date"),
             FieldPanel("duration"),
+            FieldPanel("featured"),
         ], heading="Metadata"),
         FieldPanel("image"),
         FieldPanel("excerpt"),
@@ -704,6 +708,7 @@ class BlogPost(models.Model):
     topics  = models.ManyToManyField(Topic, blank=True, related_name="posts")
     date    = models.DateField()
     excerpt = models.TextField()
+    featured = models.BooleanField(default=False)
     image   = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -726,6 +731,7 @@ class BlogPost(models.Model):
             # just clicks normally. Checkboxes make multi-select obvious.
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
+            FieldPanel("featured"),
         ], heading="Metadata"),
         FieldPanel("image"),
         FieldPanel("excerpt"),
@@ -754,6 +760,7 @@ class PodcastEpisode(models.Model):
         on_delete=models.SET_NULL, related_name="podcast_appearances",
         help_text="Link to a GeLearn account if the guest has one, to show this episode on their profile.",
     )
+    featured      = models.BooleanField(default=False)
     image         = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -771,6 +778,7 @@ class PodcastEpisode(models.Model):
             FieldPanel("category"),
             FieldPanel("date"),
             FieldPanel("duration"),
+            FieldPanel("featured"),
         ], heading="Metadata"),
         MultiFieldPanel([
             FieldPanel("guest"),

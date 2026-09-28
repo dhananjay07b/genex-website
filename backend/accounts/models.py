@@ -38,6 +38,13 @@ def get_default_tier_id():
 
 
 class User(AbstractUser):
+    OCCUPATION_LEARNER = "learner"
+    OCCUPATION_PROFESSIONAL = "professional"
+    OCCUPATION_CHOICES = [
+        (OCCUPATION_LEARNER, "Learner"),
+        (OCCUPATION_PROFESSIONAL, "Professional"),
+    ]
+
     membership_tier = models.ForeignKey(
         MembershipTier,
         on_delete=models.PROTECT,
@@ -46,6 +53,7 @@ class User(AbstractUser):
     )
     display_name = models.CharField(max_length=150, blank=True)
     bio = models.TextField(blank=True)
+    occupation = models.CharField(max_length=20, choices=OCCUPATION_CHOICES, default=OCCUPATION_LEARNER)
     company = models.CharField(max_length=150, blank=True)
     role_title = models.CharField(max_length=150, blank=True, help_text="Job title/role at their company, e.g. 'Deputy GM, Grid Operations'")
     years_experience = models.PositiveSmallIntegerField(null=True, blank=True)
