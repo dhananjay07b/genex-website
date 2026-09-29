@@ -38,6 +38,8 @@ export default function PodcastDetail() {
   if (episode === undefined) return null
   if (episode === null) return <Navigate to="/podcasts" replace />
 
+  const [lead, ...moreCollaborators] = episode.collaborators
+
   const recentEpisodes = allEpisodes.filter(e => e.id !== episode.id).slice(0, 3)
 
   return (
@@ -76,20 +78,25 @@ export default function PodcastDetail() {
             </div>
 
             <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8 flex-wrap">
-              {episode.guest_account ? (
-                <button type="button" onClick={() => setAuthorPanelUser(episode.guest_account!.username)} className="flex items-center gap-3 group">
+              {lead ? (
+                <button type="button" onClick={() => setAuthorPanelUser(lead.username)} className="flex items-center gap-3 group">
                   <span className="size-10 rounded-full bg-primary text-white text-sm font-bold shrink-0 flex items-center justify-center overflow-hidden">
-                    {episode.guest_account.avatar_url ? (
-                      <img src={getMediaUrl(episode.guest_account.avatar_url)} alt="" className="w-full h-full object-cover" />
+                    {lead.avatar_url ? (
+                      <img src={getMediaUrl(lead.avatar_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      episode.guest_account.display_name.slice(0, 2).toUpperCase()
+                      lead.display_name.slice(0, 2).toUpperCase()
                     )}
                   </span>
                   <span className="text-sm text-[#62748e] text-left">
-                    Hosted with <span className="font-bold text-[#0f172a] group-hover:text-primary transition-colors">{episode.guest_account.display_name}</span>
+                    Hosted with <span className="font-bold text-[#0f172a] group-hover:text-primary transition-colors">{lead.display_name}</span>
                     <span className="block text-xs text-[#90a1b9]">{episode.guest_role}</span>
-                    {episode.guest_account.company && (
-                      <span className="flex text-xs mt-0.5"><CompanyBadge company={episode.guest_account.company} /></span>
+                    {lead.company && (
+                      <span className="flex text-xs mt-0.5"><CompanyBadge company={lead.company} /></span>
+                    )}
+                    {moreCollaborators.length > 0 && (
+                      <span className="block text-xs text-[#90a1b9] mt-0.5">
+                        with {moreCollaborators.map(c => c.display_name).join(', ')}
+                      </span>
                     )}
                   </span>
                 </button>
@@ -106,6 +113,11 @@ export default function PodcastDetail() {
               )}
               <div className="w-px h-8 bg-[#cad5e2] hidden sm:block" />
               <span className="text-sm text-[#62748e]">{formatDisplayDate(episode.date)}</span>
+              {episode.company && (
+                <span className="flex items-center gap-1.5 text-sm text-[#62748e]">
+                  Published by <CompanyBadge company={episode.company} />
+                </span>
+              )}
               {episode.duration && (
                 <span className="flex items-center gap-1.5 text-sm text-[#62748e]">
                   <AccessTimeOutlinedIcon style={{ fontSize: 14 }} />

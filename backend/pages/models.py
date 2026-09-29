@@ -458,8 +458,37 @@ class TeamCategory(models.Model):
         ordering = ["priority", "name"]
 
 
+class CompanyPublished(models.Model):
+    """
+    Content a Company publishes (GeAcademy, Research, Policies & Tenders,
+    Whitepapers, Podcasts). `company` drives the public "[logo] Company ✓"
+    attribution and scopes the Company Studio; `owner` is the staff login that
+    created it. Both are empty for editorial content Admin creates in the CMS.
+    """
+    company = models.ForeignKey(
+        "organizations.Company", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="%(class)s_items",
+        help_text="Publishing company — shown with its logo. Leave empty for Genex editorial content made here.",
+    )
+    owner = models.ForeignKey(
+        "accounts.User", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+        help_text="Company staff account that published this from the Studio.",
+    )
+
+    publisher_panels = [
+        MultiFieldPanel([FieldPanel("company"), FieldPanel("owner")], heading="Publisher"),
+    ]
+
+    class Meta:
+        abstract = True
+
+    def access_owner_ids(self):
+        return {self.owner_id} if self.owner_id else set()
+
+
 @register_snippet
-class CaseStudy(models.Model):
+class CaseStudy(CompanyPublished):
     title          = models.CharField(max_length=255)
     category       = models.CharField(max_length=50)
     category_color = models.CharField(max_length=50, help_text="Tailwind bg class e.g. 'bg-primary'")
@@ -496,6 +525,7 @@ class CaseStudy(models.Model):
         FieldPanel("excerpt"),
         FieldPanel("intro"),
         FieldPanel("sections"),
+        *CompanyPublished.publisher_panels,
     ]
 
     def __str__(self):
@@ -508,7 +538,7 @@ class CaseStudy(models.Model):
 
 
 @register_snippet
-class TechArticle(models.Model):
+class TechArticle(CompanyPublished):
     DIFFICULTY_CHOICES = [
         ("Beginner", "Beginner"),
         ("Intermediate", "Intermediate"),
@@ -557,6 +587,7 @@ class TechArticle(models.Model):
             FieldPanel("callout_content"),
         ], heading="Callout Box"),
         FieldPanel("takeaways"),
+        *CompanyPublished.publisher_panels,
     ]
 
     def __str__(self):
@@ -569,7 +600,7 @@ class TechArticle(models.Model):
 
 
 @register_snippet
-class Tender(models.Model):
+class Tender(CompanyPublished):
     STATUS_CHOICES = [
         ("Open", "Open"),
         ("Upcoming", "Upcoming"),
@@ -598,6 +629,7 @@ class Tender(models.Model):
             FieldPanel("sector"),
         ], heading="Details"),
         FieldPanel("description"),
+        *CompanyPublished.publisher_panels,
     ]
 
     def __str__(self):
@@ -610,7 +642,7 @@ class Tender(models.Model):
 
 
 @register_snippet
-class Whitepaper(models.Model):
+class Whitepaper(CompanyPublished):
     title         = models.CharField(max_length=255)
     category      = models.CharField(max_length=100)
     category_bg   = models.CharField(max_length=20, help_text="Hex bg e.g. '#eef2ff'")
@@ -638,6 +670,7 @@ class Whitepaper(models.Model):
         ], heading="Metadata"),
         FieldPanel("description"),
         FieldPanel("document"),
+        *CompanyPublished.publisher_panels,
     ]
 
     def __str__(self):
@@ -808,7 +841,7 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
 
 
 @register_snippet
-class PodcastEpisode(AccessControlled):
+class PodcastEpisode(CompanyPublished, AccessControlled):
     title         = models.CharField(max_length=255)
     category      = models.CharField(max_length=100)
     date          = models.DateField()
@@ -816,10 +849,10 @@ class PodcastEpisode(AccessControlled):
     description   = models.TextField()
     guest         = models.CharField(max_length=200)
     guest_role    = models.CharField(max_length=300)
-    guest_user    = models.ForeignKey(
-        "accounts.User", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="podcast_appearances",
-        help_text="Link to a GeLearn account if the guest has one, to show this episode on their profile.",
+    collaborators = models.ManyToManyField(
+        "accounts.User", blank=True, related_name="podcast_collaborations",
+        limit_choices_to={"account_type": "professional"},
+        help_text="Professionals featured in this episode — it appears on their profiles.",
     )
     featured      = models.BooleanField(default=False)
     image         = models.ForeignKey(
@@ -839,13 +872,18 @@ class PodcastEpisode(AccessControlled):
         MultiFieldPanel([
             FieldPanel("guest"),
             FieldPanel("guest_role"),
-            FieldPanel("guest_user"),
-        ], heading="Guest"),
+            FieldPanel("collaborators"),
+        ], heading="Guest & collaborators"),
         FieldPanel("image"),
         FieldPanel("description"),
         FieldPanel("audio_url"),
         *AccessControlled.access_panels,
+        *CompanyPublished.publisher_panels,
     ]
+
+    def access_owner_ids(self):
+        # The publishing staff member and everyone featured in the episode.
+        return super().access_owner_ids() | set(self.collaborators.values_list("pk", flat=True))
 
     def __str__(self):
         return self.title

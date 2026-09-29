@@ -325,6 +325,8 @@ export interface CaseStudyItem {
   image_url: string | null
   intro: string
   sections: StreamBlock<CaseStudySectionValue>[]
+  /** Publishing company (logo + verified), or null for Genex editorial content. */
+  company: CompanyDisplay | null
 }
 
 export interface TechArticleItem {
@@ -343,6 +345,8 @@ export interface TechArticleItem {
   callout_label: string
   callout_content: string
   takeaways: StreamBlock<string>[]
+  /** Publishing company (logo + verified), or null for Genex editorial content. */
+  company: CompanyDisplay | null
 }
 
 export interface TenderItem {
@@ -354,6 +358,8 @@ export interface TenderItem {
   status: string
   sector: string
   description: string
+  /** Publishing company (logo + verified), or null for Genex editorial content. */
+  company: CompanyDisplay | null
 }
 
 export interface WhitepaperItem {
@@ -366,6 +372,8 @@ export interface WhitepaperItem {
   pages: string
   description: string
   document_url: string | null
+  /** Publishing company (logo + verified), or null for Genex editorial content. */
+  company: CompanyDisplay | null
 }
 
 export interface BlogPostBodyImageValue {
@@ -440,7 +448,9 @@ export interface PodcastItem extends GatedFields {
   featured: boolean
   image_url: string | null
   audio_url: string | null
-  guest_account: ContentAuthor | null
+  /** Professionals featured in the episode (linked accounts). */
+  collaborators: ContentAuthor[]
+  company: CompanyDisplay | null
 }
 
 export interface SnippetListResponse<T> {

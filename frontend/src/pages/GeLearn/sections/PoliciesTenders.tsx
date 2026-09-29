@@ -5,6 +5,7 @@ import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -75,6 +76,12 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
         </p>
 
         <p className="text-base font-semibold text-[#0f172b]">{tender.value}</p>
+
+        {tender.company && (
+          <p className="flex items-center gap-1.5 text-xs text-[#62748e]">
+            Published by <CompanyBadge company={tender.company} />
+          </p>
+        )}
 
         <div className="flex items-center justify-between gap-3 pt-2">
           {!isClosed ? (

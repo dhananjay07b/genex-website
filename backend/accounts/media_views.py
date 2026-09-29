@@ -1,13 +1,10 @@
-from django.core.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from wagtail.images import get_image_model
 
 from .serializers import UserSerializer
-
-Image = get_image_model()
+from .uploads import save_uploaded_image
 
 
 class _UserImageUploadView(APIView):
@@ -21,16 +18,9 @@ class _UserImageUploadView(APIView):
     user_field_name = None
 
     def post(self, request):
-        upload = request.FILES.get("file")
-        if not upload:
-            return Response({"detail": "No file uploaded."}, status=400)
-
-        image = Image(title=upload.name, file=upload, uploaded_by_user=request.user)
-        try:
-            image.full_clean()
-        except ValidationError as exc:
-            return Response({"detail": exc.messages}, status=400)
-        image.save()
+        image = save_uploaded_image(request)
+        if isinstance(image, Response):
+            return image
 
         old_image = getattr(request.user, self.user_field_name)
         setattr(request.user, self.user_field_name, image)

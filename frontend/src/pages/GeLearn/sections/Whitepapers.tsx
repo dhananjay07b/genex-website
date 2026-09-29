@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -49,9 +50,15 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
       </h3>
 
       {/* Description */}
-      <p className="text-sm text-[#62748e] leading-5 mb-8">
+      <p className={`text-sm text-[#62748e] leading-5 ${doc.company ? 'mb-4' : 'mb-8'}`}>
         {doc.description}
       </p>
+
+      {doc.company && (
+        <p className="flex items-center gap-1.5 text-xs text-[#62748e] mb-6">
+          Published by <CompanyBadge company={doc.company} />
+        </p>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-2">

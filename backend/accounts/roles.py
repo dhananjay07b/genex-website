@@ -57,6 +57,13 @@ def display_company(user):
     return None
 
 
+def display_publisher(company):
+    """A publishing Company as shown on its content — always verified while active."""
+    if company is None or not company.is_active:
+        return None
+    return {"name": company.name, "slug": company.slug, "logo_url": company.logo_url, "verified": True}
+
+
 # ── DRF permission classes ───────────────────────────────────────────────────
 
 class IsAdmin(BasePermission):

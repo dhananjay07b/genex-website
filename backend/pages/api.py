@@ -4,7 +4,6 @@ Exposed at /api/snippets/<model>/ — separate from the Wagtail v2 router.
 All list views support ?limit= and ?offset= pagination.
 """
 
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework import mixins, permissions, serializers, viewsets
 from rest_framework.decorators import action
@@ -13,10 +12,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
-from wagtail.images import get_image_model
 from wagtail.rich_text import expand_db_html
 
-from accounts.roles import display_company, is_admin
+from accounts.roles import display_company, display_publisher, is_admin
+from accounts.uploads import save_uploaded_image
 from commerce.access import has_access
 
 from .models import (
@@ -33,25 +32,15 @@ from .models import (
 )
 
 
-Image = get_image_model()
-
-
 def _upload_submission_image(request, obj, field_name):
     """
     Shared body for the per-submission image/thumbnail upload actions below —
     same pattern as accounts/media_views.py's avatar/cover-photo upload,
     scoped to one submission instead of the current user.
     """
-    upload = request.FILES.get("file")
-    if not upload:
-        return Response({"detail": "No file uploaded."}, status=400)
-
-    image = Image(title=upload.name, file=upload, uploaded_by_user=request.user)
-    try:
-        image.full_clean()
-    except ValidationError as exc:
-        return Response({"detail": exc.messages}, status=400)
-    image.save()
+    image = save_uploaded_image(request)
+    if isinstance(image, Response):
+        return image
 
     old_image = getattr(obj, field_name)
     setattr(obj, field_name, image)
@@ -92,14 +81,22 @@ class RichTextFieldSerializerMixin:
         return expand_db_html(value) if value else value
 
 
-class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
+class PublisherSerializerMixin(serializers.Serializer):
+    """`company`: the publishing Company (logo + verified), or null for Genex editorial content."""
+    company = serializers.SerializerMethodField()
+
+    def get_company(self, obj):
+        return display_publisher(obj.company) if obj.company_id else None
+
+
+class CaseStudySerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     intro = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
 
     class Meta:
         model = CaseStudy
-        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "featured", "image_url", "intro", "sections"]
+        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "featured", "image_url", "intro", "sections", "company"]
 
     def get_intro(self, obj):
         return self._expand_richtext(obj, "intro")
@@ -108,7 +105,7 @@ class CaseStudySerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, R
         return self._stream_api_representation(obj, "sections")
 
 
-class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
+class TechArticleSerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     intro = serializers.SerializerMethodField()
@@ -119,7 +116,7 @@ class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin,
         model = TechArticle
         fields = [
             "id", "title", "topic", "difficulty", "read_time", "date", "excerpt", "featured",
-            "image_url", "tags", "intro", "sections", "callout_label", "callout_content", "takeaways",
+            "image_url", "tags", "intro", "sections", "callout_label", "callout_content", "takeaways", "company",
         ]
 
     def get_tags(self, obj):
@@ -135,18 +132,18 @@ class TechArticleSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin,
         return self._stream_api_representation(obj, "takeaways")
 
 
-class TenderSerializer(serializers.ModelSerializer):
+class TenderSerializer(PublisherSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Tender
-        fields = ["id", "title", "authority", "deadline", "value", "status", "sector", "description"]
+        fields = ["id", "title", "authority", "deadline", "value", "status", "sector", "description", "company"]
 
 
-class WhitepaperSerializer(serializers.ModelSerializer):
+class WhitepaperSerializer(PublisherSerializerMixin, serializers.ModelSerializer):
     document_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "category", "category_bg", "category_text", "date", "pages", "description", "document_url"]
+        fields = ["id", "title", "category", "category_bg", "category_text", "date", "pages", "description", "document_url", "company"]
 
     def get_document_url(self, obj):
         return obj.document.url if obj.document else None
@@ -243,25 +240,23 @@ class BlogPostSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, S
         return [] if self._is_locked(obj) else self._stream_api_representation(obj, "body")
 
 
-class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
+class PodcastEpisodeSerializer(PublisherSerializerMixin, GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
     audio_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
-    guest_account = serializers.SerializerMethodField()
+    collaborators = serializers.SerializerMethodField()
 
     class Meta:
         model = PodcastEpisode
         fields = [
             "id", "title", "category", "date", "duration", "description", "guest", "guest_role", "featured",
-            "image_url", "audio_url", "guest_account", *GatedContentSerializerMixin.ACCESS_FIELDS,
+            "image_url", "audio_url", "collaborators", "company", *GatedContentSerializerMixin.ACCESS_FIELDS,
         ]
 
     def get_audio_url(self, obj):
         return None if self._is_locked(obj) else obj.audio_url
 
-    def get_guest_account(self, obj):
-        if not obj.guest_user_id:
-            return None
-        return author_payload(obj.guest_user)
+    def get_collaborators(self, obj):
+        return [author_payload(user) for user in obj.collaborators.all()]
 
 
 class UserBlogPostSerializer(serializers.ModelSerializer):
@@ -307,25 +302,25 @@ class UserBlogPostSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class CaseStudyViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = CaseStudy.objects.all().order_by("-date")
+    queryset = CaseStudy.objects.all().order_by("-date").select_related("company__logo")
     serializer_class = CaseStudySerializer
     pagination_class = GenexPagination
 
 
 class TechArticleViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TechArticle.objects.all().order_by("-date")
+    queryset = TechArticle.objects.all().order_by("-date").select_related("company__logo")
     serializer_class = TechArticleSerializer
     pagination_class = GenexPagination
 
 
 class TenderViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tender.objects.all().order_by("status")
+    queryset = Tender.objects.all().order_by("status").select_related("company__logo")
     serializer_class = TenderSerializer
     pagination_class = GenexPagination
 
 
 class WhitepaperViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Whitepaper.objects.all().order_by("-date")
+    queryset = Whitepaper.objects.all().order_by("-date").select_related("company__logo")
     serializer_class = WhitepaperSerializer
     pagination_class = GenexPagination
 
@@ -355,7 +350,7 @@ class TopicViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PodcastEpisodeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = PodcastEpisode.objects.all().order_by("-date")
+    queryset = PodcastEpisode.objects.all().order_by("-date").select_related("company__logo").prefetch_related("collaborators__company__logo", "collaborators__expertise")
     serializer_class = PodcastEpisodeSerializer
     pagination_class = GenexPagination
 

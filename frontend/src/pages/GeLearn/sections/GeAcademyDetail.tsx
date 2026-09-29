@@ -9,6 +9,7 @@ import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlin
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { formatDisplayDate, getMediaUrl } from '@/lib/utils'
@@ -182,8 +183,12 @@ export default function GeAcademyDetail() {
               <CalendarTodayOutlinedIcon style={{ fontSize: 16 }} />
               {formatDisplayDate(article.date)}
             </span>
-            <span className="flex items-center gap-1.5 font-semibold text-[#0f172b]">
-              Genex Engineering Team
+            <span className="flex items-center gap-1.5 text-[#0f172b]">
+              {article.company ? (
+                <>Published by <CompanyBadge company={article.company} /></>
+              ) : (
+                <span className="font-semibold">Genex Engineering Team</span>
+              )}
             </span>
           </motion.div>
         </div>

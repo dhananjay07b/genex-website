@@ -9,6 +9,7 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { formatDisplayDate } from '@/lib/utils'
@@ -124,10 +125,16 @@ export default function CaseStudyDetail() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' as const }}
-            className="text-5xl font-bold text-black leading-tight capitalize pt-16 pb-10 max-w-3xl"
+            className={`text-5xl font-bold text-black leading-tight capitalize pt-16 max-w-3xl ${cs.company ? 'pb-4' : 'pb-10'}`}
           >
             {cs.title}
           </motion.h1>
+
+          {cs.company && (
+            <p className="flex items-center gap-1.5 text-sm text-[#62748e] pb-10">
+              Published by <CompanyBadge company={cs.company} />
+            </p>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 16 }}

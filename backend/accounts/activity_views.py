@@ -30,7 +30,7 @@ class MyPodcastAppearancesView(ListAPIView):
     pagination_class = AccountsPagination
 
     def get_queryset(self):
-        return PodcastEpisode.objects.filter(guest_user=self.request.user).order_by("-date")
+        return PodcastEpisode.objects.filter(collaborators=self.request.user).order_by("-date")
 
 
 def _image_url(obj):

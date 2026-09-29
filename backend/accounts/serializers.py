@@ -32,6 +32,8 @@ class UserSerializer(serializers.ModelSerializer):
     account_type = serializers.CharField(required=False)
     is_admin = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
+    # Effective status, as shown on the site (Company staff are always verified).
+    company_verified = serializers.SerializerMethodField()
     # Write: pick a registered company (null to clear). Read: `company` above.
     company_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -49,6 +51,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_company(self, obj):
         return display_company(obj)
+
+    def get_company_verified(self, obj):
+        company = display_company(obj)
+        return bool(company and company["verified"])
 
     def validate_account_type(self, value):
         return validate_account_type_choice(value, current=getattr(self.instance, "account_type", None))
@@ -171,7 +177,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         return obj.video_submissions.filter(status="published").count()
 
     def get_podcast_appearance_count(self, obj):
-        return obj.podcast_appearances.count()
+        return obj.podcast_collaborations.count()
 
     def get_followers_count(self, obj):
         return obj.followers.count()

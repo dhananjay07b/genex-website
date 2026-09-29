@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "accounts",
     "organizations",
     "commerce",
+    "studio",
     "comments",
     "engagement",
     "pages",

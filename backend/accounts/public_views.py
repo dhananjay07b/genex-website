@@ -51,4 +51,4 @@ class PublicUserPodcastAppearancesView(ListAPIView):
 
     def get_queryset(self):
         user = get_object_or_404(User, username=self.kwargs["username"])
-        return PodcastEpisode.objects.filter(guest_user=user).order_by("-date")
+        return PodcastEpisode.objects.filter(collaborators=user).order_by("-date")

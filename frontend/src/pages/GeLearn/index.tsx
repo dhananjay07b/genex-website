@@ -257,7 +257,7 @@ export default function GeLearn() {
 
   const contributors: ContentAuthor[] = (() => {
     const seen = new Map<string, ContentAuthor>()
-    for (const author of [...blogPosts.map(p => p.author), ...videos.map(v => v.author), ...podcasts.map(p => p.guest_account)]) {
+    for (const author of [...blogPosts.map(p => p.author), ...videos.map(v => v.author), ...podcasts.flatMap(p => p.collaborators)]) {
       if (author && !seen.has(author.username)) seen.set(author.username, author)
     }
     return [...seen.values()].slice(0, 6)

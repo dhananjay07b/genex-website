@@ -5,7 +5,7 @@ own idea of who can see what.
 """
 from django.contrib.contenttypes.models import ContentType
 
-from accounts.roles import is_admin
+from accounts.roles import is_admin, is_company
 
 from .models import Purchase
 
@@ -42,4 +42,7 @@ def has_access(user, obj, cache=None):
     # Paid.
     if is_admin(user) or user.pk in obj.access_owner_ids():
         return True
+    company_id = getattr(obj, "company_id", None)
+    if company_id and is_company(user) and user.company_id == company_id:
+        return True  # any staff login of the publishing company
     return obj.pk in purchased_ids(user, type(obj), cache)
