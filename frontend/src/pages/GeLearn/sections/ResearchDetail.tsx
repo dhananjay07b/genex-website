@@ -67,7 +67,7 @@ function MiniCard({ cs }: { cs: CaseStudyItem }) {
               <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
             <Link
-              to={`/case-studies/${cs.id}`}
+              to={`/research/${cs.id}`}
               className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
             >
               <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />
@@ -95,23 +95,23 @@ export default function CaseStudyDetail() {
   }, [id])
 
   if (cs === undefined) return null
-  if (cs === null) return <Navigate to="/case-studies" replace />
+  if (cs === null) return <Navigate to="/research" replace />
 
   const heroImg = cs.image_url ?? FALLBACK_IMAGE
 
   return (
     <main>
       <PageMeta
-        title={`${cs.title} — Genex Case Studies`}
+        title={`${cs.title} — Genex Research`}
         description={cs.excerpt}
-        canonical={`/case-studies/${cs.id}`}
+        canonical={`/research/${cs.id}`}
       />
 
       <div className="bg-white border-b border-[#e2e8f0] py-4">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/case-studies" className="hover:text-primary transition-colors">Case Studies</Link>
+          <Link to="/research" className="hover:text-primary transition-colors">Research</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-sm">{cs.title}</span>
         </div>
@@ -191,13 +191,13 @@ export default function CaseStudyDetail() {
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
               <div className="flex items-end justify-between mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-black capitalize mb-2">More Case Studies</h2>
+                  <h2 className="text-3xl font-bold text-black capitalize mb-2">More Research</h2>
                   <p className="text-lg text-[#45556c] max-w-xl">
                     More field deployments from the Genex engineering team.
                   </p>
                 </div>
                 <Link
-                  to="/case-studies"
+                  to="/research"
                   className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
                 >
                   View All <ArrowForwardIcon style={{ fontSize: 16 }} />
@@ -232,7 +232,7 @@ export default function CaseStudyDetail() {
                 Have a project in mind?
               </p>
               <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-                Let's build the next case study together.
+                Let's build the next proven outcome together.
               </h2>
               <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
                 Whether you're deploying a new plant, upgrading existing SCADA, or integrating storage — we want to hear what you're working on.

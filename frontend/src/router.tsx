@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { GeLearnLayout } from '@/components/layout/GeLearnLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { LegacyRedirect } from '@/components/utils/LegacyRedirect'
 
 const NotFound               = lazy(() => import('@/pages/NotFound'))
 const Home                  = lazy(() => import('@/pages/Home'))
@@ -12,15 +13,15 @@ const DynamicSectionPage    = lazy(() => import('@/pages/DynamicSectionPage'))
 const DynamicContentPage    = lazy(() => import('@/pages/DynamicContentPage'))
 
 const GeLearn               = lazy(() => import('@/pages/GeLearn'))
-const CaseStudies           = lazy(() => import('@/pages/GeLearn/sections/CaseStudies'))
-const CaseStudyDetail       = lazy(() => import('@/pages/GeLearn/sections/CaseStudyDetail'))
-const Technology            = lazy(() => import('@/pages/GeLearn/sections/Technology'))
-const TechnologyDetail      = lazy(() => import('@/pages/GeLearn/sections/TechnologyDetail'))
+const Research              = lazy(() => import('@/pages/GeLearn/sections/Research'))
+const ResearchDetail        = lazy(() => import('@/pages/GeLearn/sections/ResearchDetail'))
+const GeAcademy             = lazy(() => import('@/pages/GeLearn/sections/GeAcademy'))
+const GeAcademyDetail       = lazy(() => import('@/pages/GeLearn/sections/GeAcademyDetail'))
 const Blog                  = lazy(() => import('@/pages/GeLearn/sections/Blog'))
 const BlogPost              = lazy(() => import('@/pages/GeLearn/sections/BlogPost'))
 const VideoLibrary          = lazy(() => import('@/pages/GeLearn/sections/VideoLibrary'))
 const VideoDetail           = lazy(() => import('@/pages/GeLearn/sections/VideoDetail'))
-const Tenders               = lazy(() => import('@/pages/GeLearn/sections/Tenders'))
+const PoliciesTenders       = lazy(() => import('@/pages/GeLearn/sections/PoliciesTenders'))
 const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
 const PodcastDetail         = lazy(() => import('@/pages/GeLearn/sections/PodcastDetail'))
@@ -92,15 +93,15 @@ export const gelearnRouter = createBrowserRouter([
     errorElement: s(<NotFound />),
     children: [
       { path: '/',                         element: s(<GeLearn />) },
-      { path: '/case-studies',             element: s(<CaseStudies />) },
-      { path: '/case-studies/:id',         element: s(<CaseStudyDetail />) },
-      { path: '/technology',               element: s(<Technology />) },
-      { path: '/technology/:id',           element: s(<TechnologyDetail />) },
+      { path: '/research',                 element: s(<Research />) },
+      { path: '/research/:id',             element: s(<ResearchDetail />) },
+      { path: '/geacademy',                element: s(<GeAcademy />) },
+      { path: '/geacademy/:id',            element: s(<GeAcademyDetail />) },
       { path: '/blog',                     element: s(<Blog />) },
       { path: '/blog/:id',                 element: s(<BlogPost />) },
       { path: '/videos',                   element: s(<VideoLibrary />) },
       { path: '/videos/:id',               element: s(<VideoDetail />) },
-      { path: '/tenders',                  element: s(<Tenders />) },
+      { path: '/policies-tenders',         element: s(<PoliciesTenders />) },
       { path: '/whitepapers',              element: s(<Whitepapers />) },
       { path: '/podcasts',                 element: s(<Podcasts />) },
       { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
@@ -120,6 +121,12 @@ export const gelearnRouter = createBrowserRouter([
           { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
         ],
       },
+      // Renamed sections — old URLs stay valid (Apache also 301s these in production).
+      { path: '/technology',               element: <LegacyRedirect to="/geacademy" /> },
+      { path: '/technology/:id',           element: <LegacyRedirect to="/geacademy" /> },
+      { path: '/case-studies',             element: <LegacyRedirect to="/research" /> },
+      { path: '/case-studies/:id',         element: <LegacyRedirect to="/research" /> },
+      { path: '/tenders',                  element: <LegacyRedirect to="/policies-tenders" /> },
       { path: '*',                         element: s(<NotFound />) },
     ],
   },

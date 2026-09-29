@@ -82,7 +82,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
             {article.read_time}
           </span>
           <Link
-            to={`/technology/${article.id}`}
+            to={`/geacademy/${article.id}`}
             className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           >
             Read <ArrowForwardIcon style={{ fontSize: 13 }} />
@@ -95,7 +95,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function TechnologyDetail() {
+export default function GeAcademyDetail() {
   const { id } = useParams<{ id: string }>()
   const [article, setArticle] = useState<TechArticleItem | null | undefined>(undefined)
   const [related, setRelated] = useState<TechArticleItem[]>([])
@@ -111,16 +111,16 @@ export default function TechnologyDetail() {
   }, [id])
 
   if (article === undefined) return null
-  if (article === null) return <Navigate to="/technology" replace />
+  if (article === null) return <Navigate to="/geacademy" replace />
 
   const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
 
   return (
     <main>
       <PageMeta
-        title={`${article.title} — Genex Technology`}
+        title={`${article.title} — GeAcademy`}
         description={article.excerpt}
-        canonical={`/technology/${article.id}`}
+        canonical={`/geacademy/${article.id}`}
       />
 
       {/* ── BREADCRUMB ───────────────────────────────────────────────────── */}
@@ -128,7 +128,7 @@ export default function TechnologyDetail() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e] flex-wrap">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/technology" className="hover:text-primary transition-colors">Technology</Link>
+          <Link to="/geacademy" className="hover:text-primary transition-colors">GeAcademy</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-xs normal-case font-semibold">{article.title}</span>
         </div>
@@ -349,7 +349,7 @@ export default function TechnologyDetail() {
                 </p>
               </div>
               <Link
-                to="/technology"
+                to="/geacademy"
                 className="shrink-0 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-full hover:opacity-90 transition-opacity"
               >
                 View All <ArrowForwardIcon style={{ fontSize: 16 }} />

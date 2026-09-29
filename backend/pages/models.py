@@ -302,9 +302,9 @@ class GeLearnIndexPage(BasePage):
 
 
 GELEARN_SECTION_TYPE_CHOICES = [
-    ("technology", "Technology Deep Dives"),
-    ("case-studies", "Case Studies"),
-    ("tenders", "Tenders"),
+    ("geacademy", "GeAcademy"),
+    ("research", "Research"),
+    ("policies-tenders", "Policies & Tenders"),
     ("whitepapers", "Whitepapers"),
     ("videos", "Videos"),
     ("blog", "Blog"),
@@ -498,8 +498,8 @@ class CaseStudy(models.Model):
         return self.title
 
     class Meta:
-        verbose_name = "Case Study"
-        verbose_name_plural = "Case Studies"
+        verbose_name = "Research"
+        verbose_name_plural = "Research"
         ordering = ["-date"]
 
 
@@ -559,7 +559,8 @@ class TechArticle(models.Model):
         return self.title
 
     class Meta:
-        verbose_name = "Tech Article"
+        verbose_name = "GeAcademy Article"
+        verbose_name_plural = "GeAcademy Articles"
         ordering = ["-featured", "-date"]
 
 
@@ -600,6 +601,8 @@ class Tender(models.Model):
 
     class Meta:
         ordering = ["status", "title"]
+        verbose_name = "Policy & Tender"
+        verbose_name_plural = "Policies & Tenders"
 
 
 @register_snippet

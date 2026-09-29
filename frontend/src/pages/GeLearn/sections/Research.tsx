@@ -55,9 +55,9 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
               <span className="text-sm font-bold text-[#949494]">{cs.read_time}</span>
             </div>
             <Link
-              to={`/case-studies/${cs.id}`}
+              to={`/research/${cs.id}`}
               className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
-              aria-label={`Read case study: ${cs.title}`}
+              aria-label={`Read research: ${cs.title}`}
             >
               <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />
             </Link>
@@ -89,12 +89,12 @@ export default function CaseStudies() {
   return (
     <main>
       <PageMeta
-        title="Case Studies — Genex Technocrats"
-        description="Real deployments. Real outcomes. Engineering case studies from Genex projects across solar, wind, grid, BESS, EV, and industrial energy sectors."
-        canonical="/case-studies"
+        title="Research — Genex GeLearn"
+        description="Real deployments. Real outcomes. Engineering research from projects across solar, wind, grid, BESS, EV, and industrial energy sectors."
+        canonical="/research"
       />
       <PageHero
-        label="Case Studies"
+        label="Research"
         headline="Projects That Prove the Point"
         subline="Field deployments, verified outcomes, and the engineering decisions that made them work."
       />
@@ -178,7 +178,7 @@ export default function CaseStudies() {
               Have a project in mind?
             </p>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-[#162456] leading-tight mb-4">
-              Let's build the next case study together.
+              Let's build the next proven outcome together.
             </h2>
             <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
               Whether you're deploying a new plant, upgrading existing SCADA, or integrating storage — we want to hear what you're working on.

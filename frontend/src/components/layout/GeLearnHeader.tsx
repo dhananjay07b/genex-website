@@ -5,9 +5,9 @@ import { marketingPath } from '@/lib/host'
 import { AccountMenu } from './AccountMenu'
 
 const GELEARN_NAV_LINKS = [
-  { label: 'Technology', href: '/technology' },
-  { label: 'Case Studies', href: '/case-studies' },
-  { label: 'Tenders', href: '/tenders' },
+  { label: 'GeAcademy', href: '/geacademy' },
+  { label: 'Research', href: '/research' },
+  { label: 'Policies & Tenders', href: '/policies-tenders' },
   { label: 'Whitepapers', href: '/whitepapers' },
   { label: 'Videos', href: '/videos' },
   { label: 'Blog', href: '/blog' },

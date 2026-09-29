@@ -13,9 +13,10 @@ const CONTENT_TYPE_LABEL: Record<string, string> = {
   blogpost: 'Blog',
   podcastepisode: 'Podcast',
   whitepaper: 'Whitepaper',
-  tender: 'Tender',
+  tender: 'Policy & Tender',
   videoitem: 'Video',
-  casestudy: 'Case Study',
+  casestudy: 'Research',
+  techarticle: 'GeAcademy',
 }
 
 // Only content types with a real detail route get a link — others show as plain text.

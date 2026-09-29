@@ -18,8 +18,9 @@ const TYPE_LABEL: Record<string, string> = {
   videoitem: 'Video',
   podcastepisode: 'Podcast',
   whitepaper: 'Whitepaper',
-  tender: 'Tender',
-  casestudy: 'Case Study',
+  tender: 'Policy & Tender',
+  casestudy: 'Research',
+  techarticle: 'GeAcademy',
 }
 
 const TYPE_ICON: Record<string, typeof ArticleOutlinedIcon> = {
@@ -61,7 +62,7 @@ export function SavedItemsTab() {
         <EmptyState
           icon={<BookmarkBorderIcon sx={{ fontSize: 22 }} />}
           title="Nothing saved yet"
-          description="Bookmark blogs, videos, podcasts, whitepapers, and tenders as you browse GeLearn — they'll show up here."
+          description="Bookmark blogs, videos, podcasts, whitepapers, and policies & tenders as you browse GeLearn — they'll show up here."
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

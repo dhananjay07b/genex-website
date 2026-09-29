@@ -92,7 +92,7 @@ export default function Register() {
       <AuthLayout
         eyebrow="Join GeLearn"
         headline="Your work belongs in front of the people running the grid."
-        description="Create an account to publish blog posts and videos, get featured on podcasts, comment on tenders & whitepapers, and build a public profile the industry can follow."
+        description="Create an account to publish blog posts and videos, get featured on podcasts, comment on policies, tenders & whitepapers, and build a public profile the industry can follow."
         panelExtra={
           <div className="flex flex-col gap-3.5">
             {FEATURES.map(f => (

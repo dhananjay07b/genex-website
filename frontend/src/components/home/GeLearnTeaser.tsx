@@ -27,9 +27,9 @@ const ICON_MAP: Record<string, ComponentType<SvgIconProps>> = {
 const FALLBACK_ICON = ArticleOutlinedIcon
 
 const DEFAULT_CATEGORIES: GeLearnTeaserCardApiValue[] = [
-  { slug: 'technology',    label: 'Technology Deep Dives',   icon: 'MemoryOutlined' },
-  { slug: 'case-studies',  label: 'Case Studies',            icon: 'DescriptionOutlined' },
-  { slug: 'tenders',       label: 'Tenders & Opportunities', icon: 'GavelOutlined' },
+  { slug: 'geacademy',        label: 'GeAcademy',               icon: 'MemoryOutlined' },
+  { slug: 'research',         label: 'Research',                icon: 'DescriptionOutlined' },
+  { slug: 'policies-tenders', label: 'Policies & Tenders',      icon: 'GavelOutlined' },
   { slug: 'whitepapers',   label: 'Whitepapers & Reports',   icon: 'ArticleOutlined' },
   { slug: 'videos',        label: 'Video Library',           icon: 'PlayCircleOutlined' },
   { slug: 'blog',          label: 'Blog & Insights',         icon: 'RssFeedOutlined' },
@@ -78,7 +78,7 @@ export function GeLearnTeaser({ cards }: { cards?: GeLearnTeaserCardApiValue[] }
             </h2>
 
             <p className="text-text-muted text-base leading-relaxed mb-8 max-w-sm">
-              Deep technical content, case studies, and engineering insights from
+              Deep technical content, research, and engineering insights from
               the team that runs India's power infrastructure.
             </p>
 
@@ -91,7 +91,7 @@ export function GeLearnTeaser({ cards }: { cards?: GeLearnTeaserCardApiValue[] }
             </a>
 
             <p className="mt-6 text-xs text-text-muted tracking-wide">
-              {CATEGORIES.length} Content Sections &nbsp;·&nbsp; Case Studies &nbsp;·&nbsp; Whitepapers &nbsp;·&nbsp; Video Library
+              {CATEGORIES.length} Content Sections &nbsp;·&nbsp; Research &nbsp;·&nbsp; Whitepapers &nbsp;·&nbsp; Video Library
             </p>
           </motion.div>
 

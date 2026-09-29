@@ -11,6 +11,39 @@
       ],
       "destination": "https://mail.hostinger.com",
       "permanent": false
+    },
+    {
+      "source": "/technology/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "gelearn.genextechnocrats.com"
+        }
+      ],
+      "destination": "/geacademy/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/case-studies/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "gelearn.genextechnocrats.com"
+        }
+      ],
+      "destination": "/research/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/tenders",
+      "has": [
+        {
+          "type": "host",
+          "value": "gelearn.genextechnocrats.com"
+        }
+      ],
+      "destination": "/policies-tenders",
+      "permanent": true
     }
   ],
   "rewrites": [

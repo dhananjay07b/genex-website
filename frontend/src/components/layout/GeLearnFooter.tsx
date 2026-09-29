@@ -4,9 +4,9 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { marketingPath } from '@/lib/host'
 
 const SECTION_LINKS = [
-  { label: 'Technology Deep Dives', href: '/technology' },
-  { label: 'Case Studies', href: '/case-studies' },
-  { label: 'Tenders & Opportunities', href: '/tenders' },
+  { label: 'GeAcademy', href: '/geacademy' },
+  { label: 'Research', href: '/research' },
+  { label: 'Policies & Tenders', href: '/policies-tenders' },
   { label: 'Whitepapers & Reports', href: '/whitepapers' },
   { label: 'Video Library', href: '/videos' },
   { label: 'Blog & Insights', href: '/blog' },

@@ -93,7 +93,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
         {/* Arrow button */}
         <div className="flex justify-end mb-6">
           <Link
-            to={`/technology/${article.id}`}
+            to={`/geacademy/${article.id}`}
             className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] hover:opacity-85 transition-opacity"
           >
             <ArrowForwardIcon
@@ -122,7 +122,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function Technology() {
+export default function GeAcademy() {
   const [articles, setArticles] = useState<TechArticleItem[]>([])
 
   useEffect(() => {
@@ -134,12 +134,12 @@ export default function Technology() {
   return (
     <main>
       <PageMeta
-        title="Technology Deep Dives — Genex GeLearn"
+        title="GeAcademy — Genex GeLearn"
         description="IEC 61850, OPC-UA, MQTT, Modbus, AI/ML for energy — technical articles from Genex engineers on the protocols and architectures powering the energy transition."
-        canonical="/technology"
+        canonical="/geacademy"
       />
       <PageHero
-        label="Technology Deep Dives"
+        label="GeAcademy"
         headline="Under the Hood"
         subline="In-depth technical articles from engineers who build, commission, and operate these systems in the field."
       />

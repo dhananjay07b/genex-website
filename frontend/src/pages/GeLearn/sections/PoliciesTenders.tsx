@@ -96,7 +96,7 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
   )
 }
 
-export default function Tenders() {
+export default function PoliciesTenders() {
   const [tenders, setTenders] = useState<TenderItem[]>([])
   const [active, setActive] = useState<Status>('All')
 
@@ -111,14 +111,14 @@ export default function Tenders() {
   return (
     <main>
       <PageMeta
-        title="Tenders & Opportunities — Genex GeLearn"
-        description="Active tenders and partnership opportunities in solar monitoring, SCADA, and energy management from Genex Technocrats."
-        canonical="/tenders"
+        title="Policies & Tenders — Genex GeLearn"
+        description="Energy-sector policies, active tenders and partnership opportunities in solar monitoring, SCADA, and energy management."
+        canonical="/policies-tenders"
       />
       <PageHero
-        label="Tenders & Opportunities"
-        headline="Active & Upcoming Opportunities"
-        subline="Tenders, RFPs, and partnership opportunities in the energy and automation sector where Genex platforms are relevant."
+        label="Policies & Tenders"
+        headline="Policies, Tenders & Opportunities"
+        subline="Policy updates, tenders, RFPs, and partnership opportunities across the energy and automation sector."
       />
 
       <section className="bg-white py-16 lg:py-24">

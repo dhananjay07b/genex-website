@@ -54,7 +54,7 @@ export default function Login() {
       <AuthLayout
         eyebrow="Genex Technocrats"
         headline="Where power & energy practitioners build together."
-        description="Blogs, field-tested case studies, whitepapers and podcasts from engineers running India's energy infrastructure — sign in to save, comment, and contribute."
+        description="Blogs, field-tested research, whitepapers and podcasts from engineers running India's energy infrastructure — sign in to save, comment, and contribute."
         panelExtra={
           <div className="flex gap-3">
             <div className="flex-1 bg-white/6 border border-white/10 rounded-2xl px-4 py-4">

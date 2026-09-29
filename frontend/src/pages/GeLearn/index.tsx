@@ -53,11 +53,11 @@ function toSpotlight(kind: SpotlightKind, item: TechArticleItem | CaseStudyItem 
   switch (kind) {
     case 'tech': {
       const a = item as TechArticleItem
-      return { kind, id: a.id, title: a.title, excerpt: a.excerpt, date: a.date, imageUrl: a.image_url, linkTo: `/technology/${a.id}`, badges: [a.difficulty, a.topic], metaRight: a.read_time, ctaLabel: 'Read the Deep Dive' }
+      return { kind, id: a.id, title: a.title, excerpt: a.excerpt, date: a.date, imageUrl: a.image_url, linkTo: `/geacademy/${a.id}`, badges: [a.difficulty, a.topic], metaRight: a.read_time, ctaLabel: 'Read on GeAcademy' }
     }
     case 'case': {
       const c = item as CaseStudyItem
-      return { kind, id: c.id, title: c.title, excerpt: c.excerpt, date: c.date, imageUrl: c.image_url, linkTo: `/case-studies/${c.id}`, badges: [c.category], metaRight: c.read_time, ctaLabel: 'Read the Case Study' }
+      return { kind, id: c.id, title: c.title, excerpt: c.excerpt, date: c.date, imageUrl: c.image_url, linkTo: `/research/${c.id}`, badges: [c.category], metaRight: c.read_time, ctaLabel: 'Read the Research' }
     }
     case 'blog': {
       const b = item as BlogPostItem
@@ -262,7 +262,7 @@ export default function GeLearn() {
     <main>
       <PageMeta
         title="GeLearn — Energy Knowledge Hub by Genex"
-        description="Case studies, technology deep dives, whitepapers, video library, and insights from Genex Technocrats — India's energy intelligence platform."
+        description="GeAcademy, research, policies & tenders, whitepapers, video library, and insights from Genex Technocrats — India's energy intelligence platform."
         canonical="/"
       />
 
@@ -295,7 +295,7 @@ export default function GeLearn() {
       <section className="bg-white py-14">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-2 lg:grid-cols-4 gap-8">
           <AnimatedStat value={`${techCount}`} label="Technical Articles" accent="text-transparent bg-clip-text bg-linear-to-br from-primary to-secondary" labelClassName="text-text-muted" />
-          <AnimatedStat value={`${caseCount}`} label="Case Studies" accent="text-transparent bg-clip-text bg-linear-to-br from-primary to-secondary" labelClassName="text-text-muted" />
+          <AnimatedStat value={`${caseCount}`} label="Research" accent="text-transparent bg-clip-text bg-linear-to-br from-primary to-secondary" labelClassName="text-text-muted" />
           <AnimatedStat value={`${blogCount}`} label="Blog Posts" accent="text-transparent bg-clip-text bg-linear-to-br from-primary to-secondary" labelClassName="text-text-muted" />
           <AnimatedStat value={`${videoCount + podcastCount}`} label="Videos & Podcasts" accent="text-transparent bg-clip-text bg-linear-to-br from-primary to-secondary" labelClassName="text-text-muted" />
         </div>
@@ -358,11 +358,11 @@ export default function GeLearn() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Browse by Type</p>
 
           <TypeRow
-            title="Technology Deep Dives"
+            title="GeAcademy"
             description="In-depth technical breakdowns of our SCADA, EMS, grid management, and IoT systems."
-            viewAllHref="/technology"
+            viewAllHref="/geacademy"
             count={techCount}
-            items={techArticles.slice(0, 3).map(a => ({ id: a.id, title: a.title, imageUrl: a.image_url, linkTo: `/technology/${a.id}`, subtitle: `${formatDisplayDate(a.date)} · ${a.read_time}` }))}
+            items={techArticles.slice(0, 3).map(a => ({ id: a.id, title: a.title, imageUrl: a.image_url, linkTo: `/geacademy/${a.id}`, subtitle: `${formatDisplayDate(a.date)} · ${a.read_time}` }))}
           />
           <TypeRow
             title="Blog & Insights"
@@ -386,16 +386,16 @@ export default function GeLearn() {
             items={podcasts.slice(0, 3).map(p => ({ id: p.id, title: p.title, imageUrl: p.image_url, linkTo: `/podcasts/${p.id}`, subtitle: `with ${p.guest}, ${p.guest_role}` }))}
           />
           <TypeRow
-            title="Case Studies"
+            title="Research"
             description="Real project outcomes with verified performance data, deployment scale, and client impact."
-            viewAllHref="/case-studies"
+            viewAllHref="/research"
             count={caseCount}
-            items={caseStudies.slice(0, 3).map(c => ({ id: c.id, title: c.title, imageUrl: c.image_url, linkTo: `/case-studies/${c.id}`, subtitle: `${c.category} · ${c.read_time}` }))}
+            items={caseStudies.slice(0, 3).map(c => ({ id: c.id, title: c.title, imageUrl: c.image_url, linkTo: `/research/${c.id}`, subtitle: `${c.category} · ${c.read_time}` }))}
           />
 
           <div className="flex flex-col gap-3">
             <TypeInfoBar icon={<DescriptionOutlinedIcon style={{ fontSize: 20 }} />} label="Whitepapers & Reports" count={whitepaperCount} noun="documents available" href="/whitepapers" />
-            <TypeInfoBar icon={<GavelOutlinedIcon style={{ fontSize: 20 }} />} label="Tenders & Opportunities" count={tenderCount} noun="active listings" href="/tenders" />
+            <TypeInfoBar icon={<GavelOutlinedIcon style={{ fontSize: 20 }} />} label="Policies & Tenders" count={tenderCount} noun="active listings" href="/policies-tenders" />
           </div>
         </div>
       </section>
@@ -421,7 +421,7 @@ export default function GeLearn() {
         primaryText="Get in Touch"
         primaryLink={marketingPath('/contact')}
         secondaryText="Explore All Content"
-        secondaryLink="/technology"
+        secondaryLink="/geacademy"
       />
     </main>
   )

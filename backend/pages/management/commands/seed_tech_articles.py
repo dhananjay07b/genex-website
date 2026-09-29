@@ -238,7 +238,7 @@ ARTICLES = [
 
 
 class Command(BaseCommand):
-    help = "Seed a handful of sample Tech Article snippets for the GeLearn / Technology section."
+    help = "Seed a handful of sample GeAcademy Article snippets for the GeLearn / GeAcademy section."
 
     def handle(self, *args, **options):
         for entry in ARTICLES:

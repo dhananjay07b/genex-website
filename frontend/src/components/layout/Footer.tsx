@@ -34,7 +34,7 @@ const footerSections = [
   {
     title: 'GeLearn',
     links: [
-      { label: 'Case Studies',         href: gelearnPath('/case-studies') },
+      { label: 'Research',             href: gelearnPath('/research') },
       { label: 'Whitepapers & Reports', href: gelearnPath('/whitepapers') },
       { label: 'Video Library',        href: gelearnPath('/videos') },
       { label: 'Blog & Insights',      href: gelearnPath('/blog') },

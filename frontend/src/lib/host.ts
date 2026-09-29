@@ -28,7 +28,7 @@ export const MARKETING_URL = import.meta.env.DEV && !EXPLICIT_MARKETING_URL
   : PROD_MARKETING_BASE
 
 /**
- * Builds a link INTO the GeLearn shell at the given path (e.g. "/technology").
+ * Builds a link INTO the GeLearn shell at the given path (e.g. "/geacademy").
  * Always use this — never hand-concatenate GELEARN_URL + path — since in dev
  * the base URL already carries a "?shell=gelearn" query string, and a path
  * appended after that would land inside the query string instead of the URL.
