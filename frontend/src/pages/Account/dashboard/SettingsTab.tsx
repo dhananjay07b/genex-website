@@ -8,12 +8,14 @@ import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
+import { OTHER_COMPANY, companyOptions, domainList, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
 import type { Topic } from '@/types/api'
 
@@ -27,8 +29,16 @@ export function SettingsTab() {
   const [accountType, setAccountType] = useState<AccountType>(user?.account_type ?? 'learner')
   const [companyOther, setCompanyOther] = useState(user?.company_other ?? '')
   const isCompanyAccount = user?.account_type === 'company'
-  // A link to a registered company is set by Genex (or by email-domain verification), not edited here.
   const linkedCompany = user?.company?.slug ? user.company : null
+  const { companies } = useCompanies()
+  // null = untouched: the choice then mirrors what's saved on the account.
+  const [companyChoiceEdit, setCompanyChoiceEdit] = useState<string | null>(null)
+  const savedCompanyChoice = linkedCompany
+    ? String(companies.find(c => c.slug === linkedCompany.slug)?.id ?? '')
+    : user?.company_other ? OTHER_COMPANY : ''
+  const companyChoice = companyChoiceEdit ?? savedCompanyChoice
+  const selectedCompany = companies.find(c => String(c.id) === companyChoice)
+  const [profileError, setProfileError] = useState('')
   const [roleTitle, setRoleTitle] = useState(user?.role_title ?? '')
   const [yearsExperience, setYearsExperience] = useState(user?.years_experience?.toString() ?? '')
   const [linkedinUrl, setLinkedinUrl] = useState(user?.linkedin_url ?? '')
@@ -123,6 +133,12 @@ export function SettingsTab() {
   }
 
   async function handleSaveProfile() {
+    setProfileError('')
+    if (accountType === 'professional' && !isCompanyAccount) {
+      if (!companyChoice) return setProfileError("Select your company, or choose 'Other'.")
+      if (companyChoice === OTHER_COMPANY && !companyOther.trim()) return setProfileError('Enter your company name.')
+      if (!roleTitle.trim()) return setProfileError('Role is required for a Professional profile.')
+    }
     setSavingProfile(true)
     setProfileSaved(false)
     try {
@@ -148,7 +164,11 @@ export function SettingsTab() {
           display_name: displayName,
           bio,
           ...(isCompanyAccount ? {} : { account_type: accountType }),
-          ...(accountType === 'professional' && !linkedCompany ? { company_other: companyOther } : {}),
+          ...(accountType === 'professional' && !isCompanyAccount
+            ? companyChoice === OTHER_COMPANY
+              ? { company_id: null, company_other: companyOther }
+              : { company_id: Number(companyChoice) }
+            : {}),
           role_title: accountType === 'learner' ? '' : roleTitle,
           years_experience: yearsExperience ? Number(yearsExperience) : null,
           linkedin_url: linkedinUrl,
@@ -165,7 +185,14 @@ export function SettingsTab() {
       setCoverFile(null)
       setCoverPreview(null)
       setCoverRemoved(false)
+      setCompanyChoiceEdit(null)
       setProfileSaved(true)
+    } catch (err) {
+      const fields = err instanceof ApiError ? err.fields : {}
+      setProfileError(
+        fields.company_id ?? fields.company_other ?? fields.role_title ?? fields.account_type
+          ?? (err instanceof ApiError ? err.message : "Couldn't save your profile. Please try again."),
+      )
     } finally {
       setSavingProfile(false)
     }
@@ -189,7 +216,9 @@ export function SettingsTab() {
 
   const previewInitials = (displayName || user.username).slice(0, 2).toUpperCase()
   const previewExpertise = topics.filter(t => expertise.includes(t.id))
-  const companyName = linkedCompany?.name ?? (accountType === 'professional' ? companyOther : '')
+  const companyName = accountType === 'learner'
+    ? ''
+    : selectedCompany?.name ?? (companyChoice === OTHER_COMPANY ? companyOther : linkedCompany?.name ?? '')
   const roleAtCompany = roleTitle && companyName ? `${roleTitle} at ${companyName}` : (roleTitle || companyName)
 
   const avatarSrc = avatarFile ? avatarPreview : avatarRemoved ? null : (user.avatar_url ? getMediaUrl(user.avatar_url) : null)
@@ -200,6 +229,7 @@ export function SettingsTab() {
     bio !== (user.bio ?? '') ||
     accountType !== (user.account_type ?? 'learner') ||
     companyOther !== (user.company_other ?? '') ||
+    companyChoice !== savedCompanyChoice ||
     roleTitle !== (user.role_title ?? '') ||
     yearsExperience !== (user.years_experience?.toString() ?? '') ||
     linkedinUrl !== (user.linkedin_url ?? '') ||
@@ -332,10 +362,28 @@ export function SettingsTab() {
 
           {accountType !== 'learner' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {linkedCompany || isCompanyAccount ? (
+              {isCompanyAccount ? (
                 <Input label="Company" value={linkedCompany?.name ?? ''} disabled readOnly />
               ) : (
-                <Input label="Company" placeholder="e.g. Genex Technocrats" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
+                <div className="flex flex-col gap-2">
+                  <Select
+                    label="Company"
+                    placeholder="Select your company"
+                    options={companyOptions(companies)}
+                    value={companyChoice}
+                    onChange={e => setCompanyChoiceEdit(e.target.value)}
+                  />
+                  {companyChoice === OTHER_COMPANY && (
+                    <Input placeholder="Company name, e.g. Acme Energy" aria-label="Company name" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
+                  )}
+                  {selectedCompany && (
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      {selectedCompany.slug === linkedCompany?.slug && user.company_verified
+                        ? `Verified ${selectedCompany.name} expert.`
+                        : `Verification needs a confirmed ${domainList(selectedCompany)} account email.`}
+                    </p>
+                  )}
+                </div>
               )}
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
             </div>
@@ -385,6 +433,7 @@ export function SettingsTab() {
               {savingProfile ? 'Saving…' : 'Save Changes'}
             </Button>
             {profileSaved && <span className="text-xs font-semibold text-secondary">Saved.</span>}
+            {profileError && <span role="alert" className="text-xs font-semibold text-red-600">{profileError}</span>}
           </div>
         </div>
       </section>

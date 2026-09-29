@@ -19,6 +19,7 @@ import type { PublicProfile as PublicProfileType, FollowRow, User } from '@/type
 import type { BlogPostItem, VideoItem, PodcastItem, SnippetListResponse } from '@/types/api'
 import { EmptyState } from './dashboard/EmptyState'
 import { MembershipTierBadge } from '@/components/gelearn/MembershipTierBadge'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>()
@@ -229,6 +230,13 @@ export default function PublicProfile() {
               <MembershipTierBadge tier={profile.membership_tier} />
             </div>
             <p className="text-sm text-text-muted mt-0.5">@{profile.username}</p>
+            {(profile.role_title || profile.company) && (
+              <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-text-primary mt-1.5">
+                {profile.role_title && <span className="font-semibold">{profile.role_title}</span>}
+                {profile.role_title && profile.company && <span className="text-text-muted">at</span>}
+                {profile.company && <CompanyBadge company={profile.company} />}
+              </p>
+            )}
           </div>
 
           {!isSelf && viewer && (

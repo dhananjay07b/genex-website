@@ -12,7 +12,7 @@ class CompanyDomainInline(admin.TabularInline):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ("name", "domain_list", "staff_count", "tutor_count", "is_active")
+    list_display = ("name", "domain_list", "staff_count", "expert_count", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "domains__domain")
     prepopulated_fields = {"slug": ("name",)}
@@ -22,8 +22,14 @@ class CompanyAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("domains").annotate(
             _staff=Count("members", filter=Q(members__account_type="company"), distinct=True),
-            _tutors=Count("members", filter=Q(members__account_type="professional"), distinct=True),
+            _experts=Count("members", filter=Q(members__account_type="professional"), distinct=True),
         )
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        # Domains or the active flag may have changed — experts' badges follow.
+        from accounts.verification import refresh_company_members
+        refresh_company_members(form.instance)
 
     @admin.display(description="Domains")
     def domain_list(self, obj):
@@ -33,6 +39,6 @@ class CompanyAdmin(admin.ModelAdmin):
     def staff_count(self, obj):
         return obj._staff
 
-    @admin.display(description="Tutors", ordering="_tutors")
-    def tutor_count(self, obj):
-        return obj._tutors
+    @admin.display(description="Professionals", ordering="_experts")
+    def expert_count(self, obj):
+        return obj._experts

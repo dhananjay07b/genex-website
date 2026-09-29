@@ -7,12 +7,16 @@ import { motion } from 'framer-motion'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
+import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 import { useAuth } from '@/context/useAuth'
+import { OTHER_COMPANY, companyOptions, domainList, emailMatchesCompany, useCompanies } from '@/hooks/useCompanies'
+import { ApiError } from '@/lib/api/client'
 import { AuthLayout } from './AuthLayout'
 
 const passwordSchema = z.string()
@@ -28,6 +32,7 @@ const schema = z.object({
   password: passwordSchema,
   confirmPassword: z.string().min(1, 'Please retype your password'),
   accountType: z.enum(['learner', 'professional']),
+  companyChoice: z.string().optional(),
   companyOther: z.string().optional(),
   roleTitle: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
@@ -35,8 +40,10 @@ const schema = z.object({
   path: ['confirmPassword'],
 }).superRefine((data, ctx) => {
   if (data.accountType !== 'professional') return
-  if (!data.companyOther?.trim()) {
-    ctx.addIssue({ code: 'custom', message: 'Company is required', path: ['companyOther'] })
+  if (!data.companyChoice) {
+    ctx.addIssue({ code: 'custom', message: "Select your company, or choose 'Other'", path: ['companyChoice'] })
+  } else if (data.companyChoice === OTHER_COMPANY && !data.companyOther?.trim()) {
+    ctx.addIssue({ code: 'custom', message: 'Company name is required', path: ['companyOther'] })
   }
   if (!data.roleTitle?.trim()) {
     ctx.addIssue({ code: 'custom', message: 'Role is required', path: ['roleTitle'] })
@@ -44,6 +51,18 @@ const schema = z.object({
 })
 
 type FormData = z.infer<typeof schema>
+
+// Backend field name → form field, so server validation errors land inline.
+const SERVER_FIELD: Record<string, keyof FormData> = {
+  username: 'username',
+  email: 'email',
+  password1: 'password',
+  display_name: 'displayName',
+  account_type: 'accountType',
+  company_id: 'companyChoice',
+  company_other: 'companyOther',
+  role_title: 'roleTitle',
+}
 
 const FEATURES = [
   'Publish blog posts & videos',
@@ -57,16 +76,30 @@ export default function Register() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const { companies } = useCompanies()
+
   const {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { accountType: 'learner' } })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { accountType: 'learner', companyChoice: '' } })
 
   const accountType = watch('accountType')
+  const companyChoice = watch('companyChoice')
+  const selectedCompany = companies.find(c => String(c.id) === companyChoice)
 
   async function onSubmit(data: FormData) {
+    const isProfessional = data.accountType === 'professional'
+    const company = isProfessional ? companies.find(c => String(c.id) === data.companyChoice) : undefined
+    if (company && !emailMatchesCompany(data.email, company)) {
+      setError('email', {
+        message: `Use your official ${domainList(company)} email to get verified as a ${company.name} expert, or choose 'Other'.`,
+      })
+      return
+    }
+
     setStatus('loading')
     try {
       await registerUser({
@@ -75,13 +108,27 @@ export default function Register() {
         password: data.password,
         displayName: data.displayName,
         accountType: data.accountType,
-        companyOther: data.companyOther,
+        companyId: company?.id ?? null,
+        companyOther: isProfessional && data.companyChoice === OTHER_COMPANY ? data.companyOther : '',
         roleTitle: data.roleTitle,
       })
       navigate('/account', { replace: true })
-    } catch {
+    } catch (err) {
       setStatus('error')
-      setErrorMessage('Could not create your account. The username or email may already be taken.')
+      const fields = err instanceof ApiError ? err.fields : {}
+      let placedInline = false
+      for (const [serverField, message] of Object.entries(fields)) {
+        const field = SERVER_FIELD[serverField]
+        if (field) {
+          setError(field, { message })
+          placedInline = true
+        }
+      }
+      setErrorMessage(
+        placedInline
+          ? 'Please fix the highlighted fields.'
+          : err instanceof ApiError ? err.message : 'Could not create your account. Please try again.'
+      )
     }
   }
 
@@ -159,9 +206,38 @@ export default function Register() {
               </div>
 
               {accountType === 'professional' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Company" placeholder="e.g. Genex Technocrats" error={errors.companyOther?.message} {...register('companyOther')} />
-                  <Input label="Role" placeholder="e.g. Grid Engineer" error={errors.roleTitle?.message} {...register('roleTitle')} />
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Select
+                      label="Company"
+                      placeholder="Select your company"
+                      options={companyOptions(companies)}
+                      error={errors.companyChoice?.message}
+                      {...register('companyChoice')}
+                      value={companyChoice ?? ''}
+                    />
+                    <Input label="Role" placeholder="e.g. Grid Engineer" error={errors.roleTitle?.message} {...register('roleTitle')} />
+                  </div>
+                  {companyChoice === OTHER_COMPANY && (
+                    <Input
+                      label="Company name"
+                      placeholder="e.g. Acme Energy"
+                      error={errors.companyOther?.message}
+                      {...register('companyOther')}
+                    />
+                  )}
+                  {selectedCompany && (
+                    <p className="flex items-start gap-1.5 text-xs text-text-muted leading-relaxed">
+                      <VerifiedOutlinedIcon sx={{ fontSize: 14 }} className="text-primary shrink-0 mt-px" />
+                      Sign up with your {domainList(selectedCompany)} email. We&apos;ll send a link to confirm it, then
+                      your content shows as verified {selectedCompany.name}.
+                    </p>
+                  )}
+                  {companyChoice === OTHER_COMPANY && (
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      Unlisted companies are shown by name only, without a verified badge.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

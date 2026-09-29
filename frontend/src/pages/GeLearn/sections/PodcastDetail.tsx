@@ -10,6 +10,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -87,6 +88,9 @@ export default function PodcastDetail() {
                   <span className="text-sm text-[#62748e] text-left">
                     Hosted with <span className="font-bold text-[#0f172a] group-hover:text-primary transition-colors">{episode.guest_account.display_name}</span>
                     <span className="block text-xs text-[#90a1b9]">{episode.guest_role}</span>
+                    {episode.guest_account.company && (
+                      <span className="flex text-xs mt-0.5"><CompanyBadge company={episode.guest_account.company} /></span>
+                    )}
                   </span>
                 </button>
               ) : (

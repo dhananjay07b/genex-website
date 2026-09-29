@@ -9,6 +9,8 @@ from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.documents import urls as wagtaildocs_urls
 from wagtail.images.api.v2.views import ImagesAPIViewSet
 
+from accounts.views import GenexRegisterView, GenexResendEmailView
+
 api_router = WagtailAPIRouter("wagtailapi")
 api_router.register_endpoint("pages", PagesAPIViewSet)
 api_router.register_endpoint("images", ImagesAPIViewSet)
@@ -20,6 +22,9 @@ urlpatterns = [
     path("api/v2/", api_router.urls),
     path("api/snippets/", include("pages.api")),
     path("api/auth/", include("dj_rest_auth.urls")),
+    # Throttled overrides — must precede the dj-rest-auth include they shadow.
+    path("api/auth/registration/", GenexRegisterView.as_view(), name="rest_register"),
+    path("api/auth/registration/resend-email/", GenexResendEmailView.as_view(), name="rest_resend_email"),
     path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/accounts/", include("accounts.urls")),
     path("api/organizations/", include("organizations.urls")),

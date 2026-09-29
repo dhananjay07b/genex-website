@@ -1,6 +1,6 @@
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from dj_rest_auth.registration.views import SocialLoginView
+from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, SocialLoginView
 from django.middleware.csrf import get_token
 from rest_framework import serializers, status
 from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateAPIView
@@ -87,3 +87,12 @@ class SocialAccountDisconnectView(DestroyAPIView):
             )
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GenexRegisterView(RegisterView):
+    """dj-rest-auth hardcodes throttle_scope='dj_rest_auth' (disabled) — use our own scope."""
+    throttle_scope = "registration"
+
+
+class GenexResendEmailView(ResendEmailVerificationView):
+    throttle_scope = "resend-email"

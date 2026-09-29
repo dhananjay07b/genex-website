@@ -1,3 +1,5 @@
+import type { AccountType, CompanyDisplay } from './auth'
+
 // ── Wagtail v2 page API ────────────────────────────────────────────────────────
 
 export interface StreamBlock<T = unknown> {
@@ -381,7 +383,8 @@ export interface ContentAuthor {
   username: string
   display_name: string
   avatar_url: string | null
-  company: string
+  account_type: AccountType
+  company: CompanyDisplay | null
   role_title: string
   years_experience: number | null
   bio: string

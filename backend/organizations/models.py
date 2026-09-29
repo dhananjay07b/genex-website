@@ -23,7 +23,7 @@ class Company(models.Model):
     """
     A registered organisation on GeLearn (Genex itself, Google, etc.). Created
     and managed only by the superuser in Django admin. Company staff logins
-    (User.account_type = company) and domain-verified Professional tutors both
+    (User.account_type = company) and domain-verified Professionals both
     point at a Company.
     """
     name = models.CharField(max_length=150, unique=True)
@@ -31,13 +31,13 @@ class Company(models.Model):
     logo = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
-        help_text="Small square logo (SVG or PNG) shown next to everything this company or its tutors publish.",
+        help_text="Small square logo (SVG or PNG) shown next to everything this company or its verified experts publish.",
     )
     website = models.URLField(blank=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(
         default=True,
-        help_text="Inactive companies disappear from the registration dropdown and their tutors lose the verified badge. Use this instead of deleting.",
+        help_text="Inactive companies disappear from the registration dropdown and their professionals lose the verified badge. Use this instead of deleting.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -65,7 +65,7 @@ class Company(models.Model):
 
 
 class CompanyDomain(models.Model):
-    """An official email domain for a Company, e.g. `google.com`. Used to verify tutors."""
+    """An official email domain for a Company, e.g. `google.com`. Used to verify professionals."""
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="domains")
     domain = models.CharField(
         max_length=253, unique=True,

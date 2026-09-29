@@ -19,12 +19,22 @@ export interface CompanyDisplay {
   verified: boolean
 }
 
+/** A registered company, as offered in the Professional company picker. */
+export interface CompanyOption {
+  id: number
+  name: string
+  slug: string
+  logo_url: string | null
+  domains: string[]
+}
+
 export interface RegisterInput {
   username: string
   email: string
   password: string
   displayName: string
   accountType: SelfServiceAccountType
+  companyId?: number | null
   companyOther?: string
   roleTitle?: string
 }

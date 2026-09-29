@@ -8,19 +8,25 @@ import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
+import { useAuth } from '@/context/useAuth'
 import { AuthLayout } from './AuthLayout'
 
 export default function VerifyEmail() {
   const { key } = useParams<{ key: string }>()
   const navigate = useNavigate()
+  const { refetch } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(key ? 'loading' : 'error')
 
   useEffect(() => {
     if (!key) return
     apiFetch('/api/auth/registration/verify-email/', { method: 'POST', body: { key } })
-      .then(() => setStatus('success'))
+      .then(() => {
+        setStatus('success')
+        // Confirming may have just verified a company expert — pick up the new badge.
+        void refetch()
+      })
       .catch(() => setStatus('error'))
-  }, [key])
+  }, [key, refetch])
 
   return (
     <>

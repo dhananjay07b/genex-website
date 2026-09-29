@@ -9,14 +9,29 @@ export interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
 }
 
-/** Thrown by `apiFetch` on a non-2xx response — `message` is the backend's own error text when it can be read, not a generic label. */
+/**
+ * Thrown by `apiFetch` on a non-2xx response — `message` is the backend's own error text when it can be read, not a generic label.
+ * `fields` maps each field name to its first error message (DRF validation errors), for inline form errors.
+ */
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  fields: Record<string, string>
+  constructor(status: number, message: string, fields: Record<string, string> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fields = fields
   }
+}
+
+function extractFieldErrors(body: unknown): Record<string, string> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {}
+  const fields: Record<string, string> = {}
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    if (Array.isArray(value) && typeof value[0] === 'string') fields[key] = value[0]
+    else if (typeof value === 'string') fields[key] = value
+  }
+  return fields
 }
 
 function extractErrorMessage(body: unknown): string | null {
@@ -79,12 +94,15 @@ async function request<T>(path: string, options: ApiOptions = {}, isRetry = fals
 
   if (!res.ok) {
     let message = `API error ${res.status}: ${path}`
+    let fields: Record<string, string> = {}
     try {
-      message = extractErrorMessage(await res.clone().json()) ?? message
+      const body: unknown = await res.clone().json()
+      message = extractErrorMessage(body) ?? message
+      fields = extractFieldErrors(body)
     } catch {
       // Response wasn't JSON (or already consumed) — keep the generic message.
     }
-    throw new ApiError(res.status, message)
+    throw new ApiError(res.status, message, fields)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>

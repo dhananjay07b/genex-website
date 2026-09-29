@@ -11,6 +11,7 @@ import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
 import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
+import { AuthorByline } from '@/components/gelearn/AuthorByline'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -101,16 +102,21 @@ export default function VideoDetail() {
                     video.author.display_name.slice(0, 2).toUpperCase()
                   )}
                 </span>
-                <span className="text-sm text-[#45556c]">
-                  Posted by{' '}
-                  <b
-                    className="relative text-[#0f172a] group-hover:text-primary transition-colors"
-                    onMouseEnter={authorHover.onMouseEnter}
-                    onMouseLeave={authorHover.onMouseLeave}
-                  >
-                    {video.author.display_name}
-                    <MiniProfileCard author={video.author} visible={authorHover.active} />
-                  </b>
+                <span className="text-sm text-[#45556c] text-left">
+                  <AuthorByline
+                    kind="Video"
+                    company={video.author.company}
+                    name={
+                      <b
+                        className="relative text-[#0f172a] group-hover:text-primary transition-colors"
+                        onMouseEnter={authorHover.onMouseEnter}
+                        onMouseLeave={authorHover.onMouseLeave}
+                      >
+                        {video.author.display_name}
+                        <MiniProfileCard author={video.author} visible={authorHover.active} />
+                      </b>
+                    }
+                  />
                 </span>
               </button>
             ) : (

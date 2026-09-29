@@ -4,6 +4,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import MembershipTier, User
 from .roles import display_company
+from .verification import refresh_company_verification
 
 
 @admin.register(User)
@@ -79,6 +80,7 @@ class UserAdmin(DjangoUserAdmin):
                 user=obj, email=obj.email.lower(),
                 defaults={"verified": True, "primary": True},
             )
+        refresh_company_verification(obj)
 
 
 @admin.register(MembershipTier)

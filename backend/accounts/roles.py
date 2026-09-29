@@ -57,11 +57,6 @@ def display_company(user):
     return None
 
 
-def display_company_name(user):
-    company = display_company(user)
-    return company["name"] if company else ""
-
-
 # ── DRF permission classes ───────────────────────────────────────────────────
 
 class IsAdmin(BasePermission):

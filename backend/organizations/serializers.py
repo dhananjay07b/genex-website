@@ -4,7 +4,7 @@ from .models import Company
 
 
 class CompanyListSerializer(serializers.ModelSerializer):
-    """Registration dropdown row — domains are shown so tutors know which email to use."""
+    """Registration dropdown row — domains are shown so professionals know which email to use."""
     logo_url = serializers.CharField(read_only=True)
     domains = serializers.SerializerMethodField()
 

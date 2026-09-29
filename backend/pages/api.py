@@ -16,7 +16,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from wagtail.images import get_image_model
 from wagtail.rich_text import expand_db_html
 
-from accounts.roles import display_company_name, is_admin
+from accounts.roles import display_company, is_admin
 
 from .models import (
     BlogPost,
@@ -151,6 +151,21 @@ class WhitepaperSerializer(serializers.ModelSerializer):
         return obj.document.url if obj.document else None
 
 
+def author_payload(user):
+    """Public identity card for a content author / podcast guest (the frontend's ContentAuthor)."""
+    return {
+        "username": user.username,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar.file.url if user.avatar else None,
+        "account_type": user.account_type,
+        "company": display_company(user),
+        "role_title": user.role_title,
+        "years_experience": user.years_experience,
+        "bio": user.bio,
+        "expertise": [{"id": t.id, "name": t.name, "slug": t.slug} for t in user.expertise.all()[:3]],
+    }
+
+
 class AuthorSerializerMixin:
     """
     Resolves the real submitter behind a published BlogPost/VideoItem via the
@@ -162,17 +177,7 @@ class AuthorSerializerMixin:
         submission = getattr(obj, "submission_source", None)
         if submission is None or submission.author is None:
             return None
-        author = submission.author
-        return {
-            "username": author.username,
-            "display_name": author.display_name,
-            "avatar_url": author.avatar.file.url if author.avatar else None,
-            "company": display_company_name(author),
-            "role_title": author.role_title,
-            "years_experience": author.years_experience,
-            "bio": author.bio,
-            "expertise": [{"id": t.id, "name": t.name, "slug": t.slug} for t in author.expertise.all()[:3]],
-        }
+        return author_payload(submission.author)
 
 
 class TopicSerializer(serializers.ModelSerializer):
@@ -252,17 +257,7 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
     def get_guest_account(self, obj):
         if not obj.guest_user_id:
             return None
-        guest = obj.guest_user
-        return {
-            "username": guest.username,
-            "display_name": guest.display_name,
-            "avatar_url": guest.avatar.file.url if guest.avatar else None,
-            "company": display_company_name(guest),
-            "role_title": guest.role_title,
-            "years_experience": guest.years_experience,
-            "bio": guest.bio,
-            "expertise": [{"id": t.id, "name": t.name, "slug": t.slug} for t in guest.expertise.all()[:3]],
-        }
+        return author_payload(obj.guest_user)
 
 
 class UserBlogPostSerializer(serializers.ModelSerializer):

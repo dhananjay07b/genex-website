@@ -22,6 +22,7 @@ import { CommentSection } from '@/components/gelearn/CommentSection'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
 import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
+import { AuthorByline } from '@/components/gelearn/AuthorByline'
 import { TagBlogsModal } from '@/components/gelearn/TagBlogsModal'
 import { useHoverIntent } from '@/lib/useHoverIntent'
 
@@ -162,16 +163,21 @@ export default function BlogPost() {
                       post.author.display_name.slice(0, 2).toUpperCase()
                     )}
                   </span>
-                  <span className="text-sm text-[#62748e]">
-                    Post by{' '}
-                    <span
-                      className="relative font-bold text-[#0f172a] group-hover:text-primary transition-colors"
-                      onMouseEnter={authorHover.onMouseEnter}
-                      onMouseLeave={authorHover.onMouseLeave}
-                    >
-                      {post.author.display_name}
-                      <MiniProfileCard author={post.author} visible={authorHover.active} />
-                    </span>
+                  <span className="text-sm text-[#62748e] text-left">
+                    <AuthorByline
+                      kind="Post"
+                      company={post.author.company}
+                      name={
+                        <span
+                          className="relative font-bold text-[#0f172a] group-hover:text-primary transition-colors"
+                          onMouseEnter={authorHover.onMouseEnter}
+                          onMouseLeave={authorHover.onMouseLeave}
+                        >
+                          {post.author.display_name}
+                          <MiniProfileCard author={post.author} visible={authorHover.active} />
+                        </span>
+                      }
+                    />
                   </span>
                 </button>
               ) : (

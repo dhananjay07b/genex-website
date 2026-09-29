@@ -11,6 +11,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
@@ -46,9 +47,10 @@ function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
       <div className="p-8 flex flex-col flex-1">
         {/* Meta */}
         <div className="flex items-center gap-6 mb-4">
-          <span className="flex items-center gap-2 text-xs text-[#949494]">
+          <span className="flex items-center gap-2 text-xs text-[#949494] min-w-0">
             <PersonOutlinedIcon style={{ fontSize: 14 }} />
-            Posted By {post.author?.display_name ?? 'Genex Engineering'}
+            <span className="truncate">Posted By {post.author?.display_name ?? 'Genex Engineering'}</span>
+            {post.author?.company?.verified && <CompanyBadge company={post.author.company} />}
           </span>
           <span className="flex items-center gap-2 text-xs text-[#949494]">
             <CalendarTodayOutlinedIcon style={{ fontSize: 14 }} />

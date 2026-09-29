@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
 import { getMediaUrl } from '@/lib/utils'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import type { ContentAuthor } from '@/types/api'
 
 interface MiniProfileCardProps {
@@ -10,9 +11,6 @@ interface MiniProfileCardProps {
 
 export function MiniProfileCard({ author, visible }: MiniProfileCardProps) {
   const initials = author.display_name.slice(0, 2).toUpperCase()
-  const roleAtCompany = author.role_title && author.company
-    ? `${author.role_title} at ${author.company}`
-    : (author.role_title || author.company)
 
   return (
     <AnimatePresence>
@@ -35,10 +33,12 @@ export function MiniProfileCard({ author, visible }: MiniProfileCardProps) {
           <div className="min-w-0 flex-1 text-left">
             <p className="text-base font-extrabold text-text-primary truncate">{author.display_name}</p>
 
-            {roleAtCompany && (
-              <p className="flex items-center justify-start gap-1.5 text-sm text-text-muted mt-1 truncate">
+            {(author.role_title || author.company) && (
+              <p className="flex items-center justify-start gap-1.5 text-sm text-text-muted mt-1 min-w-0">
                 <WorkOutlineOutlinedIcon sx={{ fontSize: 15 }} className="shrink-0 text-primary" />
-                {roleAtCompany}
+                {author.role_title && <span className="truncate">{author.role_title}</span>}
+                {author.role_title && author.company && <span className="shrink-0">at</span>}
+                {author.company && <CompanyBadge company={author.company} />}
               </p>
             )}
 

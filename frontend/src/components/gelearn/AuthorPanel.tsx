@@ -11,6 +11,7 @@ import { getMediaUrl, formatRelativeTime } from '@/lib/utils'
 import { useAuth } from '@/context/useAuth'
 import { Button } from '@/components/ui/Button'
 import { MembershipTierBadge } from '@/components/gelearn/MembershipTierBadge'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import type { PublicProfile, FollowRow } from '@/types/auth'
 import type { BlogPostItem, VideoItem, SnippetListResponse } from '@/types/api'
 
@@ -154,8 +155,10 @@ export function AuthorPanel({ username, onClose }: AuthorPanelProps) {
                   <h3 className="text-lg font-extrabold text-text-primary">{profile.display_name || profile.username}</h3>
                   <MembershipTierBadge tier={profile.membership_tier} className="mt-1" />
                   {(profile.role_title || profile.company) && (
-                    <p className="text-sm text-text-primary font-semibold mt-2">
-                      {profile.role_title}{profile.role_title && profile.company ? ' at ' : ''}{profile.company?.name}
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-text-primary font-semibold mt-2">
+                      {profile.role_title && <span>{profile.role_title}</span>}
+                      {profile.role_title && profile.company && <span className="font-normal text-text-muted">at</span>}
+                      {profile.company && <CompanyBadge company={profile.company} />}
                     </p>
                   )}
                   {profile.years_experience !== null && (

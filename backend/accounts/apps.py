@@ -23,6 +23,15 @@ class AccountsConfig(AppConfig):
                         params={"username": self.username_field.verbose_name},
                     )
 
+        from allauth.account.signals import email_confirmed
+
+        from .verification import refresh_company_verification
+
+        def on_email_confirmed(request, email_address, **kwargs):
+            refresh_company_verification(email_address.user)
+
+        email_confirmed.connect(on_email_confirmed, dispatch_uid="accounts.company_verification")
+
         # Django admin normally admits any is_staff user; only the superuser may enter.
         admin.site.has_permission = superuser_only_admin
         admin.site.login_form = SuperuserAuthenticationForm

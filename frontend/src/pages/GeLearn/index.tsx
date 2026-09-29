@@ -10,6 +10,7 @@ import { AnimatedStat } from '@/components/ui/AnimatedStat'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import type {
   TechArticleItem, CaseStudyItem, BlogPostItem, VideoItem, PodcastItem,
   WhitepaperItem, TenderItem, ContentAuthor, SnippetListResponse,
@@ -178,7 +179,11 @@ function ContributorChip({ author }: { author: ContentAuthor }) {
       </div>
       <div className="min-w-0">
         <div className="text-sm font-bold text-[#0f172b] truncate">{author.display_name}</div>
-        <div className="text-xs text-text-muted truncate">{[author.role_title, author.company].filter(Boolean).join(' · ')}</div>
+        <div className="flex items-center gap-1.5 text-xs text-text-muted min-w-0">
+          {author.role_title && <span className="truncate">{author.role_title}</span>}
+          {author.role_title && author.company && <span aria-hidden="true">·</span>}
+          {author.company && <CompanyBadge company={author.company} />}
+        </div>
       </div>
     </Link>
   )
