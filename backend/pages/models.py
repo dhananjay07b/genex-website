@@ -1,11 +1,15 @@
 import json
+from decimal import Decimal
+
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from taggit.managers import TaggableManager
-from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
+from wagtail.admin.panels import FieldPanel, FieldRowPanel, InlinePanel, MultiFieldPanel
 from wagtail.api import APIField
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images.models import Image
@@ -643,8 +647,66 @@ class Whitepaper(models.Model):
         ordering = ["-date"]
 
 
+class AccessControlled(models.Model):
+    """
+    Who may open a piece of content. Replaces the old membership tiers.
+      - free:    anyone, signed in or not
+      - members: any signed-in account
+      - paid:    Admin, the content's owner(s), and anyone with a paid Purchase
+                 (checkout itself arrives later — see commerce.Purchase)
+    Enforcement lives in commerce.access.has_access; the API strips the media
+    / body from anything the requester can't open.
+    """
+    ACCESS_FREE = "free"
+    ACCESS_MEMBERS = "members"
+    ACCESS_PAID = "paid"
+    ACCESS_CHOICES = [
+        (ACCESS_FREE, "Free — anyone"),
+        (ACCESS_MEMBERS, "Members only — any signed-in account"),
+        (ACCESS_PAID, "Paid — purchase required"),
+    ]
+
+    access = models.CharField(max_length=10, choices=ACCESS_CHOICES, default=ACCESS_FREE)
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("1.00"))],
+        help_text="Required for paid content.",
+    )
+    currency = models.CharField(max_length=3, default="INR", help_text="ISO code, e.g. INR.")
+
+    access_panels = [
+        MultiFieldPanel([
+            FieldPanel("access"),
+            FieldRowPanel([FieldPanel("price"), FieldPanel("currency")]),
+        ], heading="Access"),
+    ]
+
+    class Meta:
+        abstract = True
+
+    def clean(self):
+        super().clean()
+        if self.access == self.ACCESS_PAID and not self.price:
+            raise ValidationError({"price": "Set a price for paid content."})
+        if self.access != self.ACCESS_PAID:
+            self.price = None
+        self.currency = (self.currency or "INR").upper()
+
+    def access_owner_ids(self):
+        """Users who always have access to their own content (overridden per model)."""
+        return set()
+
+
+class SubmissionOwnedMixin:
+    """BlogPost/VideoItem: the owner is whoever submitted it (see approve_and_publish)."""
+
+    def access_owner_ids(self):
+        submission = getattr(self, "submission_source", None)
+        return {submission.author_id} if submission is not None and submission.author_id else set()
+
+
 @register_snippet
-class VideoItem(models.Model):
+class VideoItem(SubmissionOwnedMixin, AccessControlled):
     title               = models.CharField(max_length=255)
     category            = models.CharField(max_length=100)
     date                = models.DateField()
@@ -656,11 +718,6 @@ class VideoItem(models.Model):
         on_delete=models.SET_NULL, related_name="+",
     )
     video_url           = models.URLField(blank=True)
-    required_tier       = models.ForeignKey(
-        "accounts.MembershipTier", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
-        help_text="Leave blank for public access. Set to require this tier or higher.",
-    )
 
     panels = [
         FieldPanel("title"),
@@ -673,7 +730,7 @@ class VideoItem(models.Model):
         FieldPanel("image"),
         FieldPanel("excerpt"),
         FieldPanel("video_url"),
-        FieldPanel("required_tier"),
+        *AccessControlled.access_panels,
     ]
 
     def __str__(self):
@@ -705,7 +762,7 @@ class Topic(models.Model):
 
 
 @register_snippet
-class BlogPost(models.Model):
+class BlogPost(SubmissionOwnedMixin, AccessControlled):
     title   = models.CharField(max_length=255)
     topic   = models.CharField(max_length=100, help_text="e.g. 'Policy', 'Engineering' — legacy, superseded by Topics below")
     topics  = models.ManyToManyField(Topic, blank=True, related_name="posts")
@@ -739,6 +796,7 @@ class BlogPost(models.Model):
         FieldPanel("image"),
         FieldPanel("excerpt"),
         FieldPanel("body"),
+        *AccessControlled.access_panels,
     ]
 
     def __str__(self):
@@ -750,7 +808,7 @@ class BlogPost(models.Model):
 
 
 @register_snippet
-class PodcastEpisode(models.Model):
+class PodcastEpisode(AccessControlled):
     title         = models.CharField(max_length=255)
     category      = models.CharField(max_length=100)
     date          = models.DateField()
@@ -769,11 +827,6 @@ class PodcastEpisode(models.Model):
         on_delete=models.SET_NULL, related_name="+",
     )
     audio_url     = models.URLField(blank=True)
-    required_tier = models.ForeignKey(
-        "accounts.MembershipTier", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
-        help_text="Leave blank for public access. Set to require this tier or higher.",
-    )
 
     panels = [
         FieldPanel("title"),
@@ -791,7 +844,7 @@ class PodcastEpisode(models.Model):
         FieldPanel("image"),
         FieldPanel("description"),
         FieldPanel("audio_url"),
-        FieldPanel("required_tier"),
+        *AccessControlled.access_panels,
     ]
 
     def __str__(self):

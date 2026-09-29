@@ -19,6 +19,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "accounts",
     "organizations",
+    "commerce",
     "comments",
     "engagement",
     "pages",

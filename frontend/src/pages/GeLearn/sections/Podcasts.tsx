@@ -5,6 +5,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import type { GatedFields } from '@/types/api'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -14,7 +15,7 @@ const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-interface Episode {
+interface Episode extends GatedFields {
   id: number
   title: string
   category: string
@@ -25,7 +26,6 @@ interface Episode {
   guest_role: string
   image_url: string | null
   audio_url: string | null
-  is_locked: boolean
 }
 
 interface EpisodeListResponse {
@@ -75,7 +75,7 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
           {ep.image_url && (
             <img src={getMediaUrl(ep.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
-          <LockedOverlay />
+          <LockedOverlay access={ep.access} price={ep.price} currency={ep.currency} />
         </div>
       ) : (
         <Link

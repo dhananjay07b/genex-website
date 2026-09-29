@@ -137,7 +137,7 @@ export default function VideoDetail() {
                   {video.image_url && (
                     <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   )}
-                  <LockedOverlay />
+                  <LockedOverlay access={video.access} price={video.price} currency={video.currency} />
                 </>
               ) : directUrl ? (
                 <video

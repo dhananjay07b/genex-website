@@ -6,6 +6,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
+import type { GatedFields } from '@/types/api'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -15,7 +16,7 @@ const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #f3f4f6)'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-interface Video {
+interface Video extends GatedFields {
   id: number
   title: string
   category: string
@@ -24,7 +25,6 @@ interface Video {
   excerpt: string
   image_url: string | null
   video_url: string | null
-  is_locked: boolean
 }
 
 interface VideoListResponse {
@@ -64,7 +64,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
           {video.image_url && (
             <img src={getMediaUrl(video.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
-          <LockedOverlay />
+          <LockedOverlay access={video.access} price={video.price} currency={video.currency} />
         </div>
       ) : (
         <Link

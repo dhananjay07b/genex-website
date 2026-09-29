@@ -7,15 +7,9 @@ from pages.api import TopicSerializer
 from pages.models import Topic
 from rest_framework import serializers
 
-from .models import MembershipTier, User
+from .models import User
 from .roles import display_company, is_admin
 from .verification import refresh_company_verification, resolve_professional_company
-
-
-class MembershipTierSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MembershipTier
-        fields = ["slug", "name", "rank"]
 
 
 def validate_account_type_choice(value, current=None):
@@ -32,7 +26,6 @@ def validate_account_type_choice(value, current=None):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    membership_tier = MembershipTierSerializer(read_only=True)
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     expertise = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
@@ -45,11 +38,11 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "email", "display_name", "bio", "membership_tier", "avatar_url", "cover_photo_url",
+            "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
             "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
             "role_title", "years_experience", "linkedin_url", "expertise",
         ]
-        read_only_fields = ["id", "email", "membership_tier", "avatar_url", "cover_photo_url", "company_verified"]
+        read_only_fields = ["id", "email", "avatar_url", "cover_photo_url", "company_verified"]
 
     def get_is_admin(self, obj):
         return is_admin(obj)
@@ -118,7 +111,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PublicUserSerializer(serializers.ModelSerializer):
     """
-    A user's public-facing identity — no email, no membership tier internals.
+    A user's public-facing identity — no email or private account details.
     Used for follower/following lists and anywhere else another user's basic
     identity needs to be shown (e.g. a comment author, a podcast guest).
     """
@@ -138,7 +131,6 @@ class PublicProfileSerializer(serializers.ModelSerializer):
     posts, videos, podcast appearances) are separate paginated endpoints —
     see accounts/public_views.py — to keep this payload light.
     """
-    membership_tier = MembershipTierSerializer(read_only=True)
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     expertise = TopicSerializer(many=True, read_only=True)
@@ -154,7 +146,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "display_name", "bio", "avatar_url", "cover_photo_url",
-            "membership_tier", "date_joined", "account_type", "is_admin",
+            "date_joined", "account_type", "is_admin",
             "company", "role_title", "years_experience", "linkedin_url", "expertise",
             "published_blog_count", "published_video_count", "podcast_appearance_count",
             "followers_count", "following_count",

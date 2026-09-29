@@ -391,7 +391,18 @@ export interface ContentAuthor {
   expertise: Topic[]
 }
 
-export interface BlogPostItem {
+/** Who may open an item. Enforced server-side; `is_locked` is the answer for the current viewer. */
+export type ContentAccess = 'free' | 'members' | 'paid'
+
+export interface GatedFields {
+  access: ContentAccess
+  /** Decimal string, e.g. "499.00"; null unless access is 'paid'. */
+  price: string | null
+  currency: string
+  is_locked: boolean
+}
+
+export interface BlogPostItem extends GatedFields {
   id: number
   title: string
   topic: string
@@ -404,7 +415,7 @@ export interface BlogPostItem {
   author: ContentAuthor | null
 }
 
-export interface VideoItem {
+export interface VideoItem extends GatedFields {
   id: number
   title: string
   category: string
@@ -414,11 +425,10 @@ export interface VideoItem {
   featured: boolean
   image_url: string | null
   video_url: string | null
-  is_locked: boolean
   author: ContentAuthor | null
 }
 
-export interface PodcastItem {
+export interface PodcastItem extends GatedFields {
   id: number
   title: string
   category: string
@@ -430,7 +440,6 @@ export interface PodcastItem {
   featured: boolean
   image_url: string | null
   audio_url: string | null
-  is_locked: boolean
   guest_account: ContentAuthor | null
 }
 

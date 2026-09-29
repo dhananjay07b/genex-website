@@ -1,26 +1,53 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import LockIcon from '@mui/icons-material/Lock'
 import { useAuth } from '@/context/useAuth'
+import { cn, formatPrice } from '@/lib/utils'
+import type { GatedFields } from '@/types/api'
 
-export function LockedOverlay() {
+interface LockedOverlayProps extends Pick<GatedFields, 'access' | 'price' | 'currency'> {
+  /** 'overlay' covers a thumbnail/player; 'panel' is a standalone block (e.g. in place of a blog body). */
+  layout?: 'overlay' | 'panel'
+}
+
+const SHELL = 'flex flex-col items-center justify-center gap-2 text-white text-center px-6'
+const LAYOUT = {
+  overlay: 'absolute inset-0 bg-black/55 backdrop-blur-[2px]',
+  panel: 'relative rounded-2xl bg-[#0f2930] py-14',
+}
+
+/**
+ * What a viewer sees in place of content they can't open (the API has already
+ * withheld the media/body — this is presentation only).
+ *   members + signed out → "Members only", click to log in
+ *   paid + signed out    → price, click to log in (buying needs an account)
+ *   paid + signed in     → price, checkout not yet available
+ */
+export function LockedOverlay({ access, price, currency, layout = 'overlay' }: LockedOverlayProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const isPaid = access === 'paid'
+  const priceLabel = isPaid && price ? formatPrice(price, currency) : null
+  const goToLogin = () => navigate('/login', { state: { from: location.pathname } })
 
-  // Logged in but simply under-tiered is a different situation than being
-  // logged out — telling an already-authenticated visitor to "log in" is
-  // just wrong, not merely unhelpful.
-  if (user) {
+  const icon = (
+    <span className="size-12 rounded-full bg-white/15 flex items-center justify-center">
+      <LockIcon style={{ fontSize: 22 }} />
+    </span>
+  )
+
+  if (isPaid && user) {
     return (
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 backdrop-blur-[2px] text-white text-center px-6"
-        aria-label="Upgrade required to unlock this content"
-      >
-        <span className="size-12 rounded-full bg-white/15 flex items-center justify-center">
-          <LockIcon style={{ fontSize: 22 }} />
+      <div className={cn(SHELL, LAYOUT[layout])} aria-label={`Paid content${priceLabel ? `, ${priceLabel}` : ''}`}>
+        {icon}
+        {priceLabel && <span className="text-2xl font-extrabold">{priceLabel}</span>}
+        <span className="text-xs text-white/80">Purchase to unlock this content</span>
+        <span
+          className="mt-1 inline-flex items-center rounded-full bg-white/15 px-4 py-1.5 text-xs font-bold text-white/80"
+          aria-disabled="true"
+        >
+          Checkout coming soon
         </span>
-        <span className="text-sm font-bold">Upgrade Required</span>
-        <span className="text-xs text-white/80">This content needs a higher membership tier</span>
       </div>
     )
   }
@@ -28,15 +55,22 @@ export function LockedOverlay() {
   return (
     <button
       type="button"
-      onClick={() => navigate('/login', { state: { from: location.pathname } })}
-      className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 backdrop-blur-[2px] text-white text-center px-6"
-      aria-label="Log in to unlock this content"
+      onClick={goToLogin}
+      className={cn(SHELL, LAYOUT[layout], 'w-full cursor-pointer')}
+      aria-label={isPaid ? 'Log in to buy this content' : 'Log in to unlock this content'}
     >
-      <span className="size-12 rounded-full bg-white/15 flex items-center justify-center">
-        <LockIcon style={{ fontSize: 22 }} />
-      </span>
-      <span className="text-sm font-bold">Members Only</span>
-      <span className="text-xs text-white/80">Log in to watch this content</span>
+      {icon}
+      {isPaid ? (
+        <>
+          {priceLabel && <span className="text-2xl font-extrabold">{priceLabel}</span>}
+          <span className="text-xs text-white/80">Log in to buy and unlock this content</span>
+        </>
+      ) : (
+        <>
+          <span className="text-sm font-bold">Members Only</span>
+          <span className="text-xs text-white/80">Log in to unlock this content</span>
+        </>
+      )}
     </button>
   )
 }

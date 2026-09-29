@@ -122,7 +122,7 @@ export default function PodcastDetail() {
                 {episode.image_url && (
                   <img src={getMediaUrl(episode.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 )}
-                <LockedOverlay />
+                <LockedOverlay access={episode.access} price={episode.price} currency={episode.currency} />
               </div>
             ) : episode.audio_url ? (
               <div className="rounded-3xl overflow-hidden mb-8 shadow-sm gradient-brand p-8">

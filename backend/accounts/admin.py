@@ -2,7 +2,7 @@ from allauth.account.models import EmailAddress
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import MembershipTier, User
+from .models import User
 from .roles import display_company
 from .verification import refresh_company_verification
 
@@ -21,7 +21,6 @@ class UserAdmin(DjangoUserAdmin):
                 "Professionals are verified when their confirmed email matches their company's domain."
             ),
         }),
-        ("Membership", {"fields": ("membership_tier",)}),
         ("Status", {"fields": ("is_active", "is_superuser")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
@@ -81,8 +80,3 @@ class UserAdmin(DjangoUserAdmin):
                 defaults={"verified": True, "primary": True},
             )
         refresh_company_verification(obj)
-
-
-@admin.register(MembershipTier)
-class MembershipTierAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "rank")

@@ -1,11 +1,5 @@
 import type { Topic } from './api'
 
-export interface MembershipTier {
-  slug: string
-  name: string
-  rank: number
-}
-
 /** Admin is not an account type — it's `is_admin` (the superuser). */
 export type AccountType = 'learner' | 'professional' | 'company'
 /** The account types someone can pick for themselves; Company logins are issued by Admin. */
@@ -45,7 +39,6 @@ export interface User {
   email: string
   display_name: string
   bio: string
-  membership_tier: MembershipTier
   avatar_url: string | null
   cover_photo_url: string | null
   account_type: AccountType
@@ -74,7 +67,6 @@ export interface PublicProfile {
   bio: string
   avatar_url: string | null
   cover_photo_url: string | null
-  membership_tier: MembershipTier
   date_joined: string
   account_type: AccountType
   is_admin: boolean

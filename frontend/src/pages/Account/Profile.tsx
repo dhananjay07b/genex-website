@@ -20,7 +20,6 @@ import { CommentsTab } from './dashboard/CommentsTab'
 import { SavedItemsTab } from './dashboard/SavedItemsTab'
 import { SettingsTab } from './dashboard/SettingsTab'
 import { TAB_LABELS, type TabKey } from './dashboard/types'
-import { MembershipTierBadge } from '@/components/gelearn/MembershipTierBadge'
 
 const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
   { key: 'overview', icon: DashboardOutlinedIcon },
@@ -122,7 +121,6 @@ export default function Profile() {
               </span>
               <span className="text-left hidden sm:block">
                 <span className="block text-sm font-bold text-text-primary leading-tight mb-0.5">{user.display_name || user.username}</span>
-                <MembershipTierBadge tier={user.membership_tier} />
               </span>
             </div>
           </div>

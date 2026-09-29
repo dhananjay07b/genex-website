@@ -17,6 +17,7 @@ from wagtail.images import get_image_model
 from wagtail.rich_text import expand_db_html
 
 from accounts.roles import display_company, is_admin
+from commerce.access import has_access
 
 from .models import (
     BlogPost,
@@ -186,45 +187,47 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "slug"]
 
 
-class GatedContentSerializerMixin:
+class GatedContentSerializerMixin(serializers.Serializer):
     """
-    Never trust the frontend alone: the lock state and the actual media URL
-    are both computed server-side from the requesting user's tier, regardless
-    of what the client renders.
+    Never trust the frontend alone: the lock state and the gated payload
+    (media URL / body) are computed server-side from the requesting user via
+    commerce.access.has_access, regardless of what the client renders.
     """
+    access = serializers.CharField(read_only=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, allow_null=True)
+    currency = serializers.CharField(read_only=True)
+    is_locked = serializers.SerializerMethodField()
+
+    ACCESS_FIELDS = ["access", "price", "currency", "is_locked"]
+
     def _is_locked(self, obj):
-        # rank 0 (the "Free" tier) means public by definition — no real User
-        # row is ever actually assigned it (see get_default_tier_id's
-        # docstring), so gating on it would only ever block anonymous
-        # visitors while every real account sails through regardless,
-        # silently defeating the CMS's own "leave blank for public access"
-        # rule the moment someone picks "Free" from the dropdown instead.
-        if obj.required_tier_id is None or obj.required_tier.rank == 0:
-            return False
-        user = self.context["request"].user
-        if not user.is_authenticated:
-            return True
-        return user.membership_tier.rank < obj.required_tier.rank
+        # The serializer context is shared by every item in a list response,
+        # so purchase lookups are memoised there (one query per list).
+        cache = self.context.setdefault("_access_cache", {})
+        key = ("locked", type(obj).__name__, obj.pk)
+        if key not in cache:
+            cache[key] = not has_access(self.context["request"].user, obj, cache)
+        return cache[key]
 
     def get_is_locked(self, obj):
         return self._is_locked(obj)
 
 
 class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
-    is_locked = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
 
     class Meta:
         model = VideoItem
-        fields = ["id", "title", "category", "date", "duration", "excerpt", "featured", "image_url", "video_url", "is_locked", "author"]
+        fields = ["id", "title", "category", "date", "duration", "excerpt", "featured", "image_url", "video_url", "author",
+                  *GatedContentSerializerMixin.ACCESS_FIELDS]
 
     def get_video_url(self, obj):
         return None if self._is_locked(obj) else obj.video_url
 
 
-class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
+class BlogPostSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, StreamFieldSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     body = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
@@ -232,14 +235,15 @@ class BlogPostSerializer(ImageUrlSerializerMixin, StreamFieldSerializerMixin, Au
 
     class Meta:
         model = BlogPost
-        fields = ["id", "title", "topic", "topics", "date", "excerpt", "featured", "image_url", "body", "author"]
+        fields = ["id", "title", "topic", "topics", "date", "excerpt", "featured", "image_url", "body", "author",
+                  *GatedContentSerializerMixin.ACCESS_FIELDS]
 
     def get_body(self, obj):
-        return self._stream_api_representation(obj, "body")
+        # Locked posts keep their title/excerpt (the teaser) but not the body.
+        return [] if self._is_locked(obj) else self._stream_api_representation(obj, "body")
 
 
 class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
-    is_locked = serializers.SerializerMethodField()
     audio_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     guest_account = serializers.SerializerMethodField()
@@ -248,7 +252,7 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
         model = PodcastEpisode
         fields = [
             "id", "title", "category", "date", "duration", "description", "guest", "guest_role", "featured",
-            "image_url", "audio_url", "is_locked", "guest_account",
+            "image_url", "audio_url", "guest_account", *GatedContentSerializerMixin.ACCESS_FIELDS,
         ]
 
     def get_audio_url(self, obj):

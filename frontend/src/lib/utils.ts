@@ -54,3 +54,18 @@ export function formatRelativeTime(isoDate: string): string {
   const diffYear = Math.round(diffDay / 365)
   return `${diffYear} year${diffYear === 1 ? '' : 's'} ago`
 }
+
+/** "₹499" / "₹1,299.50" — whole amounts drop the paise. Falls back to "INR 499" for unknown codes. */
+export function formatPrice(price: string | number, currency = 'INR'): string {
+  const amount = typeof price === 'number' ? price : Number(price)
+  try {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${currency} ${amount}`
+  }
+}

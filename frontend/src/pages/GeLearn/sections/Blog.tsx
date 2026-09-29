@@ -12,6 +12,7 @@ import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
+import { AccessBadge } from '@/components/gelearn/AccessBadge'
 import type { BlogPostItem, SnippetListResponse } from '@/types/api'
 
 const PAGE_SIZE = 6
@@ -41,6 +42,7 @@ function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
         <span className="absolute top-4 left-4 bg-secondary text-white text-xs font-bold px-4 py-1.5 rounded">
           {topicLabel}
         </span>
+        <AccessBadge access={post.access} price={post.price} currency={post.currency} className="absolute top-4 right-4" />
       </div>
 
       {/* Content */}

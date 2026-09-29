@@ -1,41 +1,15 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.utils import OperationalError, ProgrammingError
-
-
-class MembershipTier(models.Model):
-    """
-    Extensible tier registry. Gating checks compare `rank` rather than
-    hardcoding tier names, so a new tier (e.g. a future paid "premium")
-    is a data row, not a code/schema change.
-    """
-    slug = models.SlugField(unique=True)
-    name = models.CharField(max_length=100)
-    rank = models.PositiveIntegerField(default=0, help_text="Higher rank = more access")
-    description = models.TextField(blank=True)
-
-    class Meta:
-        ordering = ["rank"]
-
-    def __str__(self):
-        return self.name
 
 
 def get_default_tier_id():
     """
-    Every actual User row represents someone who has registered, so the
-    default is the "registered" tier (the "free" tier represents anonymous
-    visitors who have no User row at all) — created by the 0002 data
-    migration. Falls back to the lowest-rank tier if that slug is missing.
+    Membership tiers were removed (replaced by per-item access on content —
+    see pages.models.AccessControlled). Kept only because migration
+    accounts/0001 references this callable by import path.
     """
-    try:
-        tier = MembershipTier.objects.filter(slug="registered").first()
-        if tier is None:
-            tier = MembershipTier.objects.order_by("rank").first()
-    except (OperationalError, ProgrammingError):
-        return None
-    return tier.pk if tier else None
+    return None
 
 
 class User(AbstractUser):
@@ -58,12 +32,6 @@ class User(AbstractUser):
     ]
     SELF_SERVICE_ACCOUNT_TYPES = (ACCOUNT_LEARNER, ACCOUNT_PROFESSIONAL)
 
-    membership_tier = models.ForeignKey(
-        MembershipTier,
-        on_delete=models.PROTECT,
-        related_name="users",
-        default=get_default_tier_id,
-    )
     display_name = models.CharField(max_length=150, blank=True, help_text="Full name shown publicly on the profile, bylines and comments.")
     bio = models.TextField(blank=True)
     account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPE_CHOICES, default=ACCOUNT_LEARNER, db_index=True)

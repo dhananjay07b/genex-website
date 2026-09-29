@@ -20,6 +20,7 @@ import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import type { BlogPostBodyImageValue, BlogPostItem, SnippetListResponse, Topic } from '@/types/api'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 import { SaveButton } from '@/components/engagement/SaveButton'
+import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
 import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
 import { AuthorByline } from '@/components/gelearn/AuthorByline'
@@ -199,9 +200,16 @@ export default function BlogPost() {
               <img src={heroImg} alt={post.title} className="w-full h-full object-cover" />
             </div>
 
-            {/* Body */}
+            {/* Body — withheld by the API when the viewer can't open this post */}
             <div className="mb-2">
-              {renderStreamField(post.body, blogBlockMap)}
+              {post.is_locked ? (
+                <div className="mb-8">
+                  <p className="text-lg text-[#45556c] leading-[1.75] mb-6">{post.excerpt}</p>
+                  <LockedOverlay layout="panel" access={post.access} price={post.price} currency={post.currency} />
+                </div>
+              ) : (
+                renderStreamField(post.body, blogBlockMap)
+              )}
             </div>
 
             {/* ── SHARE + PREV/NEXT ───────────────────────────────────────── */}
