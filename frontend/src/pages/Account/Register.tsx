@@ -27,16 +27,16 @@ const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: passwordSchema,
   confirmPassword: z.string().min(1, 'Please retype your password'),
-  occupation: z.enum(['learner', 'professional']),
-  company: z.string().optional(),
+  accountType: z.enum(['learner', 'professional']),
+  companyOther: z.string().optional(),
   roleTitle: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords don\'t match',
   path: ['confirmPassword'],
 }).superRefine((data, ctx) => {
-  if (data.occupation !== 'professional') return
-  if (!data.company?.trim()) {
-    ctx.addIssue({ code: 'custom', message: 'Company is required', path: ['company'] })
+  if (data.accountType !== 'professional') return
+  if (!data.companyOther?.trim()) {
+    ctx.addIssue({ code: 'custom', message: 'Company is required', path: ['companyOther'] })
   }
   if (!data.roleTitle?.trim()) {
     ctx.addIssue({ code: 'custom', message: 'Role is required', path: ['roleTitle'] })
@@ -62,9 +62,9 @@ export default function Register() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { occupation: 'learner' } })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { accountType: 'learner' } })
 
-  const occupation = watch('occupation')
+  const accountType = watch('accountType')
 
   async function onSubmit(data: FormData) {
     setStatus('loading')
@@ -74,8 +74,8 @@ export default function Register() {
         email: data.email,
         password: data.password,
         displayName: data.displayName,
-        occupation: data.occupation,
-        company: data.company,
+        accountType: data.accountType,
+        companyOther: data.companyOther,
         roleTitle: data.roleTitle,
       })
       navigate('/account', { replace: true })
@@ -148,19 +148,19 @@ export default function Register() {
                     <label
                       key={option}
                       className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${
-                        occupation === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                        accountType === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
                       }`}
                     >
-                      <input type="radio" value={option} className="accent-primary" {...register('occupation')} />
+                      <input type="radio" value={option} className="accent-primary" {...register('accountType')} />
                       <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              {occupation === 'professional' && (
+              {accountType === 'professional' && (
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="Company" placeholder="e.g. Genex Technocrats" error={errors.company?.message} {...register('company')} />
+                  <Input label="Company" placeholder="e.g. Genex Technocrats" error={errors.companyOther?.message} {...register('companyOther')} />
                   <Input label="Role" placeholder="e.g. Grid Engineer" error={errors.roleTitle?.message} {...register('roleTitle')} />
                 </div>
               )}

@@ -14,7 +14,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
-import type { Occupation, SocialAccount, User } from '@/types/auth'
+import type { AccountType, SocialAccount, User } from '@/types/auth'
 import type { Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
@@ -24,8 +24,11 @@ export function SettingsTab() {
   const { user, refetch } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
-  const [occupation, setOccupation] = useState<Occupation>(user?.occupation ?? 'learner')
-  const [company, setCompany] = useState(user?.company ?? '')
+  const [accountType, setAccountType] = useState<AccountType>(user?.account_type ?? 'learner')
+  const [companyOther, setCompanyOther] = useState(user?.company_other ?? '')
+  const isCompanyAccount = user?.account_type === 'company'
+  // A link to a registered company is set by Genex (or by email-domain verification), not edited here.
+  const linkedCompany = user?.company?.slug ? user.company : null
   const [roleTitle, setRoleTitle] = useState(user?.role_title ?? '')
   const [yearsExperience, setYearsExperience] = useState(user?.years_experience?.toString() ?? '')
   const [linkedinUrl, setLinkedinUrl] = useState(user?.linkedin_url ?? '')
@@ -144,9 +147,9 @@ export function SettingsTab() {
         body: {
           display_name: displayName,
           bio,
-          occupation,
-          company: occupation === 'professional' ? company : '',
-          role_title: occupation === 'professional' ? roleTitle : '',
+          ...(isCompanyAccount ? {} : { account_type: accountType }),
+          ...(accountType === 'professional' && !linkedCompany ? { company_other: companyOther } : {}),
+          role_title: accountType === 'learner' ? '' : roleTitle,
           years_experience: yearsExperience ? Number(yearsExperience) : null,
           linkedin_url: linkedinUrl,
           expertise,
@@ -186,7 +189,8 @@ export function SettingsTab() {
 
   const previewInitials = (displayName || user.username).slice(0, 2).toUpperCase()
   const previewExpertise = topics.filter(t => expertise.includes(t.id))
-  const roleAtCompany = roleTitle && company ? `${roleTitle} at ${company}` : (roleTitle || company)
+  const companyName = linkedCompany?.name ?? (accountType === 'professional' ? companyOther : '')
+  const roleAtCompany = roleTitle && companyName ? `${roleTitle} at ${companyName}` : (roleTitle || companyName)
 
   const avatarSrc = avatarFile ? avatarPreview : avatarRemoved ? null : (user.avatar_url ? getMediaUrl(user.avatar_url) : null)
   const coverSrc = coverFile ? coverPreview : coverRemoved ? null : (user.cover_photo_url ? getMediaUrl(user.cover_photo_url) : null)
@@ -194,8 +198,8 @@ export function SettingsTab() {
   const hasUnsavedChanges =
     displayName !== (user.display_name ?? '') ||
     bio !== (user.bio ?? '') ||
-    occupation !== (user.occupation ?? 'learner') ||
-    company !== (user.company ?? '') ||
+    accountType !== (user.account_type ?? 'learner') ||
+    companyOther !== (user.company_other ?? '') ||
     roleTitle !== (user.role_title ?? '') ||
     yearsExperience !== (user.years_experience?.toString() ?? '') ||
     linkedinUrl !== (user.linkedin_url ?? '') ||
@@ -295,33 +299,44 @@ export function SettingsTab() {
             />
           </div>
 
-          <div>
-            <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(['learner', 'professional'] as const).map(option => (
-                <label
-                  key={option}
-                  className={`flex items-center gap-2.5 rounded-md border px-3.5 py-2.5 cursor-pointer transition-colors ${
-                    occupation === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="occupation"
-                    value={option}
-                    checked={occupation === option}
-                    onChange={() => setOccupation(option)}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
-                </label>
-              ))}
+          {isCompanyAccount ? (
+            <div className="rounded-md border border-border bg-surface px-3.5 py-3">
+              <p className="text-sm font-semibold text-text-primary">Company account{linkedCompany ? ` · ${linkedCompany.name}` : ''}</p>
+              <p className="text-xs text-text-muted mt-1">Account type and company are managed by Genex. Contact your administrator to change them.</p>
             </div>
-          </div>
+          ) : (
+            <div>
+              <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(['learner', 'professional'] as const).map(option => (
+                  <label
+                    key={option}
+                    className={`flex items-center gap-2.5 rounded-md border px-3.5 py-2.5 cursor-pointer transition-colors ${
+                      accountType === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value={option}
+                      checked={accountType === option}
+                      onChange={() => setAccountType(option)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {occupation === 'professional' && (
+          {accountType !== 'learner' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Company" placeholder="e.g. Genex Technocrats" value={company} onChange={e => setCompany(e.target.value)} />
+              {linkedCompany || isCompanyAccount ? (
+                <Input label="Company" value={linkedCompany?.name ?? ''} disabled readOnly />
+              ) : (
+                <Input label="Company" placeholder="e.g. Genex Technocrats" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
+              )}
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
             </div>
           )}

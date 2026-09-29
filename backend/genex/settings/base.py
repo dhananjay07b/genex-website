@@ -18,6 +18,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     "accounts",
+    "organizations",
     "comments",
     "engagement",
     "pages",
@@ -62,6 +63,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.BackofficeGuardMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
@@ -124,6 +126,8 @@ WAGTAIL_SITE_NAME = "Genex Technocrats"
 WAGTAILADMIN_BASE_URL = "http://localhost:8000"
 
 WAGTAILIMAGES_IMAGE_MODEL = "wagtailimages.Image"
+# SVG allowed so company logos (e.g. Genex's own mark) can be uploaded as vectors.
+WAGTAILIMAGES_EXTENSIONS = ["avif", "gif", "jpg", "jpeg", "png", "webp", "svg"]
 WAGTAILSEARCH_BACKENDS = {
     "default": {"BACKEND": "wagtail.search.backends.database"}
 }

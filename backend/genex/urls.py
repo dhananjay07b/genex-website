@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/auth/", include("dj_rest_auth.urls")),
     path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/accounts/", include("accounts.urls")),
+    path("api/organizations/", include("organizations.urls")),
     path("api/comments/", include("comments.urls")),
     path("api/engagement/", include("engagement.urls")),
     path("", include(wagtail_urls)),

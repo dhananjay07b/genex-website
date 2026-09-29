@@ -16,6 +16,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from wagtail.images import get_image_model
 from wagtail.rich_text import expand_db_html
 
+from accounts.roles import display_company_name, is_admin
+
 from .models import (
     BlogPost,
     CaseStudy,
@@ -165,7 +167,7 @@ class AuthorSerializerMixin:
             "username": author.username,
             "display_name": author.display_name,
             "avatar_url": author.avatar.file.url if author.avatar else None,
-            "company": author.company,
+            "company": display_company_name(author),
             "role_title": author.role_title,
             "years_experience": author.years_experience,
             "bio": author.bio,
@@ -255,7 +257,7 @@ class PodcastEpisodeSerializer(GatedContentSerializerMixin, ImageUrlSerializerMi
             "username": guest.username,
             "display_name": guest.display_name,
             "avatar_url": guest.avatar.file.url if guest.avatar else None,
-            "company": guest.company,
+            "company": display_company_name(guest),
             "role_title": guest.role_title,
             "years_experience": guest.years_experience,
             "bio": guest.bio,
@@ -376,7 +378,10 @@ class UserBlogPostViewSet(
         return super().get_throttles()
 
     def get_queryset(self):
-        return UserBlogPost.objects.filter(author=self.request.user).order_by("-created_at")
+        qs = UserBlogPost.objects.order_by("-created_at")
+        if is_admin(self.request.user) and self.action not in ("list", "mine"):
+            return qs  # Admin can open/edit/delete anyone's submission by id; lists stay personal.
+        return qs.filter(author=self.request.user)
 
     @action(detail=False, methods=["get"])
     def mine(self, request):
@@ -441,7 +446,10 @@ class UserVideoPostViewSet(
         return super().get_throttles()
 
     def get_queryset(self):
-        return UserVideoPost.objects.filter(author=self.request.user).order_by("-created_at")
+        qs = UserVideoPost.objects.order_by("-created_at")
+        if is_admin(self.request.user) and self.action not in ("list", "mine"):
+            return qs  # Admin can open/edit/delete anyone's submission by id; lists stay personal.
+        return qs.filter(author=self.request.user)
 
     @action(detail=False, methods=["get"])
     def mine(self, request):

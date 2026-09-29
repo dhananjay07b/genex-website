@@ -155,7 +155,7 @@ export function AuthorPanel({ username, onClose }: AuthorPanelProps) {
                   <MembershipTierBadge tier={profile.membership_tier} className="mt-1" />
                   {(profile.role_title || profile.company) && (
                     <p className="text-sm text-text-primary font-semibold mt-2">
-                      {profile.role_title}{profile.role_title && profile.company ? ' at ' : ''}{profile.company}
+                      {profile.role_title}{profile.role_title && profile.company ? ' at ' : ''}{profile.company?.name}
                     </p>
                   )}
                   {profile.years_experience !== null && (

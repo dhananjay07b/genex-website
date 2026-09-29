@@ -18,7 +18,12 @@ def create_group(apps, schema_editor):
 
     codenames = []
     for app_label, model_name in SCOPED_MODELS:
-        ct = ContentType.objects.get(app_label=app_label, model=model_name)
+        # On a fresh database content types/permissions don't exist yet
+        # mid-migration. The group is superseded by accounts/0007 (which
+        # deletes it) anyway, so skipping here is safe.
+        ct = ContentType.objects.filter(app_label=app_label, model=model_name).first()
+        if ct is None:
+            continue
         codenames.extend(f"{action}_{model_name}" for action in SCOPED_ACTIONS)
         group.permissions.add(*Permission.objects.filter(
             content_type=ct, codename__in=[f"{action}_{model_name}" for action in SCOPED_ACTIONS],

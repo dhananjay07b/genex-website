@@ -6,15 +6,26 @@ export interface MembershipTier {
   rank: number
 }
 
-export type Occupation = 'learner' | 'professional'
+/** Admin is not an account type — it's `is_admin` (the superuser). */
+export type AccountType = 'learner' | 'professional' | 'company'
+/** The account types someone can pick for themselves; Company logins are issued by Admin. */
+export type SelfServiceAccountType = Exclude<AccountType, 'company'>
+
+/** How a user's company is displayed. `verified` drives the logo + badge. */
+export interface CompanyDisplay {
+  name: string
+  slug: string | null
+  logo_url: string | null
+  verified: boolean
+}
 
 export interface RegisterInput {
   username: string
   email: string
   password: string
   displayName: string
-  occupation: Occupation
-  company?: string
+  accountType: SelfServiceAccountType
+  companyOther?: string
   roleTitle?: string
 }
 
@@ -27,8 +38,11 @@ export interface User {
   membership_tier: MembershipTier
   avatar_url: string | null
   cover_photo_url: string | null
-  occupation: Occupation
-  company: string
+  account_type: AccountType
+  is_admin: boolean
+  company: CompanyDisplay | null
+  company_other: string
+  company_verified: boolean
   role_title: string
   years_experience: number | null
   linkedin_url: string
@@ -52,7 +66,9 @@ export interface PublicProfile {
   cover_photo_url: string | null
   membership_tier: MembershipTier
   date_joined: string
-  company: string
+  account_type: AccountType
+  is_admin: boolean
+  company: CompanyDisplay | null
   role_title: string
   years_experience: number | null
   linkedin_url: string
