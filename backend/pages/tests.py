@@ -83,23 +83,3 @@ class ApprovalCarriesAccessTests(TestCase):
         UserVideoPostAdmin(UserVideoPost, AdminSite()).approve_and_publish(self.request, UserVideoPost.objects.filter(pk=submission.pk))
         self.assertEqual(UserVideoPost.objects.get(pk=submission.pk).published_video.access, "members")
 
-
-class DowngradeGuardTests(TestCase):
-    def test_professional_with_paid_published_content_cannot_become_learner(self):
-        pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
-        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
-        request = RequestFactory().post("/")
-        request.user = admin
-        UserBlogPost.objects.create(author=pro, title="t", excerpt="e", body=BODY, status="pending", access="paid", price=Decimal("10"))
-        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(request, UserBlogPost.objects.all())
-
-        api = APIClient()
-        api.force_authenticate(pro)
-        res = api.patch("/api/accounts/me/", {"account_type": "learner"}, format="json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("paid", res.json()["account_type"][0])
-
-        post = UserBlogPost.objects.get().published_post
-        post.access, post.price = "free", None
-        post.save()
-        self.assertEqual(api.patch("/api/accounts/me/", {"account_type": "learner"}, format="json").status_code, 200)

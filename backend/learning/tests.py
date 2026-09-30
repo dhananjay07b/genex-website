@@ -154,7 +154,3 @@ class CoursePublicAndEnrollmentTests(TestCase):
         self.assertEqual(res.status_code, 403)
         self.assertIn("paid", res.json()["detail"])
 
-    def test_live_course_blocks_downgrade(self):
-        api = APIClient()
-        api.force_authenticate(self.pro)
-        self.assertEqual(api.patch("/api/accounts/me/", {"account_type": "learner"}, format="json").status_code, 400)

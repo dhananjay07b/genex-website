@@ -176,13 +176,22 @@ class AccountTypeApiTests(TestCase):
         res = self.api.patch("/api/accounts/me/", {"account_type": "learner"}, format="json")
         self.assertEqual(res.status_code, 400)
 
-    def test_switch_to_learner_clears_company(self):
+    def test_account_type_is_fixed_after_registration(self):
+        pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        learner = make_user("learner2")
+        for user, target in ((pro, "learner"), (learner, "professional")):
+            self.api.force_authenticate(user)
+            res = self.api.patch("/api/accounts/me/", {"account_type": target, "role_title": "Eng", "company_other": "Acme"}, format="json")
+            self.assertEqual(res.status_code, 400, res.content)
+            self.assertIn("Contact us", res.json()["account_type"][0])
+            user.refresh_from_db()
+            self.assertNotEqual(user.account_type, target)
+
+    def test_sending_the_current_type_is_harmless(self):
         user = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
         self.api.force_authenticate(user)
-        res = self.api.patch("/api/accounts/me/", {"account_type": "learner"}, format="json")
+        res = self.api.patch("/api/accounts/me/", {"account_type": "professional", "bio": "Hi"}, format="json")
         self.assertEqual(res.status_code, 200, res.content)
-        user.refresh_from_db()
-        self.assertEqual((user.account_type, user.company_other), ("learner", ""))
 
     def test_me_exposes_role_fields(self):
         user = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
@@ -262,14 +271,12 @@ class CompanyVerificationFlowTests(TestCase):
         self.assertIsNone(user.company)
         self.assertFalse(user.company_verified)
 
-    def test_learner_upgrade_with_confirmed_email_verifies_immediately(self):
+    def test_linking_a_company_with_confirmed_email_verifies_immediately(self):
         from allauth.account.models import EmailAddress
-        user = make_user("learner", email="learner@google.com")
+        user = make_user("pro", email="pro@google.com", account_type="professional", company_other="Acme", role_title="SRE")
         EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
         self.api.force_authenticate(user)
-        res = self.api.patch("/api/accounts/me/", {
-            "account_type": "professional", "company_id": self.google.id, "role_title": "SRE",
-        }, format="json")
+        res = self.api.patch("/api/accounts/me/", {"company_id": self.google.id}, format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertTrue(res.json()["company_verified"])
         self.assertEqual(res.json()["company"]["slug"], "google")

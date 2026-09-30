@@ -7,6 +7,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
@@ -20,13 +21,15 @@ import type { AccountType, SocialAccount, User } from '@/types/auth'
 import type { Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
+const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { learner: 'Learner', professional: 'Professional', company: 'Company' }
 const PROVIDER_ICON: Record<string, () => ReactElement> = { google: GoogleGlyph }
 
 export function SettingsTab() {
   const { user, refetch } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
-  const [accountType, setAccountType] = useState<AccountType>(user?.account_type ?? 'learner')
+  // Fixed at registration — only Genex can change it.
+  const accountType: AccountType = user?.account_type ?? 'learner'
   const [companyOther, setCompanyOther] = useState(user?.company_other ?? '')
   const isCompanyAccount = user?.account_type === 'company'
   const linkedCompany = user?.company?.slug ? user.company : null
@@ -163,7 +166,6 @@ export function SettingsTab() {
         body: {
           display_name: displayName,
           bio,
-          ...(isCompanyAccount ? {} : { account_type: accountType }),
           ...(accountType === 'professional' && !isCompanyAccount
             ? companyChoice === OTHER_COMPANY
               ? { company_id: null, company_other: companyOther }
@@ -227,7 +229,6 @@ export function SettingsTab() {
   const hasUnsavedChanges =
     displayName !== (user.display_name ?? '') ||
     bio !== (user.bio ?? '') ||
-    accountType !== (user.account_type ?? 'learner') ||
     companyOther !== (user.company_other ?? '') ||
     companyChoice !== savedCompanyChoice ||
     roleTitle !== (user.role_title ?? '') ||
@@ -329,36 +330,19 @@ export function SettingsTab() {
             />
           </div>
 
-          {isCompanyAccount ? (
-            <div className="rounded-md border border-border bg-surface px-3.5 py-3">
-              <p className="text-sm font-semibold text-text-primary">Company account{linkedCompany ? ` · ${linkedCompany.name}` : ''}</p>
-              <p className="text-xs text-text-muted mt-1">Account type and company are managed by Genex. Contact your administrator to change them.</p>
-            </div>
-          ) : (
-            <div>
-              <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(['learner', 'professional'] as const).map(option => (
-                  <label
-                    key={option}
-                    className={`flex items-center gap-2.5 rounded-md border px-3.5 py-2.5 cursor-pointer transition-colors ${
-                      accountType === option ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="accountType"
-                      value={option}
-                      checked={accountType === option}
-                      onChange={() => setAccountType(option)}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm font-semibold text-text-primary capitalize">{option}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="rounded-md border border-border bg-surface px-3.5 py-3" aria-disabled="true">
+            <p className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+              <LockOutlinedIcon sx={{ fontSize: 16 }} className="text-text-muted" />
+              Account type: {user.is_admin ? 'Admin' : ACCOUNT_TYPE_LABEL[accountType]}
+              {isCompanyAccount && linkedCompany ? ` · ${linkedCompany.name}` : ''}
+            </p>
+            <p className="text-xs text-text-muted mt-1 leading-relaxed">
+              {isCompanyAccount
+                ? 'Account type and company are managed by Genex.'
+                : 'Your account type is set when you sign up and can’t be changed here.'}{' '}
+              <a href={marketingPath('/contact')} className="font-semibold text-primary hover:underline">Contact us</a> if you need it changed.
+            </p>
+          </div>
 
           {accountType !== 'learner' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

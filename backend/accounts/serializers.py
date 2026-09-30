@@ -12,21 +12,14 @@ from .roles import display_company, is_admin
 from .verification import refresh_company_verification, resolve_professional_company
 
 
-def paid_published_count(user):
-    """Published paid posts/videos and live courses by this user (these block switching to Learner)."""
-    return (
-        user.blog_submissions.filter(status="published", published_post__access="paid").count()
-        + user.video_submissions.filter(status="published", published_video__access="paid").count()
-        + user.playlists.filter(status="published").count()
-    )
+
+ACCOUNT_TYPE_LOCKED = (
+    "Your account type can't be changed from your account. Contact us if you need it changed."
+)
 
 
-def validate_account_type_choice(value, current=None):
-    """Self-service users may only be Learner or Professional; Company accounts are Admin-made and fixed."""
-    if current == User.ACCOUNT_COMPANY:
-        if value != User.ACCOUNT_COMPANY:
-            raise serializers.ValidationError("Company accounts are managed by Genex and can't change type.")
-        return value
+def validate_account_type_choice(value):
+    """At registration: Learner or Professional only — Company accounts are created by Genex."""
     if value not in User.SELF_SERVICE_ACCOUNT_TYPES:
         raise serializers.ValidationError(
             "Company accounts are created by Genex. Contact us if your organisation wants to publish on GeLearn."
@@ -38,7 +31,6 @@ class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     expertise = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
-    account_type = serializers.CharField(required=False)
     is_admin = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
     # Effective status, as shown on the site (Company staff are always verified).
@@ -53,7 +45,8 @@ class UserSerializer(serializers.ModelSerializer):
             "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
             "role_title", "years_experience", "linkedin_url", "expertise",
         ]
-        read_only_fields = ["id", "email", "avatar_url", "cover_photo_url", "company_verified"]
+        # account_type is fixed at registration — only Admin can change it (Django admin).
+        read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified"]
 
     def get_is_admin(self, obj):
         return is_admin(obj)
@@ -64,9 +57,6 @@ class UserSerializer(serializers.ModelSerializer):
     def get_company_verified(self, obj):
         company = display_company(obj)
         return bool(company and company["verified"])
-
-    def validate_account_type(self, value):
-        return validate_account_type_choice(value, current=getattr(self.instance, "account_type", None))
 
     def get_avatar_url(self, obj):
         return obj.avatar.file.url if obj.avatar else None
@@ -81,7 +71,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = self.instance
-        account_type = attrs.get("account_type", instance.account_type)
+        requested = self.initial_data.get("account_type") if hasattr(self, "initial_data") else None
+        if requested is not None and requested != instance.account_type:
+            raise serializers.ValidationError({"account_type": ACCOUNT_TYPE_LOCKED})
+        account_type = instance.account_type
 
         if account_type == User.ACCOUNT_COMPANY:
             # Company staff: their company is set by Admin only.
@@ -90,13 +83,6 @@ class UserSerializer(serializers.ModelSerializer):
             return attrs
 
         if account_type == User.ACCOUNT_LEARNER:
-            if instance.account_type == User.ACCOUNT_PROFESSIONAL:
-                blocking = paid_published_count(instance)
-                if blocking:
-                    raise serializers.ValidationError({"account_type": (
-                        f"You have {blocking} live course{'s' if blocking != 1 else ''} or paid item{'s' if blocking != 1 else ''}. "
-                        "Delete your live courses and make paid items free or members-only before switching to a Learner account."
-                    )})
             # Workplace details describe a Professional; a Learner carries none.
             attrs.pop("company_id", None)
             attrs["_company"] = None

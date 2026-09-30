@@ -189,7 +189,8 @@ export default function Register() {
               <Input label="Username" placeholder="janedoe" error={errors.username?.message} {...register('username')} />
 
               <div>
-                <span className="block text-sm font-semibold text-text-primary mb-2">I am a…</span>
+                <span className="block text-sm font-semibold text-text-primary mb-0.5">I am a…</span>
+                <span className="block text-xs text-text-muted mb-2">This can&apos;t be changed later, so choose carefully.</span>
                 <div className="grid grid-cols-2 gap-3">
                   {(['learner', 'professional'] as const).map(option => (
                     <label
