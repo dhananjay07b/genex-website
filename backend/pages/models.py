@@ -966,7 +966,7 @@ class JobApplication(models.Model):
 # editorial team retains full control over what's publicly visible.
 # ---------------------------------------------------------------------------
 
-class UserBlogPost(models.Model):
+class UserBlogPost(AccessControlled):
     # Deliberately NOT @register_snippet — that gave it a second, unprotected
     # edit form in the Wagtail admin (/cms/snippets/...) where a staffer
     # could edit topics/title/body/etc. directly, silently diverging an
@@ -1029,7 +1029,7 @@ class UserBlogPost(models.Model):
         ordering = ["-created_at"]
 
 
-class UserVideoPost(models.Model):
+class UserVideoPost(AccessControlled):
     # Not @register_snippet — same reasoning as UserBlogPost above.
     STATUS_CHOICES = [
         ("draft", "Draft"),

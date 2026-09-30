@@ -5,6 +5,7 @@ from django.utils.text import slugify
 from engagement.models import Notification
 
 from .models import BlogPost, Topic, UserBlogPost, UserVideoPost, VideoItem
+from .richtext import sanitize_submission_html
 
 
 def _notify_status(submission, kind, text, target=None):
@@ -39,8 +40,13 @@ class UserBlogPostAdmin(admin.ModelAdmin):
                 title=submission.title,
                 topic=submission.topic or "Community",
                 excerpt=submission.excerpt,
-                body=[("rich_text", submission.body)],
+                # Cleaned again here even though the API cleans on save — the
+                # live post must never carry unsanitised author HTML.
+                body=[("rich_text", sanitize_submission_html(submission.body))],
                 image=submission.image,
+                access=submission.access,
+                price=submission.price,
+                currency=submission.currency,
             )
             # A submission that already has a published_post is a re-approval
             # of an edit — update the existing live post in place instead of
@@ -98,6 +104,9 @@ class UserVideoPostAdmin(admin.ModelAdmin):
                 excerpt=submission.excerpt,
                 video_url=submission.video_url,
                 image=submission.thumbnail,
+                access=submission.access,
+                price=submission.price,
+                currency=submission.currency,
             )
             # A submission that already has a published_video is a re-approval
             # of an edit — update the existing live video in place instead of

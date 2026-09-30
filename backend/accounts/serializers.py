@@ -12,6 +12,14 @@ from .roles import display_company, is_admin
 from .verification import refresh_company_verification, resolve_professional_company
 
 
+def paid_published_count(user):
+    """Published paid posts/videos by this user (blocks switching to Learner)."""
+    return (
+        user.blog_submissions.filter(status="published", published_post__access="paid").count()
+        + user.video_submissions.filter(status="published", published_video__access="paid").count()
+    )
+
+
 def validate_account_type_choice(value, current=None):
     """Self-service users may only be Learner or Professional; Company accounts are Admin-made and fixed."""
     if current == User.ACCOUNT_COMPANY:
@@ -81,6 +89,13 @@ class UserSerializer(serializers.ModelSerializer):
             return attrs
 
         if account_type == User.ACCOUNT_LEARNER:
+            if instance.account_type == User.ACCOUNT_PROFESSIONAL:
+                blocking = paid_published_count(instance)
+                if blocking:
+                    raise serializers.ValidationError({"account_type": (
+                        f"You have {blocking} published paid item{'s' if blocking != 1 else ''}. "
+                        "Make them free or members-only before switching to a Learner account."
+                    )})
             # Workplace details describe a Professional; a Learner carries none.
             attrs.pop("company_id", None)
             attrs["_company"] = None

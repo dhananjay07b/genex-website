@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
+import { AccessField } from '@/components/gelearn/AccessField'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import { ConfirmDialog } from './dashboard/ConfirmDialog'
@@ -28,6 +29,12 @@ const schema = z.object({
   other_topic: z.string().optional(),
   excerpt: z.string().min(20, 'Excerpt must be at least 20 characters').max(300, 'Keep the excerpt under 300 characters'),
   body: z.string().min(200, 'Post body must be at least 200 characters (formatting tags included)'),
+  access: z.enum(['free', 'members', 'paid']),
+  price: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.access === 'paid' && !(Number(data.price) >= 1)) {
+    ctx.addIssue({ code: 'custom', message: 'Enter a price of at least ₹1.', path: ['price'] })
+  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -66,8 +73,9 @@ export default function SubmitPost() {
     control,
     reset,
     watch,
+    setValue,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '', topics: [] } })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '', topics: [], access: 'free', price: '' } })
 
   const selectedTopics = watch('topics')
 
@@ -78,7 +86,7 @@ export default function SubmitPost() {
   useEffect(() => {
     if (!id) return
     apiFetch<UserBlogPost>(`/api/snippets/blog-submissions/${id}/`).then(sub => {
-      reset({ title: sub.title, topics: sub.topics, other_topic: sub.other_topic, excerpt: sub.excerpt, body: sub.body })
+      reset({ title: sub.title, topics: sub.topics, other_topic: sub.other_topic, excerpt: sub.excerpt, body: sub.body, access: sub.access, price: sub.price ?? '' })
       setWasPublished(sub.status === 'published')
       if (sub.image_url) setThumbnailPreview(getMediaUrl(sub.image_url))
       setLoaded(true)
@@ -96,7 +104,7 @@ export default function SubmitPost() {
   async function submitForm(data: FormData, draft: boolean) {
     setStatus('loading')
     try {
-      const body = { ...data, status: draft ? 'draft' : 'pending' }
+      const body = { ...data, price: data.access === 'paid' ? data.price : null, status: draft ? 'draft' : 'pending' }
       const submission = isEditing
         ? await apiFetch<{ id: number }>(`/api/snippets/blog-submissions/${id}/`, { method: 'PATCH', body })
         : await apiFetch<{ id: number }>('/api/snippets/blog-submissions/', { method: 'POST', body })
@@ -242,6 +250,23 @@ export default function SubmitPost() {
                   label="Suggest a new topic (optional)"
                   placeholder="Not listed above? Suggest one"
                   {...register('other_topic')}
+                />
+
+                <Controller
+                  name="access"
+                  control={control}
+                  render={({ field }) => (
+                    <AccessField
+                      access={field.value}
+                      price={watch('price') ?? ''}
+                      accessError={errors.access?.message}
+                      priceError={errors.price?.message}
+                      onChange={next => {
+                        field.onChange(next.access)
+                        setValue('price', next.price, { shouldValidate: !!errors.price })
+                      }}
+                    />
+                  )}
                 />
 
                 <Textarea label="Excerpt" placeholder="A short summary shown in listings" rows={4} error={errors.excerpt?.message} {...register('excerpt')} />

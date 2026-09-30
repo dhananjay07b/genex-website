@@ -32,7 +32,8 @@ const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
   { key: 'settings', icon: SettingsOutlinedIcon },
 ]
 
-const VALID_TABS = new Set<TabKey>(NAV_ITEMS.map(n => n.key))
+// Posting is a Professional feature — Learners and Company staff don't get these tabs.
+const PROFESSIONAL_TABS = new Set<TabKey>(['blogposts', 'videos'])
 
 export default function Profile() {
   const { user } = useAuth()
@@ -77,8 +78,10 @@ export default function Profile() {
   const navTopOffset = isNavStuck ? 96 : (heroHeight ?? 96)
   const navHeightStyle = { height: `calc(100vh - ${navTopOffset}px - 6rem)` }
 
+  const canPublish = user?.account_type === 'professional'
+  const navItems = NAV_ITEMS.filter(item => canPublish || !PROFESSIONAL_TABS.has(item.key))
   const rawTab = searchParams.get('tab')
-  const tab: TabKey = rawTab && VALID_TABS.has(rawTab as TabKey) ? (rawTab as TabKey) : 'overview'
+  const tab: TabKey = rawTab && navItems.some(item => item.key === rawTab) ? (rawTab as TabKey) : 'overview'
 
   function selectTab(next: TabKey) {
     setSearchParams(next === 'overview' ? {} : { tab: next })
@@ -139,7 +142,7 @@ export default function Profile() {
               style={navHeightStyle}
             >
               <nav className="flex flex-col gap-0.5">
-                {NAV_ITEMS.map(item => {
+                {navItems.map(item => {
                   const Icon = item.icon
                   const active = item.key === tab
                   return (
@@ -175,7 +178,7 @@ export default function Profile() {
               onChange={e => selectTab(e.target.value as TabKey)}
               className="w-full h-11 rounded-md border border-border bg-white px-3.5 text-sm font-semibold text-text-primary outline-none"
             >
-              {NAV_ITEMS.map(item => (
+              {navItems.map(item => (
                 <option key={item.key} value={item.key}>{TAB_LABELS[item.key]}</option>
               ))}
             </select>
@@ -185,7 +188,7 @@ export default function Profile() {
           <div className="flex-1 min-w-0 flex flex-col">
             <CompanyVerificationBanner />
             <StudioShortcut />
-            {tab === 'overview' && <OverviewTab onSelectTab={selectTab} />}
+            {tab === 'overview' && <OverviewTab onSelectTab={selectTab} canPublish={canPublish} />}
             {tab === 'blogposts' && <BlogPostsTab />}
             {tab === 'videos' && <VideosTab />}
             {tab === 'podcasts' && <PodcastsTab />}

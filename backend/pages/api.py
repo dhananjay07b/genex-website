@@ -14,11 +14,12 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
 from wagtail.rich_text import expand_db_html
 
-from accounts.roles import display_company, display_publisher, is_admin
+from accounts.roles import IsProfessional, display_company, display_publisher, is_admin
 from accounts.uploads import save_uploaded_image
 from commerce.access import has_access
 
 from .models import (
+    AccessControlled,
     BlogPost,
     CaseStudy,
     PodcastEpisode,
@@ -30,6 +31,7 @@ from .models import (
     VideoItem,
     Whitepaper,
 )
+from .richtext import sanitize_submission_html
 
 
 def _upload_submission_image(request, obj, field_name):
@@ -259,13 +261,32 @@ class PodcastEpisodeSerializer(PublisherSerializerMixin, GatedContentSerializerM
         return [author_payload(user) for user in obj.collaborators.all()]
 
 
-class UserBlogPostSerializer(serializers.ModelSerializer):
+class SubmissionAccessMixin(serializers.Serializer):
+    """Professionals choose who can open their post/video once it's published."""
+    access = serializers.ChoiceField(choices=[c[0] for c in AccessControlled.ACCESS_CHOICES], required=False)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=1, required=False, allow_null=True)
+
+    ACCESS_FIELDS = ["access", "price", "currency"]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        access = attrs.get("access", getattr(self.instance, "access", AccessControlled.ACCESS_FREE))
+        price = attrs.get("price", getattr(self.instance, "price", None))
+        if access == AccessControlled.ACCESS_PAID and not price:
+            raise serializers.ValidationError({"price": "Set a price for paid content."})
+        if access != AccessControlled.ACCESS_PAID:
+            attrs["price"] = None
+        return attrs
+
+
+class UserBlogPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     topics = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
 
     class Meta:
         model = UserBlogPost
-        fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at",
+                  *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_image_url(self, obj):
@@ -275,6 +296,9 @@ class UserBlogPostSerializer(serializers.ModelSerializer):
         if len(value) > 3:
             raise serializers.ValidationError("Select at most 3 topics.")
         return value
+
+    def validate_body(self, value):
+        return sanitize_submission_html(value)
 
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user
@@ -364,7 +388,8 @@ class UserBlogPostViewSet(
     mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserBlogPostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Posting is a Professional feature; Learners get 403, Company staff use the Studio.
+    permission_classes = [IsProfessional]
 
     def get_throttles(self):
         if self.request.method == "POST":
@@ -391,12 +416,13 @@ class UserBlogPostViewSet(
         return Response(self.get_serializer(submission).data)
 
 
-class UserVideoPostSerializer(serializers.ModelSerializer):
+class UserVideoPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer):
     thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = UserVideoPost
-        fields = ["id", "title", "excerpt", "video_url", "topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        fields = ["id", "title", "excerpt", "video_url", "topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at",
+                  *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_thumbnail_url(self, obj):
@@ -432,7 +458,7 @@ class UserVideoPostViewSet(
     mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserVideoPostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsProfessional]
 
     def get_throttles(self):
         if self.request.method == "POST":

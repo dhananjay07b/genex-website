@@ -15,7 +15,7 @@ import { getStudioType, WHITEPAPER_PALETTES, type StudioField, type StudioTypeCo
 import { SectionsField } from './fields/SectionsField'
 import { ChipListField } from './fields/ChipListField'
 import { SwatchField } from './fields/SwatchField'
-import { AccessField } from './fields/AccessField'
+import { AccessField } from '@/components/gelearn/AccessField'
 import { CollaboratorsField } from './fields/CollaboratorsField'
 import { FileField } from './fields/FileField'
 

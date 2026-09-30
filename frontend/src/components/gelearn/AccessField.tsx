@@ -40,7 +40,7 @@ export function AccessField({ access, price, onChange, accessError, priceError }
         />
       )}
       {access === 'paid' && (
-        <p className="text-xs text-text-muted -mt-1">Checkout isn&apos;t live yet. Paid episodes show their price with &ldquo;Checkout coming soon&rdquo;.</p>
+        <p className="text-xs text-text-muted -mt-1">Checkout isn&apos;t live yet. Paid content shows its price with &ldquo;Checkout coming soon&rdquo;.</p>
       )}
     </div>
   )

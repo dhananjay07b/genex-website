@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -15,6 +15,7 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { AccessField } from '@/components/gelearn/AccessField'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
@@ -27,6 +28,12 @@ const schema = z.object({
   duration: z.string().optional(),
   excerpt: z.string().min(20, 'Excerpt must be at least 20 characters').max(300, 'Keep the excerpt under 300 characters'),
   video_url: z.string().url('Enter a valid video URL'),
+  access: z.enum(['free', 'members', 'paid']),
+  price: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.access === 'paid' && !(Number(data.price) >= 1)) {
+    ctx.addIssue({ code: 'custom', message: 'Enter a price of at least ₹1.', path: ['price'] })
+  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -56,13 +63,16 @@ export default function SubmitVideo() {
     register,
     handleSubmit,
     reset,
+    control,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { access: 'free', price: '' } })
 
   useEffect(() => {
     if (!id) return
     apiFetch<UserVideoPost>(`/api/snippets/video-submissions/${id}/`).then(sub => {
-      reset({ title: sub.title, topic: sub.topic, duration: sub.duration, excerpt: sub.excerpt, video_url: sub.video_url })
+      reset({ title: sub.title, topic: sub.topic, duration: sub.duration, excerpt: sub.excerpt, video_url: sub.video_url, access: sub.access, price: sub.price ?? '' })
       setWasPublished(sub.status === 'published')
       if (sub.thumbnail_url) setThumbnailPreview(getMediaUrl(sub.thumbnail_url))
       setLoaded(true)
@@ -80,7 +90,7 @@ export default function SubmitVideo() {
   async function submitForm(data: FormData, draft: boolean) {
     setStatus('loading')
     try {
-      const body = { ...data, status: draft ? 'draft' : 'pending' }
+      const body = { ...data, price: data.access === 'paid' ? data.price : null, status: draft ? 'draft' : 'pending' }
       const submission = isEditing
         ? await apiFetch<{ id: number }>(`/api/snippets/video-submissions/${id}/`, { method: 'PATCH', body })
         : await apiFetch<{ id: number }>('/api/snippets/video-submissions/', { method: 'POST', body })
@@ -200,6 +210,23 @@ export default function SubmitVideo() {
                     />
                   </div>
                 </div>
+                <Controller
+                  name="access"
+                  control={control}
+                  render={({ field }) => (
+                    <AccessField
+                      access={field.value}
+                      price={watch('price') ?? ''}
+                      accessError={errors.access?.message}
+                      priceError={errors.price?.message}
+                      onChange={next => {
+                        field.onChange(next.access)
+                        setValue('price', next.price, { shouldValidate: !!errors.price })
+                      }}
+                    />
+                  )}
+                />
+
                 <Textarea label="Excerpt" placeholder="A short summary shown in listings" rows={4} error={errors.excerpt?.message} {...register('excerpt')} />
 
                 <div>

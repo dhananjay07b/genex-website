@@ -8,6 +8,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import { apiFetch } from '@/lib/api/client'
+import { useAuth } from '@/context/useAuth'
 import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { SavedItem, UserBlogPost, UserVideoPost } from '@/types/auth'
 import type { SnippetListResponse } from '@/types/api'
@@ -34,6 +35,8 @@ const ACTIVITY_ICON: Record<string, typeof ArticleOutlinedIcon> = {
 
 interface OverviewTabProps {
   onSelectTab: (tab: TabKey) => void
+  /** Professionals publish posts/videos; everyone else doesn't see those stats. */
+  canPublish: boolean
 }
 
 interface Counts {
@@ -50,14 +53,15 @@ const STATS: { key: keyof Counts; label: string; icon: typeof ArticleOutlinedIco
   { key: 'saved', label: 'Saved Items', icon: BookmarkBorderIcon },
 ]
 
-export function OverviewTab({ onSelectTab }: OverviewTabProps) {
+export function OverviewTab({ onSelectTab, canPublish }: OverviewTabProps) {
+  const { user } = useAuth()
   const [counts, setCounts] = useState<Counts | null>(null)
   const [activity, setActivity] = useState<ActivityEntry[] | null>(null)
 
   useEffect(() => {
     Promise.all([
-      apiFetch<UserBlogPost[]>('/api/snippets/blog-submissions/mine/').catch(() => []),
-      apiFetch<UserVideoPost[]>('/api/snippets/video-submissions/mine/').catch(() => []),
+      canPublish ? apiFetch<UserBlogPost[]>('/api/snippets/blog-submissions/mine/').catch(() => []) : Promise.resolve([]),
+      canPublish ? apiFetch<UserVideoPost[]>('/api/snippets/video-submissions/mine/').catch(() => []) : Promise.resolve([]),
       apiFetch<SnippetListResponse<unknown>>('/api/accounts/me/podcast-appearances/?limit=1').catch(() => ({ count: 0 }) as SnippetListResponse<unknown>),
       apiFetch<SavedItem[]>('/api/engagement/saved-items/').catch(() => []),
     ]).then(([blogposts, videos, podcasts, saved]) => {
@@ -69,14 +73,35 @@ export function OverviewTab({ onSelectTab }: OverviewTabProps) {
       })
     })
     apiFetch<ActivityEntry[]>('/api/accounts/me/activity/').then(setActivity).catch(() => setActivity([]))
-  }, [])
+  }, [canPublish])
+
+  const stats = STATS.filter(stat => canPublish || (stat.key !== 'blogposts' && stat.key !== 'videos'))
 
   return (
     <div>
       <h1 className="text-xl font-extrabold text-text-primary mb-5">Overview</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {STATS.map(stat => {
+      {user?.account_type === 'learner' && (
+        <button
+          type="button"
+          onClick={() => onSelectTab('settings')}
+          className="w-full mb-6 flex items-center gap-4 rounded-2xl border border-border bg-surface p-4 sm:p-5 text-left hover:border-primary transition-colors group"
+        >
+          <span className="size-10 shrink-0 rounded-full bg-white text-primary flex items-center justify-center">
+            <ArticleOutlinedIcon sx={{ fontSize: 19 }} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-bold text-text-primary">Share your expertise on GeLearn</span>
+            <span className="block text-xs text-text-muted mt-0.5">
+              Switch to a Professional account in Settings to publish posts and videos and be featured on podcasts.
+            </span>
+          </span>
+          <ArrowForwardIcon sx={{ fontSize: 18 }} className="text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
+
+      <div className={`grid grid-cols-2 ${stats.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-2'} gap-4 mb-8`}>
+        {stats.map(stat => {
           const Icon = stat.icon
           return (
             <button

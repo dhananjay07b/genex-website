@@ -121,6 +121,12 @@ export const gelearnRouter = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: '/account',              element: s(<Profile />) },
+        ],
+      },
+      {
+        // Posting blogs and videos is a Professional feature.
+        element: <RoleRoute roles={['professional']} />,
+        children: [
           { path: '/submit-post',          element: s(<SubmitPost />) },
           { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
           { path: '/submit-video',         element: s(<SubmitVideo />) },

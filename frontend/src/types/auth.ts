@@ -1,4 +1,4 @@
-import type { Topic } from './api'
+import type { ContentAccess, Topic } from './api'
 
 /** Admin is not an account type — it's `is_admin` (the superuser). */
 export type AccountType = 'learner' | 'professional' | 'company'
@@ -113,6 +113,8 @@ export interface UserBlogPost {
   other_topic: string
   image_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
+  access: ContentAccess
+  price: string | null
   rejection_reason: string
   created_at: string
   submitted_at: string | null
@@ -127,6 +129,8 @@ export interface UserVideoPost {
   duration: string
   thumbnail_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
+  access: ContentAccess
+  price: string | null
   rejection_reason: string
   created_at: string
   submitted_at: string | null
