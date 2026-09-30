@@ -185,7 +185,7 @@ export default function GeAcademyDetail() {
             </span>
             <span className="flex items-center gap-1.5 text-[#0f172b]">
               {article.company ? (
-                <>Published by <CompanyBadge company={article.company} /></>
+                <>Published by <CompanyBadge company={article.company} linked /></>
               ) : (
                 <span className="font-semibold">Genex Engineering Team</span>
               )}

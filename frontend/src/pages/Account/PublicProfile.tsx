@@ -10,6 +10,7 @@ import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined'
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined'
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
@@ -17,8 +18,10 @@ import { getMediaUrl, formatRelativeTime, cn } from '@/lib/utils'
 import { useAuth } from '@/context/useAuth'
 import type { PublicProfile as PublicProfileType, FollowRow, User } from '@/types/auth'
 import type { BlogPostItem, VideoItem, PodcastItem, SnippetListResponse } from '@/types/api'
+import type { CourseCard } from '@/types/learning'
 import { EmptyState } from './dashboard/EmptyState'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
+import { AccessBadge } from '@/components/gelearn/AccessBadge'
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>()
@@ -29,6 +32,7 @@ export default function PublicProfile() {
   const [blogPosts, setBlogPosts] = useState<BlogPostItem[]>([])
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [podcasts, setPodcasts] = useState<PodcastItem[]>([])
+  const [courses, setCourses] = useState<CourseCard[]>([])
   const [filterState, setFilterState] = useState<{ forUsername: string; value: 'blogposts' | 'videos' | 'podcasts' } | null>(null)
   const filter = filterState && filterState.forUsername === username ? filterState.value : null
 
@@ -54,6 +58,8 @@ export default function PublicProfile() {
       .then(res => setVideos(res.results)).catch(() => setVideos([]))
     apiFetch<SnippetListResponse<PodcastItem>>(`/api/accounts/users/${username}/podcast-appearances/?limit=50`)
       .then(res => setPodcasts(res.results)).catch(() => setPodcasts([]))
+    apiFetch<SnippetListResponse<CourseCard>>(`/api/learning/courses/?owner=${encodeURIComponent(username)}&limit=12`)
+      .then(res => setCourses(res.results)).catch(() => setCourses([]))
   }, [username])
 
   useEffect(() => {
@@ -232,7 +238,7 @@ export default function PublicProfile() {
               <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-text-primary mt-1.5">
                 {profile.role_title && <span className="font-semibold">{profile.role_title}</span>}
                 {profile.role_title && profile.company && <span className="text-text-muted">at</span>}
-                {profile.company && <CompanyBadge company={profile.company} />}
+                {profile.company && <CompanyBadge company={profile.company} linked />}
               </p>
             )}
           </div>
@@ -331,6 +337,33 @@ export default function PublicProfile() {
             <p className="text-xs font-semibold text-text-muted mt-0.5">Podcast Features</p>
           </button>
         </div>
+
+        {/* Courses */}
+        {filter === null && courses.length > 0 && (
+          <section className="pt-10">
+            <h2 className="text-lg font-extrabold text-text-primary mb-4">Courses</h2>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {courses.map(course => (
+                <li key={course.slug}>
+                  <Link to={`/courses/${course.slug}`} className="group flex gap-3 border border-border rounded-2xl p-3 hover:border-primary/40 transition-colors">
+                    <span className="size-16 rounded-xl bg-brand-tint flex items-center justify-center overflow-hidden shrink-0">
+                      {course.cover_url
+                        ? <img src={getMediaUrl(course.cover_url)} alt="" className="w-full h-full object-cover" />
+                        : <SchoolOutlinedIcon sx={{ fontSize: 22 }} className="text-primary/50" />}
+                    </span>
+                    <span className="min-w-0 flex flex-col gap-1">
+                      <span className="text-sm font-bold text-text-primary leading-snug line-clamp-2 group-hover:text-primary transition-colors">{course.title}</span>
+                      <span className="flex items-center gap-2 text-xs text-text-muted">
+                        {course.item_count} {course.item_count === 1 ? 'lesson' : 'lessons'}
+                        <AccessBadge access={course.access} price={course.price} currency={course.currency} />
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Content sections */}
         <div className="py-10">

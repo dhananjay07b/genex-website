@@ -51,3 +51,27 @@ class CompanyApiTests(TestCase):
     def test_detail_hides_inactive(self):
         self.assertEqual(self.client.get("/api/organizations/companies/google/").status_code, 200)
         self.assertEqual(self.client.get("/api/organizations/companies/defunct/").status_code, 404)
+
+
+class CompanyPageTests(TestCase):
+    def test_company_page_lists_content_experts_and_courses(self):
+        import datetime
+
+        from accounts.models import User
+        from learning.models import Playlist
+        from pages.models import TechArticle
+
+        genex = Company.objects.create(name="Genex", slug="genex", description="Energy software.")
+        TechArticle.objects.create(title="IEC 61850", topic="Protocols", read_time="5", date=datetime.date(2026, 9, 1), excerpt="e", company=genex)
+        expert = User.objects.create_user("exp", "exp@genex.io", "Passw0rd!x", account_type="professional",
+                                          company=genex, company_verified=True, role_title="Eng", display_name="Asha")
+        User.objects.create_user("pending", "p@genex.io", "Passw0rd!x", account_type="professional", company=genex, role_title="Eng")
+        Playlist.objects.create(owner=expert, title="Grid 101", status="published")
+        Playlist.objects.create(owner=expert, title="Draft course")
+
+        body = APIClient().get("/api/organizations/companies/genex/").json()
+        self.assertEqual(body["description"], "Energy software.")
+        self.assertEqual([(s["key"], s["count"]) for s in body["content"]], [("geacademy", 1)])
+        self.assertEqual(body["content"][0]["items"][0]["path"].split("/")[1], "geacademy")
+        self.assertEqual([e["username"] for e in body["experts"]], ["exp"])  # pending not listed
+        self.assertEqual([c["title"] for c in body["courses"]], ["Grid 101"])

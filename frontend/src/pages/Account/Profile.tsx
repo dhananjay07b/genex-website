@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
-import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
-import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
-import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
-import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { useAuth } from '@/context/useAuth'
+import { useRole } from '@/hooks/useRole'
 import { getMediaUrl, cn } from '@/lib/utils'
 import { NotificationBell } from './dashboard/NotificationBell'
 import { OverviewTab } from './dashboard/OverviewTab'
@@ -23,20 +17,9 @@ import { CommentsTab } from './dashboard/CommentsTab'
 import { SavedItemsTab } from './dashboard/SavedItemsTab'
 import { SettingsTab } from './dashboard/SettingsTab'
 import { TAB_LABELS, type TabKey } from './dashboard/types'
+import { navItemsFor } from './dashboard/navConfig'
+import { LearningTab } from './dashboard/LearningTab'
 
-const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
-  { key: 'overview', icon: DashboardOutlinedIcon },
-  { key: 'blogposts', icon: ArticleOutlinedIcon },
-  { key: 'videos', icon: VideocamOutlinedIcon },
-  { key: 'courses', icon: SchoolOutlinedIcon },
-  { key: 'podcasts', icon: MicNoneOutlinedIcon },
-  { key: 'comments', icon: ChatBubbleOutlineOutlinedIcon },
-  { key: 'saved', icon: BookmarkBorderIcon },
-  { key: 'settings', icon: SettingsOutlinedIcon },
-]
-
-// Posting is a Professional feature — Learners and Company staff don't get these tabs.
-const PROFESSIONAL_TABS = new Set<TabKey>(['blogposts', 'videos', 'courses'])
 
 export default function Profile() {
   const { user } = useAuth()
@@ -81,8 +64,8 @@ export default function Profile() {
   const navTopOffset = isNavStuck ? 96 : (heroHeight ?? 96)
   const navHeightStyle = { height: `calc(100vh - ${navTopOffset}px - 6rem)` }
 
-  const canPublish = user?.account_type === 'professional'
-  const navItems = NAV_ITEMS.filter(item => canPublish || !PROFESSIONAL_TABS.has(item.key))
+  const { isProfessional: canPublish } = useRole()
+  const navItems = navItemsFor(user?.account_type)
   const rawTab = searchParams.get('tab')
   const tab: TabKey = rawTab && navItems.some(item => item.key === rawTab) ? (rawTab as TabKey) : 'overview'
 
@@ -167,7 +150,7 @@ export default function Profile() {
 
               <div className="mt-4 pt-4 border-t border-border">
                 <div className="rounded-xl bg-surface p-3.5 text-xs text-text-muted leading-relaxed">
-                  <span className="font-bold text-text-primary">Coming to GeLearn:</span> course progress &amp; certificates.
+                  <span className="font-bold text-text-primary">Coming to GeLearn:</span> course certificates.
                   This account is ready for it — same profile, more to track.
                 </div>
               </div>
@@ -192,6 +175,7 @@ export default function Profile() {
             <CompanyVerificationBanner />
             <StudioShortcut />
             {tab === 'overview' && <OverviewTab onSelectTab={selectTab} canPublish={canPublish} />}
+            {tab === 'learning' && <LearningTab />}
             {tab === 'blogposts' && <BlogPostsTab />}
             {tab === 'videos' && <VideosTab />}
             {tab === 'courses' && <CoursesTab />}

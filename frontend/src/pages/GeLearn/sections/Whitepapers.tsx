@@ -56,7 +56,7 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
 
       {doc.company && (
         <p className="flex items-center gap-1.5 text-xs text-[#62748e] mb-6">
-          Published by <CompanyBadge company={doc.company} />
+          Published by <CompanyBadge company={doc.company} linked />
         </p>
       )}
 

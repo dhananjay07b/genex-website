@@ -115,7 +115,7 @@ export default function PodcastDetail() {
               <span className="text-sm text-[#62748e]">{formatDisplayDate(episode.date)}</span>
               {episode.company && (
                 <span className="flex items-center gap-1.5 text-sm text-[#62748e]">
-                  Published by <CompanyBadge company={episode.company} />
+                  Published by <CompanyBadge company={episode.company} linked />
                 </span>
               )}
               {episode.duration && (

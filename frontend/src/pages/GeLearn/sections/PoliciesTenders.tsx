@@ -79,7 +79,7 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
 
         {tender.company && (
           <p className="flex items-center gap-1.5 text-xs text-[#62748e]">
-            Published by <CompanyBadge company={tender.company} />
+            Published by <CompanyBadge company={tender.company} linked />
           </p>
         )}
 

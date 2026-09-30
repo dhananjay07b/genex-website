@@ -29,6 +29,7 @@ const PodcastDetail         = lazy(() => import('@/pages/GeLearn/sections/Podcas
 const Courses               = lazy(() => import('@/pages/GeLearn/sections/Courses'))
 const CourseDetail          = lazy(() => import('@/pages/GeLearn/sections/CourseDetail'))
 const CourseBuilder         = lazy(() => import('@/pages/Account/CourseBuilder'))
+const CompanyPage           = lazy(() => import('@/pages/GeLearn/CompanyPage'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))
 const Register              = lazy(() => import('@/pages/Account/Register'))
 const ForgotPassword        = lazy(() => import('@/pages/Account/ForgotPassword'))
@@ -116,6 +117,7 @@ export const gelearnRouter = createBrowserRouter([
       { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
       { path: '/courses',                  element: s(<Courses />) },
       { path: '/courses/:slug',            element: s(<CourseDetail />) },
+      { path: '/c/:slug',                  element: s(<CompanyPage />) },
       { path: '/login',                    element: s(<Login />) },
       { path: '/register',                 element: s(<Register />) },
       { path: '/forgot-password',          element: s(<ForgotPassword />) },

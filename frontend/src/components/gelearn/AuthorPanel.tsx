@@ -156,7 +156,7 @@ export function AuthorPanel({ username, onClose }: AuthorPanelProps) {
                     <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-text-primary font-semibold mt-2">
                       {profile.role_title && <span>{profile.role_title}</span>}
                       {profile.role_title && profile.company && <span className="font-normal text-text-muted">at</span>}
-                      {profile.company && <CompanyBadge company={profile.company} />}
+                      {profile.company && <CompanyBadge company={profile.company} linked />}
                     </p>
                   )}
                   {profile.years_experience !== null && (

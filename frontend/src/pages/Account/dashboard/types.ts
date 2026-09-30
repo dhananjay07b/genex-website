@@ -1,7 +1,8 @@
-export type TabKey = 'overview' | 'blogposts' | 'videos' | 'courses' | 'podcasts' | 'comments' | 'saved' | 'settings'
+export type TabKey = 'overview' | 'learning' | 'blogposts' | 'videos' | 'courses' | 'podcasts' | 'comments' | 'saved' | 'settings'
 
 export const TAB_LABELS: Record<TabKey, string> = {
   overview: 'Overview',
+  learning: 'My Learning',
   blogposts: 'My Blog Posts',
   videos: 'My Videos',
   courses: 'My Courses',

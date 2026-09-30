@@ -132,7 +132,7 @@ export default function CaseStudyDetail() {
 
           {cs.company && (
             <p className="flex items-center gap-1.5 text-sm text-[#62748e] pb-10">
-              Published by <CompanyBadge company={cs.company} />
+              Published by <CompanyBadge company={cs.company} linked />
             </p>
           )}
 
