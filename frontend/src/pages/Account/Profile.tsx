@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
@@ -16,6 +17,7 @@ import { CompanyVerificationBanner } from './dashboard/CompanyVerificationBanner
 import { StudioShortcut } from './dashboard/StudioShortcut'
 import { BlogPostsTab } from './dashboard/BlogPostsTab'
 import { VideosTab } from './dashboard/VideosTab'
+import { CoursesTab } from './dashboard/CoursesTab'
 import { PodcastsTab } from './dashboard/PodcastsTab'
 import { CommentsTab } from './dashboard/CommentsTab'
 import { SavedItemsTab } from './dashboard/SavedItemsTab'
@@ -26,6 +28,7 @@ const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
   { key: 'overview', icon: DashboardOutlinedIcon },
   { key: 'blogposts', icon: ArticleOutlinedIcon },
   { key: 'videos', icon: VideocamOutlinedIcon },
+  { key: 'courses', icon: SchoolOutlinedIcon },
   { key: 'podcasts', icon: MicNoneOutlinedIcon },
   { key: 'comments', icon: ChatBubbleOutlineOutlinedIcon },
   { key: 'saved', icon: BookmarkBorderIcon },
@@ -33,7 +36,7 @@ const NAV_ITEMS: { key: TabKey; icon: typeof DashboardOutlinedIcon }[] = [
 ]
 
 // Posting is a Professional feature — Learners and Company staff don't get these tabs.
-const PROFESSIONAL_TABS = new Set<TabKey>(['blogposts', 'videos'])
+const PROFESSIONAL_TABS = new Set<TabKey>(['blogposts', 'videos', 'courses'])
 
 export default function Profile() {
   const { user } = useAuth()
@@ -191,6 +194,7 @@ export default function Profile() {
             {tab === 'overview' && <OverviewTab onSelectTab={selectTab} canPublish={canPublish} />}
             {tab === 'blogposts' && <BlogPostsTab />}
             {tab === 'videos' && <VideosTab />}
+            {tab === 'courses' && <CoursesTab />}
             {tab === 'podcasts' && <PodcastsTab />}
             {tab === 'comments' && <CommentsTab />}
             {tab === 'saved' && <SavedItemsTab />}

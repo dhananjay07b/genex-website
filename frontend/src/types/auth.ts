@@ -150,7 +150,7 @@ export interface SocialAccount {
 
 export interface Notification {
   id: number
-  kind: 'blog_status' | 'video_status' | 'comment_reply'
+  kind: 'blog_status' | 'video_status' | 'course_status' | 'comment_reply'
   text: string
   content_type: string | null
   object_id: number | null

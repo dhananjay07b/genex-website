@@ -13,10 +13,11 @@ from .verification import refresh_company_verification, resolve_professional_com
 
 
 def paid_published_count(user):
-    """Published paid posts/videos by this user (blocks switching to Learner)."""
+    """Published paid posts/videos and live courses by this user (these block switching to Learner)."""
     return (
         user.blog_submissions.filter(status="published", published_post__access="paid").count()
         + user.video_submissions.filter(status="published", published_video__access="paid").count()
+        + user.playlists.filter(status="published").count()
     )
 
 
@@ -93,8 +94,8 @@ class UserSerializer(serializers.ModelSerializer):
                 blocking = paid_published_count(instance)
                 if blocking:
                     raise serializers.ValidationError({"account_type": (
-                        f"You have {blocking} published paid item{'s' if blocking != 1 else ''}. "
-                        "Make them free or members-only before switching to a Learner account."
+                        f"You have {blocking} live course{'s' if blocking != 1 else ''} or paid item{'s' if blocking != 1 else ''}. "
+                        "Delete your live courses and make paid items free or members-only before switching to a Learner account."
                     )})
             # Workplace details describe a Professional; a Learner carries none.
             attrs.pop("company_id", None)

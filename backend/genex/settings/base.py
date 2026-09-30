@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "organizations",
     "commerce",
     "studio",
+    "learning",
     "comments",
     "engagement",
     "pages",

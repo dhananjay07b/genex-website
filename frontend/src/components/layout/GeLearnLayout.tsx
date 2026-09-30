@@ -15,7 +15,7 @@ const FULL_BLEED_PATHS = ['/login', '/register']
 const DASHBOARD_PATHS = ['/account', '/submit-post', '/submit-video']
 
 function isDashboardPath(pathname: string): boolean {
-  return DASHBOARD_PATHS.includes(pathname) || pathname.startsWith('/u/') || pathname.startsWith('/studio')
+  return DASHBOARD_PATHS.includes(pathname) || pathname.startsWith('/u/') || pathname.startsWith('/studio') || pathname.startsWith('/account/')
 }
 
 export function GeLearnLayout() {

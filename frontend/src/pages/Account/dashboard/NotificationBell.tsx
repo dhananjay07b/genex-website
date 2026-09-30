@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,7 @@ import type { SnippetListResponse } from '@/types/api'
 const KIND_ICON: Record<Notification['kind'], typeof ArticleOutlinedIcon> = {
   blog_status: ArticleOutlinedIcon,
   video_status: VideocamOutlinedIcon,
+  course_status: SchoolOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
 }
 
@@ -49,6 +51,7 @@ export function NotificationBell() {
   const KIND_TAB: Record<Notification['kind'], string> = {
     blog_status: 'blogposts',
     video_status: 'videos',
+    course_status: 'courses',
     comment_reply: 'comments',
   }
 

@@ -26,6 +26,9 @@ const PoliciesTenders       = lazy(() => import('@/pages/GeLearn/sections/Polici
 const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitepapers'))
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
 const PodcastDetail         = lazy(() => import('@/pages/GeLearn/sections/PodcastDetail'))
+const Courses               = lazy(() => import('@/pages/GeLearn/sections/Courses'))
+const CourseDetail          = lazy(() => import('@/pages/GeLearn/sections/CourseDetail'))
+const CourseBuilder         = lazy(() => import('@/pages/Account/CourseBuilder'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))
 const Register              = lazy(() => import('@/pages/Account/Register'))
 const ForgotPassword        = lazy(() => import('@/pages/Account/ForgotPassword'))
@@ -111,6 +114,8 @@ export const gelearnRouter = createBrowserRouter([
       { path: '/whitepapers',              element: s(<Whitepapers />) },
       { path: '/podcasts',                 element: s(<Podcasts />) },
       { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
+      { path: '/courses',                  element: s(<Courses />) },
+      { path: '/courses/:slug',            element: s(<CourseDetail />) },
       { path: '/login',                    element: s(<Login />) },
       { path: '/register',                 element: s(<Register />) },
       { path: '/forgot-password',          element: s(<ForgotPassword />) },
@@ -131,6 +136,8 @@ export const gelearnRouter = createBrowserRouter([
           { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
           { path: '/submit-video',         element: s(<SubmitVideo />) },
           { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
+          { path: '/account/courses/new',  element: s(<CourseBuilder />) },
+          { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
         ],
       },
       {

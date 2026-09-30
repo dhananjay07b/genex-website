@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
@@ -28,6 +29,7 @@ const ACTIVITY_ICON: Record<string, typeof ArticleOutlinedIcon> = {
   blog_status: ArticleOutlinedIcon,
   blog_submission: ArticleOutlinedIcon,
   video_status: VideocamOutlinedIcon,
+  course_status: SchoolOutlinedIcon,
   video_submission: VideocamOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
   comment: ChatBubbleOutlineOutlinedIcon,

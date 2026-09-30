@@ -6,6 +6,7 @@ import { AccountMenu } from './AccountMenu'
 
 const GELEARN_NAV_LINKS = [
   { label: 'GeAcademy', href: '/geacademy' },
+  { label: 'Courses', href: '/courses' },
   { label: 'Research', href: '/research' },
   { label: 'Policies & Tenders', href: '/policies-tenders' },
   { label: 'Whitepapers', href: '/whitepapers' },

@@ -42,6 +42,7 @@ class Notification(models.Model):
     KIND_CHOICES = [
         ("blog_status", "Blog status update"),
         ("video_status", "Video status update"),
+        ("course_status", "Course status update"),
         ("comment_reply", "Comment reply"),
     ]
 

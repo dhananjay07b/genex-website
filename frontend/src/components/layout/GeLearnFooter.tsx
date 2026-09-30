@@ -5,6 +5,7 @@ import { marketingPath } from '@/lib/host'
 
 const SECTION_LINKS = [
   { label: 'GeAcademy', href: '/geacademy' },
+  { label: 'Courses', href: '/courses' },
   { label: 'Research', href: '/research' },
   { label: 'Policies & Tenders', href: '/policies-tenders' },
   { label: 'Whitepapers & Reports', href: '/whitepapers' },
