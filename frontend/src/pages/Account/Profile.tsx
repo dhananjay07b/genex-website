@@ -13,6 +13,7 @@ import { getMediaUrl, cn } from '@/lib/utils'
 import { NotificationBell } from './dashboard/NotificationBell'
 import { OverviewTab } from './dashboard/OverviewTab'
 import { CompanyVerificationBanner } from './dashboard/CompanyVerificationBanner'
+import { StudioShortcut } from './dashboard/StudioShortcut'
 import { BlogPostsTab } from './dashboard/BlogPostsTab'
 import { VideosTab } from './dashboard/VideosTab'
 import { PodcastsTab } from './dashboard/PodcastsTab'
@@ -183,6 +184,7 @@ export default function Profile() {
           {/* Active tab */}
           <div className="flex-1 min-w-0 flex flex-col">
             <CompanyVerificationBanner />
+            <StudioShortcut />
             {tab === 'overview' && <OverviewTab onSelectTab={selectTab} />}
             {tab === 'blogposts' && <BlogPostsTab />}
             {tab === 'videos' && <VideosTab />}

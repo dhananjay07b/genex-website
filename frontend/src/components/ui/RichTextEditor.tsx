@@ -23,21 +23,34 @@ interface RichTextEditorProps {
   onChange: (html: string) => void
   error?: string
   label?: string
+  /**
+   * 'basic' offers only what the server keeps for Studio content (headings,
+   * bold/italic, lists, quotes, rules, links) — no underline, strikethrough,
+   * code or inline images, which would be stripped on save.
+   */
+  variant?: 'full' | 'basic'
+  minHeightClassName?: string
 }
 
-export function RichTextEditor({ value, onChange, error, label }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, error, label, variant = 'full', minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
+  const basic = variant === 'basic'
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
-      Underline,
-      Link.configure({ openOnClick: false, autolink: true }),
-      Image,
-    ],
+    extensions: basic
+      ? [
+          StarterKit.configure({ heading: { levels: [2, 3, 4] }, code: false, codeBlock: false, strike: false }),
+          Link.configure({ openOnClick: false, autolink: true }),
+        ]
+      : [
+          StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
+          Underline,
+          Link.configure({ openOnClick: false, autolink: true }),
+          Image,
+        ],
     content: value,
     onUpdate: ({ editor: e }) => onChange(e.getHTML()),
     editorProps: {
       attributes: {
-        class: 'rich-text min-h-96 px-6 py-5 outline-none text-sm text-text-primary',
+        class: cn('rich-text px-6 py-5 outline-none text-sm text-text-primary', minHeightClassName),
       },
     },
   })
@@ -48,7 +61,7 @@ export function RichTextEditor({ value, onChange, error, label }: RichTextEditor
     <div>
       {label && <label className="block text-sm font-semibold text-text-primary mb-1.5">{label}</label>}
       <div className={cn('border rounded-xl overflow-hidden bg-white', error ? 'border-red-500' : 'border-border')}>
-        <Toolbar editor={editor} />
+        <Toolbar editor={editor} basic={basic} />
         <EditorContent editor={editor} />
       </div>
       {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
@@ -81,7 +94,7 @@ function ToolbarButton({ onClick, active, label, children }: ToolbarButtonProps)
   )
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, basic }: { editor: Editor; basic: boolean }) {
   function addLink() {
     const url = window.prompt('Link URL')
     if (!url) return
@@ -102,12 +115,16 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolbarButton label="Italic" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
         <FormatItalicIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
-        <FormatUnderlinedIcon sx={{ fontSize: 17 }} />
-      </ToolbarButton>
-      <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
-        <StrikethroughSIcon sx={{ fontSize: 17 }} />
-      </ToolbarButton>
+      {!basic && (
+        <>
+          <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+            <FormatUnderlinedIcon sx={{ fontSize: 17 }} />
+          </ToolbarButton>
+          <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
+            <StrikethroughSIcon sx={{ fontSize: 17 }} />
+          </ToolbarButton>
+        </>
+      )}
 
       <span className="w-px h-5 bg-border mx-1" />
 
@@ -132,9 +149,11 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolbarButton label="Quote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <FormatQuoteIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      <ToolbarButton label="Code block" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-        <CodeIcon sx={{ fontSize: 17 }} />
-      </ToolbarButton>
+      {!basic && (
+        <ToolbarButton label="Code block" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+          <CodeIcon sx={{ fontSize: 17 }} />
+        </ToolbarButton>
+      )}
       <ToolbarButton label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <HorizontalRuleIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
@@ -144,9 +163,11 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolbarButton label="Insert link" active={editor.isActive('link')} onClick={addLink}>
         <LinkIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      <ToolbarButton label="Insert image" onClick={addImage}>
-        <ImageOutlinedIcon sx={{ fontSize: 17 }} />
-      </ToolbarButton>
+      {!basic && (
+        <ToolbarButton label="Insert image" onClick={addImage}>
+          <ImageOutlinedIcon sx={{ fontSize: 17 }} />
+        </ToolbarButton>
+      )}
 
       <span className="w-px h-5 bg-border mx-1" />
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
+import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined'
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
@@ -69,6 +70,16 @@ export function AccountMenu() {
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className="absolute top-12 right-0 w-56 bg-white border border-border rounded-2xl shadow-lg p-2 z-20 origin-top-right"
           >
+            {user.account_type === 'company' && (
+              <Link
+                to="/studio"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-text-primary hover:bg-surface transition-colors"
+              >
+                <EditNoteOutlinedIcon sx={{ fontSize: 17 }} className="text-primary" />
+                Company Studio
+              </Link>
+            )}
             <Link
               to="/account"
               onClick={() => setMenuOpen(false)}

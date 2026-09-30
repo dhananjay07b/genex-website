@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { GeLearnLayout } from '@/components/layout/GeLearnLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { RoleRoute } from '@/components/auth/RoleRoute'
 import { LegacyRedirect } from '@/components/utils/LegacyRedirect'
 
 const NotFound               = lazy(() => import('@/pages/NotFound'))
@@ -34,6 +35,11 @@ const Profile                = lazy(() => import('@/pages/Account/Profile'))
 const PublicProfile         = lazy(() => import('@/pages/Account/PublicProfile'))
 const SubmitPost            = lazy(() => import('@/pages/Account/SubmitPost'))
 const SubmitVideo           = lazy(() => import('@/pages/Account/SubmitVideo'))
+const StudioLayout          = lazy(() => import('@/pages/Studio/StudioLayout'))
+const StudioHome            = lazy(() => import('@/pages/Studio/StudioHome'))
+const StudioList            = lazy(() => import('@/pages/Studio/StudioList'))
+const StudioEditor          = lazy(() => import('@/pages/Studio/StudioEditor'))
+const StudioTeam            = lazy(() => import('@/pages/Studio/StudioTeam'))
 
 const s = (el: React.ReactNode) => (
   <Suspense fallback={<div className="min-h-screen" />}>{el}</Suspense>
@@ -119,6 +125,23 @@ export const gelearnRouter = createBrowserRouter([
           { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
           { path: '/submit-video',         element: s(<SubmitVideo />) },
           { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
+        ],
+      },
+      {
+        // Company Studio — publishing for Company accounts (Admin uses the CMS).
+        element: <RoleRoute roles={['company']} />,
+        children: [
+          {
+            path: '/studio',
+            element: s(<StudioLayout />),
+            children: [
+              { index: true,                element: s(<StudioHome />) },
+              { path: 'team',               element: s(<StudioTeam />) },
+              { path: ':type',              element: s(<StudioList />) },
+              { path: ':type/new',          element: s(<StudioEditor />) },
+              { path: ':type/:id/edit',     element: s(<StudioEditor />) },
+            ],
+          },
         ],
       },
       // Renamed sections — old URLs stay valid (Apache also 301s these in production).

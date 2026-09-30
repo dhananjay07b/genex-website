@@ -6,9 +6,11 @@ interface ConfirmDeleteDialogProps {
   onCancel: () => void
   onConfirm: () => void
   confirming?: boolean
+  /** Overrides the default "removed from your GeLearn account" explanation. */
+  message?: string
 }
 
-export function ConfirmDeleteDialog({ label, onCancel, onConfirm, confirming }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({ label, onCancel, onConfirm, confirming, message }: ConfirmDeleteDialogProps) {
   return (
     <div className="fixed inset-0 bg-dark-bg/45 flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-xl">
@@ -17,7 +19,7 @@ export function ConfirmDeleteDialog({ label, onCancel, onConfirm, confirming }: 
         </div>
         <p className="text-base font-bold text-text-primary mb-1.5">Remove this item?</p>
         <p className="text-sm text-text-muted leading-relaxed mb-6">
-          &ldquo;{label}&rdquo; will be removed from your GeLearn account. This can&apos;t be undone.
+          &ldquo;{label}&rdquo; {message ?? 'will be removed from your GeLearn account.'} This can&apos;t be undone.
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" size="md" className="flex-1 justify-center" onClick={onCancel} disabled={confirming}>
