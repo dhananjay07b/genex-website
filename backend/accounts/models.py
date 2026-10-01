@@ -67,6 +67,10 @@ class User(AbstractUser):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
+    career_goal = models.ForeignKey(
+        "learning.CareerRole", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        help_text="The role this person is working toward; GeLearn suggests courses for it.",
+    )
     # GeLearn featuring — Admin-only; never exposed as writable through the API.
     is_featured = models.BooleanField(
         default=False, help_text="Show in 'Our Leading Professionals' on the GeLearn home page.",

@@ -133,3 +133,56 @@ class GeLearnPhase1ContentTests(TestCase):
         from .models import Testimonial
         t = Testimonial.objects.create(quote="Useful.", name="A. Learner")
         self.assertTrue(t.is_active)
+
+
+class TopicHousekeepingTests(TestCase):
+    """Usage counts and merging topics (CMS → Snippets → Topics)."""
+
+    def setUp(self):
+        import datetime
+        from .models import CaseStudy, Topic, VideoItem
+        self.a = Topic.objects.create(name="Topic A")
+        self.b = Topic.objects.create(name="Topic B")
+        self.target = Topic.objects.create(name="Target")
+        day = datetime.date(2026, 10, 1)
+        self.study = CaseStudy.objects.create(title="S", category="c", category_color="bg-primary", excerpt="e", date=day)
+        self.video = VideoItem.objects.create(title="V", category="c", date=day, duration="5 min", excerpt="e")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme")
+        self.study.topics.add(self.a, self.b)          # tagged with both sources
+        self.video.topics.add(self.a, self.target)     # already has the target
+        self.pro.expertise.add(self.b)
+
+    def test_usage_counts_every_relation(self):
+        from .models import Topic
+        from .topics import with_usage
+        usage = {t.name: t.usage for t in with_usage(Topic.objects.filter(pk__in=[self.a.pk, self.b.pk, self.target.pk]))}
+        self.assertEqual(usage, {"Topic A": 2, "Topic B": 2, "Target": 1})
+
+    def test_merge_moves_tags_without_duplicates_and_deletes_sources(self):
+        from .models import Topic
+        from .topics import merge_topics
+        merge_topics([self.a, self.b], self.target)
+        self.assertFalse(Topic.objects.filter(pk__in=[self.a.pk, self.b.pk]).exists())
+        self.assertEqual(list(self.study.topics.all()), [self.target])
+        self.assertEqual(list(self.video.topics.all()), [self.target])
+        self.assertEqual(list(self.pro.expertise.all()), [self.target])
+
+    def test_merge_bulk_action_in_the_cms(self):
+        from .models import Topic
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(admin)
+        url = f"/cms/bulk/pages/topic/merge_topics/?next=/cms/&id={self.a.pk}&id={self.b.pk}"
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "used by 2 items")
+        res = self.client.post(url, {"target": self.target.pk})
+        self.assertEqual(res.status_code, 302)
+        self.assertFalse(Topic.objects.filter(pk__in=[self.a.pk, self.b.pk]).exists())
+        self.assertEqual(list(self.study.topics.all()), [self.target])
+
+    def test_topics_list_shows_usage_column(self):
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(admin)
+        page = self.client.get("/cms/snippets/pages/topic/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Used by")

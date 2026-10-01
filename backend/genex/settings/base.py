@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "learning",
     "comments",
     "engagement",
+    "discovery",
     "pages",
     "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
@@ -157,6 +158,8 @@ REST_FRAMEWORK = {
         "comment-create": "20/hour",
         "blog-submission": "5/day",
         "video-submission": "5/day",
+        "view-track": "120/hour",
+        "search": "60/minute",
     },
 }
 

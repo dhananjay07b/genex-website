@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from accounts.roles import display_publisher
 from commerce.access import has_access
 from pages.api import author_payload
 from pages.models import AccessControlled, BlogPost, Topic, VideoItem
@@ -51,17 +52,35 @@ class AccessFieldsMixin(serializers.Serializer):
 class CourseCardSerializer(serializers.ModelSerializer):
     cover_url = serializers.SerializerMethodField()
     owner = serializers.SerializerMethodField()
+    company = serializers.SerializerMethodField()
+    topics = serializers.SerializerMethodField()
     item_count = serializers.IntegerField(read_only=True)
+    enrolled_count = serializers.IntegerField(read_only=True)
+    video_minutes = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
-        fields = ["slug", "title", "description", "cover_url", "owner", "access", "price", "currency", "item_count", "updated_at"]
+        fields = [
+            "slug", "title", "description", "cover_url", "owner", "company", "level", "topics",
+            "access", "price", "currency", "item_count", "enrolled_count", "video_minutes", "featured", "updated_at",
+        ]
 
     def get_cover_url(self, obj):
         return cover_url(obj)
 
     def get_owner(self, obj):
         return author_payload(obj.owner)
+
+    def get_company(self, obj):
+        """Company Studio courses are shown as 'Course by <company>'; null for a Professional's own course."""
+        return display_publisher(obj.company) if obj.company_id else None
+
+    def get_topics(self, obj):
+        return [{"id": t.id, "name": t.name, "slug": t.slug} for t in obj.topics.all()]
+
+    def get_video_minutes(self, obj):
+        seconds = getattr(obj, "video_seconds", None) or 0
+        return round(seconds / 60)
 
 
 class CourseDetailSerializer(CourseCardSerializer):

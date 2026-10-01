@@ -13,7 +13,7 @@ class UserAdmin(DjangoUserAdmin):
         (None, {"fields": ("username", "password")}),
         # first_name/last_name are inherited from Django's AbstractUser but unused —
         # `display_name` is the one name shown everywhere on GeLearn.
-        ("Personal info", {"fields": ("display_name", "email", "bio")}),
+        ("Personal info", {"fields": ("display_name", "email", "bio", "career_goal")}),
         ("Account type & company", {
             "fields": ("account_type", "company", "company_other", "role_title", "verification_status"),
             "description": (

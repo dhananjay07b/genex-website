@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, mixins, permissions, status, viewsets
@@ -15,6 +14,7 @@ from pages.api import GenexPagination
 from pages.models import AccessControlled
 
 from .models import CareerRole, Enrollment, ItemProgress, Playlist, PlaylistItem
+from .queries import published_courses
 from .serializers import (
     MAX_ITEMS,
     CareerRoleSerializer,
@@ -28,11 +28,7 @@ from .serializers import (
 
 
 def _published():
-    return (
-        Playlist.objects.filter(status=Playlist.STATUS_PUBLISHED)
-        .select_related("owner__avatar", "owner__company__logo", "cover")
-        .annotate(item_count=Count("items"))
-    )
+    return published_courses()
 
 
 class CareerRoleListView(generics.ListAPIView):

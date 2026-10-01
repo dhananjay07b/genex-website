@@ -32,6 +32,7 @@ urlpatterns = [
     path("api/learning/", include("learning.urls")),
     path("api/comments/", include("comments.urls")),
     path("api/engagement/", include("engagement.urls")),
+    path("api/discovery/", include("discovery.urls")),
     path("", include(wagtail_urls)),
 ]
 

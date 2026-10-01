@@ -3,6 +3,7 @@ from allauth.account.utils import setup_user_email, user_pk_to_url_str
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer
 from django.conf import settings
+from learning.models import CareerRole
 from pages.api import TopicSerializer
 from pages.models import Topic
 from rest_framework import serializers
@@ -31,6 +32,7 @@ class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     cover_photo_url = serializers.SerializerMethodField()
     expertise = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
+    career_goal = serializers.PrimaryKeyRelatedField(queryset=CareerRole.objects.all(), required=False, allow_null=True)
     is_admin = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
     # Effective status, as shown on the site (Company staff are always verified).
@@ -43,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
             "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
-            "role_title", "years_experience", "linkedin_url", "expertise",
+            "role_title", "years_experience", "linkedin_url", "expertise", "career_goal",
         ]
         # account_type is fixed at registration — only Admin can change it (Django admin).
         read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified"]

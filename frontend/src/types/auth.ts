@@ -50,6 +50,8 @@ export interface User {
   years_experience: number | null
   linkedin_url: string
   expertise: number[]
+  /** CareerRole id the user is working toward (GeLearn suggests courses for it). */
+  career_goal: number | null
 }
 
 export interface PublicUser {

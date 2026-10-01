@@ -1,4 +1,5 @@
 import type { ContentAccess, ContentAuthor } from './api'
+import type { CompanyDisplay } from './auth'
 
 export type CourseItemKind = 'video' | 'post'
 
@@ -30,10 +31,18 @@ export interface CourseCard {
   description: string
   cover_url: string | null
   owner: ContentAuthor
+  /** Set for Company Studio courses ("Course by <company>"); null for a Professional's own course. */
+  company: CompanyDisplay | null
+  level: CourseLevel
+  topics: { id: number; name: string; slug: string }[]
   access: ContentAccess
   price: string | null
   currency: string
   item_count: number
+  enrolled_count: number
+  /** Total length of the course's videos, in minutes. */
+  video_minutes: number
+  featured: boolean
   updated_at: string
 }
 

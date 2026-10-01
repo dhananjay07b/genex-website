@@ -800,7 +800,7 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
         ordering = ["-date"]
 
 
-@register_snippet
+# Registered with a custom viewset in wagtail_hooks.py (usage counts, merge).
 class TopicGroup(models.Model):
     """A heading in GeLearn's Explore menu that topics sit under, e.g. "Renewables"."""
     name = models.CharField(max_length=100, unique=True)
@@ -816,7 +816,7 @@ class TopicGroup(models.Model):
         ordering = ["sort_order", "name"]
 
 
-@register_snippet
+# Registered with a custom viewset in wagtail_hooks.py (usage counts, merge).
 class Topic(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=110, unique=True, blank=True)

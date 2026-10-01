@@ -1,0 +1,41 @@
+{% extends 'wagtailadmin/bulk_actions/confirmation/base.html' %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}Merge topics{% endblock %}
+
+{% block header %}
+    {% include "wagtailadmin/shared/header.html" with title="Merge topics" subtitle=model_opts.verbose_name_plural|capfirst icon=header_icon only %}
+{% endblock header %}
+
+{% block items_with_access %}
+    {% if items %}
+        <p>These topics will be deleted after everything tagged with them moves to the topic you choose below.
+           Items that already have that topic keep a single tag.</p>
+        <ul>
+            {% for topic in items %}
+                <li>
+                    <a href="{{ topic.edit_url }}" target="_blank" rel="noreferrer">{{ topic.item }}</a>
+                    · used by {{ topic.usage }} item{{ topic.usage|pluralize }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock items_with_access %}
+
+{% block items_with_no_access %}
+    {% include 'wagtailsnippets/bulk_actions/list_items_with_no_access.html' with items=items_with_no_access no_access_msg="You don't have permission to merge these topics" %}
+{% endblock items_with_no_access %}
+
+{% block form_section %}
+    {% if items %}
+        <form action="{{ submit_url }}" method="POST">
+            {% csrf_token %}
+            {% include 'wagtailadmin/shared/non_field_errors.html' %}
+            {% formattedfield form.target %}
+            <button type="submit" class="button">Merge topics</button>
+            <a href="{{ next }}" class="button button-secondary">Cancel</a>
+        </form>
+    {% else %}
+        {% include 'wagtailadmin/bulk_actions/confirmation/go_back.html' %}
+    {% endif %}
+{% endblock form_section %}
