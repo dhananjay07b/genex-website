@@ -338,3 +338,31 @@ class AuthorPayloadTests(TestCase):
         payload = author_payload(staff)
         self.assertEqual(payload["account_type"], "company")
         self.assertEqual(payload["company"], {"name": "Google", "slug": "google", "logo_url": None, "verified": True})
+
+
+class FeaturedProfessionalTests(TestCase):
+    """GeLearn featuring and rating are Admin-only fields on Professionals."""
+
+    def test_only_professionals_can_be_featured(self):
+        learner = make_user("learner1", is_featured=True)
+        with self.assertRaises(ValidationError) as ctx:
+            learner.full_clean()
+        self.assertIn("is_featured", ctx.exception.message_dict)
+        pro = make_user("pro1", account_type="professional", company_other="Acme", is_featured=True)
+        pro.full_clean()
+
+    def test_rating_must_be_between_0_and_5(self):
+        from decimal import Decimal
+        pro = make_user("pro2", account_type="professional", company_other="Acme", gelearn_rating=Decimal("5.5"))
+        with self.assertRaises(ValidationError):
+            pro.full_clean()
+        pro.gelearn_rating = Decimal("4.8")
+        pro.full_clean()
+
+    def test_users_cannot_feature_or_rate_themselves(self):
+        pro = make_user("pro3", account_type="professional", company_other="Acme")
+        api = APIClient()
+        api.force_authenticate(pro)
+        api.patch("/api/accounts/me/", {"is_featured": True, "gelearn_rating": "5.0", "featured_order": 1}, format="json")
+        pro.refresh_from_db()
+        self.assertEqual((pro.is_featured, pro.gelearn_rating, pro.featured_order), (False, None, 0))

@@ -181,9 +181,12 @@ class AuthorSerializerMixin:
 
 
 class TopicSerializer(serializers.ModelSerializer):
+    group = serializers.CharField(source="group.name", default=None, read_only=True)
+    group_order = serializers.IntegerField(source="group.sort_order", default=None, read_only=True)
+
     class Meta:
         model = Topic
-        fields = ["id", "name", "slug"]
+        fields = ["id", "name", "slug", "group", "group_order", "sort_order"]
 
 
 class GatedContentSerializerMixin(serializers.Serializer):
@@ -368,7 +371,7 @@ class BlogPostViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TopicViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Topic.objects.all().order_by("name")
+    queryset = Topic.objects.select_related("group").order_by("name")
     serializer_class = TopicSerializer
     pagination_class = None
 

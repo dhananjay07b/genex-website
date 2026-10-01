@@ -353,7 +353,8 @@ export interface TenderItem {
   id: number
   title: string
   authority: string
-  deadline: string
+  /** ISO date (YYYY-MM-DD); null only for legacy rows whose text deadline couldn't be read. */
+  deadline: string | null
   value: string
   status: string
   sector: string
@@ -385,6 +386,19 @@ export interface Topic {
   id: number
   name: string
   slug: string
+  /** Explore-menu heading the topic sits under; null for ungrouped topics. */
+  group?: string | null
+  group_order?: number | null
+  sort_order?: number
+}
+
+/** A job in the sector that courses prepare people for (`/api/learning/roles/`). */
+export interface CareerRole {
+  id: number
+  name: string
+  slug: string
+  summary: string
+  image_url: string | null
 }
 
 export interface ContentAuthor {

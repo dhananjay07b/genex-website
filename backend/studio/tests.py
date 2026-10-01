@@ -41,16 +41,17 @@ class StudioPermissionTests(StudioTestBase):
     def test_create_sets_owner_and_company_server_side(self):
         self.api.force_authenticate(self.staff)
         res = self.api.post("/api/studio/policies-tenders/", {
-            "title": "Grid policy", "authority": "CEA", "deadline": "30/06/2026", "value": "—",
+            "title": "Grid policy", "authority": "CEA", "deadline": "2026-06-30", "value": "—",
             "status": "Open", "sector": "Grid", "description": "d",
         }, format="json")
         self.assertEqual(res.status_code, 201, res.content)
         tender = Tender.objects.get()
         self.assertEqual((tender.owner, tender.company), (self.staff, self.genex))
+        self.assertEqual(tender.deadline, datetime.date(2026, 6, 30))
 
     def test_company_scoping(self):
-        mine = Tender.objects.create(title="Mine", authority="a", deadline="d", value="v", sector="s", description="d", company=self.genex)
-        theirs = Tender.objects.create(title="Theirs", authority="a", deadline="d", value="v", sector="s", description="d", company=self.other)
+        mine = Tender.objects.create(title="Mine", authority="a", deadline=datetime.date(2026, 6, 30), value="v", sector="s", description="d", company=self.genex)
+        theirs = Tender.objects.create(title="Theirs", authority="a", deadline=datetime.date(2026, 6, 30), value="v", sector="s", description="d", company=self.other)
 
         self.api.force_authenticate(self.staff2)  # a colleague, not the creator
         titles = [row["title"] for row in self.api.get("/api/studio/policies-tenders/").json()["results"]]
@@ -188,3 +189,30 @@ class StudioCompanyEndpointsTests(StudioTestBase):
         results = self.api.get("/api/studio/professionals/?q=priya").json()
         self.assertEqual([r["username"] for r in results], ["pro"])
         self.assertEqual(self.api.get("/api/studio/professionals/?q=learn").json(), [])  # learners excluded
+
+
+class StudioTopicsTests(StudioTestBase):
+    def test_company_tags_research_with_topics(self):
+        from pages.models import Topic
+        solar, scada = Topic.objects.get(name="Solar PV"), Topic.objects.get(name="SCADA & Monitoring")
+        self.api.force_authenticate(self.staff)
+        res = self.api.post("/api/studio/research/", {
+            "title": "Soiling losses", "category": "Solar", "category_color": "bg-primary",
+            "topics": [solar.pk, scada.pk], "excerpt": "e", "date": TODAY, "read_time": "6 min",
+        }, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        study = CaseStudy.objects.get()
+        self.assertEqual(set(study.topics.all()), {solar, scada})
+        res = self.api.patch(f"/api/studio/research/{study.pk}/", {"topics": [solar.pk]}, format="json")
+        self.assertEqual(res.json()["topics"], [solar.pk])
+
+    def test_topics_are_limited_to_five(self):
+        from pages.models import Topic
+        ids = list(Topic.objects.values_list("pk", flat=True)[:6])
+        self.api.force_authenticate(self.staff)
+        res = self.api.post("/api/studio/whitepapers/", {
+            "title": "W", "category": "Solar", "palette": "indigo", "topics": ids,
+            "date": TODAY, "pages": "10 pages", "description": "d",
+        }, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("topics", res.json())

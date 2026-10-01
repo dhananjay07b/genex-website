@@ -27,15 +27,17 @@ def _notify(course, text):
 
 @admin.register(Playlist)
 class PlaylistAdmin(admin.ModelAdmin):
-    list_display = ("title", "owner", "status", "access", "price", "item_count", "submitted_at", "reviewed_at")
-    list_filter = ("status", "access")
+    list_display = ("title", "owner", "company", "status", "level", "featured", "access", "price", "item_count", "submitted_at", "reviewed_at")
+    list_filter = ("status", "access", "level", "featured")
     search_fields = ("title", "owner__username", "owner__display_name")
     inlines = [PlaylistItemInline]
     actions = ["approve", "reject"]
     # Status only changes through the actions, so the owner is always notified.
     readonly_fields = ("owner", "slug", "status", "submitted_at", "reviewed_at", "reviewed_by", "created_at", "updated_at")
-    fields = ("title", "slug", "owner", "description", "cover", "access", "price", "currency",
+    fields = ("title", "slug", "owner", "company", "description", "cover", "level", "topics", "roles", "featured",
+              "access", "price", "currency",
               "status", "rejection_reason", "submitted_at", "reviewed_at", "reviewed_by", "created_at", "updated_at")
+    filter_horizontal = ("topics", "roles")
 
     @admin.display(description="Items")
     def item_count(self, obj):

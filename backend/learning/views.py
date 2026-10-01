@@ -14,9 +14,10 @@ from commerce.access import has_access
 from pages.api import GenexPagination
 from pages.models import AccessControlled
 
-from .models import Enrollment, ItemProgress, Playlist, PlaylistItem
+from .models import CareerRole, Enrollment, ItemProgress, Playlist, PlaylistItem
 from .serializers import (
     MAX_ITEMS,
+    CareerRoleSerializer,
     CourseCardSerializer,
     CourseDetailSerializer,
     ItemRefSerializer,
@@ -32,6 +33,14 @@ def _published():
         .select_related("owner__avatar", "owner__company__logo", "cover")
         .annotate(item_count=Count("items"))
     )
+
+
+class CareerRoleListView(generics.ListAPIView):
+    """Career roles, in editorial order — for course tagging and the role sections."""
+    permission_classes = [permissions.AllowAny]
+    serializer_class = CareerRoleSerializer
+    pagination_class = None
+    queryset = CareerRole.objects.select_related("image")
 
 
 class CourseListView(generics.ListAPIView):

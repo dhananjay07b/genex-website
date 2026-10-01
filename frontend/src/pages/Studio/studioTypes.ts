@@ -10,7 +10,7 @@ import type { StudioCompany, StudioItem, StudioTypeKey } from '@/types/studio'
 
 export type StudioFieldKind =
   | 'title' | 'text' | 'textarea' | 'date' | 'url' | 'select'
-  | 'richtext' | 'sections' | 'list' | 'color' | 'palette' | 'access' | 'collaborators'
+  | 'richtext' | 'sections' | 'list' | 'color' | 'palette' | 'access' | 'collaborators' | 'topics'
 
 export interface StudioField {
   name: string
@@ -85,6 +85,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       { name: 'takeaways', label: 'Key takeaways', kind: 'list', column: 'main', maxItems: 12, placeholder: 'Add a takeaway and press Enter' },
       { name: 'excerpt', label: 'Excerpt', kind: 'textarea', column: 'side', required: true, help: 'Shown on cards and in search results.' },
       { name: 'topic', label: 'Topic', kind: 'text', column: 'side', required: true, placeholder: 'e.g. IEC 61850' },
+      { name: 'topics', label: 'Topics', kind: 'topics', column: 'side', maxItems: 5, help: 'Used for topic pages, the Explore menu and recommendations on GeLearn.' },
       {
         name: 'difficulty', label: 'Level', kind: 'select', column: 'side', required: true,
         options: [
@@ -115,6 +116,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       { name: 'excerpt', label: 'Excerpt', kind: 'textarea', column: 'side', required: true, help: 'Shown on cards and in search results.' },
       { name: 'category', label: 'Category', kind: 'text', column: 'side', required: true, placeholder: 'e.g. Solar' },
       { name: 'category_color', label: 'Category colour', kind: 'color', column: 'side', required: true, options: RESEARCH_COLORS },
+      { name: 'topics', label: 'Topics', kind: 'topics', column: 'side', maxItems: 5, help: 'Used for topic pages, the Explore menu and recommendations on GeLearn.' },
       { name: 'read_time', label: 'Read time', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 4 min read' },
       { name: 'date', label: 'Date', kind: 'date', column: 'side', required: true },
     ],
@@ -127,7 +129,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
     icon: GavelOutlinedIcon,
     countKey: 'policies_tenders',
     publicPath: () => '/policies-tenders',
-    listMeta: item => [item.status, item.authority, item.deadline ? `Deadline ${String(item.deadline)}` : ''].filter(Boolean).join(' · '),
+    listMeta: item => [item.status, item.authority, typeof item.deadline === 'string' ? `Deadline ${formatDisplayDate(item.deadline)}` : ''].filter(Boolean).join(' · '),
     fields: [
       { name: 'title', label: 'Title', kind: 'title', column: 'main', required: true, placeholder: 'Policy or tender title' },
       { name: 'description', label: 'Description', kind: 'textarea', column: 'main', required: true },
@@ -141,7 +143,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
           { value: 'Closed', label: 'Closed' },
         ],
       },
-      { name: 'deadline', label: 'Deadline', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 30 / 06 / 2026' },
+      { name: 'deadline', label: 'Deadline', kind: 'date', column: 'side', required: true },
       { name: 'value', label: 'Value', kind: 'text', column: 'side', required: true, placeholder: 'e.g. ₹1.2 Cr – ₹2.5 Cr' },
     ],
   },
@@ -160,6 +162,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       { name: 'description', label: 'Description', kind: 'textarea', column: 'main', required: true },
       { name: 'category', label: 'Category', kind: 'text', column: 'side', required: true, placeholder: 'e.g. Grid' },
       { name: 'palette', label: 'Category colour', kind: 'palette', column: 'side', required: true },
+      { name: 'topics', label: 'Topics', kind: 'topics', column: 'side', maxItems: 5, help: 'Used for topic pages, the Explore menu and recommendations on GeLearn.' },
       { name: 'pages', label: 'Length', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 38 pages' },
       { name: 'date', label: 'Date', kind: 'date', column: 'side', required: true },
     ],
@@ -184,6 +187,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       { name: 'guest', label: 'Guest name', kind: 'text', column: 'side', required: true, help: 'As it should appear if the guest has no GeLearn account.' },
       { name: 'guest_role', label: 'Guest role', kind: 'text', column: 'side', required: true, placeholder: 'e.g. Head of Grid Operations, SECI' },
       { name: 'category', label: 'Category', kind: 'text', column: 'side', required: true, placeholder: 'e.g. Grid' },
+      { name: 'topics', label: 'Topics', kind: 'topics', column: 'side', maxItems: 5, help: 'Used for topic pages, the Explore menu and recommendations on GeLearn.' },
       { name: 'duration', label: 'Duration', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 48 min' },
       { name: 'date', label: 'Date', kind: 'date', column: 'side', required: true },
       { name: 'audio_url', label: 'Audio URL', kind: 'url', column: 'side', placeholder: 'https://…' },

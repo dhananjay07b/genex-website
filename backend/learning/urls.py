@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register(r"me/courses", views.MyCourseViewSet, basename="my-course")
 
 urlpatterns = [
+    path("roles/", views.CareerRoleListView.as_view(), name="career-role-list"),
     path("courses/", views.CourseListView.as_view(), name="course-list"),
     path("courses/<slug:slug>/", views.CourseDetailView.as_view(), name="course-detail"),
     path("courses/<slug:slug>/enroll/", views.EnrollView.as_view(), name="course-enroll"),

@@ -21,6 +21,10 @@ class UserAdmin(DjangoUserAdmin):
                 "Professionals are verified when their confirmed email matches their company's domain."
             ),
         }),
+        ("GeLearn featuring", {
+            "fields": ("is_featured", "featured_order", "gelearn_rating"),
+            "description": "Professionals only. Featured Professionals appear in 'Our Leading Professionals' on the GeLearn home page.",
+        }),
         ("Status", {"fields": ("is_active", "is_superuser")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
@@ -36,7 +40,7 @@ class UserAdmin(DjangoUserAdmin):
     )
     readonly_fields = ("verification_status", "last_login", "date_joined")
     list_display = ("username", "email", "account_type", "company", "verification_status", "is_superuser")
-    list_filter = ("account_type", "company", "company_verified", "is_superuser", "is_active")
+    list_filter = ("account_type", "company", "company_verified", "is_featured", "is_superuser", "is_active")
     search_fields = ("username", "email", "display_name", "company__name", "company_other")
     autocomplete_fields = ("company",)
 

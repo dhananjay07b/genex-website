@@ -18,6 +18,7 @@ import { SwatchField } from './fields/SwatchField'
 import { AccessField } from '@/components/gelearn/AccessField'
 import { CollaboratorsField } from './fields/CollaboratorsField'
 import { FileField } from './fields/FileField'
+import { TopicPicker } from '@/components/gelearn/TopicPicker'
 
 type Values = Record<string, StudioValue>
 type Errors = Record<string, string>
@@ -29,6 +30,7 @@ function emptyValue(field: StudioField): StudioValue {
     case 'sections':
     case 'list':
     case 'collaborators':
+    case 'topics':
       return []
     case 'date':
       return today()
@@ -57,6 +59,7 @@ const asString = (v: StudioValue) => (typeof v === 'string' ? v : '')
 const asStrings = (v: StudioValue) => (Array.isArray(v) ? (v as string[]) : [])
 const asSections = (v: StudioValue) => (Array.isArray(v) ? (v as StudioSection[]) : [])
 const asPeople = (v: StudioValue) => (Array.isArray(v) ? (v as StudioPerson[]) : [])
+const asIds = (v: StudioValue) => (Array.isArray(v) ? (v as number[]) : [])
 const isBlankHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim() === ''
 
 function validate(config: StudioTypeConfig, values: Values): Errors {
@@ -243,6 +246,11 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
           <AccessField key={field.name} access={asString(value) as ContentAccess} price={asString(values.price)}
             accessError={error} priceError={errors.price}
             onChange={next => setValues(prev => (prev ? { ...prev, [field.name]: next.access, price: next.price } : prev))} />
+        )
+      case 'topics':
+        return (
+          <TopicPicker key={field.name} label={field.label} value={asIds(value)} max={field.maxItems} help={field.help}
+            error={error} onChange={v => set(field.name, v)} />
         )
       case 'collaborators':
         return (

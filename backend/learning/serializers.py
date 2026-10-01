@@ -2,11 +2,13 @@ from rest_framework import serializers
 
 from commerce.access import has_access
 from pages.api import author_payload
-from pages.models import AccessControlled, BlogPost, VideoItem
+from pages.models import AccessControlled, BlogPost, Topic, VideoItem
 
-from .models import Playlist, PlaylistItem
+from .models import CareerRole, Playlist, PlaylistItem
 
 MAX_ITEMS = 100
+MAX_TOPICS = 5
+MAX_ROLES = 3
 
 
 def target_card(target, kind):
@@ -119,16 +121,30 @@ class CourseDetailSerializer(CourseCardSerializer):
         }
 
 
+class CareerRoleSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CareerRole
+        fields = ["id", "name", "slug", "summary", "image_url"]
+
+    def get_image_url(self, obj):
+        return obj.image.file.url if obj.image_id else None
+
+
 # ── Owner (Professional) ────────────────────────────────────────────────────
 
 class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     cover_url = serializers.SerializerMethodField()
     items = serializers.SerializerMethodField()
+    topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False)
+    roles = serializers.PrimaryKeyRelatedField(many=True, queryset=CareerRole.objects.all(), required=False)
 
     class Meta:
         model = Playlist
         fields = [
-            "id", "slug", "title", "description", "cover_url", "access", "price", "currency",
+            "id", "slug", "title", "description", "cover_url", "level", "topics", "roles",
+            "access", "price", "currency",
             "status", "rejection_reason", "items", "submitted_at", "updated_at",
         ]
         read_only_fields = ["id", "slug", "currency", "status", "rejection_reason", "submitted_at", "updated_at"]
@@ -141,6 +157,16 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             {**target_card(item.target, item.kind), "item_id": item.pk}
             for item in obj.items.select_related("video__image", "post__image")
         ]
+
+    def validate_topics(self, value):
+        if len(value) > MAX_TOPICS:
+            raise serializers.ValidationError(f"Choose at most {MAX_TOPICS} topics.")
+        return value
+
+    def validate_roles(self, value):
+        if len(value) > MAX_ROLES:
+            raise serializers.ValidationError(f"Choose at most {MAX_ROLES} roles.")
+        return value
 
     def validate_title(self, value):
         value = value.strip()

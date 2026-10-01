@@ -154,3 +154,66 @@ class CoursePublicAndEnrollmentTests(TestCase):
         self.assertEqual(res.status_code, 403)
         self.assertIn("paid", res.json()["detail"])
 
+
+
+class CourseMetadataTests(TestCase):
+    """Level, topics and career roles on courses; the roles list; live sessions."""
+
+    def setUp(self):
+        from pages.models import Topic
+        self.api = APIClient()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng", display_name="Priya")
+        self.api.force_authenticate(self.pro)
+        self.topics = list(Topic.objects.filter(group__isnull=False)[:6])
+
+    def test_roles_endpoint_lists_seeded_roles_in_order(self):
+        names = [r["name"] for r in APIClient().get("/api/learning/roles/").json()]
+        self.assertEqual(names[:2], ["Solar O&M Engineer", "SCADA Engineer"])
+        self.assertEqual(len(names), 6)
+
+    def test_builder_saves_level_topics_and_roles(self):
+        from .models import CareerRole
+        role = CareerRole.objects.get(slug="scada-engineer")
+        res = self.api.post("/api/learning/me/courses/", {
+            "title": "SCADA Foundations", "description": "d", "level": "beginner",
+            "topics": [self.topics[0].pk, self.topics[1].pk], "roles": [role.pk],
+        }, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        course = Playlist.objects.get()
+        self.assertEqual(course.level, "beginner")
+        self.assertEqual(set(course.topics.all()), {self.topics[0], self.topics[1]})
+        self.assertEqual(list(course.roles.all()), [role])
+        self.assertEqual(sorted(res.json()["topics"]), sorted([self.topics[0].pk, self.topics[1].pk]))
+
+    def test_builder_limits_topics_and_rejects_unknown_level(self):
+        res = self.api.post("/api/learning/me/courses/", {
+            "title": "Too many topics", "topics": [t.pk for t in self.topics],
+        }, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("topics", res.json())
+        res = self.api.post("/api/learning/me/courses/", {"title": "Bad level", "level": "expert"}, format="json")
+        self.assertEqual(res.status_code, 400)
+
+    def test_builder_cannot_set_featured_or_company(self):
+        from organizations.models import Company
+        company = Company.objects.create(name="Genex", slug="genex")
+        res = self.api.post("/api/learning/me/courses/", {
+            "title": "Sneaky", "featured": True, "company": company.pk,
+        }, format="json")
+        self.assertEqual(res.status_code, 201)
+        course = Playlist.objects.get()
+        self.assertFalse(course.featured)
+        self.assertIsNone(course.company)
+
+    def test_live_session_needs_a_speaker(self):
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+        from .models import LiveSession
+        session = LiveSession(title="GOOSE demo", starts_at=timezone.now(), registration_url="https://example.org/r")
+        with self.assertRaises(ValidationError):
+            session.full_clean()
+        session.speaker_name = "Outside Speaker"
+        session.full_clean()
+        session.save()
+        self.assertEqual(session.slug, "goose-demo")
+        self.assertEqual(session.ends_at - session.starts_at, datetime.timedelta(minutes=60))

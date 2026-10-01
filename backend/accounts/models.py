@@ -1,5 +1,8 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -64,6 +67,16 @@ class User(AbstractUser):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
+    # GeLearn featuring — Admin-only; never exposed as writable through the API.
+    is_featured = models.BooleanField(
+        default=False, help_text="Show in 'Our Leading Professionals' on the GeLearn home page.",
+    )
+    featured_order = models.PositiveSmallIntegerField(default=0, help_text="Lower numbers come first.")
+    gelearn_rating = models.DecimalField(
+        max_digits=2, decimal_places=1, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("5"))],
+        help_text="0.0 to 5.0, set by Genex. Shown on the Professional's cards.",
+    )
 
     def __str__(self):
         return self.display_name or self.username
@@ -85,6 +98,8 @@ class User(AbstractUser):
             errors["email"] = "Company accounts sign in with their email — it's required."
         if self.email and type(self).objects.filter(email__iexact=self.email).exclude(pk=self.pk).exists():
             errors["email"] = "Another account already uses this email."
+        if self.is_featured and self.account_type != self.ACCOUNT_PROFESSIONAL:
+            errors["is_featured"] = "Only Professionals can be featured."
         if errors:
             raise ValidationError(errors)
 

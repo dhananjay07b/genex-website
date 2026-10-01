@@ -9,6 +9,7 @@ import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
+import { formatDisplayDate } from '@/lib/utils'
 import type { TenderItem, SnippetListResponse } from '@/types/api'
 
 const STATUSES = ['All', 'Open', 'Upcoming', 'Closed'] as const
@@ -64,7 +65,7 @@ function TenderCard({ tender, index }: { tender: TenderItem; index: number }) {
 
         <div className="flex items-center gap-2 text-sm text-[#62748e]">
           <CalendarTodayOutlinedIcon style={{ fontSize: 15 }} />
-          <span>Deadline : {tender.deadline}</span>
+          <span>Deadline: {tender.deadline ? formatDisplayDate(tender.deadline) : 'To be announced'}</span>
         </div>
 
         <h3 className="text-2xl font-semibold text-[#0f172b] leading-8 capitalize">

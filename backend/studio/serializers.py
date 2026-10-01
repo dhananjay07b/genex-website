@@ -8,7 +8,7 @@ from rest_framework import serializers
 
 from accounts.models import User
 from accounts.roles import display_company
-from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Whitepaper
+from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Topic, Whitepaper
 from pages.richtext import rich_text_for_editing, sanitize_rich_text
 
 # Existing design tokens — the only values the public pages are built to render.
@@ -25,6 +25,7 @@ WHITEPAPER_PALETTES = {
 }
 MAX_SECTIONS = 30
 MAX_LIST_ITEMS = 12
+MAX_TOPICS = 5
 
 
 class SectionSerializer(serializers.Serializer):
@@ -45,6 +46,16 @@ def stream_to_sections(stream):
         for block in stream
         if block.block_type == "section"
     ]
+
+
+class TopicsMixin(serializers.Serializer):
+    """Topic ids (from /api/snippets/topics/) the item is tagged with."""
+    topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False)
+
+    def validate_topics(self, value):
+        if len(value) > MAX_TOPICS:
+            raise serializers.ValidationError(f"Choose at most {MAX_TOPICS} topics.")
+        return value
 
 
 class StudioBaseSerializer(serializers.ModelSerializer):
@@ -90,18 +101,18 @@ class RichContentMixin(serializers.Serializer):
         return data
 
 
-class ResearchSerializer(RichContentMixin, StudioBaseSerializer):
+class ResearchSerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
     category_color = serializers.ChoiceField(choices=RESEARCH_COLORS)
 
     class Meta:
         model = CaseStudy
         fields = [
-            "id", "title", "category", "category_color", "excerpt", "date", "read_time",
+            "id", "title", "category", "category_color", "topics", "excerpt", "date", "read_time",
             "intro", "sections", "image_url", "owner",
         ]
 
 
-class GeAcademySerializer(RichContentMixin, StudioBaseSerializer):
+class GeAcademySerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
     # Write-only: read back in to_representation (a manager / StreamValue isn't a plain list).
     tags = serializers.ListField(
         child=serializers.CharField(max_length=50, allow_blank=True), required=False,
@@ -115,7 +126,7 @@ class GeAcademySerializer(RichContentMixin, StudioBaseSerializer):
     class Meta:
         model = TechArticle
         fields = [
-            "id", "title", "topic", "difficulty", "read_time", "date", "excerpt", "tags",
+            "id", "title", "topic", "topics", "difficulty", "read_time", "date", "excerpt", "tags",
             "intro", "sections", "callout_label", "callout_content", "takeaways", "image_url", "owner",
         ]
 
@@ -154,13 +165,13 @@ class PolicyTenderSerializer(StudioBaseSerializer):
         fields = ["id", "title", "authority", "deadline", "value", "status", "sector", "description", "owner"]
 
 
-class WhitepaperSerializer(StudioBaseSerializer):
+class WhitepaperSerializer(TopicsMixin, StudioBaseSerializer):
     palette = serializers.ChoiceField(choices=list(WHITEPAPER_PALETTES), write_only=True)
     document_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "category", "palette", "date", "pages", "description", "document_url", "owner"]
+        fields = ["id", "title", "category", "topics", "palette", "date", "pages", "description", "document_url", "owner"]
 
     def get_document_url(self, obj):
         return obj.document.url if obj.document_id else None
@@ -205,7 +216,7 @@ class CollaboratorField(serializers.SlugRelatedField):
         }
 
 
-class PodcastSerializer(StudioBaseSerializer):
+class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
     collaborators = serializers.ListField(
         child=CollaboratorField(), required=False, max_length=MAX_LIST_ITEMS, write_only=True,
     )
@@ -214,7 +225,7 @@ class PodcastSerializer(StudioBaseSerializer):
     class Meta:
         model = PodcastEpisode
         fields = [
-            "id", "title", "category", "date", "duration", "description", "guest", "guest_role",
+            "id", "title", "category", "topics", "date", "duration", "description", "guest", "guest_role",
             "audio_url", "access", "price", "collaborators", "image_url", "owner",
         ]
 

@@ -19,6 +19,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
+from .durations import parse_duration_seconds
 from .blocks import (
     AppDownloadBlock,
     AchievementBlock,
@@ -496,6 +497,10 @@ class CaseStudy(CompanyPublished):
     date           = models.DateField()
     read_time      = models.CharField(max_length=30, default="4 Mins Read")
     featured       = models.BooleanField(default=False)
+    topics         = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="research_items",
+        help_text="Used for topic pages, the Explore menu and recommendations.",
+    )
     image          = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -517,6 +522,7 @@ class CaseStudy(CompanyPublished):
         MultiFieldPanel([
             FieldPanel("category"),
             FieldPanel("category_color"),
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("read_time"),
             FieldPanel("featured"),
@@ -553,6 +559,10 @@ class TechArticle(CompanyPublished):
     excerpt         = models.TextField()
     tags            = TaggableManager(blank=True)
     featured        = models.BooleanField(default=False)
+    topics          = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="geacademy_articles",
+        help_text="Used for topic pages, the Explore menu and recommendations.",
+    )
     image           = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -572,6 +582,7 @@ class TechArticle(CompanyPublished):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("topic"),
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("difficulty"),
             FieldPanel("read_time"),
             FieldPanel("date"),
@@ -609,7 +620,7 @@ class Tender(CompanyPublished):
 
     title       = models.CharField(max_length=255)
     authority   = models.CharField(max_length=200)
-    deadline    = models.CharField(max_length=30, help_text="e.g. '30 / 06 / 2026'")
+    deadline    = models.DateField(null=True, help_text="Last date to submit. Drives \"closes in N days\" on GeLearn.")
     value       = models.CharField(max_length=100, help_text="e.g. '₹1.2 Cr – ₹2.5 Cr'")
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Open")
     sector      = models.CharField(max_length=100)
@@ -649,6 +660,10 @@ class Whitepaper(CompanyPublished):
     category_text = models.CharField(max_length=20, help_text="Hex text e.g. '#432dd7'")
     date          = models.DateField()
     pages         = models.CharField(max_length=30, help_text="e.g. '38 pages'")
+    topics        = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="whitepapers",
+        help_text="Used for topic pages, the Explore menu and recommendations.",
+    )
     description   = models.TextField()
     document      = models.ForeignKey(
         "wagtaildocs.Document", null=True, blank=True,
@@ -665,6 +680,7 @@ class Whitepaper(CompanyPublished):
             FieldPanel("category"),
             FieldPanel("category_bg"),
             FieldPanel("category_text"),
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("pages"),
         ], heading="Metadata"),
@@ -744,8 +760,13 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
     category            = models.CharField(max_length=100)
     date                = models.DateField()
     duration            = models.CharField(max_length=20, help_text="e.g. '14:32 min'")
+    duration_seconds    = models.PositiveIntegerField(null=True, blank=True, editable=False)
     excerpt             = models.TextField()
     featured            = models.BooleanField(default=False)
+    topics              = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="videos",
+        help_text="Used for topic pages, the Explore menu and recommendations.",
+    )
     image               = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -756,6 +777,7 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("category"),
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("duration"),
             FieldPanel("featured"),
@@ -766,6 +788,10 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
         *AccessControlled.access_panels,
     ]
 
+    def save(self, *args, **kwargs):
+        self.duration_seconds = parse_duration_seconds(self.duration)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.title
 
@@ -775,11 +801,32 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
 
 
 @register_snippet
+class TopicGroup(models.Model):
+    """A heading in GeLearn's Explore menu that topics sit under, e.g. "Renewables"."""
+    name = models.CharField(max_length=100, unique=True)
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text="Lower numbers come first.")
+
+    panels = [FieldPanel("name"), FieldPanel("sort_order")]
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Topic Group"
+        ordering = ["sort_order", "name"]
+
+
+@register_snippet
 class Topic(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=110, unique=True, blank=True)
+    group = models.ForeignKey(
+        TopicGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="topics",
+        help_text="Topics without a group stay usable but don't appear in the Explore menu.",
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text="Order within its group. Lower numbers come first.")
 
-    panels = [FieldPanel("name")]
+    panels = [FieldPanel("name"), FieldPanel("group"), FieldPanel("sort_order")]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -846,6 +893,7 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
     category      = models.CharField(max_length=100)
     date          = models.DateField()
     duration      = models.CharField(max_length=20, help_text="e.g. '48 min'")
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True, editable=False)
     description   = models.TextField()
     guest         = models.CharField(max_length=200)
     guest_role    = models.CharField(max_length=300)
@@ -855,6 +903,10 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
         help_text="Professionals featured in this episode — it appears on their profiles.",
     )
     featured      = models.BooleanField(default=False)
+    topics        = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="podcasts",
+        help_text="Used for topic pages, the Explore menu and recommendations.",
+    )
     image         = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -865,6 +917,7 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
         FieldPanel("title"),
         MultiFieldPanel([
             FieldPanel("category"),
+            FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("duration"),
             FieldPanel("featured"),
@@ -881,6 +934,10 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
         *CompanyPublished.publisher_panels,
     ]
 
+    def save(self, *args, **kwargs):
+        self.duration_seconds = parse_duration_seconds(self.duration)
+        super().save(*args, **kwargs)
+
     def access_owner_ids(self):
         # The publishing staff member and everyone featured in the episode.
         return super().access_owner_ids() | set(self.collaborators.values_list("pk", flat=True))
@@ -891,6 +948,39 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
     class Meta:
         verbose_name = "Podcast Episode"
         ordering = ["-date"]
+
+
+@register_snippet
+class Testimonial(models.Model):
+    """A quote for the GeLearn home page. The section stays hidden until at least 3 are active."""
+    quote = models.TextField(max_length=600)
+    name = models.CharField(max_length=150)
+    role = models.CharField(max_length=150, blank=True, help_text="e.g. 'SCADA Engineer'")
+    company_name = models.CharField(max_length=150, blank=True)
+    photo = models.ForeignKey(
+        "wagtailimages.Image", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    is_active = models.BooleanField(default=True, help_text="Only active testimonials appear on GeLearn.")
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text="Lower numbers come first.")
+
+    panels = [
+        FieldPanel("quote"),
+        MultiFieldPanel([
+            FieldPanel("name"),
+            FieldPanel("role"),
+            FieldPanel("company_name"),
+            FieldPanel("photo"),
+        ], heading="Person"),
+        FieldRowPanel([FieldPanel("is_active"), FieldPanel("sort_order")]),
+    ]
+
+    def __str__(self):
+        return f"{self.name}: {self.quote[:60]}"
+
+    class Meta:
+        verbose_name = "Testimonial"
+        ordering = ["sort_order", "-id"]
 
 
 # ---------------------------------------------------------------------------

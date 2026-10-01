@@ -10,14 +10,22 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
+import { RolePicker, TopicPicker } from '@/components/gelearn/TopicPicker'
 import { AccessField } from '@/components/gelearn/AccessField'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
 import { FileField } from '@/pages/Studio/fields/FileField'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import type { ContentAccess } from '@/types/api'
-import type { CourseTarget, MyCourse } from '@/types/learning'
+import type { CourseLevel, CourseTarget, MyCourse } from '@/types/learning'
 
 const MAX_ITEMS = 100
+const LEVEL_OPTIONS: { value: CourseLevel; label: string }[] = [
+  { value: '', label: 'Not set' },
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
+]
 const keyOf = (t: Pick<CourseTarget, 'kind' | 'id'>) => `${t.kind}:${t.id}`
 
 function KindIcon({ kind }: { kind: CourseTarget['kind'] }) {
@@ -40,6 +48,9 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [level, setLevel] = useState<CourseLevel>('')
+  const [topics, setTopics] = useState<number[]>([])
+  const [roles, setRoles] = useState<number[]>([])
   const [access, setAccess] = useState<ContentAccess>('free')
   const [price, setPrice] = useState('')
   const [items, setItems] = useState<CourseTarget[]>([])
@@ -61,6 +72,9 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
         setCourse(loaded)
         setTitle(loaded.title)
         setDescription(loaded.description)
+        setLevel(loaded.level)
+        setTopics(loaded.topics)
+        setRoles(loaded.roles)
         setAccess(loaded.access)
         setPrice(loaded.price ?? '')
         setItems(loaded.items)
@@ -96,7 +110,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
 
     setSaving(submit ? 'submit' : 'draft')
     try {
-      const meta = { title, description, access, price: access === 'paid' ? price : null }
+      const meta = { title, description, level, topics, roles, access, price: access === 'paid' ? price : null }
       let saved = await apiFetch<MyCourse>(
         isEditing ? `/api/learning/me/courses/${id}/` : '/api/learning/me/courses/',
         { method: isEditing ? 'PATCH' : 'POST', body: meta },
@@ -222,6 +236,15 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
             <FileField kind="image" label="Cover image" currentUrl={course?.cover_url} file={cover} onChange={setCover} />
             <AccessField access={access} price={price} priceError={errors.price}
               onChange={next => { setAccess(next.access); setPrice(next.price) }} />
+          </div>
+
+          <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-5 shadow-sm">
+            <Select label="Level" options={LEVEL_OPTIONS} value={level} error={errors.level}
+              onChange={e => setLevel(e.target.value as CourseLevel)} />
+            <TopicPicker value={topics} onChange={setTopics} error={errors.topics}
+              help="Helps learners find the course by topic." />
+            <RolePicker value={roles} onChange={setRoles} error={errors.roles}
+              help="Roles this course prepares people for." />
           </div>
 
           <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-3 shadow-sm lg:sticky lg:top-24">

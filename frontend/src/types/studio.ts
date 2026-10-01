@@ -18,7 +18,7 @@ export interface StudioPerson {
   verified?: boolean
 }
 
-export type StudioValue = string | string[] | StudioSection[] | StudioPerson[] | null
+export type StudioValue = string | string[] | number[] | StudioSection[] | StudioPerson[] | null
 
 /** Any Studio item — the per-type fields are described by the StudioTypeConfig. */
 export interface StudioItem {

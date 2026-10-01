@@ -53,12 +53,19 @@ export interface CourseDetail extends CourseCard {
 export type CourseStatus = 'draft' | 'pending' | 'published' | 'rejected'
 
 /** A Professional's own course, as the builder edits it. */
+export type CourseLevel = '' | 'beginner' | 'intermediate' | 'advanced'
+
 export interface MyCourse {
   id: number
   slug: string
   title: string
   description: string
   cover_url: string | null
+  level: CourseLevel
+  /** Topic ids (see /api/snippets/topics/). */
+  topics: number[]
+  /** Career role ids (see /api/learning/roles/). */
+  roles: number[]
   access: ContentAccess
   price: string | null
   currency: string

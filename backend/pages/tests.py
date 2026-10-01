@@ -83,3 +83,53 @@ class ApprovalCarriesAccessTests(TestCase):
         UserVideoPostAdmin(UserVideoPost, AdminSite()).approve_and_publish(self.request, UserVideoPost.objects.filter(pk=submission.pk))
         self.assertEqual(UserVideoPost.objects.get(pk=submission.pk).published_video.access, "members")
 
+
+
+class GeLearnPhase1ContentTests(TestCase):
+    """Topics with groups, parsed durations, and tender deadlines as dates."""
+
+    def test_parse_duration_seconds(self):
+        from .durations import parse_duration_seconds
+        cases = {
+            "14:32 min": 872, "20:00": 1200, "1:02:10": 3730, "48 min": 2880,
+            "1 h 20 min": 4800, "2h": 7200, "40": 2400, "": None, "soon": None,
+        }
+        for text, expected in cases.items():
+            self.assertEqual(parse_duration_seconds(text), expected, text)
+
+    def test_video_and_podcast_store_duration_seconds(self):
+        import datetime
+        from .models import PodcastEpisode, VideoItem
+        video = VideoItem.objects.create(title="V", category="Training", date=datetime.date(2026, 10, 1),
+                                         duration="9:40 min", excerpt="e")
+        self.assertEqual(video.duration_seconds, 580)
+        video.duration = "12 min"
+        video.save()
+        self.assertEqual(video.duration_seconds, 720)
+        episode = PodcastEpisode.objects.create(title="P", category="Solar", date=datetime.date(2026, 10, 1),
+                                                duration="48 min", description="d", guest="g", guest_role="r")
+        self.assertEqual(episode.duration_seconds, 2880)
+
+    def test_topics_api_includes_group(self):
+        from .models import Topic
+        api = APIClient()
+        rows = {row["name"]: row for row in api.get("/api/snippets/topics/").json()}
+        # Seeded by pages/0039.
+        self.assertEqual(rows["Solar PV"]["group"], "Renewables")
+        self.assertEqual(rows["SCADA & Monitoring"]["group"], "Automation & data")
+        Topic.objects.create(name="Ungrouped topic")
+        rows = {row["name"]: row for row in api.get("/api/snippets/topics/").json()}
+        self.assertIsNone(rows["Ungrouped topic"]["group"])
+
+    def test_tender_deadline_is_a_date_in_the_api(self):
+        import datetime
+        from .models import Tender
+        Tender.objects.create(title="T", authority="CEA", deadline=datetime.date(2026, 6, 30),
+                              value="v", sector="Grid", description="d")
+        row = APIClient().get("/api/snippets/tenders/").json()["results"][0]
+        self.assertEqual(row["deadline"], "2026-06-30")
+
+    def test_testimonial_defaults(self):
+        from .models import Testimonial
+        t = Testimonial.objects.create(quote="Useful.", name="A. Learner")
+        self.assertTrue(t.is_active)
