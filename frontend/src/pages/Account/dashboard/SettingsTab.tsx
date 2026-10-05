@@ -18,7 +18,7 @@ import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, domainList, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
-import type { Topic } from '@/types/api'
+import type { CareerRole, Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { learner: 'Learner', professional: 'Professional', company: 'Company' }
@@ -47,6 +47,8 @@ export function SettingsTab() {
   const [linkedinUrl, setLinkedinUrl] = useState(user?.linkedin_url ?? '')
   const [expertise, setExpertise] = useState<number[]>(user?.expertise ?? [])
   const [topics, setTopics] = useState<Topic[]>([])
+  const [careerGoal, setCareerGoal] = useState(user?.career_goal ? String(user.career_goal) : '')
+  const [roles, setRoles] = useState<CareerRole[]>([])
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
 
@@ -78,7 +80,15 @@ export function SettingsTab() {
 
   useEffect(() => {
     apiFetch<SocialAccount[]>('/api/accounts/me/social-accounts/').then(setSocialAccounts).catch(() => setSocialAccounts([]))
+    apiFetch<CareerRole[]>('/api/learning/roles/').then(setRoles).catch(() => setRoles([]))
   }, [])
+
+  // "Set your goal" on the GeLearn home links to #career-goal: bring the field into view once it has options.
+  useEffect(() => {
+    if (roles.length && window.location.hash === '#career-goal') {
+      document.getElementById('career-goal')?.scrollIntoView({ block: 'center' })
+    }
+  }, [roles.length])
 
   useEffect(() => () => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview)
@@ -175,6 +185,7 @@ export function SettingsTab() {
           years_experience: yearsExperience ? Number(yearsExperience) : null,
           linkedin_url: linkedinUrl,
           expertise,
+          career_goal: careerGoal ? Number(careerGoal) : null,
         },
       })
 
@@ -236,6 +247,7 @@ export function SettingsTab() {
     linkedinUrl !== (user.linkedin_url ?? '') ||
     expertise.length !== user.expertise.length ||
     expertise.some(id => !user.expertise.includes(id)) ||
+    careerGoal !== (user.career_goal ? String(user.career_goal) : '') ||
     !!avatarFile || avatarRemoved || !!coverFile || coverRemoved
 
   return (
@@ -410,6 +422,16 @@ export function SettingsTab() {
                 )
               })}
             </div>
+          </div>
+
+          <div id="career-goal" className="scroll-mt-28">
+            <Select
+              label="Career goal"
+              options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
+              value={careerGoal}
+              onChange={e => setCareerGoal(e.target.value)}
+            />
+            <p className="text-xs text-text-muted mt-1.5">The role you're working toward. Your GeLearn home suggests courses for it.</p>
           </div>
 
           <div className="flex items-center gap-3">

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
-import type { PublicHomeData } from '@/types/discovery'
+import { useAuth } from '@/context/useAuth'
+import type { MyHomeData, PublicHomeData } from '@/types/discovery'
 import { HomeLayout } from './home/HomeLayout'
 
 /** Grey placeholders in the shape of the first sections while the home data loads. */
@@ -23,11 +24,15 @@ function HomeSkeleton() {
 
 /**
  * GeLearn's home page. Every section, and its order, is set in the CMS
- * (GeLearn page → "Home page for visitors"); the content inside each section
- * comes live from /api/discovery/home/.
+ * (GeLearn page → "Home page for visitors" / "…for signed-in learners"); the
+ * content inside each section comes live from /api/discovery/home/ (and
+ * /home/me/ for signed-in learners).
  */
 export default function GeLearn() {
+  const { user, isLoading } = useAuth()
   const [data, setData] = useState<PublicHomeData | null>(null)
+  const [me, setMe] = useState<MyHomeData | null>(null)
+  const [meFor, setMeFor] = useState<number | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
@@ -38,6 +43,21 @@ export default function GeLearn() {
     return () => { cancelled = true }
   }, [])
 
+  // Signed-in sections. If they fail, the visitor layout still shows.
+  const userId = user?.id ?? null
+  useEffect(() => {
+    if (userId === null) return
+    let cancelled = false
+    apiFetch<MyHomeData>('/api/discovery/home/me/')
+      .then(home => { if (!cancelled) { setMe(home); setMeFor(userId) } })
+      .catch(() => { if (!cancelled) { setMe(null); setMeFor(userId) } })
+    return () => { cancelled = true }
+  }, [userId])
+
+  const memberReady = userId === null || meFor === userId
+  const myHome = userId !== null && meFor === userId ? me : null
+  const name = user?.display_name?.split(/\s+/)[0] || user?.username || ''
+
   return (
     <div className="bg-white pt-16 pb-6">
       <PageMeta
@@ -45,9 +65,9 @@ export default function GeLearn() {
         description="Courses, research, policy and tender summaries, videos and podcasts from verified engineers at Genex and partner companies, covering solar, storage, SCADA and the grid."
         canonical="/"
       />
-      <h1 className="sr-only">GeLearn: learn the power sector from the engineers who run it</h1>
-      {data ? (
-        <HomeLayout data={data} />
+      {!myHome && <h1 className="sr-only">GeLearn: learn the power sector from the engineers who run it</h1>}
+      {data && !isLoading && memberReady ? (
+        <HomeLayout data={data} me={myHome} name={name} viewer={user?.account_type ?? 'visitor'} />
       ) : failed ? (
         <div className="mx-auto max-w-xl px-4 py-24 text-center">
           <p className="text-lg font-bold text-text-primary">GeLearn couldn't load right now.</p>

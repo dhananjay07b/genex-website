@@ -56,6 +56,8 @@ export interface PromoCardValue {
   link_label: string
   link_url: string
   tone: 'mint' | 'slate'
+  /** Who sees it: 'visitor' = not signed in; otherwise an account type, or everyone. */
+  audience: 'everyone' | 'visitor' | 'learner' | 'professional' | 'company'
 }
 
 export interface PromoPairValue {
@@ -86,4 +88,14 @@ export interface StatsBannerValue {
 export interface FaqValue {
   heading: string
   items: { question: string; answer: string }[]
+}
+
+// Signed-in only ─────────────────────────────────────────────────────────────
+
+export interface WelcomeValue {
+  goal_prompt: string
+}
+
+export interface PrefixValue {
+  heading_prefix: string
 }

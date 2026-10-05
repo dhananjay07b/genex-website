@@ -44,6 +44,17 @@ class PromoCard(blocks.StructBlock):
     link_label = blocks.CharBlock(required=False, max_length=50)
     link_url = LinkBlock(optional=True, label="Link")
     tone = blocks.ChoiceBlock(choices=[("mint", "Mint"), ("slate", "Blue-grey")], default="mint")
+    audience = blocks.ChoiceBlock(
+        choices=[
+            ("everyone", "Everyone"),
+            ("visitor", "Visitors who aren't signed in"),
+            ("learner", "Learners"),
+            ("professional", "Professionals"),
+            ("company", "Company accounts"),
+        ],
+        default="everyone", label="Show to",
+        help_text="E.g. 'Become a Professional' only to Learners, so Professionals don't see it.",
+    )
 
     class Meta:
         icon = "pick"

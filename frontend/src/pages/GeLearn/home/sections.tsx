@@ -36,7 +36,7 @@ export function Section({ children, label, className }: { children: ReactNode; l
   )
 }
 
-function CardGrid({ cards }: { cards: DiscoveryCard[] }) {
+export function CardGrid({ cards }: { cards: DiscoveryCard[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map(card => <LearnCard key={`${card.type}-${card.id}`} card={card} />)}
@@ -283,12 +283,16 @@ export function LibraryTabsSection({ value, data }: { value: BandValue; data: Pu
 
 // ── Promos, tiles and links ────────────────────────────────────────────────
 
-export function PromoPairSection({ value }: { value: PromoPairValue }) {
-  if (!value.promos.length) return null
+/** Who is viewing, for sections that target an audience: 'visitor' when signed out, else the account type. */
+export type Viewer = 'visitor' | 'learner' | 'professional' | 'company'
+
+export function PromoPairSection({ value, viewer }: { value: PromoPairValue; viewer: Viewer }) {
+  const promos = value.promos.filter(p => !p.audience || p.audience === 'everyone' || p.audience === viewer)
+  if (!promos.length) return null
   return (
     <Section label="Programmes">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {value.promos.map((promo, i) => (
+      <div className={cn('grid grid-cols-1 gap-4', promos.length > 1 && 'md:grid-cols-2')}>
+        {promos.map((promo, i) => (
           <div
             key={i}
             className={cn(

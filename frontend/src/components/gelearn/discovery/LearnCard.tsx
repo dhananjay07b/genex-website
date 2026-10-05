@@ -22,7 +22,11 @@ export function LearnCard({ card, className }: { card: DiscoveryCard; className?
     >
       <div className="relative aspect-video overflow-hidden">
         <CardThumb type={card.type} imageUrl={card.image_url} className="transition-transform duration-300 group-hover:scale-105" />
-        <AccessBadge access={card.access} price={card.price} currency={card.currency} showFree className="absolute left-2.5 top-2.5" />
+        {/* Solid background so the badge stays readable on top of a cover photo. */}
+        <AccessBadge
+          access={card.access} price={card.price} currency={card.currency} showFree
+          className={cn('absolute left-2.5 top-2.5 shadow-sm', card.access === 'members' && 'bg-white')}
+        />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3.5">
         <Byline author={card.author} company={card.company} />
