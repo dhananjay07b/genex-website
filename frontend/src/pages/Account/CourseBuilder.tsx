@@ -5,8 +5,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import CloseIcon from '@mui/icons-material/Close'
 import AddIcon from '@mui/icons-material/Add'
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
+import { cn } from '@/lib/utils'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
@@ -14,6 +13,8 @@ import { Select } from '@/components/ui/Select'
 import { RolePicker, TopicPicker } from '@/components/gelearn/TopicPicker'
 import { AccessField } from '@/components/gelearn/AccessField'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
+import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { useRole } from '@/hooks/useRole'
 import { FileField } from '@/pages/Studio/fields/FileField'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import type { ContentAccess } from '@/types/api'
@@ -29,9 +30,8 @@ const LEVEL_OPTIONS: { value: CourseLevel; label: string }[] = [
 const keyOf = (t: Pick<CourseTarget, 'kind' | 'id'>) => `${t.kind}:${t.id}`
 
 function KindIcon({ kind }: { kind: CourseTarget['kind'] }) {
-  return kind === 'video'
-    ? <PlayCircleOutlineIcon sx={{ fontSize: 18 }} className="text-primary shrink-0" />
-    : <ArticleOutlinedIcon sx={{ fontSize: 18 }} className="text-secondary shrink-0" />
+  const { icon: Icon, label } = COURSE_ITEM_KINDS[kind]
+  return <Icon sx={{ fontSize: 18 }} className="text-sky-700 shrink-0" titleAccess={label} />
 }
 
 /** Keyed by route so switching between courses always starts fresh. */
@@ -42,6 +42,9 @@ export default function CourseBuilder() {
 
 function CourseBuilderForm({ id }: { id: string | undefined }) {
   const navigate = useNavigate()
+  // Company accounts build courses in Company Studio from the company's content; Professionals from their own.
+  const { isCompany } = useRole()
+  const coursesHome = isCompany ? '/studio/courses' : '/account?tab=courses'
   const isEditing = Boolean(id)
   const [course, setCourse] = useState<MyCourse | null | undefined>(isEditing ? undefined : null)
   const [library, setLibrary] = useState<CourseTarget[] | null>(null)
@@ -83,7 +86,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     return () => { cancelled = true }
   }, [id])
 
-  if (isEditing && course === null) return <Navigate to="/account?tab=courses" replace />
+  if (isEditing && course === null) return <Navigate to={coursesHome} replace />
   if (isEditing && course === undefined) return <div className="min-h-screen" />
 
   const chosen = new Set(items.map(keyOf))
@@ -103,7 +106,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     const found: Record<string, string> = {}
     if (title.trim().length < 3) found.title = 'Give the course a title of at least 3 characters.'
     if (access === 'paid' && !(Number(price) >= 1)) found.price = 'Enter a price of at least ₹1.'
-    if (submit && items.length === 0) found.items = 'Add at least one video or post before submitting.'
+    if (submit && items.length === 0) found.items = 'Add at least one item before submitting.'
     setErrors(found)
     setFormError('')
     if (Object.keys(found).length) return
@@ -127,7 +130,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
       if (submit) {
         await apiFetch(`/api/learning/me/courses/${saved.id}/submit/`, { method: 'POST' })
       }
-      navigate('/account?tab=courses')
+      navigate(coursesHome)
     } catch (err) {
       const fields = err instanceof ApiError ? err.fields : {}
       setErrors(fields)
@@ -138,19 +141,21 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   }
 
   const heading = isEditing ? 'Edit course' : 'New course'
+  const Shell = isCompany ? 'div' : 'main'
 
   return (
-    <main className="min-h-screen pb-10 bg-brand-tint bg-brand-tint-static">
-      <PageMeta title={`${heading} — Genex GeLearn`} description="Build a course from your published videos and posts." canonical="/account/courses/new" />
+    // In Company Studio the layout already supplies the page shell, so only the builder itself renders.
+    <Shell className={isCompany ? undefined : 'min-h-screen pb-10 bg-brand-tint bg-brand-tint-static'}>
+      <PageMeta title={`${heading} — Genex GeLearn`} description="Build a course from published content." canonical={isCompany ? '/studio/courses/new' : '/account/courses/new'} />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16 flex flex-col lg:flex-row gap-7 items-start">
+      <div className={cn('flex flex-col lg:flex-row gap-7 items-start', !isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16')}>
         {/* Course content */}
         <div className="flex-1 min-w-0 w-full bg-white border border-border rounded-3xl shadow-sm p-6 lg:p-8 flex flex-col gap-6">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</p>
-            <Link to="/account?tab=courses"
+            <Link to={coursesHome}
               className="flex items-center gap-1.5 border border-border rounded-full px-4 py-2 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
-              <ArrowBackIcon sx={{ fontSize: 13 }} /> My Courses
+              <ArrowBackIcon sx={{ fontSize: 13 }} /> {isCompany ? 'Company courses' : 'My Courses'}
             </Link>
           </div>
 
@@ -170,7 +175,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
             </div>
             {items.length === 0 ? (
               <p className="text-sm text-text-muted border border-dashed border-border rounded-2xl px-5 py-6 text-center">
-                Add videos and posts from your library below. They play in this order.
+                {isCompany ? "Add your company's published content from the library below." : 'Add videos and posts from your library below.'} They play in this order.
               </p>
             ) : (
               <ol className="border border-border rounded-2xl divide-y divide-border">
@@ -203,14 +208,21 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
           </section>
 
           <section>
-            <p className="text-sm font-semibold text-text-primary mb-2">Your library</p>
+            <p className="text-sm font-semibold text-text-primary mb-2">{isCompany ? "Your company's published content" : 'Your library'}</p>
             {library === null ? (
               <div className="min-h-20" />
             ) : library.length === 0 ? (
-              <p className="text-sm text-text-muted">
-                Courses are built from your published videos and posts. <Link to="/submit-post" className="text-primary font-semibold hover:underline">Submit a post</Link> or{' '}
-                <Link to="/submit-video" className="text-primary font-semibold hover:underline">a video</Link> first.
-              </p>
+              isCompany ? (
+                <p className="text-sm text-text-muted">
+                  Company courses are built from your published GeAcademy articles, research, whitepapers and podcasts.{' '}
+                  <Link to="/studio" className="text-primary font-semibold hover:underline">Publish something in Company Studio</Link> first.
+                </p>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  Courses are built from your published videos and posts. <Link to="/submit-post" className="text-primary font-semibold hover:underline">Submit a post</Link> or{' '}
+                  <Link to="/submit-video" className="text-primary font-semibold hover:underline">a video</Link> first.
+                </p>
+              )
             ) : available.length === 0 ? (
               <p className="text-sm text-text-muted">Everything in your library is already in this course.</p>
             ) : (
@@ -267,6 +279,6 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
           </div>
         </div>
       </div>
-    </main>
+    </Shell>
   )
 }

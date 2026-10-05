@@ -20,7 +20,7 @@ from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
 from .durations import parse_duration_seconds
-from .gelearn_blocks import HOME_SECTIONS, MEMBER_SECTIONS
+from .gelearn_blocks import HOME_SECTIONS, LANDING_SECTIONS, MEMBER_SECTIONS
 from .links import PAGE_SECTIONS, genex_page_path
 from .blocks import (
     AppDownloadBlock,
@@ -316,10 +316,20 @@ class GeLearnIndexPage(BasePage):
         MEMBER_SECTIONS, blank=True, use_json_field=True,
         help_text="What signed-in learners see, top to bottom.",
     )
+    for_professionals = StreamField(
+        LANDING_SECTIONS, blank=True, use_json_field=True,
+        help_text="The 'For Professionals' page (/for-professionals), top to bottom.",
+    )
+    for_companies = StreamField(
+        LANDING_SECTIONS, blank=True, use_json_field=True,
+        help_text="The 'For Companies' page (/for-companies), top to bottom.",
+    )
 
     content_panels = Page.content_panels + [
         FieldPanel("home_sections", heading="Home page for visitors"),
         FieldPanel("member_sections", heading="Home page for signed-in learners"),
+        FieldPanel("for_professionals", heading="For Professionals page"),
+        FieldPanel("for_companies", heading="For Companies page"),
         MultiFieldPanel(
             [FieldPanel("intro_headline"), FieldPanel("body")],
             heading="Old home page (being replaced)", classname="collapsed",
@@ -857,8 +867,16 @@ class Topic(models.Model):
         help_text="Topics without a group stay usable but don't appear in the Explore menu.",
     )
     sort_order = models.PositiveSmallIntegerField(default=0, help_text="Order within its group. Lower numbers come first.")
+    description = models.TextField(
+        max_length=400, blank=True,
+        help_text="One or two sentences shown at the top of the topic's page on GeLearn.",
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        help_text="Optional picture for the topic's page and cards.",
+    )
 
-    panels = [FieldPanel("name"), FieldPanel("group"), FieldPanel("sort_order")]
+    panels = [FieldPanel("name"), FieldPanel("group"), FieldPanel("sort_order"), FieldPanel("description"), FieldPanel("image")]
 
     def save(self, *args, **kwargs):
         if not self.slug:

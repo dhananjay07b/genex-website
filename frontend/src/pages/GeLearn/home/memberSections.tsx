@@ -2,16 +2,21 @@ import { Link } from 'react-router-dom'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CheckIcon from '@mui/icons-material/Check'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
-import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import { cn } from '@/lib/utils'
 import { Byline } from '@/components/gelearn/discovery/Byline'
 import { CardThumb } from '@/components/gelearn/discovery/CardThumb'
 import { ListRow } from '@/components/gelearn/discovery/ListBox'
 import { SectionHeading } from '@/components/gelearn/discovery/SectionHeading'
 import type { DiscoveryCard, MyHomeData } from '@/types/discovery'
+import type { CourseItemKind } from '@/types/learning'
+import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
 import { CardGrid, Section } from './sections'
 import type { HeadingValue, PrefixValue, WelcomeValue } from './types'
+
+function NextKindIcon({ kind }: { kind: CourseItemKind }) {
+  const Icon = COURSE_ITEM_KINDS[kind].icon
+  return <Icon sx={{ fontSize: 18 }} className="text-sky-700" />
+}
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const BUTTON_PRIMARY = 'inline-flex items-center gap-1.5 rounded-lg gradient-brand px-4 py-2.5 text-sm font-bold text-white hover:opacity-90'
@@ -49,9 +54,7 @@ export function WelcomeSection({ value, me, name }: { value: WelcomeValue; me: M
                   </p>
                   {current.next_item && (
                     <p className="mt-2 flex items-center gap-2 text-sm text-slate-700">
-                      {current.next_item.kind === 'video'
-                        ? <PlayCircleOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700" />
-                        : <ArticleOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700" />}
+                      <NextKindIcon kind={current.next_item.kind} />
                       <span>Next: <b className="text-text-primary">{current.next_item.title}</b>{current.next_item.meta && ` · ${current.next_item.meta}`}</span>
                     </p>
                   )}

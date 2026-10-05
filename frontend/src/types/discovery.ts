@@ -1,6 +1,6 @@
 import type { ContentAccess } from './api'
 import type { CompanyDisplay } from './auth'
-import type { CourseLevel } from './learning'
+import type { CourseItemKind, CourseLevel } from './learning'
 
 /** Public content keys used by /api/discovery/ (and in search filters). */
 export type DiscoveryType = 'course' | 'geacademy' | 'research' | 'whitepaper' | 'tender' | 'video' | 'podcast' | 'blog'
@@ -158,7 +158,7 @@ export interface ContinueLearning {
   completed: number
   total: number
   percent: number
-  next_item: { item_id: number; kind: 'video' | 'post'; title: string; meta: string } | null
+  next_item: { item_id: number; kind: CourseItemKind; title: string; meta: string } | null
 }
 
 export interface MyHomeData {
@@ -176,8 +176,80 @@ export interface MyHomeData {
   quick_videos: DiscoveryCard[]
 }
 
-export interface SearchResponse {
+export interface FacetOption {
+  value: string
+  label: string
   count: number
+}
+
+export type SearchFacet = 'topic' | 'level' | 'access' | 'max_minutes' | 'publisher'
+
+export interface SearchResponse {
+  /** Results in the current type tab. */
+  count: number
+  /** Matches per content type, for the tabs. */
   counts: Partial<Record<DiscoveryType, number>>
+  /** Matches across all types. */
+  total: number
+  facets: Record<SearchFacet, FacetOption[]>
   results: DiscoveryCard[]
+}
+
+// ── Browse pages (Phase 7) ──────────────────────────────────────────────────
+
+export interface ProfessionalCardData extends PersonCard {
+  rating: string | null
+  featured: boolean
+  expertise: TopicRef[]
+}
+
+export interface TopicDetail {
+  id: number
+  name: string
+  slug: string
+  description: string
+  image_url: string | null
+  group: string | null
+  counts: { courses: number; reading: number; media: number; experts: number }
+  popular_courses: DiscoveryCard[]
+  beginner_courses: DiscoveryCard[]
+  reading: DiscoveryCard[]
+  media: DiscoveryCard[]
+  live_sessions: LiveSessionCard[]
+  experts: ProfessionalCardData[]
+  related: TopicRef[]
+}
+
+export interface RoleCardData {
+  id: number
+  name: string
+  slug: string
+  summary: string
+  image_url: string | null
+  course_count: number | null
+}
+
+export interface RoleDetail extends RoleCardData {
+  duties: string[]
+  skills: TopicRef[]
+  courses_by_level: { level: CourseLevel; courses: DiscoveryCard[] }[]
+  starting_level: CourseLevel
+  professionals: ProfessionalCardData[]
+  professional_count: number
+  other_roles: RoleCardData[]
+}
+
+export interface CompanyCardData {
+  name: string
+  slug: string
+  logo_url: string | null
+  description: string
+  counts: { courses: number; reading: number; whitepapers: number; experts: number }
+}
+
+export type PlatformStatKey = 'verified_professionals' | 'professionals' | 'courses' | 'companies' | 'research_and_whitepapers' | 'learners'
+
+export interface LandingData {
+  layout: LayoutSection[]
+  stats: Record<PlatformStatKey, number>
 }

@@ -20,7 +20,20 @@ const STATUS_TEXT: Record<CourseStatus, string> = {
   rejected: 'Needs changes',
 }
 
-export function CoursesTab() {
+interface CoursesTabProps {
+  /** Where the builder lives: a Professional's dashboard, or Company Studio for a company's courses. */
+  basePath?: string
+  heading?: string
+  emptyTitle?: string
+  emptyDescription?: string
+}
+
+export function CoursesTab({
+  basePath = '/account/courses',
+  heading = 'My Courses',
+  emptyTitle = 'Turn your posts and videos into a course',
+  emptyDescription = 'Group your published videos and posts into an ordered course. Learners enroll and track their progress through it.',
+}: CoursesTabProps) {
   const [courses, setCourses] = useState<MyCourse[] | null>(null)
   const [pendingDelete, setPendingDelete] = useState<MyCourse | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -44,8 +57,8 @@ export function CoursesTab() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-5">
-        <h1 className="text-xl font-extrabold text-text-primary">My Courses</h1>
-        <Link to="/account/courses/new"
+        <h1 className="text-xl font-extrabold text-text-primary">{heading}</h1>
+        <Link to={`${basePath}/new`}
           className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white text-sm font-bold px-4 py-2 hover:opacity-90 transition-opacity">
           <AddIcon sx={{ fontSize: 17 }} /> New course
         </Link>
@@ -56,9 +69,9 @@ export function CoursesTab() {
       ) : courses.length === 0 ? (
         <EmptyState
           icon={<SchoolOutlinedIcon sx={{ fontSize: 24 }} />}
-          title="Turn your posts and videos into a course"
-          description="Group your published videos and posts into an ordered course. Learners enroll and track their progress through it."
-          action={<Link to="/account/courses/new" className="text-sm font-bold text-primary hover:underline">Create your first course</Link>}
+          title={emptyTitle}
+          description={emptyDescription}
+          action={<Link to={`${basePath}/new`} className="text-sm font-bold text-primary hover:underline">Create your first course</Link>}
         />
       ) : (
         <ul className="border border-border rounded-2xl divide-y divide-border overflow-hidden">
@@ -84,7 +97,7 @@ export function CoursesTab() {
                     <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
                   </Link>
                 )}
-                <Link to={`/account/courses/${course.id}/edit`}
+                <Link to={`${basePath}/${course.id}/edit`}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
                   <EditOutlinedIcon sx={{ fontSize: 14 }} /> Edit
                 </Link>

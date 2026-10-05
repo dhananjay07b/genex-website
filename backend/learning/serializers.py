@@ -3,28 +3,49 @@ from rest_framework import serializers
 from accounts.roles import display_publisher
 from commerce.access import has_access
 from pages.api import author_payload
-from pages.models import AccessControlled, BlogPost, Topic, VideoItem
+from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
-from .models import CareerRole, Playlist, PlaylistItem
+from .models import ITEM_KINDS, CareerRole, Playlist, PlaylistItem
 
 MAX_ITEMS = 100
 MAX_TOPICS = 5
 MAX_ROLES = 3
 
 
+# Load every possible target (and its image) in one query per course.
+ITEM_SELECT = ["video__image", "post__image", "article__image", "research__image", "whitepaper", "podcast__image"]
+
+ITEM_PATHS = {
+    "video": "/videos/{id}", "post": "/blog/{id}", "article": "/geacademy/{id}",
+    "research": "/research/{id}", "whitepaper": "/whitepapers", "podcast": "/podcasts/{id}",
+}
+
+
+def item_meta(target, kind):
+    if kind in ("video", "podcast"):
+        return target.duration
+    if kind in ("article", "research"):
+        return target.read_time
+    if kind == "whitepaper":
+        return target.pages
+    return target.topic or ""
+
+
 def target_card(target, kind):
-    """A course item's video/post as shown in lists and the builder."""
+    """A course item's content as shown in course pages and the builder."""
     image = getattr(target, "image", None)
+    price = getattr(target, "price", None)
     return {
         "kind": kind,
         "id": target.pk,
         "title": target.title,
         "image_url": image.file.url if image else None,
-        "meta": target.duration if kind == "video" else (target.topic or ""),
-        "path": f"/videos/{target.pk}" if kind == "video" else f"/blog/{target.pk}",
-        "access": target.access,
-        "price": str(target.price) if target.price is not None else None,
-        "currency": target.currency,
+        "meta": item_meta(target, kind),
+        "path": ITEM_PATHS[kind].format(id=target.pk),
+        # GeAcademy, research and whitepapers have no access setting: always open.
+        "access": getattr(target, "access", "free"),
+        "price": str(price) if price is not None else None,
+        "currency": getattr(target, "currency", "INR"),
     }
 
 
@@ -114,7 +135,7 @@ class CourseDetailSerializer(CourseCardSerializer):
     def get_items(self, obj):
         completed = self._completed_ids(obj)
         rows = []
-        for item in obj.items.select_related("video__image", "post__image"):
+        for item in obj.items.select_related(*ITEM_SELECT):
             target = item.target
             card = target_card(target, item.kind)
             card.update(
@@ -174,7 +195,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     def get_items(self, obj):
         return [
             {**target_card(item.target, item.kind), "item_id": item.pk}
-            for item in obj.items.select_related("video__image", "post__image")
+            for item in obj.items.select_related(*ITEM_SELECT)
         ]
 
     def validate_topics(self, value):
@@ -205,16 +226,34 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
 
 
 class ItemRefSerializer(serializers.Serializer):
-    kind = serializers.ChoiceField(choices=["video", "post"])
+    kind = serializers.ChoiceField(choices=list(ITEM_KINDS))
     id = serializers.IntegerField()
 
 
+def professional_library(user):
+    """A Professional's own live videos and posts (published from their submissions, even while an edit is in review)."""
+    return {
+        "video": VideoItem.objects.filter(submission_source__author=user).select_related("image"),
+        "post": BlogPost.objects.filter(submission_source__author=user).select_related("image"),
+    }
+
+
+def company_library(company):
+    """A company's published GeAcademy articles, research, whitepapers and podcasts."""
+    return {
+        "article": TechArticle.objects.filter(company=company).select_related("image"),
+        "research": CaseStudy.objects.filter(company=company).select_related("image"),
+        "whitepaper": Whitepaper.objects.filter(company=company),
+        "podcast": PodcastEpisode.objects.filter(company=company).select_related("image"),
+    }
+
+
 def library_for(user):
-    """
-    A Professional's own live videos and posts — what a course may contain.
-    Anything published from their submissions counts, even while an edit to it
-    is back in review (the live version stays up meanwhile).
-    """
-    videos = VideoItem.objects.filter(submission_source__author=user).select_related("image")
-    posts = BlogPost.objects.filter(submission_source__author=user).select_related("image")
-    return videos, posts
+    """What this author can put in a course: {kind: queryset}."""
+    if user.account_type == "company" and user.company_id:
+        return company_library(user.company)
+    return professional_library(user)
+
+
+def library_for_course(course):
+    return company_library(course.company) if course.company_id else professional_library(course.owner)

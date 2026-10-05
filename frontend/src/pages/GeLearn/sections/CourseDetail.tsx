@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -11,6 +9,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { AuthorByline } from '@/components/gelearn/AuthorByline'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
+import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { useAuth } from '@/context/useAuth'
 import { apiFetch, ApiError } from '@/lib/api/client'
@@ -155,7 +154,7 @@ export default function CourseDetail() {
           <h2 className="text-2xl font-extrabold text-text-primary mb-6">Course outline</h2>
           <ol className="border border-border rounded-2xl divide-y divide-border">
             {course.items.map((item, index) => {
-              const Icon = item.kind === 'video' ? PlayCircleOutlineIcon : ArticleOutlinedIcon
+              const { icon: Icon, label: kindLabel } = COURSE_ITEM_KINDS[item.kind]
               return (
                 <li key={item.item_id} className="flex items-center gap-4 px-5 py-4">
                   {enrolled ? (
@@ -167,12 +166,12 @@ export default function CourseDetail() {
                   ) : (
                     <span className="w-6 text-sm font-bold text-text-muted text-center shrink-0">{index + 1}</span>
                   )}
-                  <Icon sx={{ fontSize: 20 }} className={item.kind === 'video' ? 'text-primary shrink-0' : 'text-secondary shrink-0'} />
+                  <Icon sx={{ fontSize: 20 }} className="text-sky-700 shrink-0" />
                   <Link to={item.path} className="min-w-0 flex-1 group">
                     <span className={`block text-sm font-semibold truncate group-hover:text-primary transition-colors ${item.completed ? 'text-text-muted line-through' : 'text-text-primary'}`}>
                       {item.title}
                     </span>
-                    {item.meta && <span className="block text-xs text-text-muted truncate">{item.kind === 'video' ? 'Video' : 'Article'} · {item.meta}</span>}
+                    {item.meta && <span className="block text-xs text-text-muted truncate">{kindLabel} · {item.meta}</span>}
                   </Link>
                   {item.is_locked
                     ? <LockOutlinedIcon sx={{ fontSize: 17 }} className="text-text-muted shrink-0" aria-label="Locked" />

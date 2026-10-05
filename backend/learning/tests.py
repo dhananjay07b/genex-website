@@ -217,3 +217,62 @@ class CourseMetadataTests(TestCase):
         session.save()
         self.assertEqual(session.slug, "goose-demo")
         self.assertEqual(session.ends_at - session.starts_at, datetime.timedelta(minutes=60))
+
+
+class CompanyCourseTests(TestCase):
+    """Company Studio courses: built from the company's own published content."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import CaseStudy, TechArticle, Whitepaper
+        self.api = APIClient()
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.other = Company.objects.create(name="Other", slug="other")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.colleague = make_user("staff2", account_type="company", company=self.genex)
+        self.article = TechArticle.objects.create(title="Reading an SLD", topic="Solar", read_time="8 min", date=TODAY,
+                                                  excerpt="e", company=self.genex)
+        self.study = CaseStudy.objects.create(title="SCADA retrofit", category="SCADA", category_color="bg-primary",
+                                              excerpt="e", date=TODAY, company=self.genex)
+        self.paper = Whitepaper.objects.create(title="RMS architecture", category="Solar", category_bg="#fff",
+                                               category_text="#000", date=TODAY, pages="12 pages", description="d", company=self.genex)
+        self.foreign = TechArticle.objects.create(title="Not ours", topic="x", read_time="1", date=TODAY, excerpt="e", company=self.other)
+        self.api.force_authenticate(self.staff)
+
+    def test_company_builds_a_course_from_its_content(self):
+        res = self.api.post("/api/learning/me/courses/", {"title": "Remote Monitoring", "level": "intermediate"}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        course = Playlist.objects.get()
+        self.assertEqual((course.owner, course.company), (self.staff, self.genex))
+        library = {(c["kind"], c["title"]) for c in self.api.get("/api/learning/me/library/").json()}
+        self.assertEqual(library, {("article", "Reading an SLD"), ("research", "SCADA retrofit"), ("whitepaper", "RMS architecture")})
+        res = self.api.put(f"/api/learning/me/courses/{course.pk}/items/", [
+            {"kind": "whitepaper", "id": self.paper.pk}, {"kind": "article", "id": self.article.pk}, {"kind": "research", "id": self.study.pk},
+        ], format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual([i["kind"] for i in res.json()["items"]], ["whitepaper", "article", "research"])
+        self.assertEqual(res.json()["items"][1]["path"], f"/geacademy/{self.article.pk}")
+
+    def test_cannot_add_another_companys_content(self):
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Ours")
+        res = self.api.put(f"/api/learning/me/courses/{course.pk}/items/", [{"kind": "article", "id": self.foreign.pk}], format="json")
+        self.assertEqual(res.status_code, 400)
+
+    def test_colleagues_share_company_courses(self):
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Shared")
+        self.api.force_authenticate(self.colleague)
+        self.assertEqual([c["title"] for c in self.api.get("/api/learning/me/courses/").json()], ["Shared"])
+        self.assertEqual(self.api.patch(f"/api/learning/me/courses/{course.pk}/", {"title": "Shared course"}, format="json").status_code, 200)
+
+    def test_learner_opens_a_company_course(self):
+        from learning.models import PlaylistItem
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Live one", status="published")
+        PlaylistItem.objects.create(playlist=course, article=self.article, position=0)
+        learner = make_user("learner")
+        self.api.force_authenticate(learner)
+        data = self.api.get(f"/api/learning/courses/{course.slug}/").json()
+        self.assertEqual(data["company"]["name"], "Genex")
+        self.assertEqual((data["items"][0]["kind"], data["items"][0]["is_locked"]), ("article", False))
+        self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/enroll/").status_code, (200, 201))
+        item_id = data["items"][0]["item_id"]
+        self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/items/{item_id}/complete/").status_code, (200, 201, 204))

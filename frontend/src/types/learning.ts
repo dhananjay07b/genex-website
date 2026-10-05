@@ -1,7 +1,8 @@
 import type { ContentAccess, ContentAuthor } from './api'
 import type { CompanyDisplay } from './auth'
 
-export type CourseItemKind = 'video' | 'post'
+/** Professionals' courses use videos and posts; Company Studio courses use the company's articles, research, whitepapers and podcasts. */
+export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast'
 
 /** A video/post as it appears in a course or the builder's library. */
 export interface CourseTarget {

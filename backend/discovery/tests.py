@@ -301,3 +301,86 @@ class ExploreMenuTests(DiscoveryTestBase):
         self.assertEqual(data["topic_groups"][0]["name"], "Renewables")
         self.assertEqual(data["roles"][0]["name"], "Solar O&M Engineer")
         self.assertEqual(data["companies"], [{"name": "Genex Technocrats", "slug": "genex"}])
+
+
+class BrowsePagesTests(DiscoveryTestBase):
+    """Phase 7: topic, role, Professionals, companies, live sessions, landing pages."""
+
+    def test_topic_page(self):
+        data = self.api.get("/api/discovery/topics/solar/").json()
+        self.assertEqual((data["name"], data["group"]), ("Solar PV", "Renewables"))
+        self.assertTrue(data["description"])
+        self.assertEqual([c["title"] for c in data["reading"]], ["Reading an SLD"])
+        self.assertIn("Wind Energy", [t["name"] for t in data["related"]])
+        self.assertEqual(self.api.get("/api/discovery/topics/no-such-topic/").status_code, 404)
+
+    def test_topic_experts_and_professional_filter(self):
+        self.pro.expertise.add(self.solar)
+        other = make_user("pro2", account_type="professional", company_other="Acme", display_name="Arun",
+                          is_featured=True, featured_order=1)
+        self.assertEqual([p["username"] for p in self.api.get("/api/discovery/topics/solar/").json()["experts"]], ["pro"])
+        everyone = [p["username"] for p in self.api.get("/api/discovery/professionals/").json()]
+        self.assertEqual(everyone[0], "pro2")  # featured first
+        self.assertEqual([p["username"] for p in self.api.get("/api/discovery/professionals/?topic=solar").json()], ["pro"])
+        self.assertTrue(other.is_featured)
+
+    def test_role_page_groups_courses_by_level(self):
+        role = CareerRole.objects.get(slug="scada-engineer")
+        self.course.roles.add(role)
+        data = self.api.get("/api/discovery/roles/scada-engineer/").json()
+        self.assertTrue(data["duties"])
+        self.assertIn("SCADA & Monitoring", [s["name"] for s in data["skills"]])
+        beginner = next(g for g in data["courses_by_level"] if g["level"] == "beginner")
+        self.assertEqual([c["title"] for c in beginner["courses"]], ["SCADA Fundamentals"])
+        self.assertEqual(data["starting_level"], "beginner")
+        self.assertNotIn("scada-engineer", [r["slug"] for r in data["other_roles"]])
+        self.assertEqual(len(self.api.get("/api/discovery/roles/").json()), 6)
+
+    def test_companies_and_live_sessions(self):
+        from organizations.models import Company
+        genex = Company.objects.create(name="Genex Technocrats", slug="genex-technocrats", description="Monitoring software.")
+        self.study.company = genex
+        self.study.save()
+        row = self.api.get("/api/discovery/companies/").json()[0]
+        self.assertEqual((row["name"], row["counts"]["reading"]), ("Genex Technocrats", 1))
+        now = timezone.now()
+        LiveSession.objects.create(title="Soon", starts_at=now + datetime.timedelta(days=2), speaker_name="A",
+                                   registration_url="https://example.org/a")
+        LiveSession.objects.create(title="Later", starts_at=now + datetime.timedelta(days=20), speaker_name="B",
+                                   registration_url="https://example.org/b")
+        titles = lambda when: [s["title"] for s in self.api.get(f"/api/discovery/live-sessions/{when}").json()]
+        self.assertEqual(titles(""), ["Soon", "Later"])
+        self.assertEqual(titles("?when=week"), ["Soon"])
+
+    def test_landing_pages_come_from_the_cms(self):
+        from wagtail.models import Page
+        from pages.models import GeLearnIndexPage
+        Page.objects.get(depth=1).add_child(instance=GeLearnIndexPage(
+            title="GeLearn", slug="gelearn-landing-test",
+            for_professionals=[("landing_hero", {"heading": "Share what you know", "primary_label": "Sign up",
+                                                 "primary_link": {"link_type": "page", "page": "register"}, "stats": ["courses"]})],
+        ))
+        data = self.api.get("/api/discovery/landing/professionals/").json()
+        self.assertEqual(data["layout"][0]["type"], "landing_hero")
+        self.assertEqual(data["layout"][0]["value"]["primary_link"], "/register")  # a picked link, as an address
+        self.assertIn("courses", data["stats"])
+        self.assertEqual(self.api.get("/api/discovery/landing/nobody/").status_code, 404)
+
+
+class SearchFacetTests(DiscoveryTestBase):
+    def test_facets_count_each_group_without_its_own_filter(self):
+        data = self.api.get("/api/discovery/search/", {"level": "beginner"}).json()
+        levels = {f["value"]: f["count"] for f in data["facets"]["level"]}
+        self.assertEqual(levels["beginner"], 2)  # the course and the GeAcademy article
+        self.assertEqual(data["count"], 2)
+        topics = {f["value"]: f["count"] for f in data["facets"]["topic"]}
+        self.assertEqual(topics, {"solar": 1, "scada": 1})
+
+    def test_publisher_filter_and_sort(self):
+        from organizations.models import Company
+        Company.objects.create(name="Genex Technocrats", slug="genex-technocrats")
+        data = self.api.get("/api/discovery/search/", {"q": "scada"}).json()
+        publishers = {f["value"] for f in data["facets"]["publisher"]}
+        self.assertIn("genex-technocrats", publishers)  # editorial content files under Genex
+        newest = self.api.get("/api/discovery/search/", {"sort": "newest"}).json()["results"]
+        self.assertEqual(newest, sorted(newest, key=lambda c: c["date"] or "", reverse=True))

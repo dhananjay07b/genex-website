@@ -7,13 +7,13 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.roles import IsProfessional, is_admin
+from accounts.roles import IsContributor, is_admin, is_company
 from accounts.uploads import save_uploaded_image
 from commerce.access import has_access
 from pages.api import GenexPagination
 from pages.models import AccessControlled
 
-from .models import CareerRole, Enrollment, ItemProgress, Playlist, PlaylistItem
+from .models import ITEM_KINDS, CareerRole, Enrollment, ItemProgress, Playlist, PlaylistItem
 from .queries import published_courses
 from .serializers import (
     MAX_ITEMS,
@@ -23,6 +23,7 @@ from .serializers import (
     ItemRefSerializer,
     MyCourseSerializer,
     library_for,
+    library_for_course,
     target_card,
 )
 
@@ -123,16 +124,27 @@ class MyCourseViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
-    """A Professional's own courses: build, reorder, submit for review."""
-    permission_classes = [IsProfessional]
+    """
+    Build, reorder and submit courses. A Professional's courses are their own;
+    a Company account's courses belong to its company, so any staff login of
+    that company can edit them (as in Company Studio).
+    """
+    permission_classes = [IsContributor]
     serializer_class = MyCourseSerializer
 
     def get_queryset(self):
+        user = self.request.user
         qs = Playlist.objects.select_related("cover").order_by("-updated_at")
-        return qs if is_admin(self.request.user) and self.action not in ("list", "create") else qs.filter(owner=self.request.user)
+        if is_admin(user) and self.action not in ("list", "create"):
+            return qs
+        if is_company(user):
+            return qs.filter(company_id=user.company_id) if user.company_id else qs.none()
+        return qs.filter(owner=user, company__isnull=True)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user, status=Playlist.STATUS_DRAFT)
+        user = self.request.user
+        company = user.company if is_company(user) and user.company_id else None
+        serializer.save(owner=user, company=company, status=Playlist.STATUS_DRAFT)
 
     @action(detail=True, methods=["put"])
     def items(self, request, pk=None):
@@ -143,25 +155,21 @@ class MyCourseViewSet(
         if len(refs.validated_data) > MAX_ITEMS:
             return Response({"items": f"A course can hold at most {MAX_ITEMS} items."}, status=400)
 
-        videos, posts = library_for(course.owner)
-        allowed = {"video": set(videos.values_list("pk", flat=True)), "post": set(posts.values_list("pk", flat=True))}
+        library = library_for_course(course)
+        allowed = {kind: set(qs.values_list("pk", flat=True)) for kind, qs in library.items()}
         seen = set()
         for ref in refs.validated_data:
             key = (ref["kind"], ref["id"])
-            if ref["id"] not in allowed[ref["kind"]]:
-                return Response({"items": "Courses can only include your own published videos and posts."}, status=400)
+            if ref["id"] not in allowed.get(ref["kind"], ()):
+                return Response({"items": "Courses can only include your own published content."}, status=400)
             if key in seen:
-                return Response({"items": "Each video or post can appear only once."}, status=400)
+                return Response({"items": "Each item can appear only once."}, status=400)
             seen.add(key)
 
         with transaction.atomic():
             course.items.all().delete()
             PlaylistItem.objects.bulk_create([
-                PlaylistItem(
-                    playlist=course, position=position,
-                    video_id=ref["id"] if ref["kind"] == "video" else None,
-                    post_id=ref["id"] if ref["kind"] == "post" else None,
-                )
+                PlaylistItem(playlist=course, position=position, **{f"{ITEM_KINDS[ref['kind']][0]}_id": ref["id"]})
                 for position, ref in enumerate(refs.validated_data)
             ])
             course.save(update_fields=["updated_at"])
@@ -184,7 +192,7 @@ class MyCourseViewSet(
     def submit(self, request, pk=None):
         course = self.get_object()
         if not course.items.exists():
-            return Response({"items": "Add at least one video or post before submitting."}, status=400)
+            return Response({"items": "Add at least one item before submitting."}, status=400)
         if course.status == Playlist.STATUS_PUBLISHED:
             return Response({"detail": "This course is already live."}, status=400)
         course.status = Playlist.STATUS_PENDING
@@ -195,12 +203,12 @@ class MyCourseViewSet(
 
 
 class MyLibraryView(APIView):
-    """What a Professional can put in a course: their own published videos and posts."""
-    permission_classes = [IsProfessional]
+    """What this author can put in a course: a Professional's videos and posts, or the company's published content."""
+    permission_classes = [IsContributor]
 
     def get(self, request):
-        videos, posts = library_for(request.user)
-        return Response(
-            [target_card(v, "video") for v in videos.order_by("-date")]
-            + [target_card(p, "post") for p in posts.order_by("-date")]
-        )
+        cards = []
+        for kind, qs in library_for(request.user).items():
+            cards += [target_card(obj, kind) | {"date": obj.date.isoformat()} for obj in qs]
+        cards.sort(key=lambda c: c.pop("date"), reverse=True)
+        return Response(cards)

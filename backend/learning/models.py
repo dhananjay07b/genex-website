@@ -35,8 +35,23 @@ class CareerRole(models.Model):
         "wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
     )
     sort_order = models.PositiveSmallIntegerField(default=0, help_text="Lower numbers come first.")
+    duties = models.TextField(
+        blank=True, verbose_name="What this role does",
+        help_text="One responsibility per line. Shown as a list on the role's page.",
+    )
+    topics = models.ManyToManyField(
+        "pages.Topic", blank=True, related_name="career_roles", verbose_name="Skills",
+        help_text="The topics this role draws on; shown as \"Skills you'll build\".",
+    )
 
-    panels = [FieldPanel("name"), FieldPanel("summary"), FieldPanel("image"), FieldPanel("sort_order")]
+    panels = [
+        FieldPanel("name"), FieldPanel("summary"), FieldPanel("image"), FieldPanel("sort_order"),
+        FieldPanel("duties"), FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
+    ]
+
+    @property
+    def duty_list(self):
+        return [line.strip(" -•\t") for line in self.duties.splitlines() if line.strip(" -•\t")]
 
     class Meta:
         ordering = ["sort_order", "name"]
@@ -110,31 +125,57 @@ class Playlist(AccessControlled):
         return {self.owner_id}
 
 
+# A course lesson points at exactly one piece of published content. Professionals'
+# courses use videos and blog posts; Company Studio courses use the company's
+# GeAcademy articles, research, whitepapers and podcasts (and videos).
+# kind → (field on PlaylistItem, model)
+ITEM_KINDS = {
+    "video": ("video", "pages.VideoItem"),
+    "post": ("post", "pages.BlogPost"),
+    "article": ("article", "pages.TechArticle"),
+    "research": ("research", "pages.CaseStudy"),
+    "whitepaper": ("whitepaper", "pages.Whitepaper"),
+    "podcast": ("podcast", "pages.PodcastEpisode"),
+}
+_ITEM_FIELDS = [field for field, _ in ITEM_KINDS.values()]
+
+
+def _exactly_one_target():
+    combos = Q()
+    for field in _ITEM_FIELDS:
+        combos |= Q(**{f"{field}__isnull": False}, **{f"{other}__isnull": True for other in _ITEM_FIELDS if other != field})
+    return combos
+
+
 class PlaylistItem(models.Model):
-    """One published video or blog post, at a position in the course."""
+    """One piece of published content, at a position in the course."""
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="items")
     video = models.ForeignKey("pages.VideoItem", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     post = models.ForeignKey("pages.BlogPost", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    article = models.ForeignKey("pages.TechArticle", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    research = models.ForeignKey("pages.CaseStudy", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    whitepaper = models.ForeignKey("pages.Whitepaper", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    podcast = models.ForeignKey("pages.PodcastEpisode", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["position", "id"]
         constraints = [
-            models.CheckConstraint(
-                condition=(Q(video__isnull=False, post__isnull=True) | Q(video__isnull=True, post__isnull=False)),
-                name="playlist_item_exactly_one_target",
-            ),
-            models.UniqueConstraint(fields=["playlist", "video"], condition=Q(video__isnull=False), name="playlist_unique_video"),
-            models.UniqueConstraint(fields=["playlist", "post"], condition=Q(post__isnull=False), name="playlist_unique_post"),
+            models.CheckConstraint(condition=_exactly_one_target(), name="playlist_item_exactly_one_target"),
+            *[
+                models.UniqueConstraint(fields=["playlist", field], condition=Q(**{f"{field}__isnull": False}),
+                                        name=f"playlist_unique_{field}")
+                for field in _ITEM_FIELDS
+            ],
         ]
 
     @property
     def kind(self):
-        return "video" if self.video_id else "post"
+        return next(kind for kind, (field, _) in ITEM_KINDS.items() if getattr(self, f"{field}_id"))
 
     @property
     def target(self):
-        return self.video if self.video_id else self.post
+        return getattr(self, ITEM_KINDS[self.kind][0])
 
     def __str__(self):
         return f"{self.playlist} #{self.position}: {self.target}"

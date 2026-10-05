@@ -10,8 +10,8 @@ from .models import Enrollment, Playlist, PlaylistItem
 class PlaylistItemInline(admin.TabularInline):
     model = PlaylistItem
     extra = 0
-    fields = ("position", "video", "post")
-    readonly_fields = ("position", "video", "post")
+    fields = ("position", "video", "post", "article", "research", "whitepaper", "podcast")
+    readonly_fields = ("position", "video", "post", "article", "research", "whitepaper", "podcast")
     can_delete = False
 
     def has_add_permission(self, request, obj=None):

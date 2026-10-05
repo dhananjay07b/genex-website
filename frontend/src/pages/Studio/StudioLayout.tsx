@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import { useAuth } from '@/context/useAuth'
 import { cn, getMediaUrl } from '@/lib/utils'
 import { STUDIO_TYPES } from './studioTypes'
@@ -8,6 +9,7 @@ import { STUDIO_TYPES } from './studioTypes'
 const NAV = [
   { to: '/studio', label: 'Overview', icon: SpaceDashboardOutlinedIcon, end: true },
   ...STUDIO_TYPES.map(t => ({ to: `/studio/${t.key}`, label: t.label, icon: t.icon, end: false })),
+  { to: '/studio/courses', label: 'Courses', icon: SchoolOutlinedIcon, end: false },
   { to: '/studio/team', label: 'Team', icon: GroupsOutlinedIcon, end: false },
 ]
 

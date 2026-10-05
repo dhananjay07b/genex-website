@@ -12,6 +12,7 @@ from accounts.models import User
 from engagement.models import SavedItem
 from learning.models import CareerRole, Enrollment, ItemProgress, LiveSession, Playlist
 from learning.queries import published_courses
+from learning.serializers import ITEM_SELECT, item_meta
 from organizations.models import Company
 from pages.models import GeLearnIndexPage, Testimonial, Topic, TopicGroup
 
@@ -278,7 +279,7 @@ def public_home():
 # ── Personal ─────────────────────────────────────────────────────────────────
 
 def _course_progress(user, course):
-    items = list(course.items.select_related("video", "post"))
+    items = list(course.items.select_related(*ITEM_SELECT))
     done = set(ItemProgress.objects.filter(user=user, item__playlist=course).values_list("item_id", flat=True))
     next_item = next((i for i in items if i.pk not in done), None)
     total = len(items)
@@ -290,7 +291,7 @@ def _course_progress(user, course):
             "item_id": next_item.pk,
             "kind": next_item.kind,
             "title": next_item.target.title,
-            "meta": next_item.video.duration if next_item.video_id else "",
+            "meta": item_meta(next_item.target, next_item.kind),
         } if next_item else None,
     }
 

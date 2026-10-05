@@ -36,3 +36,9 @@ export const TYPE_LABELS: Record<DiscoveryType, string> = {
 export function cardMeta(card: DiscoveryCard): string {
   return [TYPE_LABELS[card.type], card.meta].filter(Boolean).join(' · ')
 }
+
+/** Primary and secondary button styles used across browse pages. */
+export const BUTTON = {
+  primary: 'inline-flex items-center gap-1.5 rounded-lg gradient-brand px-4 py-2.5 text-sm font-bold text-white hover:opacity-90',
+  outline: 'inline-flex items-center gap-1.5 rounded-lg border border-sky-700 bg-white px-4 py-2.5 text-sm font-bold text-sky-700 hover:bg-surface',
+}

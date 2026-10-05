@@ -390,3 +390,74 @@ MEMBER_ONLY_SECTIONS = [
 
 HOME_SECTIONS = SHARED_SECTIONS
 MEMBER_SECTIONS = MEMBER_ONLY_SECTIONS + SHARED_SECTIONS
+
+
+# Landing pages (For Professionals, For Companies) ───────────────────────────
+
+class LandingHeroSection(blocks.StructBlock):
+    kicker = blocks.CharBlock(required=False, max_length=60)
+    heading = blocks.CharBlock(max_length=120)
+    body = blocks.TextBlock(required=False, max_length=400)
+    primary_label = blocks.CharBlock(required=False, max_length=40, label="Main button text")
+    primary_link = LinkBlock(optional=True, label="Main button link")
+    secondary_label = blocks.CharBlock(required=False, max_length=50, label="Second button text")
+    secondary_link = LinkBlock(optional=True, label="Second button link")
+    stats_heading = blocks.CharBlock(required=False, max_length=60, help_text="Heading of the figures box, e.g. 'Already on GeLearn'.")
+    stats = blocks.MultipleChoiceBlock(
+        required=False, label="Figures to show (live counts)",
+        choices=[
+            ("verified_professionals", "Verified Professionals"),
+            ("professionals", "Professionals"),
+            ("courses", "Published courses"),
+            ("companies", "Verified companies"),
+            ("research_and_whitepapers", "Research and whitepapers"),
+            ("learners", "Learners"),
+        ],
+    )
+
+    class Meta:
+        icon = "title"
+        label = "Landing hero"
+
+
+class StepItem(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=60)
+    text = blocks.TextBlock(max_length=240)
+
+
+class StepsSection(blocks.StructBlock):
+    heading = blocks.CharBlock(max_length=100)
+    subheading = blocks.CharBlock(required=False, max_length=160)
+    steps = blocks.ListBlock(StepItem(), min_num=2, max_num=6, help_text="A real sequence, in order.")
+
+    class Meta:
+        icon = "list-ol"
+        label = "Numbered steps"
+
+
+class PanelItem(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=80)
+    text = blocks.CharBlock(required=False, max_length=200)
+    planned = blocks.BooleanBlock(required=False, help_text="Mark as 'Planned' (not available yet).")
+
+
+class ListPanel(blocks.StructBlock):
+    heading = blocks.CharBlock(max_length=80)
+    items = blocks.ListBlock(PanelItem(), min_num=1, max_num=8)
+
+
+class ListPanelsSection(blocks.StructBlock):
+    panels = blocks.ListBlock(ListPanel(), min_num=1, max_num=2)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Two lists side by side"
+
+
+LANDING_SECTIONS = [
+    ("landing_hero", LandingHeroSection()),
+    ("steps", StepsSection()),
+    ("list_panels", ListPanelsSection()),
+    ("promo_pair", PromoPairSection()),
+    ("faq", FaqSection()),
+]

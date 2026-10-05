@@ -14,6 +14,16 @@ const DynamicSectionPage    = lazy(() => import('@/pages/DynamicSectionPage'))
 const DynamicContentPage    = lazy(() => import('@/pages/DynamicContentPage'))
 
 const GeLearn               = lazy(() => import('@/pages/GeLearn'))
+const SearchPage            = lazy(() => import('@/pages/GeLearn/browse/SearchPage'))
+const TopicsIndexPage       = lazy(() => import('@/pages/GeLearn/browse/TopicPages').then(m => ({ default: m.TopicsIndexPage })))
+const TopicPage             = lazy(() => import('@/pages/GeLearn/browse/TopicPages').then(m => ({ default: m.TopicPage })))
+const RolesIndexPage        = lazy(() => import('@/pages/GeLearn/browse/RolePages').then(m => ({ default: m.RolesIndexPage })))
+const RolePage              = lazy(() => import('@/pages/GeLearn/browse/RolePages').then(m => ({ default: m.RolePage })))
+const ProfessionalsPage     = lazy(() => import('@/pages/GeLearn/browse/DirectoryPages').then(m => ({ default: m.ProfessionalsPage })))
+const CompaniesPage         = lazy(() => import('@/pages/GeLearn/browse/DirectoryPages').then(m => ({ default: m.CompaniesPage })))
+const LiveSessionsPage      = lazy(() => import('@/pages/GeLearn/browse/DirectoryPages').then(m => ({ default: m.LiveSessionsPage })))
+const LandingPage           = lazy(() => import('@/pages/GeLearn/browse/LandingPage'))
+const StudioCourses         = lazy(() => import('@/pages/Studio/StudioCourses'))
 const Research              = lazy(() => import('@/pages/GeLearn/sections/Research'))
 const ResearchDetail        = lazy(() => import('@/pages/GeLearn/sections/ResearchDetail'))
 const GeAcademy             = lazy(() => import('@/pages/GeLearn/sections/GeAcademy'))
@@ -118,6 +128,16 @@ export const gelearnRouter = createBrowserRouter([
       { path: '/courses',                  element: s(<Courses />) },
       { path: '/courses/:slug',            element: s(<CourseDetail />) },
       { path: '/c/:slug',                  element: s(<CompanyPage />) },
+      { path: '/search',                   element: s(<SearchPage />) },
+      { path: '/topics',                   element: s(<TopicsIndexPage />) },
+      { path: '/topics/:slug',             element: s(<TopicPage />) },
+      { path: '/roles',                    element: s(<RolesIndexPage />) },
+      { path: '/roles/:slug',              element: s(<RolePage />) },
+      { path: '/professionals',            element: s(<ProfessionalsPage />) },
+      { path: '/companies',                element: s(<CompaniesPage />) },
+      { path: '/live-sessions',            element: s(<LiveSessionsPage />) },
+      { path: '/for-professionals',        element: s(<LandingPage audience="professionals" />) },
+      { path: '/for-companies',            element: s(<LandingPage audience="companies" />) },
       { path: '/login',                    element: s(<Login />) },
       { path: '/register',                 element: s(<Register />) },
       { path: '/forgot-password',          element: s(<ForgotPassword />) },
@@ -152,6 +172,9 @@ export const gelearnRouter = createBrowserRouter([
             children: [
               { index: true,                element: s(<StudioHome />) },
               { path: 'team',               element: s(<StudioTeam />) },
+              { path: 'courses',            element: s(<StudioCourses />) },
+              { path: 'courses/new',        element: s(<CourseBuilder />) },
+              { path: 'courses/:id/edit',   element: s(<CourseBuilder />) },
               { path: ':type',              element: s(<StudioList />) },
               { path: ':type/new',          element: s(<StudioEditor />) },
               { path: ':type/:id/edit',     element: s(<StudioEditor />) },
