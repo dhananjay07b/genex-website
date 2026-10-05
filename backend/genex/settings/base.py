@@ -177,6 +177,8 @@ SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 # those flows are handled by dedicated frontend pages. Overridden per
 # environment in dev.py / production.py.
 GELEARN_FRONTEND_URL = os.environ.get("GELEARN_FRONTEND_URL", "http://localhost:5173")
+# The marketing site, for CMS links from GeLearn to a Genex website page (pages/links.py).
+MARKETING_FRONTEND_URL = os.environ.get("MARKETING_FRONTEND_URL", "https://genextechnocrats.com")
 
 REST_AUTH = {
     "USE_JWT": True,

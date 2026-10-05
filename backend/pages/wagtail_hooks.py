@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib import messages
 from django.db.models import Count
+from django.templatetags.static import static
+from django.utils.html import format_html
 from django.utils.text import capfirst
 from wagtail import hooks
 from wagtail.admin.ui.tables import Column
@@ -9,6 +11,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.permissions import get_permission_name
 from wagtail.snippets.views.snippets import SnippetViewSet
 
+from .links import company_chooser_viewset, course_chooser_viewset
 from .models import Topic, TopicGroup
 from .topics import merge_topics, with_usage
 
@@ -105,3 +108,15 @@ class MergeTopicsBulkAction(SnippetBulkAction):
         target = self.cleaned_form.cleaned_data["target"]
         noun = capfirst(Topic._meta.verbose_name if num_parent_objects == 1 else Topic._meta.verbose_name_plural)
         return f'{num_parent_objects} {noun.lower()} merged into "{target}".'
+
+
+# ── Link picker (pages/links.py): course and company choosers, editor script ─
+
+@hooks.register("register_admin_viewset")
+def register_link_choosers():
+    return [company_chooser_viewset, course_chooser_viewset]
+
+
+@hooks.register("insert_editor_js")
+def link_block_js():
+    return format_html('<script src="{}"></script>', static("pages/js/link_block.js"))

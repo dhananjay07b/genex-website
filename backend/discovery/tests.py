@@ -247,7 +247,7 @@ class HomeLayoutTests(DiscoveryTestBase):
             title="GeLearn", slug="gelearn-layout-test",
             home_sections=[
                 ("hero", {"slides": [{"kicker": "K", "heading": "Learn the grid", "body": "", "cta_label": "Go",
-                                      "cta_url": "/courses", "tone": "sky", "image": None}]}),
+                                      "cta_url": {"link_type": "page", "page": "courses"}, "tone": "sky", "image": None}]}),
                 ("course_rail", {"heading": "Free", "source": "free", "limit": 4, "style": "band"}),
                 ("course_rail", {"heading": "Solar", "source": "topic", "topic": self.solar, "limit": 4}),
                 ("course_rail", {"heading": "SCADA role", "source": "role", "topic": None, "role": role, "limit": 4}),
@@ -263,6 +263,7 @@ class HomeLayoutTests(DiscoveryTestBase):
         self.assertEqual([s["type"] for s in layout],
                          ["hero", "course_rail", "course_rail", "course_rail", "content_rail", "content_rail", "faq"])
         self.assertEqual(layout[0]["value"]["slides"][0]["heading"], "Learn the grid")
+        self.assertEqual(layout[0]["value"]["slides"][0]["cta_url"], "/courses")  # picked link → address
         titles = [[i["title"] for i in s["items"]] for s in layout[1:6]]
         self.assertEqual(titles, [
             ["SCADA Fundamentals"],          # free only

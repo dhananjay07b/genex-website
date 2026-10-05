@@ -186,3 +186,92 @@ class TopicHousekeepingTests(TestCase):
         page = self.client.get("/cms/snippets/pages/topic/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Used by")
+
+
+class LinkPickerTests(TestCase):
+    """CMS links are picked, never typed (pages/links.py)."""
+
+    def setUp(self):
+        from learning.models import CareerRole, Playlist
+        from .links import LinkBlock
+        self.block = LinkBlock()
+        self.optional = LinkBlock(optional=True)
+        self.solar = __import__("pages.models", fromlist=["Topic"]).Topic.objects.get(name="Solar PV")
+        self.role = CareerRole.objects.get(slug="scada-engineer")
+        self.company = Company.objects.create(name="Genex Technocrats", slug="genex")
+        owner = make_user("pro", account_type="professional", company_other="Acme")
+        self.course = Playlist.objects.create(owner=owner, title="SCADA Fundamentals", status="published")
+
+    def url(self, raw, block=None):
+        block = block or self.block
+        return block.get_api_representation(block.to_python(raw))
+
+    def test_every_link_type_builds_its_address(self):
+        self.assertEqual(self.url({"link_type": "page", "page": "for_companies"}), "/for-companies")
+        self.assertEqual(self.url({"link_type": "page", "page": "my_learning"}), "/account?tab=learning")
+        self.assertEqual(self.url({"link_type": "topic", "topic": self.solar.pk}), "/topics/solar")
+        self.assertEqual(self.url({"link_type": "role", "role": self.role.pk}), "/roles/scada-engineer")
+        self.assertEqual(self.url({"link_type": "company", "company": self.company.pk}), "/c/genex")
+        self.assertEqual(self.url({"link_type": "course", "course": self.course.pk}), "/courses/scada-fundamentals")
+        self.assertEqual(self.url({"link_type": "url", "url": "https://example.org/x"}), "https://example.org/x")
+        self.assertEqual(self.url({"link_type": "none"}, self.optional), "")
+
+    def test_search_filters_build_the_query_in_a_fixed_order(self):
+        raw = {"link_type": "search", "search": {
+            "q": " IEC 61850 ", "type": "course", "level": "beginner", "access": "free",
+            "topic": self.solar.pk, "max_minutes": "20"}}
+        self.assertEqual(self.url(raw), "/search?q=IEC+61850&type=course&level=beginner&access=free&topic=solar&max_minutes=20")
+        self.assertEqual(self.url({"link_type": "search", "search": {}}), "/search")
+
+    def test_links_follow_renames_and_drop_hidden_targets(self):
+        self.solar.slug = "solar-pv"
+        self.solar.save()
+        self.assertEqual(self.url({"link_type": "topic", "topic": self.solar.pk}), "/topics/solar-pv")
+        self.course.status = "draft"
+        self.course.save()
+        self.assertEqual(self.url({"link_type": "course", "course": self.course.pk}), "")
+
+    def test_validation(self):
+        from django.core.exceptions import ValidationError
+        for raw in ({"link_type": "topic"}, {"link_type": "url", "url": "/typed-path"}, {"link_type": "none"}):
+            with self.assertRaises(ValidationError, msg=raw):
+                self.block.clean(self.block.to_python(raw))
+        self.optional.clean(self.optional.to_python({"link_type": "none"}))
+        self.block.clean(self.block.to_python({"link_type": "page", "page": "courses"}))
+
+    def test_typed_addresses_convert_to_choices(self):
+        import importlib
+        from django.apps import apps
+        convert = importlib.import_module("pages.migrations.0043_convert_typed_links")
+        self.assertEqual(convert.to_link(apps, "/for-companies"), {"link_type": "page", "page": "for_companies"})
+        self.assertEqual(convert.to_link(apps, "/search?type=course&level=beginner"),
+                         {"link_type": "search", "search": {"type": "course", "level": "beginner"}})
+        self.assertEqual(convert.to_link(apps, "/topics/solar"), {"link_type": "topic", "topic": self.solar.pk})
+        self.assertEqual(convert.to_link(apps, "/somewhere-else"), {"link_type": "url", "url": "/somewhere-else"})
+        self.assertEqual(convert.to_link(apps, ""), {"link_type": "none"})
+        self.assertEqual(convert.to_text(apps, {"link_type": "search", "search": {"type": "course", "topic": self.solar.pk}}),
+                         "/search?type=course&topic=solar")
+
+    def test_course_and_company_choosers_list_only_live_items(self):
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        Company.objects.create(name="Dormant Co", slug="dormant", is_active=False)
+        self.client.force_login(admin)
+        page = self.client.get("/cms/choose/company/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Genex Technocrats")
+        self.assertNotContains(page, "Dormant Co")
+        found = self.client.get("/cms/choose/course/results/?q=scada")
+        self.assertContains(found, "SCADA Fundamentals")
+
+    def test_cms_editor_loads_link_picker_script(self):
+        from wagtail.models import Page
+        from .models import GeLearnIndexPage
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(admin)
+        page = Page.objects.get(depth=1).add_child(instance=GeLearnIndexPage(
+            title="GeLearn", slug="gelearn-links-test",
+            home_sections=[("promo_pair", {"promos": [{"heading": "H", "link_url": {"link_type": "page", "page": "courses"}}]})],
+        ))
+        res = self.client.get(f"/cms/pages/{page.pk}/edit/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "pages/js/link_block.js")

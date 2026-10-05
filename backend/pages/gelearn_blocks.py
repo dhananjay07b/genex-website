@@ -3,8 +3,9 @@ Sections of the GeLearn home page, as Wagtail blocks.
 
 Editors arrange two section lists on the GeLearn index page: one for visitors
 and one for signed-in learners. Each section holds only its own words and
-settings (headings, links, uploaded images, which courses to show); the
-courses, content and people inside it are filled in live by
+settings (headings, links, uploaded images, which courses to show). Links
+are picked, never typed (pages/links.py). The courses, content and people
+inside each section are filled in live by
 /api/discovery/home/, which returns the arranged sections as `layout`.
 """
 from wagtail import blocks
@@ -12,9 +13,9 @@ from wagtail.images.blocks import ImageChooserBlock
 from wagtail.snippets.blocks import SnippetChooserBlock
 
 from .blocks import ImageApiStructBlock
+from .links import LinkBlock
 
 
-URL_HELP = "A GeLearn path like /courses or /search?access=free, or a full https:// link."
 
 
 # ── Building blocks ──────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ class HeroSlide(ImageApiStructBlock):
     heading = blocks.CharBlock(max_length=120)
     body = blocks.TextBlock(required=False, max_length=300)
     cta_label = blocks.CharBlock(required=False, max_length=40)
-    cta_url = blocks.CharBlock(required=False, help_text=URL_HELP)
+    cta_url = LinkBlock(optional=True, label="Button link")
     tone = blocks.ChoiceBlock(
         choices=[("slate", "Blue-grey"), ("sky", "Pale blue"), ("mint", "Mint")], default="slate",
         help_text="Background colour of the slide.",
@@ -41,7 +42,7 @@ class PromoCard(blocks.StructBlock):
     heading = blocks.CharBlock(max_length=100)
     body = blocks.TextBlock(required=False, max_length=240)
     link_label = blocks.CharBlock(required=False, max_length=50)
-    link_url = blocks.CharBlock(required=False, help_text=URL_HELP)
+    link_url = LinkBlock(optional=True, label="Link")
     tone = blocks.ChoiceBlock(choices=[("mint", "Mint"), ("slate", "Blue-grey")], default="mint")
 
     class Meta:
@@ -52,7 +53,7 @@ class PromoCard(blocks.StructBlock):
 class GoalTile(blocks.StructBlock):
     title = blocks.CharBlock(max_length=60)
     subtitle = blocks.CharBlock(required=False, max_length=80)
-    link_url = blocks.CharBlock(help_text=URL_HELP)
+    link_url = LinkBlock(label="Link")
 
     class Meta:
         icon = "link"
@@ -60,7 +61,7 @@ class GoalTile(blocks.StructBlock):
 
 class LinkItem(blocks.StructBlock):
     label = blocks.CharBlock(max_length=40)
-    url = blocks.CharBlock(help_text=URL_HELP)
+    url = LinkBlock(label="Link")
 
     class Meta:
         icon = "link"
@@ -79,7 +80,7 @@ def _see_all_label_block():
 
 
 def _see_all_url_block():
-    return blocks.CharBlock(required=False, help_text=URL_HELP)
+    return LinkBlock(optional=True, label="Show-more link")
 
 
 # ── Sections ─────────────────────────────────────────────────────────────────
@@ -164,7 +165,7 @@ class RoleBandSection(blocks.StructBlock):
     heading = blocks.CharBlock(default="Skills for the role you're working toward")
     body = blocks.TextBlock(required=False)
     cta_label = blocks.CharBlock(required=False, max_length=40)
-    cta_url = blocks.CharBlock(required=False, help_text=URL_HELP)
+    cta_url = LinkBlock(optional=True, label="Button link")
 
     class Meta:
         icon = "user"
@@ -211,7 +212,7 @@ class LibraryTabsSection(blocks.StructBlock):
     heading = blocks.CharBlock(default="More than courses")
     body = blocks.TextBlock(required=False)
     cta_label = blocks.CharBlock(required=False, max_length=40)
-    cta_url = blocks.CharBlock(required=False, help_text=URL_HELP)
+    cta_url = LinkBlock(optional=True, label="Button link")
 
     class Meta:
         icon = "folder-open-inverse"
@@ -263,7 +264,7 @@ class StatsBannerSection(blocks.StructBlock):
     heading = blocks.CharBlock()
     body = blocks.TextBlock(required=False)
     link_label = blocks.CharBlock(required=False, max_length=40)
-    link_url = blocks.CharBlock(required=False, help_text=URL_HELP)
+    link_url = LinkBlock(optional=True, label="Link")
 
     class Meta:
         icon = "pick"
