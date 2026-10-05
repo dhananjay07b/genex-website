@@ -20,6 +20,7 @@ from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
 from .durations import parse_duration_seconds
+from .gelearn_blocks import HOME_SECTIONS, MEMBER_SECTIONS
 from .blocks import (
     AppDownloadBlock,
     AchievementBlock,
@@ -288,10 +289,23 @@ class GeLearnIndexPage(BasePage):
         ("card_section", CardGridSectionBlock()),
         ("cta", CTABandBlock()),
     ], blank=True, use_json_field=True)
+    # The GeLearn home page, section by section (see pages/gelearn_blocks.py).
+    home_sections = StreamField(
+        HOME_SECTIONS, blank=True, use_json_field=True,
+        help_text="What visitors who aren't signed in see, top to bottom.",
+    )
+    member_sections = StreamField(
+        MEMBER_SECTIONS, blank=True, use_json_field=True,
+        help_text="What signed-in learners see, top to bottom.",
+    )
 
     content_panels = Page.content_panels + [
-        FieldPanel("intro_headline"),
-        FieldPanel("body"),
+        FieldPanel("home_sections", heading="Home page for visitors"),
+        FieldPanel("member_sections", heading="Home page for signed-in learners"),
+        MultiFieldPanel(
+            [FieldPanel("intro_headline"), FieldPanel("body")],
+            heading="Old home page (being replaced)", classname="collapsed",
+        ),
     ]
 
     api_fields = BasePage.api_fields + [

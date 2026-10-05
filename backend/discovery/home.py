@@ -13,7 +13,7 @@ from engagement.models import SavedItem
 from learning.models import CareerRole, Enrollment, ItemProgress, LiveSession, Playlist
 from learning.queries import published_courses
 from organizations.models import Company
-from pages.models import Testimonial, Topic, TopicGroup, VideoItem
+from pages.models import GeLearnIndexPage, Testimonial, Topic, TopicGroup
 
 from .cards import MODEL_TYPES, TYPE_MODELS, card_for, cards, person_card, queryset
 from .models import SearchQuery, ViewEvent
@@ -21,6 +21,59 @@ from .models import SearchQuery, ViewEvent
 TRENDING_DAYS = 7
 MIN_TESTIMONIALS = 3
 QUICK_VIDEO_SECONDS = 20 * 60
+
+
+# ── Layout (the sections editors arrange on the GeLearn index page) ─────────
+
+def _course_rail(value):
+    courses = published_courses()
+    source = value["source"]
+    if source == "free":
+        courses = courses.filter(access=Playlist.ACCESS_FREE).order_by("-featured", "-enrolled_count", "-updated_at")
+    elif source == "featured":
+        courses = courses.filter(featured=True).order_by("-updated_at")
+    elif source == "newest":
+        courses = courses.order_by("-updated_at")
+    elif source == "topic":
+        courses = courses.filter(topics=value["topic"]).order_by("-enrolled_count") if value["topic"] else courses.none()
+    elif source == "role":
+        courses = courses.filter(roles=value["role"]).order_by("-enrolled_count") if value["role"] else courses.none()
+    else:  # popular
+        courses = courses.order_by("-enrolled_count", "-updated_at")
+    return cards("course", courses.distinct()[: value["limit"]])
+
+
+def _content_rail(value):
+    type_key = value["content_type"]
+    objects = queryset(type_key)
+    if value["topic"]:
+        objects = objects.filter(topics=value["topic"])
+    if value["max_minutes"] and type_key in ("video", "podcast"):
+        objects = objects.filter(duration_seconds__lte=value["max_minutes"] * 60)
+    return cards(type_key, objects.distinct().order_by("-date")[: value["limit"]])
+
+
+RAIL_RESOLVERS = {"course_rail": _course_rail, "content_rail": _content_rail}
+
+
+def layout(stream):
+    """
+    The arranged sections: [{type, id, value}], where `value` is the editor's
+    text and settings (images as {url, …}). Course and content rows also carry
+    `items`; every other section takes its data from the matching top-level key.
+    """
+    representation = stream.stream_block.get_api_representation(stream)
+    sections = []
+    for block, section in zip(stream, representation):
+        resolve = RAIL_RESOLVERS.get(block.block_type)
+        if resolve:
+            section["items"] = resolve(block.value)
+        sections.append(section)
+    return sections
+
+
+def home_page():
+    return GeLearnIndexPage.objects.live().first()
 
 
 # ── Public ───────────────────────────────────────────────────────────────────
@@ -43,11 +96,6 @@ def leading_professionals(limit=8):
 
 def popular_courses(limit=8):
     return cards("course", published_courses().order_by("-enrolled_count", "-updated_at")[:limit])
-
-
-def free_courses(limit=8):
-    return cards("course", published_courses().filter(access=Playlist.ACCESS_FREE)
-                 .order_by("-featured", "-enrolled_count", "-updated_at")[:limit])
 
 
 def courses_by_role(per_role=4):
@@ -200,13 +248,14 @@ def trending_searches(limit=6):
 
 
 def public_home():
+    page = home_page()
     return {
+        "layout": layout(page.home_sections) if page else [],
         "professionals": leading_professionals(),
         "popular_courses": popular_courses(),
         "new_geacademy": latest("geacademy", 6),
         "trending": trending(),
         "roles": courses_by_role(),
-        "free_courses": free_courses(),
         "library": library_tabs(),
         "live_sessions": upcoming_live_sessions(),
         "testimonials": testimonials(),
@@ -343,7 +392,9 @@ def personal_home(user):
         latest_enrollment = Enrollment.objects.filter(user=user).select_related("playlist").first()
         anchor = latest_enrollment.playlist if latest_enrollment else None
     goal = user.career_goal
+    page = home_page()
     return {
+        "layout": layout(page.member_sections) if page else [],
         "continue": current,
         "week": this_week(user),
         "enrolled_count": Enrollment.objects.filter(user=user).count(),

@@ -226,3 +226,66 @@ class PersonalHomeTests(DiscoveryTestBase):
         data = self.me()
         self.assertEqual(data["career_goal"]["name"], "SCADA Engineer")
         self.assertEqual([c["title"] for c in data["goal_courses"]], ["SCADA Fundamentals"])
+
+
+class HomeLayoutTests(DiscoveryTestBase):
+    """Sections arranged in the CMS (GeLearn index page) come back as `layout`."""
+
+    def setUp(self):
+        super().setUp()
+        from wagtail.models import Page
+        from pages.models import GeLearnIndexPage
+        self.course.access = "free"
+        self.course.save()
+        role = CareerRole.objects.get(slug="scada-engineer")
+        self.course.roles.add(role)
+        paid = Playlist.objects.create(owner=self.pro, title="Paid course", status=Playlist.STATUS_PUBLISHED,
+                                       access="paid", price=Decimal("499"))
+        paid.topics.add(self.solar)
+        root = Page.objects.get(depth=1)
+        self.page = root.add_child(instance=GeLearnIndexPage(
+            title="GeLearn", slug="gelearn-layout-test",
+            home_sections=[
+                ("hero", {"slides": [{"kicker": "K", "heading": "Learn the grid", "body": "", "cta_label": "Go",
+                                      "cta_url": "/courses", "tone": "sky", "image": None}]}),
+                ("course_rail", {"heading": "Free", "source": "free", "limit": 4, "style": "band"}),
+                ("course_rail", {"heading": "Solar", "source": "topic", "topic": self.solar, "limit": 4}),
+                ("course_rail", {"heading": "SCADA role", "source": "role", "topic": None, "role": role, "limit": 4}),
+                ("content_rail", {"heading": "Short videos", "content_type": "video", "max_minutes": 20, "limit": 4}),
+                ("content_rail", {"heading": "Solar reading", "content_type": "geacademy", "topic": self.solar, "limit": 4}),
+                ("faq", {"heading": "FAQ", "items": [{"question": "Q?", "answer": "A."}]}),
+            ],
+            member_sections=[("welcome", {"goal_prompt": "Pick a goal"}), ("topic_chips", {"heading": "Topics"})],
+        ))
+
+    def test_visitor_layout_keeps_order_and_fills_rails(self):
+        layout = self.api.get("/api/discovery/home/").json()["layout"]
+        self.assertEqual([s["type"] for s in layout],
+                         ["hero", "course_rail", "course_rail", "course_rail", "content_rail", "content_rail", "faq"])
+        self.assertEqual(layout[0]["value"]["slides"][0]["heading"], "Learn the grid")
+        titles = [[i["title"] for i in s["items"]] for s in layout[1:6]]
+        self.assertEqual(titles, [
+            ["SCADA Fundamentals"],          # free only
+            ["Paid course"],                 # topic: Solar PV
+            ["SCADA Fundamentals"],          # role: SCADA Engineer
+            ["Alarm management"],            # videos up to 20 min
+            ["Reading an SLD"],              # GeAcademy on Solar PV
+        ])
+        self.assertNotIn("items", layout[6])
+        self.assertEqual(layout[6]["value"]["items"][0]["question"], "Q?")
+
+    def test_member_layout(self):
+        self.api.force_authenticate(self.learner)
+        layout = self.api.get("/api/discovery/home/me/").json()["layout"]
+        self.assertEqual([s["type"] for s in layout], ["welcome", "topic_chips"])
+
+    def test_unpublished_page_gives_empty_layout(self):
+        self.page.unpublish()
+        self.assertEqual(self.api.get("/api/discovery/home/").json()["layout"], [])
+
+    def test_cms_editor_opens(self):
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(admin)
+        res = self.client.get(f"/cms/pages/{self.page.pk}/edit/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Home page for visitors")
