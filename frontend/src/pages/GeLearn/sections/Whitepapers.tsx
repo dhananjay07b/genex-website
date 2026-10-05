@@ -33,14 +33,13 @@ function WhitepaperCard({ doc, index }: { doc: WhitepaperItem; index: number }) 
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
       className="bg-white border border-[#e9e9e9] rounded-3xl p-8 flex flex-col shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] group hover:border-primary/30 hover:shadow-[0px_10px_30px_rgba(26,174,232,0.1)] transition-shadow duration-300"
     >
-      {/* Category + date */}
+      {/* Topic + date */}
       <div className="flex items-center gap-3 mb-5">
-        <span
-          className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-          style={{ background: doc.category_bg, color: doc.category_text }}
-        >
-          {doc.category}
-        </span>
+        {doc.topics[0] && (
+          <span className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-sky-50 text-sky-700">
+            {doc.topics[0].name}
+          </span>
+        )}
         <span className="text-xs font-medium text-[#62748e]">{doc.date}</span>
       </div>
 

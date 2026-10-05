@@ -16,6 +16,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { AccessField } from '@/components/gelearn/AccessField'
+import { TopicPicker } from '@/components/gelearn/TopicPicker'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
@@ -24,7 +25,8 @@ import type { UserVideoPost } from '@/types/auth'
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
-  topic: z.string().min(1, 'Please add a topic, e.g. Field Ops, Training'),
+  topics: z.array(z.number()).min(1, 'Select at least 1 topic').max(3, 'Select at most 3 topics'),
+  other_topic: z.string().optional(),
   duration: z.string().optional(),
   excerpt: z.string().min(20, 'Excerpt must be at least 20 characters').max(300, 'Keep the excerpt under 300 characters'),
   video_url: z.string().url('Enter a valid video URL'),
@@ -67,12 +69,12 @@ export default function SubmitVideo() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { access: 'free', price: '' } })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { topics: [], access: 'free', price: '' } })
 
   useEffect(() => {
     if (!id) return
     apiFetch<UserVideoPost>(`/api/snippets/video-submissions/${id}/`).then(sub => {
-      reset({ title: sub.title, topic: sub.topic, duration: sub.duration, excerpt: sub.excerpt, video_url: sub.video_url, access: sub.access, price: sub.price ?? '' })
+      reset({ title: sub.title, topics: sub.topics, other_topic: sub.other_topic, duration: sub.duration, excerpt: sub.excerpt, video_url: sub.video_url, access: sub.access, price: sub.price ?? '' })
       setWasPublished(sub.status === 'published')
       if (sub.thumbnail_url) setThumbnailPreview(getMediaUrl(sub.thumbnail_url))
       setLoaded(true)
@@ -197,7 +199,19 @@ export default function SubmitVideo() {
             {/* Right rail */}
             <div className="w-full lg:w-80 shrink-0 flex flex-col gap-5">
               <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
-                <Input label="Topic" placeholder="Field Ops, Training, Product Demo…" error={errors.topic?.message} {...register('topic')} />
+                <Controller
+                  name="topics"
+                  control={control}
+                  render={({ field }) => (
+                    <TopicPicker value={field.value} onChange={field.onChange} max={3} error={errors.topics?.message}
+                      help="Used for topic pages and recommendations on GeLearn." />
+                  )}
+                />
+                <Input
+                  label="Suggest a new topic (optional)"
+                  placeholder="Not listed above? Suggest one"
+                  {...register('other_topic')}
+                />
                 <div>
                   <label htmlFor="video-duration" className="text-sm font-semibold text-text-primary block mb-1.5">Duration</label>
                   <div className="relative">

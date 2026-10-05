@@ -26,19 +26,18 @@ class DiscoveryTestBase(TestCase):
         self.pro = make_user("pro", account_type="professional", company_other="Acme", display_name="Priya Rao")
         self.learner = make_user("learner")
 
-        self.article = TechArticle.objects.create(title="Reading an SLD", topic="Solar", difficulty="Beginner",
+        self.article = TechArticle.objects.create(title="Reading an SLD", difficulty="Beginner",
                                                   read_time="8 min", date=TODAY, excerpt="Single-line diagrams.")
         self.article.topics.add(self.solar)
-        self.study = CaseStudy.objects.create(title="SCADA retrofit results", category="SCADA", category_color="bg-primary",
-                                              excerpt="Downtime before and after.", date=TODAY - datetime.timedelta(days=3))
+        self.study = CaseStudy.objects.create(title="SCADA retrofit results", excerpt="Downtime before and after.", date=TODAY - datetime.timedelta(days=3))
         self.study.topics.add(self.scada)
 
-        self.video = VideoItem.objects.create(title="Alarm management", category="Training", date=TODAY,
+        self.video = VideoItem.objects.create(title="Alarm management", date=TODAY,
                                               duration="12 min", excerpt="SCADA alarms.")
-        self.long_video = VideoItem.objects.create(title="Commissioning walkthrough", category="Training", date=TODAY,
+        self.long_video = VideoItem.objects.create(title="Commissioning walkthrough", date=TODAY,
                                                    duration="45 min", excerpt="Inverters.", access="paid", price=Decimal("199"))
         UserVideoPost.objects.create(author=self.pro, title="Alarm management", excerpt="e", video_url="https://v.example/x",
-                                     topic="SCADA", duration="12 min", status="published", published_video=self.video)
+                                     duration="12 min", status="published", published_video=self.video)
 
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA Fundamentals", description="From basics.",
                                               status=Playlist.STATUS_PUBLISHED, level="beginner")
@@ -178,7 +177,7 @@ class PersonalHomeTests(DiscoveryTestBase):
         self.assertEqual(APIClient().get("/api/discovery/home/me/").status_code, 401)
 
     def test_continue_learning_and_week(self):
-        post_video = VideoItem.objects.create(title="Event logs", category="Training", date=TODAY, duration="9 min", excerpt="e")
+        post_video = VideoItem.objects.create(title="Event logs", date=TODAY, duration="9 min", excerpt="e")
         PlaylistItem.objects.create(playlist=self.course, video=post_video, position=1)
         Enrollment.objects.create(user=self.learner, playlist=self.course)
         ItemProgress.objects.create(user=self.learner, item=self.item1)

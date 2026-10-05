@@ -80,7 +80,7 @@ export default function VideoDetail() {
 
             <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8">
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary text-white">
-                {video.category}
+                {video.topics[0]?.name ?? 'Video'}
               </span>
               <span className="text-sm text-[#62748e]">{formatDisplayDate(video.date)}</span>
               {video.duration && (

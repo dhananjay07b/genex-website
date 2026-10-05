@@ -34,9 +34,9 @@ def company_page(company: Company):
 
     sections = [
         ("geacademy", "GeAcademy", TechArticle.objects.filter(company=company).order_by("-date"),
-         lambda o: _card(o, f"/geacademy/{o.pk}", o.topic)),
+         lambda o: _card(o, f"/geacademy/{o.pk}", o.read_time)),
         ("research", "Research", CaseStudy.objects.filter(company=company).order_by("-date"),
-         lambda o: _card(o, f"/research/{o.pk}", o.category)),
+         lambda o: _card(o, f"/research/{o.pk}", o.read_time)),
         ("policies_tenders", "Policies & Tenders", Tender.objects.filter(company=company).order_by("-id"),
          lambda o: _card(o, "/policies-tenders", f"{o.status} · {o.authority}")),
         ("whitepapers", "Whitepapers", Whitepaper.objects.filter(company=company).order_by("-date"),

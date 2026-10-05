@@ -69,7 +69,7 @@ class StudioPermissionTests(StudioTestBase):
     def test_company_cannot_forge_publisher_or_featured(self):
         self.api.force_authenticate(self.staff)
         res = self.api.post("/api/studio/research/", {
-            "title": "R", "category": "Solar", "category_color": "bg-primary", "excerpt": "e", "date": TODAY,
+            "title": "R", "excerpt": "e", "date": TODAY,
             "read_time": "4 min", "company": self.other.pk, "owner": self.rival.pk, "featured": True,
         }, format="json")
         self.assertEqual(res.status_code, 201, res.content)
@@ -84,7 +84,7 @@ class StudioContentTests(StudioTestBase):
 
     def test_geacademy_rich_text_is_sanitised_and_round_trips(self):
         res = self.api.post("/api/studio/geacademy/", {
-            "title": "IEC 61850", "topic": "Protocols", "difficulty": "Advanced", "read_time": "8 min",
+            "title": "IEC 61850", "difficulty": "Advanced", "read_time": "8 min",
             "date": TODAY, "excerpt": "e",
             "intro": '<p onclick="steal()">Intro <script>alert(1)</script><a href="javascript:x()">bad</a></p>',
             "sections": [{"heading": "GOOSE", "body": "<p><b>Fast</b> <img src=x onerror=alert(1)></p>"}],
@@ -105,26 +105,8 @@ class StudioContentTests(StudioTestBase):
         self.assertEqual(public["company"], {"name": "Genex", "slug": "genex", "logo_url": None, "verified": True})
         self.assertEqual(len(public["sections"]), 1)
 
-    def test_research_color_must_be_a_design_token(self):
-        res = self.api.post("/api/studio/research/", {
-            "title": "R", "category": "Solar", "category_color": "bg-[url(evil)]", "excerpt": "e",
-            "date": TODAY, "read_time": "4 min",
-        }, format="json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("category_color", res.json())
-
-    def test_whitepaper_palette_maps_to_colours(self):
-        res = self.api.post("/api/studio/whitepapers/", {
-            "title": "W", "category": "Grid", "palette": "emerald", "date": TODAY, "pages": "12 pages", "description": "d",
-        }, format="json")
-        self.assertEqual(res.status_code, 201, res.content)
-        paper = Whitepaper.objects.get()
-        self.assertEqual((paper.category_bg, paper.category_text), ("#ecfdf5", "#047857"))
-        self.assertEqual(res.json()["palette"], "emerald")
-
     def test_whitepaper_document_must_be_pdf(self):
-        paper = Whitepaper.objects.create(title="W", category="c", category_bg="#fff", category_text="#000",
-                                          date=datetime.date.today(), pages="1", description="d", company=self.genex)
+        paper = Whitepaper.objects.create(title="W", date=datetime.date.today(), pages="1", description="d", company=self.genex)
         bad = SimpleUploadedFile("notes.exe", b"MZ", content_type="application/octet-stream")
         res = self.api.post(f"/api/studio/whitepapers/{paper.pk}/document/", {"file": bad}, format="multipart")
         self.assertEqual(res.status_code, 400)
@@ -134,7 +116,7 @@ class StudioContentTests(StudioTestBase):
         self.assertTrue(res.json()["document_url"])
 
     def test_svg_upload_refused_for_non_admin(self):
-        item = TechArticle.objects.create(title="t", topic="t", read_time="1", date=datetime.date.today(), excerpt="e", company=self.genex)
+        item = TechArticle.objects.create(title="t", read_time="1", date=datetime.date.today(), excerpt="e", company=self.genex)
         svg = SimpleUploadedFile("x.svg", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', content_type="image/svg+xml")
         res = self.api.post(f"/api/studio/geacademy/{item.pk}/image/", {"file": svg}, format="multipart")
         self.assertEqual(res.status_code, 400)
@@ -142,7 +124,7 @@ class StudioContentTests(StudioTestBase):
 
     def test_podcast_collaborators_are_professionals_by_username(self):
         payload = {
-            "title": "Ep 1", "category": "Grid", "date": TODAY, "duration": "40 min", "description": "d",
+            "title": "Ep 1", "date": TODAY, "duration": "40 min", "description": "d",
             "guest": "Priya Rao", "guest_role": "Engineer", "access": "paid", "price": "199",
         }
         res = self.api.post("/api/studio/podcasts/", {**payload, "collaborators": ["learner"]}, format="json")
@@ -162,7 +144,7 @@ class StudioContentTests(StudioTestBase):
             self.assertEqual(client.get(f"/api/snippets/podcasts/{episode.pk}/").json()["is_locked"], locked, user)
 
     def test_paid_podcast_needs_price_and_free_clears_it(self):
-        base = {"title": "E", "category": "c", "date": TODAY, "duration": "1", "description": "d", "guest": "g", "guest_role": "r"}
+        base = {"title": "E", "date": TODAY, "duration": "1", "description": "d", "guest": "g", "guest_role": "r"}
         self.assertIn("price", self.api.post("/api/studio/podcasts/", {**base, "access": "paid"}, format="json").json())
         res = self.api.post("/api/studio/podcasts/", {**base, "access": "free", "price": "50"}, format="json")
         self.assertEqual(res.status_code, 201, res.content)
@@ -197,7 +179,7 @@ class StudioTopicsTests(StudioTestBase):
         solar, scada = Topic.objects.get(name="Solar PV"), Topic.objects.get(name="SCADA & Monitoring")
         self.api.force_authenticate(self.staff)
         res = self.api.post("/api/studio/research/", {
-            "title": "Soiling losses", "category": "Solar", "category_color": "bg-primary",
+            "title": "Soiling losses", 
             "topics": [solar.pk, scada.pk], "excerpt": "e", "date": TODAY, "read_time": "6 min",
         }, format="json")
         self.assertEqual(res.status_code, 201, res.content)
@@ -211,7 +193,7 @@ class StudioTopicsTests(StudioTestBase):
         ids = list(Topic.objects.values_list("pk", flat=True)[:6])
         self.api.force_authenticate(self.staff)
         res = self.api.post("/api/studio/whitepapers/", {
-            "title": "W", "category": "Solar", "palette": "indigo", "topics": ids,
+            "title": "W", "topics": ids,
             "date": TODAY, "pages": "10 pages", "description": "d",
         }, format="json")
         self.assertEqual(res.status_code, 400)

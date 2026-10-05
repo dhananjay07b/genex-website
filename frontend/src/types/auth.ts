@@ -127,7 +127,8 @@ export interface UserVideoPost {
   title: string
   excerpt: string
   video_url: string
-  topic: string
+  topics: number[]
+  other_topic: string
   duration: string
   thumbnail_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'

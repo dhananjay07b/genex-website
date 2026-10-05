@@ -18,7 +18,7 @@ const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 interface Episode extends GatedFields {
   id: number
   title: string
-  category: string
+  topics: { name: string }[]
   date: string
   duration: string
   description: string
@@ -59,7 +59,7 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       {/* Category + date/duration */}
       <div className="flex items-center gap-3 mb-5">
         <span className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-primary text-white">
-          {ep.category}
+          {ep.topics[0]?.name ?? 'Podcast'}
         </span>
         <span className="text-xs font-medium text-[#62748e]">
           {formatDisplayDate(ep.date)}&nbsp;&nbsp;|&nbsp;&nbsp;{ep.duration}

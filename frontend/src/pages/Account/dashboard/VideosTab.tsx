@@ -100,7 +100,7 @@ export function VideosTab() {
                   </span>
                 </div>
                 <p className="text-xs text-text-muted mt-1.5">
-                  {video.topic || 'General'} · Updated {formatRelativeTime(video.submitted_at ?? video.created_at)}
+                  Updated {formatRelativeTime(video.submitted_at ?? video.created_at)}
                 </p>
                 {video.status === 'rejected' && video.rejection_reason && (
                   <div className="mt-2.5 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-800">

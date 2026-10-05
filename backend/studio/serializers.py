@@ -1,7 +1,7 @@
 """
 Write serializers for the Company Studio. Company staff author a constrained,
 sanitised subset of each content type — rich text goes through Wagtail's own
-whitelister (pages.richtext), colours come from fixed palettes, and editorial
+whitelister (pages.richtext), and editorial
 flags (featured, publisher) are never client-writable.
 """
 from rest_framework import serializers
@@ -11,18 +11,6 @@ from accounts.roles import display_company
 from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Topic, Whitepaper
 from pages.richtext import rich_text_for_editing, sanitize_rich_text
 
-# Existing design tokens — the only values the public pages are built to render.
-RESEARCH_COLORS = [
-    "bg-primary", "bg-secondary", "bg-sky-400", "bg-emerald-500", "bg-indigo-400",
-    "bg-violet-400", "bg-amber-400", "bg-orange-400", "bg-rose-400",
-]
-WHITEPAPER_PALETTES = {
-    "indigo": ("#eef2ff", "#432dd7"),
-    "violet": ("#f5f3ff", "#6d28d9"),
-    "emerald": ("#ecfdf5", "#047857"),
-    "amber": ("#fffbeb", "#b45309"),
-    "rose": ("#fdf2f8", "#9d174d"),
-}
 MAX_SECTIONS = 30
 MAX_LIST_ITEMS = 12
 MAX_TOPICS = 5
@@ -102,12 +90,10 @@ class RichContentMixin(serializers.Serializer):
 
 
 class ResearchSerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
-    category_color = serializers.ChoiceField(choices=RESEARCH_COLORS)
-
     class Meta:
         model = CaseStudy
         fields = [
-            "id", "title", "category", "category_color", "topics", "excerpt", "date", "read_time",
+            "id", "title", "topics", "excerpt", "date", "read_time",
             "intro", "sections", "image_url", "owner",
         ]
 
@@ -126,7 +112,7 @@ class GeAcademySerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
     class Meta:
         model = TechArticle
         fields = [
-            "id", "title", "topic", "topics", "difficulty", "read_time", "date", "excerpt", "tags",
+            "id", "title", "topics", "difficulty", "read_time", "date", "excerpt", "tags",
             "intro", "sections", "callout_label", "callout_content", "takeaways", "image_url", "owner",
         ]
 
@@ -166,35 +152,14 @@ class PolicyTenderSerializer(StudioBaseSerializer):
 
 
 class WhitepaperSerializer(TopicsMixin, StudioBaseSerializer):
-    palette = serializers.ChoiceField(choices=list(WHITEPAPER_PALETTES), write_only=True)
     document_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "category", "topics", "palette", "date", "pages", "description", "document_url", "owner"]
+        fields = ["id", "title", "topics", "date", "pages", "description", "document_url", "owner"]
 
     def get_document_url(self, obj):
         return obj.document.url if obj.document_id else None
-
-    def _apply_palette(self, validated_data):
-        palette = validated_data.pop("palette", None)
-        if palette:
-            validated_data["category_bg"], validated_data["category_text"] = WHITEPAPER_PALETTES[palette]
-        return validated_data
-
-    def create(self, validated_data):
-        return super().create(self._apply_palette(validated_data))
-
-    def update(self, instance, validated_data):
-        return super().update(instance, self._apply_palette(validated_data))
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data["palette"] = next(
-            (name for name, pair in WHITEPAPER_PALETTES.items() if pair == (instance.category_bg, instance.category_text)),
-            None,
-        )
-        return data
 
 
 class CollaboratorField(serializers.SlugRelatedField):
@@ -225,7 +190,7 @@ class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
     class Meta:
         model = PodcastEpisode
         fields = [
-            "id", "title", "category", "topics", "date", "duration", "description", "guest", "guest_role",
+            "id", "title", "topics", "date", "duration", "description", "guest", "guest_role",
             "audio_url", "access", "price", "collaborators", "image_url", "owner",
         ]
 

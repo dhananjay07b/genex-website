@@ -62,7 +62,7 @@ class CompanyPageTests(TestCase):
         from pages.models import TechArticle
 
         genex = Company.objects.create(name="Genex", slug="genex", description="Energy software.")
-        TechArticle.objects.create(title="IEC 61850", topic="Protocols", read_time="5", date=datetime.date(2026, 9, 1), excerpt="e", company=genex)
+        TechArticle.objects.create(title="IEC 61850", read_time="5", date=datetime.date(2026, 9, 1), excerpt="e", company=genex)
         expert = User.objects.create_user("exp", "exp@genex.io", "Passw0rd!x", account_type="professional",
                                           company=genex, company_verified=True, role_title="Eng", display_name="Asha")
         User.objects.create_user("pending", "p@genex.io", "Passw0rd!x", account_type="professional", company=genex, role_title="Eng")

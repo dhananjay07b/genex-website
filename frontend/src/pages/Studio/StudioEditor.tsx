@@ -11,10 +11,9 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import type { ContentAccess } from '@/types/api'
 import type { StudioItem, StudioPerson, StudioSection, StudioValue } from '@/types/studio'
-import { getStudioType, WHITEPAPER_PALETTES, type StudioField, type StudioTypeConfig } from './studioTypes'
+import { getStudioType, type StudioField, type StudioTypeConfig } from './studioTypes'
 import { SectionsField } from './fields/SectionsField'
 import { ChipListField } from './fields/ChipListField'
-import { SwatchField } from './fields/SwatchField'
 import { AccessField } from '@/components/gelearn/AccessField'
 import { CollaboratorsField } from './fields/CollaboratorsField'
 import { FileField } from './fields/FileField'
@@ -229,17 +228,6 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
         return (
           <ChipListField key={field.name} label={field.label} value={asStrings(value)} placeholder={field.placeholder}
             maxItems={field.maxItems} help={field.help} error={error} onChange={v => set(field.name, v)} />
-        )
-      case 'color':
-        return (
-          <SwatchField key={field.name} label={field.label} value={asString(value)} error={error} onChange={v => set(field.name, v)}
-            options={(field.options ?? []).map(o => ({ ...o, swatchClassName: o.value }))} />
-        )
-      case 'palette':
-        return (
-          <SwatchField key={field.name} label={field.label} value={asString(value)} error={error} onChange={v => set(field.name, v)}
-            preview={asString(values.category) || 'Category'}
-            options={WHITEPAPER_PALETTES.map(p => ({ value: p.value, label: p.label, swatchClassName: p.className }))} />
         )
       case 'access':
         return (

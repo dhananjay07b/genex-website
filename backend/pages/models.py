@@ -301,12 +301,6 @@ class ContentPage(BasePage):
 # GELEARN
 # ===========================================================================
 class GeLearnIndexPage(BasePage):
-    intro_headline = models.CharField(max_length=255, blank=True)
-    body = StreamField([
-        ("hero", HeroSectionBlock()),
-        ("card_section", CardGridSectionBlock()),
-        ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
     # The GeLearn home page, section by section (see pages/gelearn_blocks.py).
     home_sections = StreamField(
         HOME_SECTIONS, blank=True, use_json_field=True,
@@ -330,15 +324,6 @@ class GeLearnIndexPage(BasePage):
         FieldPanel("member_sections", heading="Home page for signed-in learners"),
         FieldPanel("for_professionals", heading="For Professionals page"),
         FieldPanel("for_companies", heading="For Companies page"),
-        MultiFieldPanel(
-            [FieldPanel("intro_headline"), FieldPanel("body")],
-            heading="Old home page (being replaced)", classname="collapsed",
-        ),
-    ]
-
-    api_fields = BasePage.api_fields + [
-        APIField("intro_headline"),
-        APIField("body"),
     ]
 
     parent_page_types = ["wagtailcore.Page"]
@@ -533,8 +518,6 @@ class CompanyPublished(models.Model):
 @register_snippet
 class CaseStudy(CompanyPublished):
     title          = models.CharField(max_length=255)
-    category       = models.CharField(max_length=50)
-    category_color = models.CharField(max_length=50, help_text="Tailwind bg class e.g. 'bg-primary'")
     excerpt        = models.TextField()
     date           = models.DateField()
     read_time      = models.CharField(max_length=30, default="4 Mins Read")
@@ -562,8 +545,6 @@ class CaseStudy(CompanyPublished):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("category"),
-            FieldPanel("category_color"),
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("read_time"),
@@ -594,7 +575,6 @@ class TechArticle(CompanyPublished):
     ]
 
     title           = models.CharField(max_length=255)
-    topic           = models.CharField(max_length=100)
     difficulty      = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default="Intermediate")
     read_time       = models.CharField(max_length=30)
     date            = models.DateField()
@@ -623,7 +603,6 @@ class TechArticle(CompanyPublished):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("topic"),
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("difficulty"),
             FieldPanel("read_time"),
@@ -697,9 +676,6 @@ class Tender(CompanyPublished):
 @register_snippet
 class Whitepaper(CompanyPublished):
     title         = models.CharField(max_length=255)
-    category      = models.CharField(max_length=100)
-    category_bg   = models.CharField(max_length=20, help_text="Hex bg e.g. '#eef2ff'")
-    category_text = models.CharField(max_length=20, help_text="Hex text e.g. '#432dd7'")
     date          = models.DateField()
     pages         = models.CharField(max_length=30, help_text="e.g. '38 pages'")
     topics        = models.ManyToManyField(
@@ -719,9 +695,6 @@ class Whitepaper(CompanyPublished):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("category"),
-            FieldPanel("category_bg"),
-            FieldPanel("category_text"),
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("pages"),
@@ -799,7 +772,6 @@ class SubmissionOwnedMixin:
 @register_snippet
 class VideoItem(SubmissionOwnedMixin, AccessControlled):
     title               = models.CharField(max_length=255)
-    category            = models.CharField(max_length=100)
     date                = models.DateField()
     duration            = models.CharField(max_length=20, help_text="e.g. '14:32 min'")
     duration_seconds    = models.PositiveIntegerField(null=True, blank=True, editable=False)
@@ -818,7 +790,6 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("category"),
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("duration"),
@@ -894,7 +865,6 @@ class Topic(models.Model):
 @register_snippet
 class BlogPost(SubmissionOwnedMixin, AccessControlled):
     title   = models.CharField(max_length=255)
-    topic   = models.CharField(max_length=100, help_text="e.g. 'Policy', 'Engineering' — legacy, superseded by Topics below")
     topics  = models.ManyToManyField(Topic, blank=True, related_name="posts")
     date    = models.DateField()
     excerpt = models.TextField()
@@ -914,7 +884,6 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("topic"),
             # Wagtail's default widget for a ManyToManyField is a plain HTML
             # <select multiple> — picking more than one requires ctrl/cmd-
             # click, which reads as "only one topic sticks" to anyone who
@@ -940,7 +909,6 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
 @register_snippet
 class PodcastEpisode(CompanyPublished, AccessControlled):
     title         = models.CharField(max_length=255)
-    category      = models.CharField(max_length=100)
     date          = models.DateField()
     duration      = models.CharField(max_length=20, help_text="e.g. '48 min'")
     duration_seconds = models.PositiveIntegerField(null=True, blank=True, editable=False)
@@ -966,7 +934,6 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
     panels = [
         FieldPanel("title"),
         MultiFieldPanel([
-            FieldPanel("category"),
             FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
             FieldPanel("date"),
             FieldPanel("duration"),
@@ -1127,7 +1094,6 @@ class UserBlogPost(AccessControlled):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     body = models.TextField()
-    topic = models.CharField(max_length=100, blank=True, help_text="Legacy — superseded by Topics below")
     topics = models.ManyToManyField(Topic, blank=True, related_name="submissions")
     other_topic = models.CharField(max_length=100, blank=True, help_text="Author-suggested new topic, reviewed alongside the rest of the submission")
     image = models.ForeignKey(
@@ -1184,7 +1150,8 @@ class UserVideoPost(AccessControlled):
     title = models.CharField(max_length=255)
     excerpt = models.TextField()
     video_url = models.URLField(help_text="YouTube/Vimeo/CDN link — matches VideoItem.video_url")
-    topic = models.CharField(max_length=100, blank=True)
+    topics = models.ManyToManyField(Topic, blank=True, related_name="video_submissions")
+    other_topic = models.CharField(max_length=100, blank=True, help_text="Author-suggested new topic, reviewed alongside the rest of the submission")
     duration = models.CharField(max_length=20, blank=True, help_text="e.g. '14:32 min' — matches VideoItem.duration")
     thumbnail = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True,
@@ -1206,7 +1173,8 @@ class UserVideoPost(AccessControlled):
 
     panels = [
         FieldPanel("title"),
-        FieldPanel("topic"),
+        FieldPanel("topics", widget=forms.CheckboxSelectMultiple),
+        FieldPanel("other_topic"),
         FieldPanel("excerpt"),
         FieldPanel("video_url"),
         FieldPanel("duration"),

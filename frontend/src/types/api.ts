@@ -316,8 +316,7 @@ export interface CaseStudySectionValue {
 export interface CaseStudyItem {
   id: number
   title: string
-  category: string
-  category_color: string
+  topics: Topic[]
   excerpt: string
   date: string
   read_time: string
@@ -332,7 +331,7 @@ export interface CaseStudyItem {
 export interface TechArticleItem {
   id: number
   title: string
-  topic: string
+  topics: Topic[]
   difficulty: string
   read_time: string
   date: string
@@ -366,9 +365,7 @@ export interface TenderItem {
 export interface WhitepaperItem {
   id: number
   title: string
-  category: string
-  category_bg: string
-  category_text: string
+  topics: Topic[]
   date: string
   pages: string
   description: string
@@ -427,7 +424,6 @@ export interface GatedFields {
 export interface BlogPostItem extends GatedFields {
   id: number
   title: string
-  topic: string
   topics: Topic[]
   date: string
   excerpt: string
@@ -440,7 +436,7 @@ export interface BlogPostItem extends GatedFields {
 export interface VideoItem extends GatedFields {
   id: number
   title: string
-  category: string
+  topics: Topic[]
   date: string
   duration: string
   excerpt: string
@@ -453,7 +449,7 @@ export interface VideoItem extends GatedFields {
 export interface PodcastItem extends GatedFields {
   id: number
   title: string
-  category: string
+  topics: Topic[]
   date: string
   duration: string
   description: string

@@ -8,7 +8,7 @@ from accounts.models import User
 from organizations.models import Company
 
 from .admin import UserBlogPostAdmin, UserVideoPostAdmin
-from .models import UserBlogPost, UserVideoPost
+from .models import Topic, UserBlogPost, UserVideoPost
 
 BODY = "<p>" + "Grid operations at scale. " * 12 + "</p>"
 
@@ -78,10 +78,21 @@ class ApprovalCarriesAccessTests(TestCase):
     def test_video_approval_publishes_access(self):
         submission = UserVideoPost.objects.create(
             author=self.pro, title="Members video", excerpt="e", video_url="https://v.example/1",
-            topic="Grid", duration="5 min", status="pending", access="members",
+            duration="5 min", status="pending", access="members",
         )
         UserVideoPostAdmin(UserVideoPost, AdminSite()).approve_and_publish(self.request, UserVideoPost.objects.filter(pk=submission.pk))
         self.assertEqual(UserVideoPost.objects.get(pk=submission.pk).published_video.access, "members")
+
+    def test_video_approval_publishes_topics(self):
+        grid = Topic.objects.create(name="Grid Codes", slug="grid-codes")
+        submission = UserVideoPost.objects.create(
+            author=self.pro, title="Tagged video", excerpt="e", video_url="https://v.example/2",
+            duration="5 min", status="pending", other_topic="Relay Testing",
+        )
+        submission.topics.set([grid])
+        UserVideoPostAdmin(UserVideoPost, AdminSite()).approve_and_publish(self.request, UserVideoPost.objects.filter(pk=submission.pk))
+        video = UserVideoPost.objects.get(pk=submission.pk).published_video
+        self.assertEqual(sorted(video.topics.values_list("name", flat=True)), ["Grid Codes", "Relay Testing"])
 
 
 
@@ -100,13 +111,13 @@ class GeLearnPhase1ContentTests(TestCase):
     def test_video_and_podcast_store_duration_seconds(self):
         import datetime
         from .models import PodcastEpisode, VideoItem
-        video = VideoItem.objects.create(title="V", category="Training", date=datetime.date(2026, 10, 1),
+        video = VideoItem.objects.create(title="V", date=datetime.date(2026, 10, 1),
                                          duration="9:40 min", excerpt="e")
         self.assertEqual(video.duration_seconds, 580)
         video.duration = "12 min"
         video.save()
         self.assertEqual(video.duration_seconds, 720)
-        episode = PodcastEpisode.objects.create(title="P", category="Solar", date=datetime.date(2026, 10, 1),
+        episode = PodcastEpisode.objects.create(title="P", date=datetime.date(2026, 10, 1),
                                                 duration="48 min", description="d", guest="g", guest_role="r")
         self.assertEqual(episode.duration_seconds, 2880)
 
@@ -145,8 +156,8 @@ class TopicHousekeepingTests(TestCase):
         self.b = Topic.objects.create(name="Topic B")
         self.target = Topic.objects.create(name="Target")
         day = datetime.date(2026, 10, 1)
-        self.study = CaseStudy.objects.create(title="S", category="c", category_color="bg-primary", excerpt="e", date=day)
-        self.video = VideoItem.objects.create(title="V", category="c", date=day, duration="5 min", excerpt="e")
+        self.study = CaseStudy.objects.create(title="S", excerpt="e", date=day)
+        self.video = VideoItem.objects.create(title="V", date=day, duration="5 min", excerpt="e")
         self.pro = make_user("pro", account_type="professional", company_other="Acme")
         self.study.topics.add(self.a, self.b)          # tagged with both sources
         self.video.topics.add(self.a, self.target)     # already has the target

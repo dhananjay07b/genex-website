@@ -23,7 +23,7 @@ const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 
 function BlogCard({ post, index }: { post: BlogPostItem; index: number }) {
   const img = post.image_url ? getMediaUrl(post.image_url) : FALLBACK_IMAGE
-  const topicLabel = post.topics[0]?.name ?? post.topic
+  const topicLabel = post.topics[0]?.name ?? 'Blog'
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

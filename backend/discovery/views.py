@@ -59,12 +59,12 @@ class TrackView(APIView):
 # Free-text fields searched per type, in addition to the title.
 SEARCH_FIELDS = {
     "course": ["description"],
-    "geacademy": ["excerpt", "topic"],
-    "research": ["excerpt", "category"],
-    "whitepaper": ["description", "category"],
+    "geacademy": ["excerpt"],
+    "research": ["excerpt"],
+    "whitepaper": ["description"],
     "tender": ["description", "authority", "sector"],
-    "video": ["excerpt", "category"],
-    "podcast": ["description", "guest", "category"],
+    "video": ["excerpt"],
+    "podcast": ["description", "guest"],
     "blog": ["excerpt"],
 }
 GATED_TYPES = {"course", "video", "podcast", "blog"}  # carry access/price

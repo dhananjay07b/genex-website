@@ -20,14 +20,14 @@ def make_user(username, **kwargs):
 
 
 def publish_video(author, title="Video", **kwargs):
-    video = VideoItem.objects.create(title=title, category="Grid", date=TODAY, duration="5 min", excerpt="e", video_url="https://v.example/x", **kwargs)
-    UserVideoPost.objects.create(author=author, title=title, excerpt="e", video_url="https://v.example/x", topic="Grid",
+    video = VideoItem.objects.create(title=title, date=TODAY, duration="5 min", excerpt="e", video_url="https://v.example/x", **kwargs)
+    UserVideoPost.objects.create(author=author, title=title, excerpt="e", video_url="https://v.example/x",
                                  duration="5 min", status="published", published_video=video)
     return video
 
 
 def publish_post(author, title="Post", **kwargs):
-    post = BlogPost.objects.create(title=title, topic="Grid", date=TODAY, excerpt="e", **kwargs)
+    post = BlogPost.objects.create(title=title, date=TODAY, excerpt="e", **kwargs)
     UserBlogPost.objects.create(author=author, title=title, excerpt="e", body="<p>b</p>", status="published", published_post=post)
     return post
 
@@ -230,13 +230,11 @@ class CompanyCourseTests(TestCase):
         self.other = Company.objects.create(name="Other", slug="other")
         self.staff = make_user("staff", account_type="company", company=self.genex)
         self.colleague = make_user("staff2", account_type="company", company=self.genex)
-        self.article = TechArticle.objects.create(title="Reading an SLD", topic="Solar", read_time="8 min", date=TODAY,
+        self.article = TechArticle.objects.create(title="Reading an SLD", read_time="8 min", date=TODAY,
                                                   excerpt="e", company=self.genex)
-        self.study = CaseStudy.objects.create(title="SCADA retrofit", category="SCADA", category_color="bg-primary",
-                                              excerpt="e", date=TODAY, company=self.genex)
-        self.paper = Whitepaper.objects.create(title="RMS architecture", category="Solar", category_bg="#fff",
-                                               category_text="#000", date=TODAY, pages="12 pages", description="d", company=self.genex)
-        self.foreign = TechArticle.objects.create(title="Not ours", topic="x", read_time="1", date=TODAY, excerpt="e", company=self.other)
+        self.study = CaseStudy.objects.create(title="SCADA retrofit", excerpt="e", date=TODAY, company=self.genex)
+        self.paper = Whitepaper.objects.create(title="RMS architecture", date=TODAY, pages="12 pages", description="d", company=self.genex)
+        self.foreign = TechArticle.objects.create(title="Not ours", read_time="1", date=TODAY, excerpt="e", company=self.other)
         self.api.force_authenticate(self.staff)
 
     def test_company_builds_a_course_from_its_content(self):

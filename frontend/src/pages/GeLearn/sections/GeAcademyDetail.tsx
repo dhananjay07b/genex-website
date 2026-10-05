@@ -57,7 +57,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
 
       {/* Thumbnail placeholder */}
       <div className="mx-5 mt-4 rounded-2xl overflow-hidden bg-[#f3f4f6] aspect-video shrink-0 flex items-center justify-center">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
       </div>
 
       {/* Body */}
@@ -70,7 +70,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
             {article.difficulty}
           </span>
           <span className="text-[11px] font-semibold text-[#62748e] bg-[#f7f7f7] px-2.5 py-0.5 rounded-full">
-            {article.topic}
+            {article.topics[0]?.name ?? 'GeAcademy'}
           </span>
         </div>
 
@@ -150,7 +150,7 @@ export default function GeAcademyDetail() {
           >
             <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-primary border border-primary/30 bg-primary/5 rounded-full px-3.5 py-1.5">
               <LabelOutlinedIcon style={{ fontSize: 13 }} />
-              {article.topic}
+              {article.topics[0]?.name ?? 'GeAcademy'}
             </span>
             <span
               className="text-xs font-bold px-3.5 py-1.5 rounded-full"
@@ -206,7 +206,7 @@ export default function GeAcademyDetail() {
             {article.image_url ? (
               <img src={getMediaUrl(article.image_url)} alt={article.title} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+              <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
             )}
           </motion.div>
         </div>
@@ -303,7 +303,7 @@ export default function GeAcademyDetail() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs font-semibold text-[#949494] uppercase tracking-widest mb-1">Topic</p>
-                    <p className="text-sm font-bold text-[#0f172b]">{article.topic}</p>
+                    <p className="text-sm font-bold text-[#0f172b]">{article.topics[0]?.name ?? 'GeAcademy'}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-[#949494] uppercase tracking-widest mb-1">Level</p>

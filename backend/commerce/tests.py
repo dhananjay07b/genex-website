@@ -21,7 +21,7 @@ def make_user(username, **kwargs):
 
 def make_video(access="free", price=None, **kwargs):
     return VideoItem.objects.create(
-        title="Grid talk", category="Grid", date=TODAY, duration="10 min", excerpt="x",
+        title="Grid talk", date=TODAY, duration="10 min", excerpt="x",
         video_url="https://video.example/v", access=access, price=price, **kwargs,
     )
 
@@ -51,7 +51,7 @@ class AccessRuleTests(TestCase):
 
     def test_paid_matrix(self):
         from django.contrib.auth.models import AnonymousUser
-        post = BlogPost.objects.create(title="Deep dive", topic="Grid", date=TODAY, excerpt="teaser", access="paid", price=Decimal("499"))
+        post = BlogPost.objects.create(title="Deep dive", date=TODAY, excerpt="teaser", access="paid", price=Decimal("499"))
         self._own(post)
         self.assertFalse(has_access(AnonymousUser(), post))
         self.assertFalse(has_access(self.learner, post))
@@ -69,7 +69,7 @@ class AccessRuleTests(TestCase):
         self.assertFalse(has_access(self.learner, post))
 
     def test_paid_requires_price_and_non_paid_clears_it(self):
-        video = VideoItem(title="t", category="c", date=TODAY, duration="1", excerpt="e", access="paid")
+        video = VideoItem(title="t", date=TODAY, duration="1", excerpt="e", access="paid")
         with self.assertRaises(ValidationError):
             video.full_clean()
         video.access, video.price = "members", Decimal("99")
@@ -101,7 +101,7 @@ class GatedApiTests(TestCase):
 
     def test_paid_blog_keeps_teaser_but_hides_body(self):
         post = BlogPost.objects.create(
-            title="Deep dive", topic="Grid", date=TODAY, excerpt="teaser", access="paid", price=Decimal("499"),
+            title="Deep dive", date=TODAY, excerpt="teaser", access="paid", price=Decimal("499"),
             body=[("rich_text", "<p>secret</p>")],
         )
         self.api.force_authenticate(self.learner)
@@ -112,7 +112,7 @@ class GatedApiTests(TestCase):
 
     def test_paid_podcast_hides_audio(self):
         ep = PodcastEpisode.objects.create(
-            title="Ep", category="c", date=TODAY, duration="1", description="d", guest="g", guest_role="r",
+            title="Ep", date=TODAY, duration="1", description="d", guest="g", guest_role="r",
             audio_url="https://audio.example/a", access="paid", price=Decimal("49"),
         )
         self.api.force_authenticate(self.learner)

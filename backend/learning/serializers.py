@@ -28,7 +28,8 @@ def item_meta(target, kind):
         return target.read_time
     if kind == "whitepaper":
         return target.pages
-    return target.topic or ""
+    topic = next(iter(target.topics.all()), None)  # a post: its first topic
+    return topic.name if topic else ""
 
 
 def target_card(target, kind):

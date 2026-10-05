@@ -398,7 +398,7 @@ export default function PublicProfile() {
                         </span>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-text-primary truncate">{post.title}</p>
-                          <p className="text-xs text-text-muted mt-0.5">{post.topic} · Published {formatRelativeTime(post.date)}</p>
+                          <p className="text-xs text-text-muted mt-0.5">{[post.topics[0]?.name, `Published ${formatRelativeTime(post.date)}`].filter(Boolean).join(' · ')}</p>
                         </div>
                       </Link>
                     ))}
@@ -427,7 +427,7 @@ export default function PublicProfile() {
                         <div className="min-w-0 py-2">
                           <p className="text-sm font-bold text-text-primary truncate">{video.title}</p>
                           <p className="text-xs text-text-muted mt-0.5">
-                            {video.category}{video.duration ? ` · ${video.duration}` : ''} · Published {formatRelativeTime(video.date)}
+                            {[video.topics[0]?.name, video.duration, `Published ${formatRelativeTime(video.date)}`].filter(Boolean).join(' · ')}
                           </p>
                         </div>
                       </Link>

@@ -26,7 +26,7 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
       whileHover={{ y: -6, transition: { duration: 0.22, ease: 'easeOut' } }}
       className="bg-white border border-[#e8e8e8] rounded-2xl shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_-1px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col group"
     >
-      <div className={`h-1.5 w-32 rounded-b-xl ml-6 shrink-0 ${cs.category_color}`} />
+      <div className="h-1.5 w-32 rounded-b-xl ml-6 shrink-0 bg-primary" />
 
       <div className="mx-6 mt-4 mb-0 rounded-3xl overflow-hidden bg-[#f3f4f6] aspect-4/3 shrink-0">
         <motion.img
@@ -45,7 +45,7 @@ function CaseStudyCard({ cs, index }: { cs: CaseStudyItem; index: number }) {
 
         <div className="border-t border-[#e8e8e8] pt-6 flex items-end justify-between">
           <div className="flex flex-col gap-1">
-            <p className="text-base font-bold text-black">{cs.category}</p>
+            <p className="text-base font-bold text-black">{cs.topics[0]?.name ?? 'Research'}</p>
             <p className="text-sm text-[#949494]">{cs.date}</p>
           </div>
 

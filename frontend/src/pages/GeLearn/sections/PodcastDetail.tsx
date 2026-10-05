@@ -76,7 +76,7 @@ export default function PodcastDetail() {
             </motion.h1>
 
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary text-white">{episode.category}</span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary text-white">{episode.topics[0]?.name ?? 'Podcast'}</span>
             </div>
 
             <div className="flex items-center gap-6 border-b border-[#f1f5f9] pb-4 mb-8 flex-wrap">

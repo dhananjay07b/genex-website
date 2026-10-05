@@ -91,14 +91,24 @@ class PublisherSerializerMixin(serializers.Serializer):
         return display_publisher(obj.company) if obj.company_id else None
 
 
+class TopicSerializer(serializers.ModelSerializer):
+    group = serializers.CharField(source="group.name", default=None, read_only=True)
+    group_order = serializers.IntegerField(source="group.sort_order", default=None, read_only=True)
+
+    class Meta:
+        model = Topic
+        fields = ["id", "name", "slug", "group", "group_order", "sort_order"]
+
+
 class CaseStudySerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
     intro = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
 
     class Meta:
         model = CaseStudy
-        fields = ["id", "title", "category", "category_color", "excerpt", "date", "read_time", "featured", "image_url", "intro", "sections", "company"]
+        fields = ["id", "title", "topics", "excerpt", "date", "read_time", "featured", "image_url", "intro", "sections", "company"]
 
     def get_intro(self, obj):
         return self._expand_richtext(obj, "intro")
@@ -108,6 +118,7 @@ class CaseStudySerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, Str
 
 
 class TechArticleSerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, StreamFieldSerializerMixin, RichTextFieldSerializerMixin, serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     intro = serializers.SerializerMethodField()
@@ -117,7 +128,7 @@ class TechArticleSerializer(PublisherSerializerMixin, ImageUrlSerializerMixin, S
     class Meta:
         model = TechArticle
         fields = [
-            "id", "title", "topic", "difficulty", "read_time", "date", "excerpt", "featured",
+            "id", "title", "topics", "difficulty", "read_time", "date", "excerpt", "featured",
             "image_url", "tags", "intro", "sections", "callout_label", "callout_content", "takeaways", "company",
         ]
 
@@ -141,11 +152,12 @@ class TenderSerializer(PublisherSerializerMixin, serializers.ModelSerializer):
 
 
 class WhitepaperSerializer(PublisherSerializerMixin, serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
     document_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "category", "category_bg", "category_text", "date", "pages", "description", "document_url", "company"]
+        fields = ["id", "title", "topics", "date", "pages", "description", "document_url", "company"]
 
     def get_document_url(self, obj):
         return obj.document.url if obj.document else None
@@ -180,15 +192,6 @@ class AuthorSerializerMixin:
         return author_payload(submission.author)
 
 
-class TopicSerializer(serializers.ModelSerializer):
-    group = serializers.CharField(source="group.name", default=None, read_only=True)
-    group_order = serializers.IntegerField(source="group.sort_order", default=None, read_only=True)
-
-    class Meta:
-        model = Topic
-        fields = ["id", "name", "slug", "group", "group_order", "sort_order"]
-
-
 class GatedContentSerializerMixin(serializers.Serializer):
     """
     Never trust the frontend alone: the lock state and the gated payload
@@ -216,13 +219,14 @@ class GatedContentSerializerMixin(serializers.Serializer):
 
 
 class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
     video_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
 
     class Meta:
         model = VideoItem
-        fields = ["id", "title", "category", "date", "duration", "excerpt", "featured", "image_url", "video_url", "author",
+        fields = ["id", "title", "topics", "date", "duration", "excerpt", "featured", "image_url", "video_url", "author",
                   *GatedContentSerializerMixin.ACCESS_FIELDS]
 
     def get_video_url(self, obj):
@@ -237,7 +241,7 @@ class BlogPostSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, S
 
     class Meta:
         model = BlogPost
-        fields = ["id", "title", "topic", "topics", "date", "excerpt", "featured", "image_url", "body", "author",
+        fields = ["id", "title", "topics", "date", "excerpt", "featured", "image_url", "body", "author",
                   *GatedContentSerializerMixin.ACCESS_FIELDS]
 
     def get_body(self, obj):
@@ -246,6 +250,7 @@ class BlogPostSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, S
 
 
 class PodcastEpisodeSerializer(PublisherSerializerMixin, GatedContentSerializerMixin, ImageUrlSerializerMixin, serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
     audio_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     collaborators = serializers.SerializerMethodField()
@@ -253,7 +258,7 @@ class PodcastEpisodeSerializer(PublisherSerializerMixin, GatedContentSerializerM
     class Meta:
         model = PodcastEpisode
         fields = [
-            "id", "title", "category", "date", "duration", "description", "guest", "guest_role", "featured",
+            "id", "title", "topics", "date", "duration", "description", "guest", "guest_role", "featured",
             "image_url", "audio_url", "collaborators", "company", *GatedContentSerializerMixin.ACCESS_FIELDS,
         ]
 
@@ -329,13 +334,13 @@ class UserBlogPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer)
 # ---------------------------------------------------------------------------
 
 class CaseStudyViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = CaseStudy.objects.all().order_by("-date").select_related("company__logo")
+    queryset = CaseStudy.objects.all().order_by("-date").select_related("company__logo").prefetch_related("topics__group")
     serializer_class = CaseStudySerializer
     pagination_class = GenexPagination
 
 
 class TechArticleViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = TechArticle.objects.all().order_by("-date").select_related("company__logo")
+    queryset = TechArticle.objects.all().order_by("-date").select_related("company__logo").prefetch_related("topics__group")
     serializer_class = TechArticleSerializer
     pagination_class = GenexPagination
 
@@ -347,13 +352,13 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class WhitepaperViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Whitepaper.objects.all().order_by("-date").select_related("company__logo")
+    queryset = Whitepaper.objects.all().order_by("-date").select_related("company__logo").prefetch_related("topics__group")
     serializer_class = WhitepaperSerializer
     pagination_class = GenexPagination
 
 
 class VideoItemViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = VideoItem.objects.all().order_by("-date")
+    queryset = VideoItem.objects.all().order_by("-date").prefetch_related("topics__group")
     serializer_class = VideoItemSerializer
     pagination_class = GenexPagination
 
@@ -377,7 +382,7 @@ class TopicViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PodcastEpisodeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = PodcastEpisode.objects.all().order_by("-date").select_related("company__logo").prefetch_related("collaborators__company__logo", "collaborators__expertise")
+    queryset = PodcastEpisode.objects.all().order_by("-date").select_related("company__logo").prefetch_related("collaborators__company__logo", "collaborators__expertise", "topics__group")
     serializer_class = PodcastEpisodeSerializer
     pagination_class = GenexPagination
 
@@ -421,15 +426,21 @@ class UserBlogPostViewSet(
 
 class UserVideoPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer):
     thumbnail_url = serializers.SerializerMethodField()
+    topics = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
 
     class Meta:
         model = UserVideoPost
-        fields = ["id", "title", "excerpt", "video_url", "topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at",
+        fields = ["id", "title", "excerpt", "video_url", "topics", "other_topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at",
                   *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_thumbnail_url(self, obj):
         return obj.thumbnail.file.url if obj.thumbnail else None
+
+    def validate_topics(self, value):
+        if len(value) > 3:
+            raise serializers.ValidationError("Select at most 3 topics.")
+        return value
 
     def create(self, validated_data):
         validated_data["author"] = self.context["request"].user

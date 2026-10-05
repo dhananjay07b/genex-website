@@ -19,7 +19,7 @@ const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #f3f4f6)'
 interface Video extends GatedFields {
   id: number
   title: string
-  category: string
+  topics: { name: string }[]
   date: string
   duration: string
   excerpt: string
@@ -99,7 +99,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
         {/* Category + meta */}
         <div className="flex items-center gap-4 mb-4">
           <span className="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap bg-primary text-white">
-            {video.category}
+            {video.topics[0]?.name ?? 'Video'}
           </span>
           <span className="text-base font-medium text-[#62748e] whitespace-nowrap">
             {formatDisplayDate(video.date)}&nbsp;&nbsp;|&nbsp;&nbsp;{video.duration}

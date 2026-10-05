@@ -18,6 +18,17 @@ def _notify_status(submission, kind, text, target=None):
     )
 
 
+def _submission_topics(submission):
+    """The submission's chosen topics, plus its suggested new topic (created on approval)."""
+    topics = list(submission.topics.all())
+    if submission.other_topic:
+        other, _ = Topic.objects.get_or_create(
+            name=submission.other_topic, defaults={"slug": slugify(submission.other_topic)},
+        )
+        topics.append(other)
+    return topics
+
+
 @admin.register(UserBlogPost)
 class UserBlogPostAdmin(admin.ModelAdmin):
     list_display = ("title", "author", "status", "created_at", "reviewed_at")
@@ -38,7 +49,6 @@ class UserBlogPostAdmin(admin.ModelAdmin):
         for submission in queryset.filter(status="pending"):
             fields = dict(
                 title=submission.title,
-                topic=submission.topic or "Community",
                 excerpt=submission.excerpt,
                 # Cleaned again here even though the API cleans on save — the
                 # live post must never carry unsanitised author HTML.
@@ -59,13 +69,7 @@ class UserBlogPostAdmin(admin.ModelAdmin):
             else:
                 post = BlogPost.objects.create(date=timezone.now().date(), **fields)
 
-            topics = list(submission.topics.all())
-            if submission.other_topic:
-                other, _ = Topic.objects.get_or_create(
-                    name=submission.other_topic, defaults={"slug": slugify(submission.other_topic)},
-                )
-                topics.append(other)
-            post.topics.set(topics)
+            post.topics.set(_submission_topics(submission))
 
             submission.status = "published"
             submission.published_post = post
@@ -93,13 +97,13 @@ class UserVideoPostAdmin(admin.ModelAdmin):
     search_fields = ("title", "author__username", "author__display_name")
     actions = ["approve_and_publish", "reject"]
     readonly_fields = ("status", "published_video", "reviewed_at", "reviewed_by")
+    filter_horizontal = ("topics",)
 
     @admin.action(description="Approve and publish selected submissions")
     def approve_and_publish(self, request, queryset):
         for submission in queryset.filter(status="pending"):
             fields = dict(
                 title=submission.title,
-                category=submission.topic or "Community",
                 duration=submission.duration,
                 excerpt=submission.excerpt,
                 video_url=submission.video_url,
@@ -118,6 +122,7 @@ class UserVideoPostAdmin(admin.ModelAdmin):
                 video.save(update_fields=list(fields.keys()))
             else:
                 video = VideoItem.objects.create(date=timezone.now().date(), **fields)
+            video.topics.set(_submission_topics(submission))
 
             submission.status = "published"
             submission.published_video = video

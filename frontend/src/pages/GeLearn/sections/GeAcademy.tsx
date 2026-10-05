@@ -61,7 +61,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
             {article.difficulty}
           </span>
           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#f7f7f7] text-[#3f3f3f]">
-            {article.topic}
+            {article.topics[0]?.name ?? 'GeAcademy'}
           </span>
         </div>
 
@@ -79,7 +79,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="max-w-[85%] truncate px-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topic}</span>
+            <span className="max-w-[85%] truncate px-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
           )}
         </div>
 
@@ -106,7 +106,7 @@ function ArticleCard({ article, index }: { article: TechArticleItem; index: numb
         <div className="border-t border-[#e8e8e8] pt-5 flex items-center justify-between gap-4">
           {/* Topic */}
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#0f172b] leading-5">
-            {article.topic}
+            {article.topics[0]?.name ?? 'GeAcademy'}
           </p>
 
           {/* Read time */}
