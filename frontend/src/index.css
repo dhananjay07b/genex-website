@@ -316,3 +316,11 @@ body {
 @utility max-h-below-header {
   max-height: calc(100vh - 6rem);
 }
+
+/* <summary> without the browser's own disclosure triangle (GeLearn FAQ uses its own icon). */
+@utility details-marker-hidden {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}

@@ -22,7 +22,7 @@ interface TabbedBandProps {
 /**
  * A coloured band: intro text and a button on the left, tabs with a card grid
  * on the right ("Skills for the role…", "More than courses"). Arrow keys move
- * between tabs.
+ * between tabs. With a single tab the tab row is hidden: a plain band.
  */
 export function TabbedBand({ heading, body, ctaLabel, ctaUrl, tabs, tone = 'slate' }: TabbedBandProps) {
   const [active, setActive] = useState(0)
@@ -53,6 +53,7 @@ export function TabbedBand({ heading, body, ctaLabel, ctaUrl, tabs, tone = 'slat
         {ctaLabel && ctaUrl && <BandLink href={ctaUrl}>{ctaLabel}</BandLink>}
       </div>
       <div className="min-w-0 lg:col-span-3">
+        {tabs.length > 1 && (
         <div role="tablist" aria-label={heading} onKeyDown={onKeyDown} className="mb-4 flex flex-wrap gap-2">
           {tabs.map((tab, i) => (
             <button
@@ -76,8 +77,9 @@ export function TabbedBand({ heading, body, ctaLabel, ctaUrl, tabs, tone = 'slat
             </button>
           ))}
         </div>
+        )}
         {current && (
-          <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${active}`}>
+          <div id={`${baseId}-panel`} role={tabs.length > 1 ? 'tabpanel' : undefined} aria-labelledby={tabs.length > 1 ? `${baseId}-tab-${active}` : undefined}>
             {current.content}
           </div>
         )}
