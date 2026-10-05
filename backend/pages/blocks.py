@@ -5,6 +5,8 @@ from wagtail.snippets.blocks import SnippetChooserBlock
 from wagtail.blocks import PageChooserBlock
 from wagtail.rich_text import expand_db_html
 
+from .links import LinkBlock
+
 # ---------------------------------------------------------------------------
 # Icon choices — MUI icon names used in the Genex frontend
 # ---------------------------------------------------------------------------
@@ -120,9 +122,9 @@ class CTABandBlock(blocks.StructBlock):
     heading            = blocks.CharBlock()
     description        = blocks.TextBlock(required=False)
     primary_cta_text   = blocks.CharBlock(required=False)
-    primary_cta_link   = blocks.CharBlock(required=False)
+    primary_cta_link   = LinkBlock(site="marketing", optional=True, label="Primary button link")
     secondary_cta_text = blocks.CharBlock(required=False)
-    secondary_cta_link = blocks.CharBlock(required=False)
+    secondary_cta_link = LinkBlock(site="marketing", optional=True, label="Secondary button link")
 
     class Meta:
         icon = "pick"
@@ -151,7 +153,7 @@ class HeroSlideBlock(ImageApiStructBlock):
     background_image = ImageChooserBlock(required=False)
     background_video = DocumentChooserBlock(required=False, help_text="Upload a video file (mp4) for this slide")
     cta_text         = blocks.CharBlock(required=False)
-    cta_link         = blocks.CharBlock(required=False)
+    cta_link         = LinkBlock(site="marketing", optional=True, label="Button link")
 
     class Meta:
         icon = "image"
@@ -174,7 +176,7 @@ class WhatWeBuildTabBlock(ImageApiStructBlock):
     headline = blocks.CharBlock()
     body     = blocks.TextBlock()
     points   = blocks.ListBlock(blocks.CharBlock(), help_text="3 bullet points")
-    href     = blocks.CharBlock(help_text="/portfolio/<slug>")
+    href     = LinkBlock(site="marketing", label="Link", help_text="Usually the Portfolio page for this product.")
     image    = ImageChooserBlock(required=False)
 
     class Meta:
@@ -206,7 +208,7 @@ class ProjectShowcaseItemBlock(ImageApiStructBlock):
     location = blocks.CharBlock(required=False)
     metric   = blocks.CharBlock(required=False)
     image    = ImageChooserBlock(required=False)
-    href     = blocks.CharBlock(required=False)
+    href     = LinkBlock(site="marketing", optional=True, label="Link")
 
     class Meta:
         icon = "site"
@@ -216,7 +218,7 @@ class InnovationsTeaserItemBlock(blocks.StructBlock):
     """Simpler shape used on the homepage teaser (not the full InnovationPage)."""
     name    = blocks.CharBlock()
     tagline = blocks.CharBlock()
-    href    = blocks.CharBlock()
+    href    = LinkBlock(site="marketing", label="Link")
     badge   = blocks.CharBlock(required=False)
     index   = blocks.IntegerBlock(help_text="1-based display number")
 
@@ -429,7 +431,7 @@ class HeroSectionBlock(ImageApiStructBlock):
     heading          = blocks.CharBlock()
     description      = blocks.TextBlock(required=False)
     cta_text         = blocks.CharBlock(required=False)
-    cta_link         = blocks.CharBlock(required=False)
+    cta_link         = LinkBlock(site="marketing", optional=True, label="Button link")
     background_image = ImageChooserBlock(required=False)
 
     class Meta:
@@ -635,7 +637,7 @@ class SimpleCardBlock(blocks.StructBlock):
     title       = blocks.CharBlock()
     description = blocks.TextBlock()
     note        = blocks.CharBlock(required=False)
-    link        = blocks.CharBlock(required=False)
+    link        = LinkBlock(site="marketing", optional=True, label="Link")
 
     class Meta:
         icon = "snippet"

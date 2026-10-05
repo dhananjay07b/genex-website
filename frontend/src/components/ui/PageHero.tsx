@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 
@@ -45,9 +45,9 @@ export function PageHero({ label, headline, subline, ctaText, ctaLink, backgroun
           )}
           {ctaText && ctaLink && (
             <div className="mt-8">
-              <Link to={ctaLink}>
+              <SmartLink to={ctaLink}>
                 <Button variant="primary" size="lg">{ctaText}</Button>
-              </Link>
+              </SmartLink>
             </div>
           )}
         </motion.div>

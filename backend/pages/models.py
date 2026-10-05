@@ -21,6 +21,7 @@ from wagtail import blocks
 
 from .durations import parse_duration_seconds
 from .gelearn_blocks import HOME_SECTIONS, MEMBER_SECTIONS
+from .links import PAGE_SECTIONS, genex_page_path
 from .blocks import (
     AppDownloadBlock,
     AchievementBlock,
@@ -105,7 +106,15 @@ class SiteSettings(BaseSiteSetting):
     whatsapp   = models.URLField(blank=True)
     email      = models.EmailField(blank=True)
     cta_label  = models.CharField(max_length=50, default="Request Demo")
-    cta_href   = models.CharField(max_length=100, default="/contact#demo")
+    # The header button's destination: picked, never typed (see pages/links.py).
+    cta_page   = models.ForeignKey(
+        "wagtailcore.Page", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        verbose_name="CTA page", help_text="The page the header button opens.",
+    )
+    cta_section = models.CharField(
+        max_length=20, blank=True, choices=PAGE_SECTIONS, verbose_name="Jump to (optional)",
+        help_text="Open the page at this section instead of the top.",
+    )
 
     panels = [
         MultiFieldPanel([
@@ -115,9 +124,18 @@ class SiteSettings(BaseSiteSetting):
         ], heading="Contact"),
         MultiFieldPanel([
             FieldPanel("cta_label"),
-            FieldPanel("cta_href"),
+            FieldPanel("cta_page"),
+            FieldPanel("cta_section"),
         ], heading="Global CTA"),
     ]
+
+    @property
+    def cta_href(self):
+        """The header button's address (marketing site), built from the chosen page and section."""
+        if not self.cta_page or not self.cta_page.live:
+            return "/contact#demo"
+        path = genex_page_path(self.cta_page)
+        return f"{path}#{self.cta_section}" if self.cta_section else path
 
     class Meta:
         verbose_name = "Site Settings"

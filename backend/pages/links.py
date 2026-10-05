@@ -6,12 +6,18 @@ LinkBlock: they pick *what* to link to, and the address is built here. The API
 still sends a plain address string, so the frontend never changes when a link
 does.
 
+The same block serves both websites: LinkBlock(site="gelearn") (default) and
+LinkBlock(site="marketing"). Links to the same site are relative; links to the
+other site are full addresses (GELEARN_FRONTEND_URL / MARKETING_FRONTEND_URL).
+
 To extend:
   - A new GeLearn page:        add one row to GELEARN_PAGES.
+  - A new page section to jump to (#anchor): add one row to PAGE_SECTIONS.
   - A new search filter:       add one SearchFilter to SEARCH_FILTERS (and teach
                                the frontend /search page the same parameter).
   - A new kind of thing to link to (e.g. a live session): add a chooser block
-    to LinkBlock, a LINK_TYPES entry, and a branch in LinkBlock.url_for().
+    to LinkBlock, LINK_TYPES/MARKETING_LINK_TYPES entries, a branch in
+    LinkBlock.url_for(), and the field in static/pages/js/link_block.js.
 """
 from dataclasses import dataclass
 from typing import Callable
@@ -55,6 +61,16 @@ GELEARN_PAGES = [
     ("studio", "Company Studio", "/studio"),
 ]
 GELEARN_PAGE_PATHS = {key: path for key, _, path in GELEARN_PAGES}
+
+
+# ── Sections of a Genex website page an editor can jump to ──────────────────
+# key (the #anchor the page uses, never change it), label. Add a row when a
+# page gains a new section worth linking to.
+PAGE_SECTIONS = [
+    ("demo", "Request a demo form"),
+    ("form", "Contact form"),
+    ("apply", "Job application form"),
+]
 
 
 # ── Search filters ───────────────────────────────────────────────────────────
@@ -198,7 +214,30 @@ LINK_TYPES = [
     ("search", "Search results with filters"),
     ("genex_page", "A page on the Genex website"),
     ("url", "A web address (outside link)"),
+    ("legacy", "Old typed address (choose a page instead)"),
 ]
+
+# The same options as seen from the marketing site: its own pages first, GeLearn's labelled as such.
+MARKETING_LINK_TYPES = [
+    ("genex_page", "A page on this website"),
+    ("page", "GeLearn: a page"),
+    ("topic", "GeLearn: a topic"),
+    ("role", "GeLearn: a career role"),
+    ("company", "GeLearn: a company"),
+    ("course", "GeLearn: a course"),
+    ("search", "GeLearn: search results with filters"),
+    ("url", "A web address (outside link)"),
+    ("legacy", "Old typed address (choose a page instead)"),
+]
+
+SITES = ("gelearn", "marketing")
+
+
+def genex_page_path(page):
+    """The marketing site's route for a Wagtail page: the homepage is "/", others their path."""
+    if page.specific_class.__name__ == "HomePage":
+        return "/"
+    return page.url_path.rstrip("/") or "/"
 
 
 class LinkBlock(blocks.StructBlock):
@@ -217,18 +256,32 @@ class LinkBlock(blocks.StructBlock):
         required=False, label="Genex website page",
         page_type=["pages.HomePage", "pages.SectionPage", "pages.ContentPage", "pages.CareersPage", "pages.ContactPage"],
     )
-    url = blocks.CharBlock(required=False, label="Web address", help_text="A full address starting with https://")
+    section = blocks.ChoiceBlock(
+        choices=PAGE_SECTIONS, required=False, label="Jump to (optional)",
+        help_text="Open the page at this section instead of the top.",
+    )
+    url = blocks.CharBlock(
+        required=False, label="Web address",
+        help_text="A full address starting with https://. For an old typed address, pick the page it means instead.",
+    )
 
     class Meta:
         icon = "link"
         form_classname = "gelearn-link"
         # Optional links get a "No link" choice (the default), so a section can go without one.
         optional = False
+        # Which website the link sits on: addresses on the same site are relative, the other site's are full.
+        site = "gelearn"
 
     def __init__(self, local_blocks=None, **kwargs):
         super().__init__(local_blocks, **kwargs)
+        if self.meta.site not in SITES:
+            raise ValueError(f"LinkBlock site must be one of {SITES}")
+        types = MARKETING_LINK_TYPES if self.meta.site == "marketing" else LINK_TYPES
         if self.meta.optional:
-            link_type = blocks.ChoiceBlock(choices=[("none", "No link")] + LINK_TYPES, default="none", label="Link to")
+            types = [("none", "No link")] + types
+        if self.meta.optional or self.meta.site == "marketing":
+            link_type = blocks.ChoiceBlock(choices=types, default=types[0][0], label="Link to")
             link_type.set_name("link_type")
             self.child_blocks["link_type"] = link_type
 
@@ -247,12 +300,28 @@ class LinkBlock(blocks.StructBlock):
             raise StructBlockValidationError({"url": ValidationError("Enter a full address starting with https://")})
         return value
 
-    @staticmethod
-    def url_for(value):
-        """The address for a chosen link, or "" when it points at nothing (e.g. a deleted topic)."""
+    def url_for(self, value):
+        """The address for a chosen link, or "" when it points at nothing (e.g. an unpublished course)."""
         if not value:
             return ""
         kind = value.get("link_type")
+        if kind in ("url", "legacy"):
+            return value.get("url") or ""
+        if kind == "genex_page":
+            page = value.get("genex_page")
+            if not page or not page.live:
+                return ""
+            path = genex_page_path(page)
+            if value.get("section"):
+                path = f"{path}#{value['section']}"
+            return path if self.meta.site == "marketing" else settings.MARKETING_FRONTEND_URL.rstrip("/") + path
+        path = self._gelearn_path(kind, value)
+        if not path:
+            return ""
+        return path if self.meta.site == "gelearn" else settings.GELEARN_FRONTEND_URL.rstrip("/") + path
+
+    @staticmethod
+    def _gelearn_path(kind, value):
         if kind == "page":
             return GELEARN_PAGE_PATHS.get(value.get("page"), "")
         if kind == "topic":
@@ -266,11 +335,6 @@ class LinkBlock(blocks.StructBlock):
             return f"/courses/{course.slug}" if course and course.status == "published" else ""
         if kind == "search":
             return SearchFiltersBlock.address(value.get("search"))
-        if kind == "genex_page":
-            page = value.get("genex_page")
-            return settings.MARKETING_FRONTEND_URL.rstrip("/") + page.url_path if page and page.live else ""
-        if kind == "url":
-            return value.get("url") or ""
         return ""
 
     def get_api_representation(self, value, context=None):

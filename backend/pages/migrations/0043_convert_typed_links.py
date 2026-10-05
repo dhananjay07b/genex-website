@@ -7,7 +7,7 @@ so editors see dropdowns and choosers instead of addresses.
   /search?type=course&level=beginner   → Search results, Courses, Beginner
   /topics/solar                        → Topic "Solar PV"
   https://…                            → Web address
-  anything else                        → Web address (kept as typed)
+  anything else                        → "Old typed address" (kept as typed)
 
 Reversible: the reverse turns picker choices back into the same addresses.
 """
@@ -48,12 +48,12 @@ def to_link(apps, text):
             if name == "topic":
                 topic = apps.get_model("pages", "Topic").objects.filter(slug=value).first()
                 if topic is None:
-                    return {"link_type": "url", "url": text}
+                    return {"link_type": "legacy", "url": text}
                 filters["topic"] = topic.pk
             elif name in SEARCH_PARAMS:
                 filters[name] = value
             else:
-                return {"link_type": "url", "url": text}
+                return {"link_type": "legacy", "url": text}
         return {"link_type": "search", "search": filters}
     for prefix, (field, app, model) in CHOOSER_PREFIXES.items():
         if parts.path.startswith(prefix) and not parts.query:
@@ -61,14 +61,14 @@ def to_link(apps, text):
             obj = apps.get_model(app, model).objects.filter(slug=slug).first()
             if obj is not None:
                 return {"link_type": field, field: obj.pk}
-    return {"link_type": "url", "url": text}
+    return {"link_type": "legacy", "url": text}
 
 
 def to_text(apps, link):
     kind = link.get("link_type")
     if kind == "page":
         return PAGES.get(link.get("page"), "")
-    if kind == "url":
+    if kind in ("url", "legacy"):
         return link.get("url") or ""
     if kind == "search":
         params = []

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import type { InnovationTeaserApiValue } from '@/types/api'
 
@@ -58,7 +59,7 @@ function ProductCard({ product }: { product: Product }) {
   const num = String(product.index).padStart(2, '0')
   return (
     <motion.div variants={cardVariants} className="group relative">
-      <Link
+      <SmartLink
         to={product.href}
         className="flex flex-col h-full min-h-55 p-6 rounded-xl border border-border bg-white hover:border-primary hover:bg-surface transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`${product.name} — ${product.tagline}`}
@@ -94,7 +95,7 @@ function ProductCard({ product }: { product: Product }) {
         >
           Explore →
         </span>
-      </Link>
+      </SmartLink>
     </motion.div>
   )
 }

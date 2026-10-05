@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/Button'
 import type { CTABandValue } from '@/types/api'
@@ -45,12 +45,12 @@ export function FinalCTA({ cta }: FinalCTAProps) {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mt-10"
         >
-          <Link
+          <SmartLink
             to={cta?.primary_cta_link ?? '/contact#demo'}
             className={buttonVariants({ variant: 'dark', size: 'lg' })}
           >
             {cta?.primary_cta_text ?? 'Request Demo'}
-          </Link>
+          </SmartLink>
         </motion.div>
       </motion.div>
     </section>

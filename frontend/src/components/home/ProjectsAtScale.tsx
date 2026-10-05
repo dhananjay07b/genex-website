@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import type { ProjectShowcaseApiValue } from '@/types/api'
 import { getMediaUrl } from '@/lib/utils'
@@ -60,7 +61,7 @@ function ProjectCard({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
-      <Link
+      <SmartLink
         to={project.href}
         className="block w-full h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
         aria-label={`View project: ${project.name}`}
@@ -93,7 +94,7 @@ function ProjectCard({
             {project.location} · <span className="text-primary font-semibold">{project.metric}</span>
           </p>
         </div>
-      </Link>
+      </SmartLink>
     </motion.div>
   )
 }

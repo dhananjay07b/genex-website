@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
@@ -238,9 +239,9 @@ export default function Careers() {
               >
                 <Button variant="primary" size="lg">{cta?.primary_cta_text ?? 'Send Your Profile'}</Button>
               </a>
-              <Link to={cta?.secondary_cta_link ?? '/contact'}>
+              <SmartLink to={cta?.secondary_cta_link ?? '/contact'}>
                 <Button variant="secondary" size="lg">{cta?.secondary_cta_text ?? 'Contact Us'}</Button>
-              </Link>
+              </SmartLink>
             </div>
           </motion.div>
         </div>

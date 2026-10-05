@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn, getMediaUrl } from '@/lib/utils'
 import type { WhatWeBuildTabApiValue } from '@/types/api'
@@ -306,14 +306,14 @@ export function WhatWeBuild({ tabs: apiTabs }: { tabs?: WhatWeBuildTabApiValue[]
                 ))}
               </ul>
 
-              <Link
+              <SmartLink
                 to={activeTab.href}
                 className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:underline"
                 aria-label={`Explore ${activeTab.headline} portfolio`}
               >
                 Explore Portfolio
                 <span aria-hidden="true">→</span>
-              </Link>
+              </SmartLink>
             </motion.div>
           </AnimatePresence>
         </div>

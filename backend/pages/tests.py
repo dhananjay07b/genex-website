@@ -247,7 +247,7 @@ class LinkPickerTests(TestCase):
         self.assertEqual(convert.to_link(apps, "/search?type=course&level=beginner"),
                          {"link_type": "search", "search": {"type": "course", "level": "beginner"}})
         self.assertEqual(convert.to_link(apps, "/topics/solar"), {"link_type": "topic", "topic": self.solar.pk})
-        self.assertEqual(convert.to_link(apps, "/somewhere-else"), {"link_type": "url", "url": "/somewhere-else"})
+        self.assertEqual(convert.to_link(apps, "/somewhere-else"), {"link_type": "legacy", "url": "/somewhere-else"})
         self.assertEqual(convert.to_link(apps, ""), {"link_type": "none"})
         self.assertEqual(convert.to_text(apps, {"link_type": "search", "search": {"type": "course", "topic": self.solar.pk}}),
                          "/search?type=course&topic=solar")
@@ -275,3 +275,70 @@ class LinkPickerTests(TestCase):
         res = self.client.get(f"/cms/pages/{page.pk}/edit/")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "pages/js/link_block.js")
+
+
+class MarketingLinkPickerTests(TestCase):
+    """The same picker on the marketing site: its own pages relative, GeLearn's absolute, page sections."""
+
+    def setUp(self):
+        from django.conf import settings
+        from wagtail.models import Page
+        from .links import LinkBlock
+        from .models import ContactPage, HomePage
+        self.marketing = LinkBlock(site="marketing", optional=True)
+        self.gelearn = LinkBlock()
+        root = Page.objects.get(depth=1)
+        self.contact = ContactPage.objects.first() or root.add_child(instance=ContactPage(title="Contact", slug="contact-test"))
+        self.home = HomePage.objects.first()
+        self.gelearn_base = settings.GELEARN_FRONTEND_URL.rstrip("/")
+        self.marketing_base = settings.MARKETING_FRONTEND_URL.rstrip("/")
+
+    def url(self, block, raw):
+        return block.get_api_representation(block.to_python(raw))
+
+    def test_marketing_links(self):
+        contact_path = self.contact.url_path.rstrip("/")
+        self.assertEqual(self.url(self.marketing, {"link_type": "genex_page", "genex_page": self.contact.pk, "section": "demo"}),
+                         f"{contact_path}#demo")
+        self.assertEqual(self.url(self.marketing, {"link_type": "page", "page": "courses"}), f"{self.gelearn_base}/courses")
+        self.assertEqual(list(self.marketing.child_blocks["link_type"].field.choices)[:2],
+                         [("none", "No link"), ("genex_page", "A page on this website")])
+        if self.home:
+            self.assertEqual(self.url(self.marketing, {"link_type": "genex_page", "genex_page": self.home.pk}), "/")
+
+    def test_gelearn_link_to_a_genex_page_is_absolute(self):
+        contact_path = self.contact.url_path.rstrip("/")
+        self.assertEqual(self.url(self.gelearn, {"link_type": "genex_page", "genex_page": self.contact.pk}),
+                         f"{self.marketing_base}{contact_path}")
+
+    def test_old_typed_addresses_still_save_but_new_typed_paths_do_not(self):
+        from django.core.exceptions import ValidationError
+        legacy = {"link_type": "legacy", "url": "/portfolio/scada"}
+        self.marketing.clean(self.marketing.to_python(legacy))
+        self.assertEqual(self.url(self.marketing, legacy), "/portfolio/scada")
+        with self.assertRaises(ValidationError):
+            self.marketing.clean(self.marketing.to_python({"link_type": "url", "url": "/portfolio/scada"}))
+
+    def test_marketing_conversion(self):
+        import importlib
+        from django.apps import apps
+        convert = importlib.import_module("pages.migrations.0045_convert_marketing_links")
+        Page = apps.get_model("wagtailcore", "Page")
+        contact_path = self.contact.url_path.rstrip("/")
+        self.assertEqual(convert.to_link(Page, f"{contact_path}#demo", 999),
+                         {"link_type": "genex_page", "genex_page": self.contact.pk, "section": "demo"})
+        self.assertEqual(convert.to_link(Page, "#form", self.contact.pk),
+                         {"link_type": "genex_page", "genex_page": self.contact.pk, "section": "form"})
+        self.assertEqual(convert.to_link(Page, "/portfolio/not-yet-built", 1), {"link_type": "legacy", "url": "/portfolio/not-yet-built"})
+        self.assertEqual(convert.to_link(Page, "https://aws.amazon.com", 1), {"link_type": "url", "url": "https://aws.amazon.com"})
+        self.assertEqual(convert.to_link(Page, "", 1), {"link_type": "none"})
+        self.assertEqual(convert.to_text(Page, {"link_type": "genex_page", "genex_page": self.contact.pk, "section": "apply"}),
+                         f"{contact_path}#apply")
+
+    def test_site_settings_header_button(self):
+        from .models import SiteSettings
+        from wagtail.models import Site
+        settings_row = SiteSettings.for_site(Site.objects.get(is_default_site=True))
+        self.assertEqual(settings_row.cta_href, "/contact#demo")  # nothing picked yet: the default
+        settings_row.cta_page, settings_row.cta_section = self.contact, "demo"
+        self.assertEqual(settings_row.cta_href, f"{self.contact.url_path.rstrip('/')}#demo")
