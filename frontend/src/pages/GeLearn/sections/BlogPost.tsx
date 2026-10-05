@@ -26,6 +26,7 @@ import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
 import { AuthorByline } from '@/components/gelearn/AuthorByline'
 import { TagBlogsModal } from '@/components/gelearn/TagBlogsModal'
 import { useHoverIntent } from '@/lib/useHoverIntent'
+import { useTrackView } from '@/hooks/useTrackView'
 
 const FALLBACK_IMAGE = '/images/blog/blog-1.jpg'
 const TAGS_PAGE_SIZE = 10
@@ -73,6 +74,7 @@ function shareUrl(kind: 'twitter' | 'linkedin' | 'facebook' | 'whatsapp', pageUr
 
 export default function BlogPost() {
   const { id } = useParams<{ id: string }>()
+  useTrackView('blog', Number(id))
   const [post, setPost] = useState<BlogPostItem | null | undefined>(undefined)
   const [allPosts, setAllPosts] = useState<BlogPostItem[]>([])
   const [topics, setTopics] = useState<Topic[]>([])

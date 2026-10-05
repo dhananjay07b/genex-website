@@ -16,6 +16,7 @@ import { formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudyItem, CaseStudySectionValue, SnippetListResponse } from '@/types/api'
+import { useTrackView } from '@/hooks/useTrackView'
 
 function RichTextSection({ value }: { value: unknown }) {
   const section = value as CaseStudySectionValue
@@ -82,6 +83,7 @@ function MiniCard({ cs }: { cs: CaseStudyItem }) {
 
 export default function CaseStudyDetail() {
   const { id } = useParams<{ id: string }>()
+  useTrackView('research', Number(id))
   const [cs, setCs] = useState<CaseStudyItem | null | undefined>(undefined)
   const [related, setRelated] = useState<CaseStudyItem[]>([])
 

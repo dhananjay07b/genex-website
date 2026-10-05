@@ -170,6 +170,14 @@ class HomeView(APIView):
         return Response(home.public_home())
 
 
+class ExploreMenuView(APIView):
+    """The header's Explore menu: grouped topics, career roles and companies."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response(home.explore_menu())
+
+
 class MyHomeView(APIView):
     """The signed-in sections: continue learning, this week, recommendations."""
     permission_classes = [permissions.IsAuthenticated]

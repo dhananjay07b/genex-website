@@ -16,6 +16,7 @@ import { formatDisplayDate, getMediaUrl } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudySectionValue, TechArticleItem, SnippetListResponse } from '@/types/api'
+import { useTrackView } from '@/hooks/useTrackView'
 
 // ── Difficulty styles ─────────────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
 
 export default function GeAcademyDetail() {
   const { id } = useParams<{ id: string }>()
+  useTrackView('geacademy', Number(id))
   const [article, setArticle] = useState<TechArticleItem | null | undefined>(undefined)
   const [related, setRelated] = useState<TechArticleItem[]>([])
 

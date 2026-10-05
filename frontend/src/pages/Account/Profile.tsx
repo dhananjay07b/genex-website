@@ -5,7 +5,6 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { useAuth } from '@/context/useAuth'
 import { useRole } from '@/hooks/useRole'
 import { getMediaUrl, cn } from '@/lib/utils'
-import { NotificationBell } from './dashboard/NotificationBell'
 import { OverviewTab } from './dashboard/OverviewTab'
 import { CompanyVerificationBanner } from './dashboard/CompanyVerificationBanner'
 import { StudioShortcut } from './dashboard/StudioShortcut'
@@ -90,8 +89,6 @@ export default function Profile() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <NotificationBell />
-
             <button
               type="button"
               onClick={() => selectTab('settings')}

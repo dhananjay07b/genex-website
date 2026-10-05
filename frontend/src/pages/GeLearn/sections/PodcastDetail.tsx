@@ -16,11 +16,13 @@ import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
 import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import type { PodcastItem, SnippetListResponse } from '@/types/api'
+import { useTrackView } from '@/hooks/useTrackView'
 
 const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 export default function PodcastDetail() {
   const { id } = useParams<{ id: string }>()
+  useTrackView('podcast', Number(id))
   const [episode, setEpisode] = useState<PodcastItem | null | undefined>(undefined)
   const [allEpisodes, setAllEpisodes] = useState<PodcastItem[]>([])
   const [authorPanelUser, setAuthorPanelUser] = useState<string | null>(null)

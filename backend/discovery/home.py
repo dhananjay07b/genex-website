@@ -238,6 +238,15 @@ def topic_groups():
     ]
 
 
+def explore_menu():
+    """What the header's Explore menu lists on every GeLearn page: grouped topics, career roles, companies."""
+    return {
+        "topic_groups": topic_groups(),
+        "roles": [{"id": r.id, "name": r.name, "slug": r.slug} for r in CareerRole.objects.all()],
+        "companies": [{"name": c["name"], "slug": c["slug"]} for c in companies(limit=12)],
+    }
+
+
 def trending_searches(limit=6):
     since = timezone.now() - timedelta(days=TRENDING_DAYS)
     rows = (

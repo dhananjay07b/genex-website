@@ -18,11 +18,13 @@ import { marketingPath } from '@/lib/host'
 import { getMediaUrl, embedVideoUrl, formatDisplayDate } from '@/lib/utils'
 import { useHoverIntent } from '@/lib/useHoverIntent'
 import type { VideoItem, SnippetListResponse } from '@/types/api'
+import { useTrackView } from '@/hooks/useTrackView'
 
 const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 export default function VideoDetail() {
   const { id } = useParams<{ id: string }>()
+  useTrackView('video', Number(id))
   const [video, setVideo] = useState<VideoItem | null | undefined>(undefined)
   const [allVideos, setAllVideos] = useState<VideoItem[]>([])
   const [authorPanelUser, setAuthorPanelUser] = useState<string | null>(null)

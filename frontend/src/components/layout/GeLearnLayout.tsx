@@ -36,6 +36,8 @@ export function GeLearnLayout() {
       <ScrollToTop />
       <DevShellUrlSync shell="gelearn" />
       <GeLearnHeader />
+      {/* Room for the header's audience strip; pages already offset the 4rem main bar themselves. */}
+      <div className="h-8 shrink-0" aria-hidden="true" />
       <main className="flex-1">
         <Outlet />
       </main>

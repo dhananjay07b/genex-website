@@ -289,3 +289,14 @@ class HomeLayoutTests(DiscoveryTestBase):
         res = self.client.get(f"/cms/pages/{self.page.pk}/edit/")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "Home page for visitors")
+
+
+class ExploreMenuTests(DiscoveryTestBase):
+    def test_explore_menu_lists_groups_roles_and_companies(self):
+        from organizations.models import Company
+        Company.objects.create(name="Genex Technocrats", slug="genex")
+        Company.objects.create(name="Dormant Co", slug="dormant", is_active=False)
+        data = self.api.get("/api/discovery/explore/").json()
+        self.assertEqual(data["topic_groups"][0]["name"], "Renewables")
+        self.assertEqual(data["roles"][0]["name"], "Solar O&M Engineer")
+        self.assertEqual(data["companies"], [{"name": "Genex Technocrats", "slug": "genex"}])

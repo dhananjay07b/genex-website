@@ -16,6 +16,7 @@ import { useAuth } from '@/context/useAuth'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { CourseDetail as Course, CourseItem } from '@/types/learning'
+import { useTrackView } from '@/hooks/useTrackView'
 
 export default function CourseDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -33,6 +34,8 @@ export default function CourseDetail() {
       .catch(() => { if (!cancelled) setCourse(null) })
     return () => { cancelled = true }
   }, [slug, user?.id])
+
+  useTrackView('course', course?.id)
 
   if (course === undefined) return <div className="min-h-screen" />
   if (course === null) return <Navigate to="/courses" replace />

@@ -61,7 +61,7 @@ class CourseCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Playlist
         fields = [
-            "slug", "title", "description", "cover_url", "owner", "company", "level", "topics",
+            "id", "slug", "title", "description", "cover_url", "owner", "company", "level", "topics",
             "access", "price", "currency", "item_count", "enrolled_count", "video_minutes", "featured", "updated_at",
         ]
 

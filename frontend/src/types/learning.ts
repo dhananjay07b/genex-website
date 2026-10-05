@@ -26,6 +26,7 @@ export interface CourseItem extends CourseTarget {
 }
 
 export interface CourseCard {
+  id: number
   slug: string
   title: string
   description: string

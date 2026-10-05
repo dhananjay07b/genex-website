@@ -1,69 +1,94 @@
 import { Link } from 'react-router-dom'
-import EmailIcon from '@mui/icons-material/Email'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { marketingPath } from '@/lib/host'
+import { useExploreMenu } from '@/hooks/useExploreMenu'
 
-const SECTION_LINKS = [
-  { label: 'GeAcademy', href: '/geacademy' },
+interface FooterLink {
+  label: string
+  href: string
+  external?: boolean
+}
+
+const LEARN: FooterLink[] = [
   { label: 'Courses', href: '/courses' },
+  { label: 'Live sessions', href: '/live-sessions' },
+  { label: 'GeAcademy', href: '/geacademy' },
   { label: 'Research', href: '/research' },
   { label: 'Policies & Tenders', href: '/policies-tenders' },
-  { label: 'Whitepapers & Reports', href: '/whitepapers' },
-  { label: 'Video Library', href: '/videos' },
-  { label: 'Blog & Insights', href: '/blog' },
-  { label: 'Podcasts & Interviews', href: '/podcasts' },
+  { label: 'Whitepapers', href: '/whitepapers' },
+  { label: 'Videos', href: '/videos' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Podcasts', href: '/podcasts' },
 ]
 
-export function GeLearnFooter() {
+const COMMUNITY: FooterLink[] = [
+  { label: 'Become a Professional', href: '/for-professionals' },
+  { label: 'GeLearn for Companies', href: '/for-companies' },
+  { label: 'Verified companies', href: '/companies' },
+  { label: 'Leading Professionals', href: '/professionals' },
+]
+
+const GENEX: FooterLink[] = [
+  { label: 'About Genex', href: marketingPath('/about'), external: true },
+  { label: 'Portfolio', href: marketingPath('/portfolio'), external: true },
+  { label: 'Innovations', href: marketingPath('/innovations'), external: true },
+  { label: 'Careers', href: marketingPath('/careers'), external: true },
+  { label: 'Contact', href: marketingPath('/contact'), external: true },
+]
+
+function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
   return (
-    <footer className="bg-white border-t border-border" aria-label="GeLearn footer">
-      <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-14 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          <div>
-            <Link to="/" className="inline-flex items-center gap-2 mb-4">
-              <img src="/images/logo/logo-on-light.svg" alt="Genex Technocrats" className="h-8 w-auto" />
-              <span className="text-base font-extrabold text-text-primary">GeLearn</span>
-            </Link>
-            <p className="text-sm text-text-muted leading-relaxed max-w-70">
-              The engineering knowledge hub from Genex Technocrats — case studies, technical deep dives, and community insights on India's power infrastructure.
-            </p>
-            <a
-              href={marketingPath()}
-              className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-            >
-              Visit genextechnocrats.com <OpenInNewIcon style={{ fontSize: 14 }} />
-            </a>
-          </div>
+    <div>
+      <h3 className="mb-3 text-sm font-extrabold text-text-primary">{title}</h3>
+      <ul className="grid gap-2">
+        {links.map(link => (
+          <li key={link.href}>
+            {link.external ? (
+              <a href={link.href} className="text-sm text-text-muted transition-colors hover:text-sky-700">{link.label}</a>
+            ) : (
+              <Link to={link.href} className="text-sm text-text-muted transition-colors hover:text-sky-700">{link.label}</Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-4">Explore</h3>
-            <ul className="space-y-2.5">
-              {SECTION_LINKS.map(link => (
-                <li key={link.href}>
-                  <Link to={link.href} className="text-sm text-text-muted hover:text-text-primary transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+/** GeLearn's light footer: brand, topics, learning sections, community and Genex links. */
+export function GeLearnFooter() {
+  const { topic_groups } = useExploreMenu()
+  // The first topic of each group, then the rest, up to seven: a cross-section of the sector.
+  const firsts = topic_groups.flatMap(g => g.topics.slice(0, 1))
+  const rest = topic_groups.flatMap(g => g.topics.slice(1))
+  const topics: FooterLink[] = [...firsts, ...rest].slice(0, 7).map(t => ({ label: t.name, href: `/topics/${t.slug}` }))
 
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-4">Contact</h3>
-            <a
-              href="mailto:info@genextechnocrats.com"
-              className="flex items-center gap-2.5 text-sm text-text-muted hover:text-text-primary transition-colors"
-            >
-              <EmailIcon sx={{ fontSize: 14 }} className="shrink-0 text-primary" />
-              info@genextechnocrats.com
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-12 pt-6 border-t border-border text-center">
-          <p className="text-xs text-text-muted">
-            © {new Date().getFullYear()} Genex Technocrats Pvt. Ltd. All rights reserved.
+  return (
+    <footer className="border-t border-border bg-slate-50" aria-label="GeLearn footer">
+      <div className="mx-auto grid max-w-330 grid-cols-2 gap-8 px-4 pt-12 pb-8 md:px-6 lg:grid-cols-5">
+        <div className="col-span-2 lg:col-span-1">
+          <Link to="/" className="inline-flex items-center gap-1.5">
+            <img src="/favicon1:1.svg" alt="" className="h-10 w-auto" />
+            <span className="text-lg font-extrabold text-text-primary">GeLearn</span>
+          </Link>
+          <p className="mt-3 max-w-xs text-sm text-text-muted">
+            The learning platform of Genex Technocrats Pvt. Ltd., built for the power, energy and automation sector.
           </p>
+        </div>
+        <FooterColumn title="Topics" links={[...topics, { label: 'All topics', href: '/topics' }]} />
+        <FooterColumn title="Learn" links={LEARN} />
+        <FooterColumn title="Community" links={COMMUNITY} />
+        <FooterColumn title="Genex" links={GENEX} />
+      </div>
+      <div className="border-t border-border">
+        <div className="mx-auto flex max-w-330 flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-text-muted md:px-6">
+          <span>© {new Date().getFullYear()} Genex Technocrats Pvt. Ltd. All rights reserved.</span>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <a href="mailto:info@genextechnocrats.com" className="hover:text-text-primary">info@genextechnocrats.com</a>
+            <a href={marketingPath()} className="inline-flex items-center gap-1 hover:text-text-primary">
+              genextechnocrats.com <OpenInNewIcon sx={{ fontSize: 12 }} />
+            </a>
+          </span>
         </div>
       </div>
     </footer>

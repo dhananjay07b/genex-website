@@ -303,3 +303,16 @@ body {
 .rich-text > *:last-child {
   margin-bottom: 0;
 }
+
+/* Horizontal rails (GeLearn sliders, scrollable tab rows): scroll without a visible bar. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Drop-down panels under the fixed GeLearn header (strip + bar = 6rem). */
+@utility max-h-below-header {
+  max-height: calc(100vh - 6rem);
+}
