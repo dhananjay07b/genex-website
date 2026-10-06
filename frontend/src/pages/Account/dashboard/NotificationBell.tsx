@@ -5,7 +5,9 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
 import { apiFetch } from '@/lib/api/client'
+import { useRole } from '@/hooks/useRole'
 import { cn } from '@/lib/utils'
 import type { Notification } from '@/types/auth'
 import type { SnippetListResponse } from '@/types/api'
@@ -14,11 +16,13 @@ const KIND_ICON: Record<Notification['kind'], typeof ArticleOutlinedIcon> = {
   blog_status: ArticleOutlinedIcon,
   video_status: VideocamOutlinedIcon,
   course_status: SchoolOutlinedIcon,
+  course_review: StarBorderOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
 }
 
 export function NotificationBell() {
   const navigate = useNavigate()
+  const { isCompany } = useRole()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
@@ -52,12 +56,15 @@ export function NotificationBell() {
     blog_status: 'blogposts',
     video_status: 'videos',
     course_status: 'courses',
+    course_review: 'courses',
     comment_reply: 'comments',
   }
 
   function goToNotification(kind: Notification['kind']) {
     setOpen(false)
-    navigate(`/account?tab=${KIND_TAB[kind]}`)
+    // Company accounts manage their courses in Company Studio, not the account dashboard.
+    if (isCompany && (kind === 'course_status' || kind === 'course_review')) navigate('/studio/courses')
+    else navigate(`/account?tab=${KIND_TAB[kind]}`)
   }
 
   return (

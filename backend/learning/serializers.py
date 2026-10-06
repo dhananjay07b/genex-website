@@ -12,8 +12,9 @@ from pages.api import author_payload
 from pages.durations import parse_duration_seconds
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
+from .reviews import card_rating
 from .models import (
-    ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
+    ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
     CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
 
@@ -128,12 +129,13 @@ class CourseCardSerializer(serializers.ModelSerializer):
     item_count = serializers.IntegerField(read_only=True)
     enrolled_count = serializers.IntegerField(read_only=True)
     video_minutes = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
         fields = [
             "id", "slug", "title", "description", "cover_url", "owner", "company", "level", "topics",
-            "access", "price", "currency", "item_count", "enrolled_count", "video_minutes", "featured", "updated_at",
+            "access", "price", "currency", "item_count", "enrolled_count", "video_minutes", "rating", "featured", "updated_at",
         ]
 
     def get_cover_url(self, obj):
@@ -148,6 +150,10 @@ class CourseCardSerializer(serializers.ModelSerializer):
 
     def get_topics(self, obj):
         return [{"id": t.id, "name": t.name, "slug": t.slug} for t in obj.topics.all()]
+
+    def get_rating(self, obj):
+        """{average, count} once the course has 3 visible reviews; otherwise null."""
+        return card_rating(obj)
 
     def get_video_minutes(self, obj):
         seconds = getattr(obj, "video_seconds", None) or 0
@@ -347,6 +353,11 @@ class OutlineSerializer(serializers.Serializer):
         if len(value) > MAX_MODULES:
             raise serializers.ValidationError(f"A course can have at most {MAX_MODULES} modules.")
         return value
+
+
+class ReviewInputSerializer(serializers.Serializer):
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    body = serializers.CharField(max_length=MAX_REVIEW_LENGTH, required=False, allow_blank=True, default="")
 
 
 class FaqInputSerializer(serializers.Serializer):

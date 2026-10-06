@@ -6,7 +6,7 @@ from django.utils import timezone
 from engagement.models import Notification
 
 from .models import (
-    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, CourseFAQ, CourseModule, Enrollment, Playlist, PlaylistItem,
+    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, CourseFAQ, CourseModule, CourseReview, Enrollment, Playlist, PlaylistItem,
     instructor_problem,
 )
 
@@ -121,3 +121,29 @@ class PlaylistAdmin(admin.ModelAdmin):
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ("user", "playlist", "enrolled_at")
     search_fields = ("user__username", "playlist__title")
+
+
+@admin.register(CourseReview)
+class CourseReviewAdmin(admin.ModelAdmin):
+    """Reviews go live straight away; Genex hides any that break the rules. Learners write and edit them on GeLearn."""
+    list_display = ("playlist", "user", "rating", "status", "short_body", "created_at")
+    list_filter = ("status", "rating")
+    search_fields = ("playlist__title", "user__username", "user__display_name", "body")
+    readonly_fields = ("playlist", "user", "rating", "body", "created_at", "updated_at")
+    fields = ("playlist", "user", "rating", "body", "status", "created_at", "updated_at")
+    actions = ["hide", "show"]
+
+    @admin.display(description="Review")
+    def short_body(self, obj):
+        return (obj.body[:80] + "…") if len(obj.body) > 80 else obj.body
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.action(description="Hide selected reviews")
+    def hide(self, request, queryset):
+        queryset.update(status=CourseReview.STATUS_HIDDEN)
+
+    @admin.action(description="Show selected reviews again")
+    def show(self, request, queryset):
+        queryset.update(status=CourseReview.STATUS_VISIBLE)

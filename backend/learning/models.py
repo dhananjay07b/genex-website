@@ -9,6 +9,7 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils.text import slugify
@@ -328,6 +329,40 @@ class ItemProgress(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "item"], name="one_completion_per_item")]
+
+
+# A course's average rating is only shown once it has this many visible reviews,
+# so one early review can't show as 5.0.
+MIN_REVIEWS_FOR_RATING = 3
+MAX_REVIEW_LENGTH = 2000
+
+
+class CourseReview(models.Model):
+    """
+    A learner's rating (1 to 5) and optional written review of a course: one per
+    learner per course. Only enrolled learners who have finished at least one
+    lesson can review. Reviews show straight away; Genex can hide one in Django admin.
+    """
+    STATUS_VISIBLE = "visible"
+    STATUS_HIDDEN = "hidden"
+    STATUS_CHOICES = [(STATUS_VISIBLE, "Visible"), (STATUS_HIDDEN, "Hidden by Genex")]
+
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="reviews", verbose_name="course")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="course_reviews")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    body = models.TextField(max_length=MAX_REVIEW_LENGTH, blank=True, verbose_name="review")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_VISIBLE, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Course review"
+        constraints = [models.UniqueConstraint(fields=["user", "playlist"], name="one_review_per_course")]
+        indexes = [models.Index(fields=["playlist", "status"])]
+
+    def __str__(self):
+        return f"{self.user} on {self.playlist}: {self.rating}/5"
 
 
 @register_snippet

@@ -7,14 +7,18 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.contrib.contenttypes.models import ContentType
+
 from accounts.roles import IsContributor, is_admin, is_company
+from engagement.models import Notification
 from accounts.uploads import save_uploaded_image
 from commerce.access import has_access
 from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
-from .models import ITEM_KINDS, CareerRole, CourseFAQ, CourseModule, Enrollment, ItemProgress, Playlist, PlaylistItem
+from .models import ITEM_KINDS, CareerRole, CourseFAQ, CourseModule, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem
 from .queries import published_courses
+from .reviews import review_block_reason, review_payload, with_progress
 from .serializers import (
     MAX_FAQS,
     MAX_ITEMS,
@@ -25,6 +29,7 @@ from .serializers import (
     ItemRefSerializer,
     MyCourseSerializer,
     OutlineSerializer,
+    ReviewInputSerializer,
     eligible_instructors,
     library_for,
     library_for_course,
@@ -326,6 +331,85 @@ class MyCourseViewSet(
         course.rejection_reason = ""
         course.save(update_fields=["status", "submitted_at", "rejection_reason", "updated_at"])
         return Response(self.get_serializer(course).data)
+
+
+def _published_course(slug):
+    return get_object_or_404(Playlist, slug=slug, status=Playlist.STATUS_PUBLISHED)
+
+
+class CourseReviewListView(generics.ListAPIView):
+    """
+    A live course's visible reviews, newest first. Filters: `rating` (exact stars),
+    `rating_max` (that many stars or fewer), `completed=1` (authors who finished the course).
+    """
+    permission_classes = [permissions.AllowAny]
+    pagination_class = GenexPagination
+
+    def get_queryset(self):
+        self.course = _published_course(self.kwargs["slug"])
+        self.lesson_count = self.course.items.count()
+        reviews = with_progress(
+            self.course.reviews.filter(status=CourseReview.STATUS_VISIBLE)
+            .select_related("user__avatar", "user__company__logo")
+        )
+        params = self.request.query_params
+        if params.get("rating", "").isdigit():
+            reviews = reviews.filter(rating=int(params["rating"]))
+        if params.get("rating_max", "").isdigit():
+            reviews = reviews.filter(rating__lte=int(params["rating_max"]))
+        if params.get("completed") == "1":
+            reviews = reviews.filter(lessons_done__gte=self.lesson_count) if self.lesson_count else reviews.none()
+        return reviews
+
+    def list(self, request, *args, **kwargs):
+        page = self.paginate_queryset(self.get_queryset())
+        return self.get_paginated_response([review_payload(r, self.lesson_count, request.user) for r in page])
+
+
+class MyCourseReviewView(APIView):
+    """
+    The signed-in learner's own review of a live course: GET it (with whether they
+    may review), PUT to create or edit it, DELETE to remove it.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _state(self, request, course):
+        review = CourseReview.objects.filter(user=request.user, playlist=course).select_related("user__avatar").first()
+        reason = review_block_reason(request.user, course)
+        return {
+            "review": review_payload(review, course.items.count(), request.user) if review else None,
+            "can_review": reason is None,
+            "reason": reason or "",
+        }
+
+    def get(self, request, slug):
+        course = _published_course(slug)
+        return Response(self._state(request, course))
+
+    def put(self, request, slug):
+        course = _published_course(slug)
+        reason = review_block_reason(request.user, course)
+        if reason:
+            return Response({"detail": reason}, status=status.HTTP_403_FORBIDDEN)
+        data = ReviewInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        _, created = CourseReview.objects.update_or_create(
+            user=request.user, playlist=course,
+            defaults={"rating": data.validated_data["rating"], "body": data.validated_data["body"].strip()},
+        )
+        if created:
+            name = request.user.display_name or request.user.username
+            Notification.objects.create(
+                recipient=course.owner, kind="course_review",
+                text=f'{name} rated "{course.title}" {data.validated_data["rating"]} out of 5.'[:300],
+                content_type=ContentType.objects.get_for_model(course), object_id=course.pk,
+            )
+        return Response(self._state(request, course), status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    def delete(self, request, slug):
+        course = _published_course(slug)
+        CourseReview.objects.filter(user=request.user, playlist=course).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CompanyProfessionalsView(APIView):

@@ -1,4 +1,5 @@
 import datetime
+import io
 from decimal import Decimal
 
 from django.contrib.admin.sites import AdminSite
@@ -10,7 +11,7 @@ from engagement.models import Notification
 from pages.models import BlogPost, UserBlogPost, UserVideoPost, VideoItem
 
 from .admin import PlaylistAdmin
-from .models import Enrollment, Playlist
+from .models import CourseReview, Enrollment, Playlist
 
 TODAY = datetime.date(2026, 9, 30)
 
@@ -617,3 +618,123 @@ class BuilderPhaseTwoTests(TestCase):
         draft = Playlist.objects.create(owner=self.pro, title="Draft")
         self.assertTrue(self.api.get(f"/api/learning/me/courses/{draft.pk}/").json()["can_delete"])
         self.assertEqual(self.api.delete(f"/api/learning/me/courses/{draft.pk}/").status_code, 204)
+
+
+class CourseReviewTests(TestCase):
+    """Phase 3: who may review, one review per learner, moderation, filters, ratings from 3 reviews."""
+
+    def setUp(self):
+        from .models import ItemProgress
+        self.ItemProgress = ItemProgress
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.v1, self.v2 = publish_video(self.pro, "One"), publish_video(self.pro, "Two")
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
+        self.i1 = self.course.items.create(video=self.v1, position=0)
+        self.i2 = self.course.items.create(video=self.v2, position=1)
+        self.url = f"/api/learning/courses/{self.course.slug}/reviews/"
+
+    def _learner(self, name, lessons=1, rating=None, body=""):
+        user = make_user(name)
+        Enrollment.objects.create(user=user, playlist=self.course)
+        for item in [self.i1, self.i2][:lessons]:
+            self.ItemProgress.objects.create(user=user, item=item)
+        if rating:
+            api = APIClient()
+            api.force_authenticate(user)
+            api.put(self.url + "me/", {"rating": rating, "body": body}, format="json")
+        return user
+
+    def test_only_enrolled_learners_with_progress_can_review(self):
+        api = APIClient()
+        self.assertEqual(api.put(self.url + "me/", {"rating": 5}, format="json").status_code, 401)
+        stranger = make_user("stranger")
+        api.force_authenticate(stranger)
+        self.assertEqual(api.put(self.url + "me/", {"rating": 5}, format="json").status_code, 403)
+        Enrollment.objects.create(user=stranger, playlist=self.course)
+        state = api.get(self.url + "me/").json()
+        self.assertEqual((state["can_review"], state["reason"]), (False, "Finish at least one lesson to review this course."))
+        self.ItemProgress.objects.create(user=stranger, item=self.i1)
+        self.assertEqual(api.put(self.url + "me/", {"rating": 4, "body": " Useful. "}, format="json").status_code, 201)
+        self.assertEqual(api.get(self.url + "me/").json()["review"]["body"], "Useful.")
+
+    def test_owner_cannot_review_their_own_course(self):
+        api = APIClient()
+        api.force_authenticate(self.pro)
+        Enrollment.objects.create(user=self.pro, playlist=self.course)
+        self.ItemProgress.objects.create(user=self.pro, item=self.i1)
+        self.assertEqual(api.put(self.url + "me/", {"rating": 5}, format="json").status_code, 403)
+
+    def test_editing_keeps_one_review_and_notifies_the_owner_once(self):
+        learner = self._learner("ana", rating=3)
+        api = APIClient()
+        api.force_authenticate(learner)
+        res = api.put(self.url + "me/", {"rating": 5, "body": "Better on a second pass."}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(CourseReview.objects.get().rating, 5)
+        self.assertEqual(Notification.objects.filter(recipient=self.pro, kind="course_review").count(), 1)
+        self.assertEqual(api.delete(self.url + "me/").status_code, 204)
+        self.assertFalse(CourseReview.objects.exists())
+
+    def test_rating_shows_from_three_visible_reviews_and_ignores_hidden_ones(self):
+        self._learner("a", rating=5)
+        self._learner("b", rating=4)
+        card = APIClient().get("/api/learning/courses/").json()["results"][0]
+        self.assertIsNone(card["rating"])
+        self._learner("c", rating=3)
+        self.assertEqual(APIClient().get("/api/learning/courses/").json()["results"][0]["rating"], {"average": 4.0, "count": 3})
+        CourseReview.objects.filter(rating=3).update(status="hidden")
+        self.assertIsNone(APIClient().get("/api/learning/courses/").json()["results"][0]["rating"])
+
+    def test_list_filters_and_completed_flag(self):
+        self._learner("finisher", lessons=2, rating=5, body="Great")
+        self._learner("starter", lessons=1, rating=3, body="Okay")
+        hidden = self._learner("rude", lessons=1, rating=1, body="Spam")
+        CourseReview.objects.filter(user=hidden).update(status="hidden")
+        rows = APIClient().get(self.url).json()["results"]
+        self.assertEqual({(r["author"]["username"], r["completed_course"]) for r in rows}, {("finisher", True), ("starter", False)})
+        self.assertEqual([r["rating"] for r in APIClient().get(self.url + "?rating=5").json()["results"]], [5])
+        self.assertEqual([r["rating"] for r in APIClient().get(self.url + "?rating_max=3").json()["results"]], [3])
+        self.assertEqual([r["author"]["username"] for r in APIClient().get(self.url + "?completed=1").json()["results"]], ["finisher"])
+
+    def test_drafts_have_no_reviews_endpoint(self):
+        draft = Playlist.objects.create(owner=self.pro, title="Draft")
+        self.assertEqual(APIClient().get(f"/api/learning/courses/{draft.slug}/reviews/").status_code, 404)
+
+    def test_admin_can_hide_and_show(self):
+        from .admin import CourseReviewAdmin
+        self._learner("x", rating=2)
+        model_admin = CourseReviewAdmin(CourseReview, AdminSite())
+        model_admin.hide(RequestFactory().post("/"), CourseReview.objects.all())
+        self.assertEqual(CourseReview.objects.get().status, "hidden")
+        model_admin.show(RequestFactory().post("/"), CourseReview.objects.all())
+        self.assertEqual(CourseReview.objects.get().status, "visible")
+        self.assertFalse(model_admin.has_add_permission(RequestFactory().get("/")))
+
+
+class SeedCourseDemoTests(TestCase):
+    def setUp(self):
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.course = Playlist.objects.create(owner=self.pro, title="Live", status="published")
+        self.course.items.create(video=publish_video(self.pro, "V"), position=0)
+
+    def test_seed_adds_demo_data_and_clear_removes_it(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+        with override_settings(DEBUG=True):
+            call_command("seed_course_demo", stdout=io.StringIO())
+            call_command("seed_course_demo", stdout=io.StringIO())  # running twice adds nothing new
+            self.assertEqual(User.objects.filter(username__startswith="demo_").count(), 16)
+            self.assertTrue(Enrollment.objects.filter(playlist=self.course).exists())
+            self.assertEqual(CourseReview.objects.filter(user__username__startswith="demo_").count(),
+                             CourseReview.objects.count())
+            call_command("seed_course_demo", "--clear", stdout=io.StringIO())
+        self.assertFalse(User.objects.filter(username__startswith="demo_").exists())
+        self.assertFalse(Enrollment.objects.exists())
+        self.assertFalse(CourseReview.objects.exists())
+
+    def test_seed_refuses_without_debug(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        from django.test import override_settings
+        with override_settings(DEBUG=False), self.assertRaises(CommandError):
+            call_command("seed_course_demo", stdout=io.StringIO())

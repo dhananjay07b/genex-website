@@ -43,6 +43,7 @@ class Notification(models.Model):
         ("blog_status", "Blog status update"),
         ("video_status", "Video status update"),
         ("course_status", "Course status update"),
+        ("course_review", "New course review"),
         ("comment_reply", "Comment reply"),
     ]
 
