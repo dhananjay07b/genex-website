@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, mixins, permissions, status, viewsets
@@ -15,7 +14,7 @@ from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
 from .models import ITEM_KINDS, CareerRole, CourseFAQ, CourseModule, Enrollment, ItemProgress, Playlist, PlaylistItem
-from .queries import course_queryset, published_courses
+from .queries import published_courses
 from .serializers import (
     MAX_FAQS,
     MAX_ITEMS,
@@ -59,24 +58,16 @@ class CourseListView(generics.ListAPIView):
 
 class CourseDetailView(generics.RetrieveAPIView):
     """
-    A live course for anyone. Its owner (or, for a company course, any staff
-    login of that company) and Admin can also open it as a draft or while in
-    review, to preview the page; the response then has `is_preview: true`.
+    Live courses only, for everyone. A draft or a course in review has no public
+    page, not even for its owner: authors preview it inside the course builder,
+    so an unpublished course never has a working address.
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = CourseDetailSerializer
     lookup_field = "slug"
 
     def get_queryset(self):
-        user = self.request.user
-        if is_admin(user):
-            return course_queryset()
-        visible = Q(status=Playlist.STATUS_PUBLISHED)
-        if is_company(user):
-            visible |= Q(company_id=user.company_id)
-        elif user.is_authenticated:
-            visible |= Q(owner=user, company__isnull=True)
-        return course_queryset().filter(visible)
+        return _published()
 
 
 def _locked_reason(course):
@@ -158,6 +149,15 @@ class MyCourseViewSet(
         if is_company(user):
             return qs.filter(company_id=user.company_id) if user.company_id else qs.none()
         return qs.filter(owner=user, company__isnull=True)
+
+    def destroy(self, request, *args, **kwargs):
+        course = self.get_object()
+        if course.status == Playlist.STATUS_PUBLISHED and course.enrollments.exists():
+            return Response(
+                {"detail": "This course is live and learners are enrolled, so it can't be deleted. Ask Genex to unpublish it."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user

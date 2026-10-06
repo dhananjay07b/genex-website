@@ -432,24 +432,19 @@ class CourseDetailsPhaseTests(TestCase):
         self.assertEqual(self.api.get("/api/learning/me/company-professionals/").status_code, 403)
 
     # Owner preview
-    def test_owner_and_colleagues_preview_unpublished_courses(self):
+    def test_unpublished_courses_have_no_public_page_even_for_their_owner(self):
+        """Authors preview inside the builder; a draft or a course in review never has a working address."""
         draft = Playlist.objects.create(owner=self.pro, title="Pro draft")
-        res = self.api.get(f"/api/learning/courses/{draft.slug}/")
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(res.json()["is_preview"])
-        self.assertFalse(self.api.get(f"/api/learning/courses/{self.course.slug}/").json()["is_preview"])
-        for viewer in (None, self.learner, self.staff):
+        in_review = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company draft", status="pending")
+        colleague = make_user("staff2", account_type="company", company=self.genex)
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        for viewer in (None, self.pro, self.learner, self.staff, colleague, admin):
             client = APIClient()
             if viewer:
                 client.force_authenticate(viewer)
-            self.assertEqual(client.get(f"/api/learning/courses/{draft.slug}/").status_code, 404)
-
-        company_draft = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company draft")
-        colleague = make_user("staff2", account_type="company", company=self.genex)
-        client = APIClient()
-        client.force_authenticate(colleague)
-        self.assertEqual(client.get(f"/api/learning/courses/{company_draft.slug}/").status_code, 200)
-        self.assertEqual(self.api.get(f"/api/learning/courses/{company_draft.slug}/").status_code, 404)
+            for course in (draft, in_review):
+                self.assertEqual(client.get(f"/api/learning/courses/{course.slug}/").status_code, 404, (viewer, course))
+        self.assertEqual(self.api.get(f"/api/learning/courses/{self.course.slug}/").status_code, 200)
 
     def test_drafts_stay_out_of_public_lists(self):
         Playlist.objects.create(owner=self.pro, title="Pro draft")
@@ -581,3 +576,44 @@ class CourseAdminSafetyTests(TestCase):
         with self.assertRaises(ValidationError) as caught:
             self.pro.full_clean()
         self.assertIn("account_type", caught.exception.message_dict)
+
+
+class BuilderPhaseTwoTests(TestCase):
+    """Phase 2 backend: lesson minutes, course list counts, and the delete rule."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.api.force_authenticate(self.pro)
+        self.video = publish_video(self.pro, "Ten minutes")
+        VideoItem.objects.filter(pk=self.video.pk).update(duration="9:30 min", duration_seconds=570)
+        self.post = publish_post(self.pro, "Long read")
+        BlogPost.objects.filter(pk=self.post.pk).update(body=[("rich_text", "<p>" + "word " * 450 + "</p>")])
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
+        self.course.items.create(video=self.video, position=0)
+        self.course.items.create(post=self.post, position=1)
+
+    def test_lessons_carry_minutes(self):
+        items = self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()["items"]
+        self.assertEqual([(i["title"], i["minutes"]) for i in items], [("Ten minutes", 10), ("Long read", 3)])
+
+    def test_company_lesson_minutes(self):
+        from organizations.models import Company
+        from pages.models import TechArticle, Whitepaper
+        from .serializers import lesson_minutes
+        genex = Company.objects.create(name="Genex", slug="genex")
+        article = TechArticle.objects.create(title="A", read_time="8 Mins Read", date=TODAY, excerpt="e", company=genex)
+        paper = Whitepaper.objects.create(title="W", date=TODAY, pages="12 pages", description="d", company=genex)
+        self.assertEqual((lesson_minutes(article, "article"), lesson_minutes(paper, "whitepaper")), (8, 24))
+
+    def test_list_shows_learners_and_delete_rule(self):
+        learner = make_user("learner")
+        Enrollment.objects.create(user=learner, playlist=self.course)
+        row = self.api.get("/api/learning/me/courses/").json()[0]
+        self.assertEqual((row["enrolled_count"], row["can_delete"]), (1, False))
+        self.assertEqual(self.api.delete(f"/api/learning/me/courses/{self.course.pk}/").status_code, 400)
+        self.assertTrue(Playlist.objects.filter(pk=self.course.pk).exists())
+
+        draft = Playlist.objects.create(owner=self.pro, title="Draft")
+        self.assertTrue(self.api.get(f"/api/learning/me/courses/{draft.pk}/").json()["can_delete"])
+        self.assertEqual(self.api.delete(f"/api/learning/me/courses/{draft.pk}/").status_code, 204)

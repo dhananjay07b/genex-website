@@ -1,10 +1,15 @@
+import math
+import re
+
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.html import strip_tags
 from rest_framework import serializers
 
 from accounts.models import User
 from accounts.roles import display_publisher, is_company
 from commerce.access import has_access
 from pages.api import author_payload
+from pages.durations import parse_duration_seconds
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
 from .models import (
@@ -48,6 +53,33 @@ def item_meta(target, kind):
     return topic.name if topic else ""
 
 
+WORDS_PER_MINUTE = 200
+WHITEPAPER_MINUTES_PER_PAGE = 2
+
+
+def _first_number(text):
+    match = re.search(r"\d+", text or "")
+    return int(match.group()) if match else 0
+
+
+def lesson_minutes(target, kind):
+    """
+    About how long a lesson takes, in whole minutes (0 when unknown), for
+    module and course totals. Videos and podcasts use their length, GeAcademy
+    and research their read time, whitepapers 2 minutes a page, and blog
+    posts (which store no read time) their word count at 200 words a minute.
+    """
+    if kind in ("video", "podcast"):
+        seconds = target.duration_seconds or parse_duration_seconds(target.duration) or 0
+        return math.ceil(seconds / 60)
+    if kind in ("article", "research"):
+        return _first_number(target.read_time)
+    if kind == "whitepaper":
+        return _first_number(target.pages) * WHITEPAPER_MINUTES_PER_PAGE
+    words = len(strip_tags(str(target.body)).split())
+    return max(1, math.ceil(words / WORDS_PER_MINUTE)) if words else 0
+
+
 def target_card(target, kind):
     """A course item's content as shown in course pages and the builder."""
     image = getattr(target, "image", None)
@@ -58,6 +90,7 @@ def target_card(target, kind):
         "title": target.title,
         "image_url": image.file.url if image else None,
         "meta": item_meta(target, kind),
+        "minutes": lesson_minutes(target, kind),
         "path": ITEM_PATHS[kind].format(id=target.pk),
         # GeAcademy, research and whitepapers have no access setting: always open.
         "access": getattr(target, "access", "free"),
@@ -126,14 +159,8 @@ class CourseDetailSerializer(CourseCardSerializer):
     items = serializers.SerializerMethodField()
     enrollment = serializers.SerializerMethodField()
 
-    is_preview = serializers.SerializerMethodField()
-
     class Meta(CourseCardSerializer.Meta):
-        fields = CourseCardSerializer.Meta.fields + ["is_locked", "is_preview", "items", "enrollment"]
-
-    def get_is_preview(self, obj):
-        """True when the owner (or Admin) opens a course that isn't live yet."""
-        return obj.status != Playlist.STATUS_PUBLISHED
+        fields = CourseCardSerializer.Meta.fields + ["is_locked", "items", "enrollment"]
 
     def _user(self):
         return self.context["request"].user
@@ -205,6 +232,8 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     instructors = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), required=False)
     modules = serializers.SerializerMethodField()
     faqs = serializers.SerializerMethodField()
+    enrolled_count = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
@@ -212,7 +241,8 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             "id", "slug", "title", "summary", "description", "outcomes", "prerequisites", "language",
             "cover_url", "level", "topics", "roles", "instructors",
             "access", "price", "currency",
-            "status", "rejection_reason", "modules", "items", "faqs", "submitted_at", "updated_at",
+            "status", "rejection_reason", "modules", "items", "faqs",
+            "enrolled_count", "can_delete", "submitted_at", "updated_at",
         ]
         read_only_fields = ["id", "slug", "currency", "status", "rejection_reason", "submitted_at", "updated_at"]
         extra_kwargs = {"language": {"allow_blank": True}}  # blank falls back to English
@@ -225,6 +255,13 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             {**target_card(item.target, item.kind), "item_id": item.pk, "module_id": item.module_id}
             for item in obj.items.select_related(*ITEM_SELECT)
         ]
+
+    def get_enrolled_count(self, obj):
+        return obj.enrollments.count()
+
+    def get_can_delete(self, obj):
+        """A live course with learners can't be deleted by its author (Genex unpublishes it instead)."""
+        return not (obj.status == Playlist.STATUS_PUBLISHED and obj.enrollments.exists())
 
     def get_modules(self, obj):
         return [{"id": m.id, "title": m.title, "summary": m.summary} for m in obj.modules.all()]

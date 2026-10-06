@@ -12,6 +12,8 @@ export interface CourseTarget {
   image_url: string | null
   /** Duration for videos, topic for posts. */
   meta: string
+  /** About how long the lesson takes, in minutes (0 when unknown). */
+  minutes: number
   /** GeLearn path, e.g. /videos/12. */
   path: string
   access: ContentAccess
@@ -66,23 +68,53 @@ export type CourseStatus = 'draft' | 'pending' | 'published' | 'rejected'
 /** A Professional's own course, as the builder edits it. */
 export type CourseLevel = '' | 'beginner' | 'intermediate' | 'advanced'
 
+export interface CourseModuleInfo {
+  id: number
+  title: string
+  summary: string
+}
+
+export interface CourseFaq {
+  question: string
+  answer: string
+}
+
+/** A lesson in the builder: the published item plus where it sits in the course. */
+export type MyCourseItem = CourseTarget & { item_id: number; module_id: number | null }
+
 export interface MyCourse {
   id: number
   slug: string
   title: string
+  summary: string
   description: string
+  outcomes: string[]
+  prerequisites: string[]
+  language: string
   cover_url: string | null
   level: CourseLevel
   /** Topic ids (see /api/snippets/topics/). */
   topics: number[]
   /** Career role ids (see /api/learning/roles/). */
   roles: number[]
+  /** Company courses only: user ids of the company's verified Professionals. */
+  instructors: number[]
   access: ContentAccess
   price: string | null
   currency: string
   status: CourseStatus
   rejection_reason: string
-  items: (CourseTarget & { item_id: number })[]
+  modules: CourseModuleInfo[]
+  items: MyCourseItem[]
+  faqs: (CourseFaq & { id: number })[]
+  enrolled_count: number
+  /** False for a live course with learners: Genex unpublishes it instead. */
+  can_delete: boolean
   submitted_at: string | null
   updated_at: string
+}
+
+/** A verified Professional a company can list as a course instructor (GET /api/learning/me/company-professionals/). */
+export interface CompanyProfessional extends ContentAuthor {
+  id: number
 }

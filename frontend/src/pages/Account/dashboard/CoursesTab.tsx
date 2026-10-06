@@ -5,13 +5,13 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { apiFetch } from '@/lib/api/client'
-import { formatRelativeTime } from '@/lib/utils'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { CourseStatus, MyCourse } from '@/types/learning'
 import { EmptyState } from './EmptyState'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
-import { STATUS_BADGE_CLASS } from './types'
 
 const STATUS_TEXT: Record<CourseStatus, string> = {
   draft: 'Draft',
@@ -19,6 +19,23 @@ const STATUS_TEXT: Record<CourseStatus, string> = {
   published: 'Live',
   rejected: 'Needs changes',
 }
+
+const STATUS_CHIP: Record<CourseStatus, string> = {
+  draft: 'bg-surface text-text-primary border border-border',
+  pending: 'bg-sky-100 text-sky-800',
+  published: 'bg-emerald-100 text-emerald-800',
+  rejected: 'bg-amber-100 text-amber-800',
+}
+
+const FILTERS: { key: 'all' | CourseStatus; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'published', label: 'Live' },
+  { key: 'pending', label: 'In review' },
+  { key: 'rejected', label: 'Needs changes' },
+  { key: 'draft', label: 'Drafts' },
+]
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 interface CoursesTabProps {
   /** Where the builder lives: a Professional's dashboard, or Company Studio for a company's courses. */
@@ -28,6 +45,7 @@ interface CoursesTabProps {
   emptyDescription?: string
 }
 
+/** The course list, shared by a Professional's My Courses and Company Studio → Courses. */
 export function CoursesTab({
   basePath = '/account/courses',
   heading = 'My Courses',
@@ -35,8 +53,10 @@ export function CoursesTab({
   emptyDescription = 'Group your published videos and posts into an ordered course. Learners enroll and track their progress through it.',
 }: CoursesTabProps) {
   const [courses, setCourses] = useState<MyCourse[] | null>(null)
+  const [filter, setFilter] = useState<'all' | CourseStatus>('all')
   const [pendingDelete, setPendingDelete] = useState<MyCourse | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     apiFetch<MyCourse[]>('/api/learning/me/courses/').then(setCourses).catch(() => setCourses([]))
@@ -45,14 +65,21 @@ export function CoursesTab({
   async function confirmDelete() {
     if (!pendingDelete) return
     setDeleting(true)
+    setDeleteError('')
     try {
       await apiFetch(`/api/learning/me/courses/${pendingDelete.id}/`, { method: 'DELETE' })
       setCourses(prev => prev?.filter(c => c.id !== pendingDelete.id) ?? null)
+      setPendingDelete(null)
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Couldn't delete the course.")
       setPendingDelete(null)
     } finally {
       setDeleting(false)
     }
   }
+
+  const count = (key: 'all' | CourseStatus) => (courses ?? []).filter(c => key === 'all' || c.status === key).length
+  const shown = (courses ?? []).filter(c => filter === 'all' || c.status === filter)
 
   return (
     <div>
@@ -74,47 +101,77 @@ export function CoursesTab({
           action={<Link to={`${basePath}/new`} className="text-sm font-bold text-primary hover:underline">Create your first course</Link>}
         />
       ) : (
-        <ul className="border border-border rounded-2xl divide-y divide-border overflow-hidden">
-          {courses.map(course => (
-            <li key={course.id} className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-bold text-text-primary truncate">{course.title}</p>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${STATUS_BADGE_CLASS}`}>{STATUS_TEXT[course.status]}</span>
-                  <AccessBadge access={course.access} price={course.price} currency={course.currency} />
-                </div>
-                <p className="text-xs text-text-muted mt-1">
-                  {course.items.length} item{course.items.length === 1 ? '' : 's'} · updated {formatRelativeTime(course.updated_at)}
-                </p>
-                {course.status === 'rejected' && course.rejection_reason && (
-                  <p className="text-xs text-red-600 mt-1">Feedback: {course.rejection_reason}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {course.status === 'published' && (
-                  <Link to={`/courses/${course.slug}`} aria-label={`View ${course.title}`}
-                    className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface hover:text-primary">
-                    <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
-                  </Link>
-                )}
-                <Link to={`${basePath}/${course.id}/edit`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
-                  <EditOutlinedIcon sx={{ fontSize: 14 }} /> Edit
-                </Link>
-                <button type="button" onClick={() => setPendingDelete(course)} aria-label={`Delete ${course.title}`}
-                  className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-red-50 hover:text-red-600">
-                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div role="tablist" aria-label="Course status" className="flex gap-1 overflow-x-auto border-b border-border mb-4">
+            {FILTERS.filter(f => f.key === 'all' || count(f.key) > 0).map(f => (
+              <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)}
+                className={`whitespace-nowrap px-3 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${filter === f.key ? 'border-primary text-text-primary' : 'border-transparent text-text-muted hover:text-text-primary'}`}>
+                {f.label} <span className="font-semibold text-text-muted">{count(f.key)}</span>
+              </button>
+            ))}
+          </div>
+          {deleteError && <p role="alert" className="text-sm font-semibold text-red-600 mb-3">{deleteError}</p>}
+          <ul className="flex flex-col gap-3">
+            {shown.map(course => {
+              const live = course.status === 'published'
+              const modules = course.modules.length
+              return (
+                <li key={course.id} className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-border bg-white p-3 hover:border-sky-200 hover:shadow-sm transition-all">
+                  <div className="w-full sm:w-28 aspect-video rounded-lg overflow-hidden bg-brand-tint flex items-center justify-center shrink-0">
+                    {course.cover_url
+                      ? <img src={getMediaUrl(course.cover_url)} alt="" className="w-full h-full object-cover" />
+                      : <SchoolOutlinedIcon sx={{ fontSize: 28 }} className="text-primary/50" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link to={`${basePath}/${course.id}/edit`} className="font-bold text-text-primary hover:text-primary truncate">{course.title}</Link>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_CHIP[course.status]}`}>{STATUS_TEXT[course.status]}</span>
+                      <AccessBadge access={course.access} price={course.price} currency={course.currency} />
+                    </div>
+                    <p className="text-xs text-text-muted mt-1">
+                      {modules ? `${plural(modules, 'module')} · ` : ''}{plural(course.items.length, 'lesson')} · updated {formatRelativeTime(course.updated_at)}
+                    </p>
+                    {course.status === 'rejected' && course.rejection_reason && (
+                      <p className="flex items-start gap-1 text-xs text-amber-800 mt-1">
+                        <FeedbackOutlinedIcon sx={{ fontSize: 14 }} className="mt-px shrink-0" /> Genex: {course.rejection_reason}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-xs text-text-muted sm:text-right shrink-0">
+                    <b className="block text-base text-text-primary tabular-nums">{live ? course.enrolled_count : '—'}</b>learners
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Only live courses have a public page; unpublished ones are previewed inside the builder. */}
+                    {live && (
+                      <a href={`/courses/${course.slug}`} target="_blank" rel="noreferrer"
+                        aria-label={`View ${course.title}`} title="View the live page"
+                        className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface hover:text-primary">
+                        <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+                      </a>
+                    )}
+                    <Link to={`${basePath}/${course.id}/edit`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
+                      <EditOutlinedIcon sx={{ fontSize: 14 }} /> Edit
+                    </Link>
+                    <button type="button" onClick={() => setPendingDelete(course)} disabled={!course.can_delete}
+                      aria-label={`Delete ${course.title}`}
+                      title={course.can_delete ? 'Delete' : 'Live with enrolled learners: ask Genex to unpublish it'}
+                      className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:pointer-events-none">
+                      <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="text-xs text-text-muted mt-3">Live courses with enrolled learners can&apos;t be deleted here, so learners never lose a course they&apos;re taking. Ask Genex to unpublish one instead.</p>
+        </>
       )}
 
       {pendingDelete && (
         <ConfirmDeleteDialog
           label={pendingDelete.title}
-          message="will be deleted, along with learners' enrollments and progress in it."
+          message="will be deleted, along with its modules and FAQ."
           confirming={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={confirmDelete}
