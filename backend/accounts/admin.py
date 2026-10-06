@@ -83,4 +83,10 @@ class UserAdmin(DjangoUserAdmin):
                 user=obj, email=obj.email.lower(),
                 defaults={"verified": True, "primary": True},
             )
+        elif obj.email and not EmailAddress.objects.filter(user=obj, email__iexact=obj.email).exists():
+            # Admin changed someone's email: record the new address as unconfirmed
+            # and primary, so "Resend link" can send its confirmation email
+            # (without this record the resend silently does nothing).
+            EmailAddress.objects.filter(user=obj).update(primary=False)
+            EmailAddress.objects.create(user=obj, email=obj.email.lower(), verified=False, primary=True)
         refresh_company_verification(obj)

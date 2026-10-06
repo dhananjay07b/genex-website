@@ -330,6 +330,28 @@ class CompanyVerificationFlowTests(TestCase):
         self.assertEqual(GenexResendEmailView.throttle_scope, "resend-email")
 
 
+    def test_admin_email_change_can_still_be_confirmed_and_verifies(self):
+        """Admin moves a Professional onto the company email: Resend link must work, and confirming verifies them."""
+        from django.contrib.admin.sites import AdminSite
+        from django.core import mail
+        from django.test import RequestFactory
+
+        from .admin import UserAdmin
+        user = make_user("moved", account_type="professional", company=self.google)
+        user.email = "moved@google.com"
+        request = RequestFactory().post("/")
+        request.user = user
+        UserAdmin(User, AdminSite()).save_model(request, user, form=None, change=True)
+        mail.outbox.clear()
+
+        self.api.force_authenticate(user)
+        self.api.post("/api/auth/registration/resend-email/", {"email": "moved@google.com"}, format="json")
+        self.assertEqual(len(mail.outbox), 1)
+        self._confirm_latest_email()
+        user.refresh_from_db()
+        self.assertTrue(user.company_verified)
+
+
 class AuthorPayloadTests(TestCase):
     def test_author_payload_carries_company_display(self):
         from pages.api import author_payload

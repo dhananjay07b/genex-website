@@ -14,5 +14,6 @@ urlpatterns = [
     path("courses/<slug:slug>/items/<int:item_id>/complete/", views.ItemCompleteView.as_view(), name="course-item-complete"),
     path("me/enrollments/", views.MyEnrollmentsView.as_view(), name="my-enrollments"),
     path("me/library/", views.MyLibraryView.as_view(), name="my-library"),
+    path("me/company-professionals/", views.CompanyProfessionalsView.as_view(), name="company-professionals"),
     *router.urls,
 ]

@@ -34,9 +34,14 @@ def with_course_stats(queryset):
     )
 
 
-def published_courses():
+def course_queryset():
+    """Courses in any status, with stats and the relations course pages need."""
     return with_course_stats(
-        Playlist.objects.filter(status=Playlist.STATUS_PUBLISHED)
+        Playlist.objects
         .select_related("owner__avatar", "owner__company__logo", "company__logo", "cover")
         .prefetch_related("topics", "roles")
     )
+
+
+def published_courses():
+    return course_queryset().filter(status=Playlist.STATUS_PUBLISHED)

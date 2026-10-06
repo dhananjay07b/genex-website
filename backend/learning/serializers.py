@@ -1,15 +1,31 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from accounts.roles import display_publisher
+from accounts.models import User
+from accounts.roles import display_publisher, is_company
 from commerce.access import has_access
 from pages.api import author_payload
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
-from .models import ITEM_KINDS, CareerRole, Playlist, PlaylistItem
+from .models import (
+    ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
+    CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
+)
 
 MAX_ITEMS = 100
-MAX_TOPICS = 5
-MAX_ROLES = 3
+
+# Editing any of these on a live course sends it back to Genex for review:
+# they are what learners are promised. Order, lessons, cover, level, topics,
+# roles and instructors go live straight away.
+REVIEWED_FIELDS = ("title", "summary", "description", "outcomes", "prerequisites", "access", "price")
+
+
+def clean_lines(value, limit, label):
+    """`clean_text_lines`, reported as an API field error."""
+    try:
+        return clean_text_lines(value, limit, label)
+    except DjangoValidationError as error:
+        raise serializers.ValidationError(error.messages)
 
 
 # Load every possible target (and its image) in one query per course.
@@ -110,8 +126,14 @@ class CourseDetailSerializer(CourseCardSerializer):
     items = serializers.SerializerMethodField()
     enrollment = serializers.SerializerMethodField()
 
+    is_preview = serializers.SerializerMethodField()
+
     class Meta(CourseCardSerializer.Meta):
-        fields = CourseCardSerializer.Meta.fields + ["is_locked", "items", "enrollment"]
+        fields = CourseCardSerializer.Meta.fields + ["is_locked", "is_preview", "items", "enrollment"]
+
+    def get_is_preview(self, obj):
+        """True when the owner (or Admin) opens a course that isn't live yet."""
+        return obj.status != Playlist.STATUS_PUBLISHED
 
     def _user(self):
         return self.context["request"].user
@@ -180,24 +202,65 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
     topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False)
     roles = serializers.PrimaryKeyRelatedField(many=True, queryset=CareerRole.objects.all(), required=False)
+    instructors = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), required=False)
+    modules = serializers.SerializerMethodField()
+    faqs = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
         fields = [
-            "id", "slug", "title", "description", "cover_url", "level", "topics", "roles",
+            "id", "slug", "title", "summary", "description", "outcomes", "prerequisites", "language",
+            "cover_url", "level", "topics", "roles", "instructors",
             "access", "price", "currency",
-            "status", "rejection_reason", "items", "submitted_at", "updated_at",
+            "status", "rejection_reason", "modules", "items", "faqs", "submitted_at", "updated_at",
         ]
         read_only_fields = ["id", "slug", "currency", "status", "rejection_reason", "submitted_at", "updated_at"]
+        extra_kwargs = {"language": {"allow_blank": True}}  # blank falls back to English
 
     def get_cover_url(self, obj):
         return cover_url(obj)
 
     def get_items(self, obj):
         return [
-            {**target_card(item.target, item.kind), "item_id": item.pk}
+            {**target_card(item.target, item.kind), "item_id": item.pk, "module_id": item.module_id}
             for item in obj.items.select_related(*ITEM_SELECT)
         ]
+
+    def get_modules(self, obj):
+        return [{"id": m.id, "title": m.title, "summary": m.summary} for m in obj.modules.all()]
+
+    def get_faqs(self, obj):
+        return [{"id": f.id, "question": f.question, "answer": f.answer} for f in obj.faqs.all()]
+
+    def validate_outcomes(self, value):
+        return clean_lines(value, MAX_OUTCOMES, "outcomes")
+
+    def validate_prerequisites(self, value):
+        return clean_lines(value, MAX_PREREQUISITES, "prerequisites")
+
+    def validate_summary(self, value):
+        return value.strip()
+
+    def validate_language(self, value):
+        return value.strip() or "English"
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if "instructors" in attrs:
+            attrs["instructors"] = self._check_instructors(attrs["instructors"])
+        return attrs
+
+    def _check_instructors(self, people):
+        """Company courses may list up to 3 of the company's verified Professionals; a Professional's course lists none."""
+        if self.instance is not None:
+            company = self.instance.company
+        else:
+            user = self.context["request"].user
+            company = user.company if is_company(user) else None
+        problem = instructor_problem(company, people)
+        if problem:
+            raise serializers.ValidationError({"instructors": problem})
+        return people
 
     def validate_topics(self, value):
         if len(value) > MAX_TOPICS:
@@ -216,11 +279,11 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        # Changing what learners are promised (title, description, price…) on
-        # a live course sends it back for review; item order does not.
+        # Changing what learners are promised (see REVIEWED_FIELDS) on a live
+        # course sends it back for review; item order does not.
         if instance.status == Playlist.STATUS_PUBLISHED and any(
             validated_data.get(field, getattr(instance, field)) != getattr(instance, field)
-            for field in ("title", "description", "access", "price")
+            for field in REVIEWED_FIELDS
         ):
             validated_data["status"] = Playlist.STATUS_PENDING
         return super().update(instance, validated_data)
@@ -229,6 +292,29 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
 class ItemRefSerializer(serializers.Serializer):
     kind = serializers.ChoiceField(choices=list(ITEM_KINDS))
     id = serializers.IntegerField()
+
+
+class OutlineModuleSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False, allow_null=True)
+    title = serializers.CharField(max_length=CourseModule._meta.get_field("title").max_length)
+    summary = serializers.CharField(max_length=CourseModule._meta.get_field("summary").max_length, required=False, allow_blank=True, default="")
+    items = ItemRefSerializer(many=True)
+
+
+class OutlineSerializer(serializers.Serializer):
+    """The whole lesson outline: modules in order, each with its lessons, plus lessons in no module (shown after them)."""
+    modules = OutlineModuleSerializer(many=True, required=False, default=list)
+    loose_items = ItemRefSerializer(many=True, required=False, default=list)
+
+    def validate_modules(self, value):
+        if len(value) > MAX_MODULES:
+            raise serializers.ValidationError(f"A course can have at most {MAX_MODULES} modules.")
+        return value
+
+
+class FaqInputSerializer(serializers.Serializer):
+    question = serializers.CharField(max_length=CourseFAQ._meta.get_field("question").max_length)
+    answer = serializers.CharField(max_length=CourseFAQ._meta.get_field("answer").max_length)
 
 
 def professional_library(user):

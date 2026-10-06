@@ -104,6 +104,16 @@ class User(AbstractUser):
             errors["email"] = "Another account already uses this email."
         if self.is_featured and self.account_type != self.ACCOUNT_PROFESSIONAL:
             errors["is_featured"] = "Only Professionals can be featured."
+        if self.pk and self.account_type != self.ACCOUNT_PROFESSIONAL:
+            # A Professional's own courses can only be edited by a Professional
+            # owner; changing the type would leave them live but unmanageable.
+            was = type(self).objects.filter(pk=self.pk).values_list("account_type", flat=True).first()
+            own_courses = self.playlists.filter(company__isnull=True).count()
+            if was == self.ACCOUNT_PROFESSIONAL and own_courses:
+                errors["account_type"] = (
+                    f"This Professional owns {own_courses} course(s) of their own. Delete them first, "
+                    "or keep the account type as Professional."
+                )
         if errors:
             raise ValidationError(errors)
 

@@ -274,3 +274,310 @@ class CompanyCourseTests(TestCase):
         self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/enroll/").status_code, (200, 201))
         item_id = data["items"][0]["item_id"]
         self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/items/{item_id}/complete/").status_code, (200, 201, 204))
+
+
+class CourseDetailsPhaseTests(TestCase):
+    """Course page redesign, Phase 1: details, modules, FAQs, instructors, progress-safe saves, owner preview."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        self.api = APIClient()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.learner = make_user("learner")
+        self.v1 = publish_video(self.pro, "Lesson one")
+        self.v2 = publish_video(self.pro, "Lesson two")
+        self.p1 = publish_post(self.pro, "Lesson three")
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
+        self.i1 = self.course.items.create(video=self.v1, position=0)
+        self.i2 = self.course.items.create(video=self.v2, position=1)
+        self.api.force_authenticate(self.pro)
+
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.article = TechArticle.objects.create(title="SLD guide", read_time="8 min", date=TODAY, excerpt="e", company=self.genex)
+        self.verified = make_user("verified", account_type="professional", company=self.genex)
+        User.objects.filter(pk=self.verified.pk).update(company_verified=True)
+        self.unverified = make_user("unverified", account_type="professional", company=self.genex)
+
+    def _url(self, suffix="", course=None):
+        return f"/api/learning/me/courses/{(course or self.course).pk}/{suffix}"
+
+    def _tick(self, item):
+        from .models import ItemProgress
+        Enrollment.objects.get_or_create(user=self.learner, playlist=self.course)
+        ItemProgress.objects.create(user=self.learner, item=item)
+
+    def _status(self):
+        self.course.refresh_from_db()
+        return self.course.status
+
+    # Progress is kept when the builder saves
+    def test_saving_lessons_keeps_learners_progress(self):
+        from .models import ItemProgress
+        self._tick(self.i1)
+        res = self.api.put(self._url("items/"), [{"kind": "video", "id": self.v2.pk}, {"kind": "video", "id": self.v1.pk},
+                                                {"kind": "post", "id": self.p1.pk}], format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.i1).exists())
+        self.assertEqual([i["title"] for i in res.json()["items"]], ["Lesson two", "Lesson one", "Lesson three"])
+
+    def test_removing_a_lesson_removes_only_its_progress(self):
+        from .models import ItemProgress
+        self._tick(self.i1)
+        self._tick(self.i2)
+        self.api.put(self._url("items/"), [{"kind": "video", "id": self.v1.pk}], format="json")
+        self.assertEqual(list(ItemProgress.objects.values_list("item_id", flat=True)), [self.i1.pk])
+
+    # Outline with modules
+    def test_outline_builds_modules_and_keeps_progress(self):
+        from .models import ItemProgress
+        self._tick(self.i2)
+        res = self.api.put(self._url("outline/"), {
+            "modules": [
+                {"title": "Basics", "summary": "Start here", "items": [{"kind": "video", "id": self.v1.pk}]},
+                {"title": "Empty for now", "items": []},
+            ],
+            "loose_items": [{"kind": "video", "id": self.v2.pk}, {"kind": "post", "id": self.p1.pk}],
+        }, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        body = res.json()
+        self.assertEqual([m["title"] for m in body["modules"]], ["Basics", "Empty for now"])
+        basics = body["modules"][0]["id"]
+        self.assertEqual([(i["title"], i["module_id"]) for i in body["items"]],
+                         [("Lesson one", basics), ("Lesson two", None), ("Lesson three", None)])
+        self.assertTrue(ItemProgress.objects.filter(item=self.i2).exists())
+        self.assertEqual(self._status(), "pending")  # new module text goes to review
+
+    def test_reordering_and_moving_lessons_stays_live_but_renaming_goes_to_review(self):
+        from .models import CourseModule
+        a = CourseModule.objects.create(playlist=self.course, title="A", position=0)
+        b = CourseModule.objects.create(playlist=self.course, title="B", position=1)
+        outline = {"modules": [
+            {"id": b.pk, "title": "B", "items": [{"kind": "video", "id": self.v1.pk}]},
+            {"id": a.pk, "title": "A", "items": [{"kind": "video", "id": self.v2.pk}]},
+        ]}
+        self.assertEqual(self.api.put(self._url("outline/"), outline, format="json").status_code, 200)
+        self.assertEqual(self._status(), "published")
+        outline["modules"][0]["title"] = "B, renamed"
+        self.api.put(self._url("outline/"), outline, format="json")
+        self.assertEqual(self._status(), "pending")
+
+    def test_outline_drops_left_out_modules_and_rejects_foreign_ones(self):
+        from .models import CourseModule
+        gone = CourseModule.objects.create(playlist=self.course, title="Old", position=0)
+        res = self.api.put(self._url("outline/"), {"loose_items": [{"kind": "video", "id": self.v1.pk}]}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(CourseModule.objects.filter(pk=gone.pk).exists())
+        other = Playlist.objects.create(owner=self.pro, title="Other")
+        foreign = CourseModule.objects.create(playlist=other, title="Not here")
+        res = self.api.put(self._url("outline/"), {"modules": [{"id": foreign.pk, "title": "x", "items": []}]}, format="json")
+        self.assertEqual(res.status_code, 400)
+
+    def test_outline_rejects_duplicates_and_foreign_content(self):
+        stranger = make_user("stranger", account_type="professional", company_other="X")
+        theirs = publish_video(stranger, "Theirs")
+        dup = {"modules": [{"title": "M", "items": [{"kind": "video", "id": self.v1.pk}]}],
+               "loose_items": [{"kind": "video", "id": self.v1.pk}]}
+        self.assertEqual(self.api.put(self._url("outline/"), dup, format="json").status_code, 400)
+        foreign = {"loose_items": [{"kind": "video", "id": theirs.pk}]}
+        self.assertEqual(self.api.put(self._url("outline/"), foreign, format="json").status_code, 400)
+
+    # Details and the review rule
+    def test_outcomes_and_prerequisites_are_cleaned_and_limited(self):
+        draft = Playlist.objects.create(owner=self.pro, title="Draft")
+        res = self.api.patch(self._url(course=draft), {"outcomes": ["  Map Modbus registers ", "", "Build alarm lists"],
+                                                      "prerequisites": ["Basic electrical"], "language": "  "}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()["outcomes"], ["Map Modbus registers", "Build alarm lists"])
+        self.assertEqual(res.json()["language"], "English")
+        self.assertEqual(self.api.patch(self._url(course=draft), {"outcomes": [f"o{i}" for i in range(9)]}, format="json").status_code, 400)
+        self.assertEqual(self.api.patch(self._url(course=draft), {"outcomes": ["x" * 121]}, format="json").status_code, 400)
+
+    def test_learner_facing_text_sends_live_course_to_review_but_language_does_not(self):
+        self.api.patch(self._url(), {"language": "Hindi", "level": "beginner"}, format="json")
+        self.assertEqual(self._status(), "published")
+        self.api.patch(self._url(), {"summary": "A new promise"}, format="json")
+        self.assertEqual(self._status(), "pending")
+
+    def test_faqs_save_limit_and_review_rule(self):
+        faqs = [{"question": "Do I need SCADA experience?", "answer": "No."}]
+        res = self.api.put(self._url("faqs/"), faqs, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual([f["question"] for f in res.json()["faqs"]], ["Do I need SCADA experience?"])
+        self.assertEqual(self._status(), "pending")
+        self.course.status = "published"
+        self.course.save()
+        self.api.put(self._url("faqs/"), faqs, format="json")  # unchanged: stays live
+        self.assertEqual(self._status(), "published")
+        too_many = [{"question": f"Q{i}", "answer": "A"} for i in range(7)]
+        self.assertEqual(self.api.put(self._url("faqs/"), too_many, format="json").status_code, 400)
+
+    # Instructors: company courses only
+    def test_company_course_lists_its_verified_professionals_as_instructors(self):
+        self.api.force_authenticate(self.staff)
+        people = self.api.get("/api/learning/me/company-professionals/").json()
+        self.assertEqual([p["username"] for p in people], ["verified"])
+        res = self.api.post("/api/learning/me/courses/", {"title": "Remote Monitoring", "instructors": [self.verified.pk]}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["instructors"], [self.verified.pk])
+        cid = res.json()["id"]
+        bad = self.api.patch(f"/api/learning/me/courses/{cid}/", {"instructors": [self.unverified.pk]}, format="json")
+        self.assertEqual(bad.status_code, 400)
+        self.assertEqual(self.api.patch(f"/api/learning/me/courses/{cid}/", {"instructors": []}, format="json").json()["instructors"], [])
+
+    def test_professional_course_cannot_list_instructors(self):
+        res = self.api.patch(self._url(), {"instructors": [self.verified.pk]}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(self.api.get("/api/learning/me/company-professionals/").status_code, 403)
+
+    # Owner preview
+    def test_owner_and_colleagues_preview_unpublished_courses(self):
+        draft = Playlist.objects.create(owner=self.pro, title="Pro draft")
+        res = self.api.get(f"/api/learning/courses/{draft.slug}/")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["is_preview"])
+        self.assertFalse(self.api.get(f"/api/learning/courses/{self.course.slug}/").json()["is_preview"])
+        for viewer in (None, self.learner, self.staff):
+            client = APIClient()
+            if viewer:
+                client.force_authenticate(viewer)
+            self.assertEqual(client.get(f"/api/learning/courses/{draft.slug}/").status_code, 404)
+
+        company_draft = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company draft")
+        colleague = make_user("staff2", account_type="company", company=self.genex)
+        client = APIClient()
+        client.force_authenticate(colleague)
+        self.assertEqual(client.get(f"/api/learning/courses/{company_draft.slug}/").status_code, 200)
+        self.assertEqual(self.api.get(f"/api/learning/courses/{company_draft.slug}/").status_code, 404)
+
+    def test_drafts_stay_out_of_public_lists(self):
+        Playlist.objects.create(owner=self.pro, title="Pro draft")
+        slugs = [c["slug"] for c in self.api.get("/api/learning/courses/").json()["results"]]
+        self.assertEqual(slugs, ["scada"])
+
+
+class CourseAdminSafetyTests(TestCase):
+    """Rules Django admin must enforce on its own, so a slip there can't create a course the site can't handle."""
+
+    def setUp(self):
+        from organizations.models import Company
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.verified = make_user("verified", account_type="professional", company=self.genex)
+        User.objects.filter(pk=self.verified.pk).update(company_verified=True)
+        self.verified.refresh_from_db()
+        self.unverified = make_user("unverified", account_type="professional", company=self.genex)
+        self.own = Playlist.objects.create(owner=self.pro, title="Pro course")
+        self.company_course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Genex course")
+
+    def _form(self, course, **changes):
+        import json
+        from .admin import PlaylistAdminForm
+        course = Playlist.objects.get(pk=course.pk)  # fresh: a rejected form still writes onto its instance
+        data = {
+            "title": course.title, "summary": course.summary, "description": course.description,
+            "outcomes": json.dumps(course.outcomes), "prerequisites": json.dumps(course.prerequisites),
+            "language": course.language, "level": course.level, "access": course.access, "currency": course.currency,
+            "rejection_reason": "", "instructors": [], "topics": [], "roles": [],
+        }
+        data.update(changes)
+        admin_form = PlaylistAdmin(Playlist, AdminSite()).get_form(RequestFactory().get("/"), course)
+        self.assertTrue(issubclass(admin_form, PlaylistAdminForm))
+        return admin_form(data=data, instance=course)
+
+    def test_professional_course_refuses_any_instructor(self):
+        form = self._form(self.own, instructors=[self.pro.pk])
+        self.assertFalse(form.is_valid())
+        self.assertIn("instructors", form.errors)
+
+    def test_company_course_accepts_only_verified_professionals_of_the_company(self):
+        self.assertTrue(self._form(self.company_course, instructors=[self.verified.pk]).is_valid())
+        for wrong in (self.staff, self.unverified, self.pro):
+            form = self._form(self.company_course, instructors=[wrong.pk])
+            self.assertFalse(form.is_valid(), wrong.username)
+            self.assertIn("instructors", form.errors)
+
+    def test_company_course_allows_at_most_three_instructors(self):
+        people = [self.verified]
+        for i in range(3):
+            person = make_user(f"v{i}", account_type="professional", company=self.genex)
+            User.objects.filter(pk=person.pk).update(company_verified=True)
+            people.append(person)
+        self.assertTrue(self._form(self.company_course, instructors=[p.pk for p in people[:3]]).is_valid())
+        self.assertFalse(self._form(self.company_course, instructors=[p.pk for p in people]).is_valid())
+
+    def test_outcome_and_prerequisite_limits_apply_in_admin(self):
+        self.assertFalse(self._form(self.own, outcomes='["' + '", "'.join(f"o{i}" for i in range(9)) + '"]').is_valid())
+        self.assertFalse(self._form(self.own, prerequisites='["' + "x" * 121 + '"]').is_valid())
+        self.assertFalse(self._form(self.own, outcomes='"not a list"').is_valid())
+        form = self._form(self.own, outcomes='["  Map registers  ", ""]')
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().outcomes, ["Map registers"])
+
+    def test_topic_and_role_limits_apply_in_admin(self):
+        from pages.models import Topic
+        from .models import CareerRole
+        topics = list(Topic.objects.values_list("pk", flat=True)[:6])
+        self.assertFalse(self._form(self.own, topics=topics).is_valid())
+        roles = list(CareerRole.objects.values_list("pk", flat=True)[:4])
+        self.assertFalse(self._form(self.own, roles=roles).is_valid())
+
+    def test_company_is_read_only_and_courses_are_not_created_in_admin(self):
+        model_admin = PlaylistAdmin(Playlist, AdminSite())
+        self.assertIn("company", model_admin.readonly_fields)
+        self.assertFalse(model_admin.has_add_permission(RequestFactory().get("/")))
+
+    def test_approve_skips_courses_with_no_lessons(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        self.own.status = "pending"
+        self.own.save()
+        request = RequestFactory().post("/")
+        request.user = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        PlaylistAdmin(Playlist, AdminSite()).approve(request, Playlist.objects.filter(pk=self.own.pk))
+        self.own.refresh_from_db()
+        self.assertEqual(self.own.status, "pending")
+
+    def test_lesson_cannot_point_at_another_courses_module(self):
+        from django.core.exceptions import ValidationError
+        from .models import CourseModule, PlaylistItem
+        video = publish_video(self.pro, "V")
+        foreign = CourseModule.objects.create(playlist=self.company_course, title="Theirs")
+        with self.assertRaises(ValidationError):
+            PlaylistItem(playlist=self.own, video=video, module=foreign).full_clean()
+
+    def test_instructor_is_removed_when_they_stop_qualifying(self):
+        from accounts.verification import refresh_company_verification
+        self.company_course.instructors.add(self.verified)
+        refresh_company_verification(self.verified)  # no confirmed company email → loses verification
+        self.assertFalse(self.company_course.instructors.exists())
+
+        self.company_course.instructors.add(self.verified)  # (re-added directly, as stale data would be)
+        User.objects.filter(pk=self.verified.pk).update(company_verified=True)
+        self.verified.refresh_from_db()
+        self.verified.company = None
+        self.verified.company_other = "Elsewhere"
+        self.verified.save()
+        self.assertFalse(self.company_course.instructors.exists())
+
+    def test_listed_instructors_hides_anyone_no_longer_eligible(self):
+        self.company_course.instructors.add(self.verified, self.unverified)
+        self.assertEqual(list(self.company_course.listed_instructors()), [self.verified])
+        self.own.instructors.add(self.verified)
+        self.assertFalse(self.own.listed_instructors().exists())
+
+    def test_deleting_a_course_owner_is_blocked(self):
+        from django.db.models import ProtectedError
+        with self.assertRaises(ProtectedError):
+            self.staff.delete()
+
+    def test_professional_with_own_courses_cannot_change_account_type(self):
+        from django.core.exceptions import ValidationError
+        self.pro.account_type = "learner"
+        self.pro.company_other = ""
+        with self.assertRaises(ValidationError) as caught:
+            self.pro.full_clean()
+        self.assertIn("account_type", caught.exception.message_dict)

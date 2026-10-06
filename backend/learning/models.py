@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from django import forms
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -15,6 +16,58 @@ from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
 from wagtail.snippets.models import register_snippet
 
 from pages.models import AccessControlled
+
+
+# Limits shared by the course builder API, Django admin and the models.
+MAX_TOPICS = 5
+MAX_ROLES = 3
+MAX_OUTCOMES = 8
+MAX_PREREQUISITES = 5
+MAX_LINE = 120
+MAX_INSTRUCTORS = 3
+MAX_MODULES = 20
+MAX_FAQS = 6
+
+
+def clean_text_lines(value, limit, label):
+    """
+    A list of short text lines (outcomes, prerequisites): trimmed, blanks
+    dropped, at most `limit` lines of MAX_LINE characters. Returns the cleaned
+    list or raises ValidationError.
+    """
+    if not isinstance(value, list) or not all(isinstance(line, str) for line in value):
+        raise ValidationError("Enter a list of text lines, e.g. [\"First\", \"Second\"].")
+    lines = [line.strip() for line in value if line.strip()]
+    if len(lines) > limit:
+        raise ValidationError(f"Add at most {limit} {label}.")
+    if any(len(line) > MAX_LINE for line in lines):
+        raise ValidationError(f"Keep each line under {MAX_LINE} characters.")
+    return lines
+
+
+def eligible_instructors(company):
+    """Who a company course can list as instructors: the company's verified, active Professionals."""
+    User = get_user_model()
+    return User.objects.filter(
+        account_type=User.ACCOUNT_PROFESSIONAL, company=company, company__is_active=True,
+        company_verified=True, is_active=True,
+    )
+
+
+def instructor_problem(company, people):
+    """Why `people` can't be this course's instructors (a message), or None. `company` is the course's company."""
+    if not people:
+        return None
+    if company is None:
+        return "Only company courses list instructors. A Professional's own course always shows its owner."
+    if len(people) > MAX_INSTRUCTORS:
+        return f"Choose at most {MAX_INSTRUCTORS} instructors."
+    allowed = set(eligible_instructors(company).values_list("pk", flat=True))
+    refused = [str(person) for person in people if person.pk not in allowed]
+    if refused:
+        return (f"Not allowed: {', '.join(refused)}. Instructors must be Professionals at {company} "
+                "whose company email is verified (company logins can't be instructors).")
+    return None
 
 
 def unique_slug(instance, value, max_length=200, fallback="item"):
@@ -83,7 +136,9 @@ class Playlist(AccessControlled):
         ("advanced", "Advanced"),
     ]
 
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="playlists")
+    # PROTECT: deleting a user must never silently delete courses learners are
+    # enrolled in (a company course is shared by all the company's logins).
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="playlists")
     company = models.ForeignKey(
         "organizations.Company", null=True, blank=True, on_delete=models.PROTECT, related_name="courses",
         help_text="Set for courses a company builds in Company Studio; shown as 'Course by <company>'. "
@@ -91,7 +146,24 @@ class Playlist(AccessControlled):
     )
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
-    description = models.TextField(blank=True)
+    summary = models.CharField(
+        max_length=220, blank=True, help_text="One or two sentences shown under the title and on course cards.",
+    )
+    description = models.TextField(blank=True, verbose_name="About this course")
+    outcomes = models.JSONField(
+        default=list, blank=True, verbose_name="What you'll learn",
+        help_text="A list of up to 8 short outcomes.",
+    )
+    prerequisites = models.JSONField(
+        default=list, blank=True, verbose_name="Before you start",
+        help_text="A list of up to 5 things learners should know first.",
+    )
+    language = models.CharField(max_length=40, default="English")
+    instructors = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="taught_courses",
+        help_text="Company courses only: up to 3 of the company's verified Professionals. "
+                  "A Professional's own course always shows its owner.",
+    )
     cover = models.ForeignKey(
         "wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
     )
@@ -124,6 +196,55 @@ class Playlist(AccessControlled):
     def access_owner_ids(self):
         return {self.owner_id}
 
+    def clean(self):
+        super().clean()
+        errors = {}
+        for field, limit, label in (("outcomes", MAX_OUTCOMES, "outcomes"), ("prerequisites", MAX_PREREQUISITES, "prerequisites")):
+            try:
+                setattr(self, field, clean_text_lines(getattr(self, field), limit, label))
+            except ValidationError as error:
+                errors[field] = error.messages
+        self.language = (self.language or "").strip() or "English"
+        if self.company_id and self.owner_id and self.owner.account_type == "professional" and self._state.adding:
+            errors["company"] = "A Professional's own course can't belong to a company."
+        if errors:
+            raise ValidationError(errors)
+
+    def listed_instructors(self):
+        """Instructors to show: only those still eligible (verification can lapse after they were chosen)."""
+        if self.company_id is None:
+            return self.instructors.none()
+        return self.instructors.filter(pk__in=eligible_instructors(self.company).values("pk"))
+
+
+class CourseModule(models.Model):
+    """A named group of lessons in a course. Optional: a course without modules is one plain list."""
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="modules")
+    title = models.CharField(max_length=120)
+    summary = models.CharField(max_length=300, blank=True)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return f"{self.playlist} · {self.title}"
+
+
+class CourseFAQ(models.Model):
+    """The course author's own questions, shown before GeLearn's standard ones."""
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="faqs")
+    question = models.CharField(max_length=200)
+    answer = models.TextField(max_length=1000)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+        verbose_name = "Course FAQ"
+
+    def __str__(self):
+        return self.question
+
 
 # A course lesson points at exactly one piece of published content. Professionals'
 # courses use videos and blog posts; Company Studio courses use the company's
@@ -150,6 +271,10 @@ def _exactly_one_target():
 class PlaylistItem(models.Model):
     """One piece of published content, at a position in the course."""
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="items")
+    module = models.ForeignKey(
+        CourseModule, null=True, blank=True, on_delete=models.SET_NULL, related_name="items",
+        help_text="Empty when the course has no modules, or the lesson isn't in one.",
+    )
     video = models.ForeignKey("pages.VideoItem", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     post = models.ForeignKey("pages.BlogPost", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     article = models.ForeignKey("pages.TechArticle", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
@@ -168,6 +293,11 @@ class PlaylistItem(models.Model):
                 for field in _ITEM_FIELDS
             ],
         ]
+
+    def clean(self):
+        super().clean()
+        if self.module_id and self.module.playlist_id != self.playlist_id:
+            raise ValidationError({"module": "That module belongs to a different course."})
 
     @property
     def kind(self):

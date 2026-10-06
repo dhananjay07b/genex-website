@@ -11,12 +11,18 @@ wherever any input can change: registration, profile updates, email
 confirmation, and Admin edits to a user or a company's domains.
 """
 from allauth.account.models import EmailAddress
+from django.dispatch import Signal
 from django.utils import timezone
 from rest_framework import serializers
 
 from organizations.models import Company
 
 from .models import User
+
+
+# Sent with `user` whenever `company_verified` flips. The flag is written with
+# a queryset update (no post_save), so apps that depend on it listen here.
+company_verification_changed = Signal()
 
 
 def email_is_confirmed(user):
@@ -45,6 +51,7 @@ def refresh_company_verification(user):
         User.objects.filter(pk=user.pk).update(
             company_verified=user.company_verified, company_verified_at=user.company_verified_at,
         )
+        company_verification_changed.send(sender=User, user=user)
     return verified
 
 
