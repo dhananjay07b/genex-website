@@ -155,24 +155,29 @@ def role_detail(slug):
 
 # ── Companies ────────────────────────────────────────────────────────────────
 
+def company_counts(company):
+    """What a company has on GeLearn: live courses (its own and its Professionals'), reading, whitepapers, verified experts."""
+    return {
+        "courses": Playlist.objects.filter(status=Playlist.STATUS_PUBLISHED).filter(
+            Q(company=company) | Q(owner__company=company, company__isnull=True)).count(),
+        "reading": TechArticle.objects.filter(company=company).count() + CaseStudy.objects.filter(company=company).count(),
+        "whitepapers": Whitepaper.objects.filter(company=company).count(),
+        "experts": User.objects.filter(account_type=User.ACCOUNT_PROFESSIONAL, company=company,
+                                       company_verified=True, is_active=True).count(),
+    }
+
+
 def companies_with_counts():
-    rows = []
-    for company in Company.objects.filter(is_active=True).select_related("logo").order_by("name"):
-        rows.append({
+    return [
+        {
             "name": company.name,
             "slug": company.slug,
             "logo_url": company.logo_url,
             "description": company.description,
-            "counts": {
-                "courses": Playlist.objects.filter(status=Playlist.STATUS_PUBLISHED).filter(
-                    Q(company=company) | Q(owner__company=company, company__isnull=True)).count(),
-                "reading": TechArticle.objects.filter(company=company).count() + CaseStudy.objects.filter(company=company).count(),
-                "whitepapers": Whitepaper.objects.filter(company=company).count(),
-                "experts": User.objects.filter(account_type=User.ACCOUNT_PROFESSIONAL, company=company,
-                                               company_verified=True, is_active=True).count(),
-            },
-        })
-    return rows
+            "counts": company_counts(company),
+        }
+        for company in Company.objects.filter(is_active=True).select_related("logo").order_by("name")
+    ]
 
 
 # ── Live sessions ────────────────────────────────────────────────────────────

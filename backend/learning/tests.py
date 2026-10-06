@@ -738,3 +738,126 @@ class SeedCourseDemoTests(TestCase):
         from django.test import override_settings
         with override_settings(DEBUG=False), self.assertRaises(CommandError):
             call_command("seed_course_demo", stdout=io.StringIO())
+
+
+class CoursePageApiTests(TestCase):
+    """Phase 4: the full course page payload and the related-courses tabs."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        from .models import CareerRole, CourseFAQ, CourseModule, ItemProgress
+        self.ItemProgress = ItemProgress
+        self.genex = Company.objects.create(name="Genex", slug="genex", description="Monitoring software.")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng", display_name="Priya")
+        self.v1, self.v2 = publish_video(self.pro, "One"), publish_video(self.pro, "Two")
+        VideoItem.objects.filter(pk=self.v1.pk).update(duration_seconds=600)
+        VideoItem.objects.filter(pk=self.v2.pk).update(duration_seconds=300)
+        self.post = publish_post(self.pro, "Three")
+        self.role = CareerRole.objects.get(slug="scada-engineer")
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published", level="intermediate",
+                                              summary="How plants are monitored.", outcomes=["Map registers"])
+        self.course.roles.add(self.role)
+        module = CourseModule.objects.create(playlist=self.course, title="Basics", position=0)
+        self.i1 = self.course.items.create(video=self.v1, position=0, module=module)
+        self.i2 = self.course.items.create(video=self.v2, position=1, module=module)
+        self.i3 = self.course.items.create(post=self.post, position=2)
+        CourseFAQ.objects.create(playlist=self.course, question="Do I need experience?", answer="No.")
+        self.url = f"/api/learning/courses/{self.course.slug}/"
+
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.article = TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=self.genex)
+
+    def _company_course(self, **kwargs):
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, status="published", **kwargs)
+        course.items.create(article=self.article, position=0)
+        return course
+
+    def _verified_pro(self, username, company):
+        user = make_user(username, account_type="professional", company=company, role_title="Engineer")
+        User.objects.filter(pk=user.pk).update(company_verified=True)
+        user.refresh_from_db()
+        return user
+
+    def test_page_fields(self):
+        data = APIClient().get(self.url).json()
+        self.assertEqual((data["summary"], data["outcomes"], data["language"]), ("How plants are monitored.", ["Map registers"], "English"))
+        self.assertEqual(data["lesson_counts"], {"video": 2, "post": 1})
+        self.assertEqual(data["total_minutes"], 15 + data["items"][2]["minutes"])
+        self.assertEqual([(m["title"], m["item_ids"], m["minutes"]) for m in data["modules"]], [("Basics", [self.i1.pk, self.i2.pk], 15)])
+        self.assertEqual(data["faqs"], [{"question": "Do I need experience?", "answer": "No."}])
+        self.assertIsNone(data["my_review"])
+        self.assertIsNone(data["rating_summary"])
+        self.assertEqual(data["learner_companies"], [])
+
+    def test_next_lesson_for_an_enrolled_learner(self):
+        learner = make_user("learner")
+        Enrollment.objects.create(user=learner, playlist=self.course)
+        self.ItemProgress.objects.create(user=learner, item=self.i1)
+        api = APIClient()
+        api.force_authenticate(learner)
+        data = api.get(self.url).json()
+        self.assertEqual(data["next_item_id"], self.i2.pk)
+        self.assertEqual(data["my_review"]["can_review"], True)
+
+    def test_instructors_and_publisher(self):
+        data = APIClient().get(self.url).json()
+        self.assertEqual([p["username"] for p in data["instructors"]], ["pro"])
+        self.assertEqual(data["instructors"][0]["course_count"], 1)
+        self.assertIsNone(data["publisher"])  # an unlisted company is never "Offered by"
+
+        company_course = self._company_course(title="Company course")
+        data = APIClient().get(f"/api/learning/courses/{company_course.slug}/").json()
+        self.assertEqual(data["instructors"], [])
+        self.assertEqual((data["publisher"]["name"], data["publisher"]["description"]), ("Genex", "Monitoring software."))
+        self.assertEqual(data["publisher"]["counts"]["courses"], 1)
+
+        teacher = self._verified_pro("teacher", self.genex)
+        company_course.instructors.add(teacher)
+        data = APIClient().get(f"/api/learning/courses/{company_course.slug}/").json()
+        self.assertEqual([p["username"] for p in data["instructors"]], ["teacher"])
+
+    def test_career_path_steps(self):
+        beginner = Playlist.objects.create(owner=self.pro, title="Intro", status="published", level="beginner")
+        beginner.roles.add(self.role)
+        Playlist.objects.create(owner=self.pro, title="Draft advanced", level="advanced").roles.add(self.role)
+        path = APIClient().get(self.url).json()["roles"][0]["path"]
+        self.assertEqual([(s["level"], s["is_current"], s["course"]["title"]) for s in path],
+                         [("beginner", False, "Intro"), ("intermediate", True, "SCADA")])
+
+    def test_learner_companies_need_three_verified_companies(self):
+        from organizations.models import Company
+        for i in range(3):
+            company = Company.objects.create(name=f"Co {i}", slug=f"co-{i}")
+            Enrollment.objects.create(user=self._verified_pro(f"eng{i}", company), playlist=self.course)
+            names = [c["name"] for c in APIClient().get(self.url).json()["learner_companies"]]
+            self.assertEqual(len(names), 3 if i == 2 else 0)
+
+    def test_rating_summary_and_first_reviews(self):
+        for i, stars in enumerate([5, 5, 4]):
+            user = make_user(f"r{i}")
+            Enrollment.objects.create(user=user, playlist=self.course)
+            CourseReview.objects.create(user=user, playlist=self.course, rating=stars)
+        data = APIClient().get(self.url).json()
+        self.assertEqual((data["rating_summary"]["average"], data["rating_summary"]["count"]), (4.7, 3))
+        self.assertEqual([d["percent"] for d in data["rating_summary"]["distribution"]], [67, 33, 0, 0, 0])
+        self.assertEqual(len(data["reviews"]), 3)
+
+    def test_related_tabs_skip_empty_ones_and_this_course(self):
+        from pages.models import Topic
+        topic = Topic.objects.first()
+        self.course.topics.add(topic)
+        other = Playlist.objects.create(owner=self.pro, title="Other", status="published")
+        other.topics.add(topic)
+        tabs = APIClient().get(f"{self.url}related/").json()
+        self.assertEqual([(t["key"], [c["title"] for c in t["courses"]]) for t in tabs],
+                         [("topic", ["Other"]), ("publisher", ["Other"])])
+
+    def test_enrollment_list_stays_light(self):
+        learner = make_user("learner")
+        Enrollment.objects.create(user=learner, playlist=self.course)
+        api = APIClient()
+        api.force_authenticate(learner)
+        row = api.get("/api/learning/me/enrollments/").json()["results"][0]
+        self.assertIn("enrollment", row)
+        self.assertNotIn("instructors", row)

@@ -12,7 +12,8 @@ from pages.api import author_payload
 from pages.durations import parse_duration_seconds
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
-from .reviews import card_rating
+from . import course_page
+from .reviews import card_rating, rating_summary
 from .models import (
     ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
     CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
@@ -160,7 +161,8 @@ class CourseCardSerializer(serializers.ModelSerializer):
         return round(seconds / 60)
 
 
-class CourseDetailSerializer(CourseCardSerializer):
+class CourseProgressSerializer(CourseCardSerializer):
+    """A course with its lessons and the viewer's progress (lists of enrolled courses)."""
     is_locked = serializers.SerializerMethodField()
     items = serializers.SerializerMethodField()
     enrollment = serializers.SerializerMethodField()
@@ -189,6 +191,14 @@ class CourseDetailSerializer(CourseCardSerializer):
         return cache[key]
 
     def get_items(self, obj):
+        # Built once per course: the course page's extras reuse it.
+        key = ("items", obj.pk)
+        cache = self._cache()
+        if key not in cache:
+            cache[key] = self._build_items(obj)
+        return cache[key]
+
+    def _build_items(self, obj):
         completed = self._completed_ids(obj)
         rows = []
         for item in obj.items.select_related(*ITEM_SELECT):
@@ -196,6 +206,7 @@ class CourseDetailSerializer(CourseCardSerializer):
             card = target_card(target, item.kind)
             card.update(
                 item_id=item.pk,
+                module_id=item.module_id,
                 position=item.position,
                 is_locked=not has_access(self._user(), target, self._cache()),
                 completed=item.pk in completed,
@@ -215,6 +226,69 @@ class CourseDetailSerializer(CourseCardSerializer):
             "total": total,
             "percent": round(done * 100 / total) if total else 0,
         }
+
+
+class CourseDetailSerializer(CourseProgressSerializer):
+    """The whole course page: the card fields plus everything course_page.py assembles."""
+    total_minutes = serializers.SerializerMethodField()
+    lesson_counts = serializers.SerializerMethodField()
+    modules = serializers.SerializerMethodField()
+    next_item_id = serializers.SerializerMethodField()
+    instructors = serializers.SerializerMethodField()
+    publisher = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
+    rating_summary = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
+    my_review = serializers.SerializerMethodField()
+    faqs = serializers.SerializerMethodField()
+    learner_companies = serializers.SerializerMethodField()
+
+    class Meta(CourseProgressSerializer.Meta):
+        fields = CourseProgressSerializer.Meta.fields + [
+            "summary", "outcomes", "prerequisites", "language",
+            "total_minutes", "lesson_counts", "modules", "next_item_id",
+            "instructors", "publisher", "roles", "rating_summary", "reviews", "my_review", "faqs", "learner_companies",
+        ]
+
+    # Course-page extras (see course_page.py). Lists of courses (enrollments) only use the card fields.
+    def _items(self, obj):
+        return self.get_items(obj)
+
+    def get_total_minutes(self, obj):
+        return sum(item["minutes"] for item in self._items(obj))
+
+    def get_lesson_counts(self, obj):
+        return course_page.lesson_counts(self._items(obj))
+
+    def get_modules(self, obj):
+        return course_page.modules_payload(obj, self._items(obj))
+
+    def get_next_item_id(self, obj):
+        return course_page.next_item_id(self._items(obj), self.get_enrollment(obj))
+
+    def get_instructors(self, obj):
+        return course_page.instructors_payload(obj)
+
+    def get_publisher(self, obj):
+        return course_page.publisher_payload(obj)
+
+    def get_roles(self, obj):
+        return course_page.roles_payload(obj)
+
+    def get_rating_summary(self, obj):
+        return rating_summary(obj)
+
+    def get_reviews(self, obj):
+        return course_page.first_reviews(obj, len(self._items(obj)), self._user())
+
+    def get_my_review(self, obj):
+        return course_page.my_review_state(obj, len(self._items(obj)), self._user())
+
+    def get_faqs(self, obj):
+        return [{"question": f.question, "answer": f.answer} for f in obj.faqs.all()]
+
+    def get_learner_companies(self, obj):
+        return course_page.learner_companies(obj)
 
 
 class CareerRoleSerializer(serializers.ModelSerializer):

@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from accounts.roles import display_company, display_publisher
 from learning.queries import published_courses
+from learning.reviews import card_rating
 from pages.models import BlogPost, CaseStudy, PodcastEpisode, TechArticle, Tender, VideoItem, Whitepaper
 
 EXCERPT_LENGTH = 220
@@ -89,6 +90,8 @@ def course_card(course):
         lessons=lessons,
         video_minutes=round((getattr(course, "video_seconds", 0) or 0) / 60),
         enrolled=getattr(course, "enrolled_count", None),
+        # {average, count} once the course has 3 visible reviews, else None.
+        rating=card_rating(course),
         featured=course.featured,
         # Company Studio courses are by the company; a Professional's own course is by them (with their company).
         company=display_publisher(course.company) if course.company_id else None,

@@ -17,6 +17,7 @@ from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
 from .models import ITEM_KINDS, CareerRole, CourseFAQ, CourseModule, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem
+from . import course_page
 from .queries import published_courses
 from .reviews import review_block_reason, review_payload, with_progress
 from .serializers import (
@@ -25,6 +26,7 @@ from .serializers import (
     CareerRoleSerializer,
     CourseCardSerializer,
     CourseDetailSerializer,
+    CourseProgressSerializer,
     FaqInputSerializer,
     ItemRefSerializer,
     MyCourseSerializer,
@@ -72,7 +74,16 @@ class CourseDetailView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return _published()
+        return _published().prefetch_related("modules", "faqs")
+
+
+class CourseRelatedView(APIView):
+    """Other live courses for the course page's "Explore more" tabs: same topic, same role, same publisher."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, slug):
+        course = get_object_or_404(_published().select_related("company"), slug=slug)
+        return Response(course_page.related_courses(course))
 
 
 def _locked_reason(course):
@@ -127,7 +138,7 @@ class ItemCompleteView(APIView):
 class MyEnrollmentsView(generics.ListAPIView):
     """The signed-in user's enrolled courses, newest first, with progress."""
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = CourseDetailSerializer
+    serializer_class = CourseProgressSerializer
     pagination_class = GenexPagination
 
     def get_queryset(self):
