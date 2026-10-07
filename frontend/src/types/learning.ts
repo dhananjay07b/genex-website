@@ -1,5 +1,6 @@
 import type { ContentAccess, ContentAuthor } from './api'
 import type { CompanyDisplay } from './auth'
+import type { DiscoveryCard } from './discovery'
 
 /** Professionals' courses use videos and posts; Company Studio courses use the company's articles, research, whitepapers and podcasts. */
 export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast'
@@ -23,6 +24,7 @@ export interface CourseTarget {
 
 export interface CourseItem extends CourseTarget {
   item_id: number
+  module_id: number | null
   position: number
   is_locked: boolean
   completed: boolean
@@ -46,6 +48,8 @@ export interface CourseCard {
   enrolled_count: number
   /** Total length of the course's videos, in minutes. */
   video_minutes: number
+  /** Shown once a course has 3 visible reviews; null before that. */
+  rating: { average: number; count: number } | null
   featured: boolean
   updated_at: string
 }
@@ -57,10 +61,114 @@ export interface CourseEnrollment {
   percent: number
 }
 
-export interface CourseDetail extends CourseCard {
+/** A course with its lessons and the viewer's progress (enrolled-course lists). */
+export interface CourseProgress extends CourseCard {
   is_locked: boolean
   items: CourseItem[]
   enrollment: CourseEnrollment | null
+}
+
+export interface CoursePageModule {
+  id: number
+  title: string
+  summary: string
+  item_ids: number[]
+  minutes: number
+}
+
+export interface CourseInstructor {
+  username: string
+  display_name: string
+  avatar_url: string | null
+  role_title: string
+  years_experience: number | null
+  bio: string
+  company: CompanyDisplay | null
+  /** GeLearn rating set by Genex, e.g. "4.8". */
+  rating: string | null
+  course_count: number
+  learner_count: number
+}
+
+export interface CoursePublisher extends CompanyDisplay {
+  description: string
+  counts: { courses: number; reading: number; whitepapers: number; experts: number }
+}
+
+export interface CoursePathStep {
+  level: Exclude<CourseLevel, ''>
+  is_current: boolean
+  course: DiscoveryCard
+}
+
+export interface CourseRolePath {
+  id: number
+  name: string
+  slug: string
+  summary: string
+  path: CoursePathStep[]
+}
+
+export interface CourseRatingSummary {
+  average: number
+  count: number
+  /** 5 stars down to 1. */
+  distribution: { stars: number; percent: number }[]
+}
+
+export interface CourseReview {
+  id: number
+  rating: number
+  body: string
+  created_at: string
+  updated_at: string
+  status: 'visible' | 'hidden'
+  completed_course: boolean
+  is_mine: boolean
+  author: {
+    username: string
+    display_name: string
+    avatar_url: string | null
+    role_title: string
+    company: CompanyDisplay | null
+  }
+}
+
+export interface MyReviewState {
+  review: CourseReview | null
+  can_review: boolean
+  /** Why not, when `can_review` is false. */
+  reason: string
+}
+
+/** The whole course page (GET /api/learning/courses/<slug>/). */
+export interface CourseDetail extends CourseProgress {
+  summary: string
+  outcomes: string[]
+  prerequisites: string[]
+  language: string
+  total_minutes: number
+  lesson_counts: Partial<Record<CourseItemKind, number>>
+  modules: CoursePageModule[]
+  next_item_id: number | null
+  instructors: CourseInstructor[]
+  publisher: CoursePublisher | null
+  roles: CourseRolePath[]
+  rating_summary: CourseRatingSummary | null
+  reviews: CourseReview[]
+  my_review: MyReviewState | null
+  /** The viewer runs this course ('owner') or teaches it ('instructor'): they can't enroll or review. */
+  my_relation: 'owner' | 'instructor' | null
+  faqs: CourseFaq[]
+  learner_companies: CompanyDisplay[]
+}
+
+/** GET /api/learning/courses/<slug>/related/ */
+export interface CourseRelatedTab {
+  key: 'topic' | 'role' | 'publisher'
+  label: string
+  slug: string
+  courses: DiscoveryCard[]
 }
 
 export type CourseStatus = 'draft' | 'pending' | 'published' | 'rejected'

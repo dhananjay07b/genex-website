@@ -37,7 +37,7 @@ const Whitepapers           = lazy(() => import('@/pages/GeLearn/sections/Whitep
 const Podcasts              = lazy(() => import('@/pages/GeLearn/sections/Podcasts'))
 const PodcastDetail         = lazy(() => import('@/pages/GeLearn/sections/PodcastDetail'))
 const Courses               = lazy(() => import('@/pages/GeLearn/sections/Courses'))
-const CourseDetail          = lazy(() => import('@/pages/GeLearn/sections/CourseDetail'))
+const CourseDetail          = lazy(() => import('@/pages/GeLearn/course/CourseDetail'))
 const CourseBuilder         = lazy(() => import('@/pages/Account/course-builder/CourseBuilder'))
 const CompanyPage           = lazy(() => import('@/pages/GeLearn/CompanyPage'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))

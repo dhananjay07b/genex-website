@@ -7,6 +7,7 @@ import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
@@ -21,6 +22,7 @@ const TYPE_LABEL: Record<string, string> = {
   tender: 'Policy & Tender',
   casestudy: 'Research',
   techarticle: 'GeAcademy',
+  playlist: 'Course',
 }
 
 const TYPE_ICON: Record<string, typeof ArticleOutlinedIcon> = {
@@ -30,6 +32,7 @@ const TYPE_ICON: Record<string, typeof ArticleOutlinedIcon> = {
   whitepaper: DescriptionOutlinedIcon,
   tender: GavelOutlinedIcon,
   casestudy: FolderOutlinedIcon,
+  playlist: SchoolOutlinedIcon,
 }
 
 const TYPE_ROUTE: Record<string, (id: number) => string> = {
@@ -68,7 +71,7 @@ export function SavedItemsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {items.map(item => {
             const Icon = TYPE_ICON[item.content_type] ?? BookmarkBorderIcon
-            const route = TYPE_ROUTE[item.content_type]?.(item.object_id)
+            const route = item.path ?? TYPE_ROUTE[item.content_type]?.(item.object_id)
             const title = item.title ?? `${TYPE_LABEL[item.content_type] ?? item.content_type} #${item.object_id}`
             return (
               <div key={item.id} className="flex items-start gap-3 border border-border rounded-2xl p-4">

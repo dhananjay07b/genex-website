@@ -103,6 +103,8 @@ export interface SavedItem {
   object_id: number
   title: string | null
   image_url: string | null
+  /** Set for items addressed by slug (courses); null otherwise. */
+  path: string | null
   created_at: string
 }
 

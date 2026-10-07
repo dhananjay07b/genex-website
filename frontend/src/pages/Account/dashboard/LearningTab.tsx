@@ -7,15 +7,15 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { SnippetListResponse } from '@/types/api'
-import type { CourseDetail } from '@/types/learning'
+import type { CourseProgress } from '@/types/learning'
 import { EmptyState } from './EmptyState'
 
 /** Enrolled courses, with progress and a jump to the next unfinished lesson. */
 export function LearningTab() {
-  const [courses, setCourses] = useState<CourseDetail[] | null>(null)
+  const [courses, setCourses] = useState<CourseProgress[] | null>(null)
 
   useEffect(() => {
-    apiFetch<SnippetListResponse<CourseDetail>>('/api/learning/me/enrollments/?limit=100')
+    apiFetch<SnippetListResponse<CourseProgress>>('/api/learning/me/enrollments/?limit=100')
       .then(res => setCourses(res.results))
       .catch(() => setCourses([]))
   }, [])

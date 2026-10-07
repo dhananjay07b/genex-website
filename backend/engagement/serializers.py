@@ -9,10 +9,11 @@ class SavedItemSerializer(serializers.ModelSerializer):
     content_type = serializers.SlugRelatedField(slug_field="model", queryset=ContentType.objects.all())
     title = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    path = serializers.SerializerMethodField()
 
     class Meta:
         model = SavedItem
-        fields = ["id", "content_type", "object_id", "title", "image_url", "created_at"]
+        fields = ["id", "content_type", "object_id", "title", "image_url", "path", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def get_title(self, obj):
@@ -21,8 +22,16 @@ class SavedItemSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         # Not every saved content type carries an image (Tender/Whitepaper don't);
         # `image` is only present on BlogPost, PodcastEpisode, VideoItem, CaseStudy.
-        image = getattr(obj.content_object, "image", None)
+        image = getattr(obj.content_object, "image", None) or getattr(obj.content_object, "cover", None)
         return image.file.url if image else None
+
+    def get_path(self, obj):
+        """GeLearn link for items addressed by slug (courses); other types build their link from object_id."""
+        target = obj.content_object
+        if obj.content_type.model == "playlist" and target is not None:
+            # Only live courses have a page.
+            return f"/courses/{target.slug}" if target.status == "published" else None
+        return None
 
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
