@@ -16,6 +16,11 @@ from .models import CourseReview, Enrollment, Playlist
 TODAY = datetime.date(2026, 9, 30)
 
 
+def lessons(refs):
+    """An outline payload with these lessons and no modules."""
+    return {"modules": [], "loose_items": refs}
+
+
 def make_user(username, **kwargs):
     return User.objects.create_user(username=username, email=f"{username}@example.org", password="Passw0rd!x", **kwargs)
 
@@ -65,14 +70,14 @@ class CourseBuilderTests(TestCase):
 
         self.assertEqual(self.api.post(f"/api/learning/me/courses/{cid}/submit/").status_code, 400)  # no items yet
 
-        bad = self.api.put(f"/api/learning/me/courses/{cid}/items/", [{"kind": "video", "id": self.foreign_video.pk}], format="json")
+        bad = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([{"kind": "video", "id": self.foreign_video.pk}]), format="json")
         self.assertEqual(bad.status_code, 400)
-        dup = self.api.put(f"/api/learning/me/courses/{cid}/items/", [{"kind": "video", "id": self.video.pk}] * 2, format="json")
+        dup = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([{"kind": "video", "id": self.video.pk}] * 2), format="json")
         self.assertEqual(dup.status_code, 400)
 
-        res = self.api.put(f"/api/learning/me/courses/{cid}/items/", [
+        res = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([
             {"kind": "post", "id": self.post.pk}, {"kind": "video", "id": self.video.pk},
-        ], format="json")
+        ]), format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual([i["title"] for i in res.json()["items"]], ["SCADA field notes", "Intro to SCADA"])
 
@@ -90,7 +95,7 @@ class CourseBuilderTests(TestCase):
 
     def test_editing_a_live_course_sends_it_back_to_review_but_reordering_does_not(self):
         course = Playlist.objects.create(owner=self.pro, title="Live", status="published")
-        self.api.put(f"/api/learning/me/courses/{course.pk}/items/", [{"kind": "video", "id": self.video.pk}], format="json")
+        self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([{"kind": "video", "id": self.video.pk}]), format="json")
         course.refresh_from_db()
         self.assertEqual(course.status, "published")
         self.api.patch(f"/api/learning/me/courses/{course.pk}/", {"price": None, "access": "members"}, format="json")
@@ -245,16 +250,16 @@ class CompanyCourseTests(TestCase):
         self.assertEqual((course.owner, course.company), (self.staff, self.genex))
         library = {(c["kind"], c["title"]) for c in self.api.get("/api/learning/me/library/").json()}
         self.assertEqual(library, {("article", "Reading an SLD"), ("research", "SCADA retrofit"), ("whitepaper", "RMS architecture")})
-        res = self.api.put(f"/api/learning/me/courses/{course.pk}/items/", [
+        res = self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([
             {"kind": "whitepaper", "id": self.paper.pk}, {"kind": "article", "id": self.article.pk}, {"kind": "research", "id": self.study.pk},
-        ], format="json")
+        ]), format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual([i["kind"] for i in res.json()["items"]], ["whitepaper", "article", "research"])
         self.assertEqual(res.json()["items"][1]["path"], f"/geacademy/{self.article.pk}")
 
     def test_cannot_add_another_companys_content(self):
         course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Ours")
-        res = self.api.put(f"/api/learning/me/courses/{course.pk}/items/", [{"kind": "article", "id": self.foreign.pk}], format="json")
+        res = self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([{"kind": "article", "id": self.foreign.pk}]), format="json")
         self.assertEqual(res.status_code, 400)
 
     def test_colleagues_share_company_courses(self):
@@ -317,8 +322,8 @@ class CourseDetailsPhaseTests(TestCase):
     def test_saving_lessons_keeps_learners_progress(self):
         from .models import ItemProgress
         self._tick(self.i1)
-        res = self.api.put(self._url("items/"), [{"kind": "video", "id": self.v2.pk}, {"kind": "video", "id": self.v1.pk},
-                                                {"kind": "post", "id": self.p1.pk}], format="json")
+        res = self.api.put(self._url("outline/"), lessons([{"kind": "video", "id": self.v2.pk}, {"kind": "video", "id": self.v1.pk},
+                                                {"kind": "post", "id": self.p1.pk}]), format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.i1).exists())
         self.assertEqual([i["title"] for i in res.json()["items"]], ["Lesson two", "Lesson one", "Lesson three"])
@@ -327,7 +332,7 @@ class CourseDetailsPhaseTests(TestCase):
         from .models import ItemProgress
         self._tick(self.i1)
         self._tick(self.i2)
-        self.api.put(self._url("items/"), [{"kind": "video", "id": self.v1.pk}], format="json")
+        self.api.put(self._url("outline/"), lessons([{"kind": "video", "id": self.v1.pk}]), format="json")
         self.assertEqual(list(ItemProgress.objects.values_list("item_id", flat=True)), [self.i1.pk])
 
     # Outline with modules

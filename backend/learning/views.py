@@ -28,7 +28,6 @@ from .serializers import (
     CourseDetailSerializer,
     CourseProgressSerializer,
     FaqInputSerializer,
-    ItemRefSerializer,
     MyCourseSerializer,
     OutlineSerializer,
     ReviewInputSerializer,
@@ -231,28 +230,6 @@ class MyCourseViewSet(
         if course.status == Playlist.STATUS_PUBLISHED:
             course.status = Playlist.STATUS_PENDING
             course.save(update_fields=["status", "updated_at"])
-
-    @action(detail=True, methods=["put"])
-    def items(self, request, pk=None):
-        """
-        Replace the course's lessons with `[{kind, id}, …]`, in order. Lessons
-        already in the course keep their module and learners' progress.
-        (Superseded by `outline`, which also sets modules.)
-        """
-        course = self.get_object()
-        refs = ItemRefSerializer(data=request.data, many=True)
-        refs.is_valid(raise_exception=True)
-        error = self._check_refs(course, refs.validated_data)
-        if error:
-            return Response({"items": error}, status=400)
-
-        modules = {}
-        for item in course.items.all():
-            modules[(item.kind, getattr(item, f"{ITEM_KINDS[item.kind][0]}_id"))] = item.module_id
-        with transaction.atomic():
-            self._sync_items(course, [(ref, modules.get((ref["kind"], ref["id"]))) for ref in refs.validated_data])
-            course.save(update_fields=["updated_at"])
-        return Response(self.get_serializer(course).data)
 
     @action(detail=True, methods=["put"])
     def outline(self, request, pk=None):
