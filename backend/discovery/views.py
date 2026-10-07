@@ -83,7 +83,7 @@ class SearchParamsSerializer(serializers.Serializer):
     access = serializers.ChoiceField(choices=["free", "members", "paid"], required=False)
     max_minutes = serializers.IntegerField(required=False, min_value=1)
     publisher = serializers.SlugField(required=False, help_text="A company slug, or 'genex' for Genex editorial content.")
-    sort = serializers.ChoiceField(choices=["best", "newest", "popular"], required=False, default="best")
+    sort = serializers.ChoiceField(choices=["best", "newest", "popular", "rated"], required=False, default="best")
     limit = serializers.IntegerField(required=False, min_value=1, max_value=SEARCH_MAX_LIMIT, default=20)
     offset = serializers.IntegerField(required=False, min_value=0, default=0)
 
@@ -210,6 +210,10 @@ class SearchView(APIView):
             results.sort(key=lambda c: c["date"] or "", reverse=True)
         elif p["sort"] == "popular":
             results.sort(key=lambda c: (c.get("enrolled") or 0, c["date"] or ""), reverse=True)
+        elif p["sort"] == "rated":
+            # Rated courses (3+ reviews) by average, then review count; everything else after, newest first.
+            results.sort(key=lambda c: c["date"] or "", reverse=True)
+            results.sort(key=lambda c: (-c["rating"]["average"], -c["rating"]["count"]) if c.get("rating") else (1, 0))
         else:
             results.sort(key=lambda c: c["date"] or "", reverse=True)
             needle = q.lower()

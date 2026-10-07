@@ -1,6 +1,6 @@
 import type { ContentAccess } from './api'
 import type { CompanyDisplay } from './auth'
-import type { CourseItemKind, CourseLevel } from './learning'
+import type { CourseCardRating, CourseItemKind, CourseLevel } from './learning'
 
 /** Public content keys used by /api/discovery/ (and in search filters). */
 export type DiscoveryType = 'course' | 'geacademy' | 'research' | 'whitepaper' | 'tender' | 'video' | 'podcast' | 'blog'
@@ -45,6 +45,8 @@ export interface DiscoveryCard {
   lessons?: number | null
   video_minutes?: number
   enrolled?: number | null
+  /** Set once the course has 3 visible reviews. */
+  rating?: CourseCardRating | null
   featured?: boolean
   // Tender
   status?: string

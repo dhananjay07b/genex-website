@@ -22,6 +22,7 @@ import type { CourseCard } from '@/types/learning'
 import { EmptyState } from './dashboard/EmptyState'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
+import { CourseRating } from '@/components/gelearn/CourseRating'
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>()
@@ -355,6 +356,7 @@ export default function PublicProfile() {
                       <span className="text-sm font-bold text-text-primary leading-snug line-clamp-2 group-hover:text-primary transition-colors">{course.title}</span>
                       <span className="flex items-center gap-2 text-xs text-text-muted">
                         {course.item_count} {course.item_count === 1 ? 'lesson' : 'lessons'}
+                        <CourseRating rating={course.rating} />
                         <AccessBadge access={course.access} price={course.price} currency={course.currency} />
                       </span>
                     </span>

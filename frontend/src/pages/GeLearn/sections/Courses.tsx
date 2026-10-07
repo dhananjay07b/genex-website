@@ -7,6 +7,7 @@ import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
+import { CourseRating } from '@/components/gelearn/CourseRating'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { SnippetListResponse } from '@/types/api'
@@ -33,6 +34,7 @@ function CourseTile({ course, index }: { course: CourseCard; index: number }) {
         <div className="p-6 flex flex-col flex-1 gap-3">
           <h3 className="text-lg font-bold text-text-primary leading-snug group-hover:text-primary transition-colors">{course.title}</h3>
           {course.description && <p className="text-sm text-text-muted leading-relaxed line-clamp-3">{course.description}</p>}
+          <CourseRating rating={course.rating} />
           <div className="mt-auto pt-3 border-t border-border flex items-center justify-between gap-3 text-xs text-text-muted">
             <span className="flex items-center gap-1.5 min-w-0">
               <span className="truncate font-semibold text-text-primary">{course.owner.display_name}</span>

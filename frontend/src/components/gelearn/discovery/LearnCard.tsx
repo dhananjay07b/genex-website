@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
+import { CourseRating } from '@/components/gelearn/CourseRating'
 import { cn } from '@/lib/utils'
 import type { DiscoveryCard } from '@/types/discovery'
 import { Byline } from './Byline'
@@ -34,6 +35,7 @@ export function LearnCard({ card, className }: { card: DiscoveryCard; className?
           {card.title}
         </h3>
         <p className="text-xs font-medium text-text-muted">{cardMeta(card)}</p>
+        <CourseRating rating={card.rating} />
         {level && (
           <span className="mt-auto self-start rounded-md border border-border bg-slate-50 px-1.5 py-0.5 text-xs font-bold text-slate-700">
             {level}

@@ -106,6 +106,7 @@ export default function SearchPage() {
               <option value="best">Best match</option>
               <option value="newest">Newest</option>
               <option value="popular">Most enrolled</option>
+              <option value="rated">Highest rated</option>
             </select>
           </label>
         </div>

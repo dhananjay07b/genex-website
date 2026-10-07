@@ -383,3 +383,27 @@ class SearchFacetTests(DiscoveryTestBase):
         self.assertIn("genex-technocrats", publishers)  # editorial content files under Genex
         newest = self.api.get("/api/discovery/search/", {"sort": "newest"}).json()["results"]
         self.assertEqual(newest, sorted(newest, key=lambda c: c["date"] or "", reverse=True))
+
+    def test_highest_rated_sort_and_card_rating(self):
+        from learning.models import CourseReview, Enrollment
+        second = Playlist.objects.create(owner=self.pro, title="Grid basics", status=Playlist.STATUS_PUBLISHED)
+        PlaylistItem.objects.create(playlist=second, video=self.video, position=0)
+
+        def review(course, ratings):
+            for rating in ratings:
+                user = make_user(f"reviewer{User.objects.count()}")
+                Enrollment.objects.create(user=user, playlist=course)
+                CourseReview.objects.create(user=user, playlist=course, rating=rating)
+
+        review(self.course, [4, 4, 5])      # 4.3 from 3 reviews: rated
+        review(second, [5, 5])              # 2 reviews: no rating shown yet
+        results = self.api.get("/api/discovery/search/", {"sort": "rated"}).json()["results"]
+        self.assertEqual((results[0]["title"], results[0]["rating"]), ("SCADA Fundamentals", {"average": 4.3, "count": 3}))
+        grid = next(r for r in results if r["title"] == "Grid basics")
+        self.assertIsNone(grid["rating"])
+        rest = results[1:]
+        self.assertEqual(rest, sorted(rest, key=lambda c: c["date"] or "", reverse=True))  # unrated: newest first
+
+        review(second, [5])                 # 5.0 from 3 now outranks 4.3
+        titles = [r["title"] for r in self.api.get("/api/discovery/search/", {"sort": "rated", "type": "course"}).json()["results"]]
+        self.assertEqual(titles, ["Grid basics", "SCADA Fundamentals"])

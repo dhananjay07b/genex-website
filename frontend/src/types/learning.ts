@@ -30,6 +30,12 @@ export interface CourseItem extends CourseTarget {
   completed: boolean
 }
 
+/** A course's average on cards and search: only sent once it has 3 visible reviews. */
+export interface CourseCardRating {
+  average: number
+  count: number
+}
+
 export interface CourseCard {
   id: number
   slug: string
@@ -49,7 +55,7 @@ export interface CourseCard {
   /** Total length of the course's videos, in minutes. */
   video_minutes: number
   /** Shown once a course has 3 visible reviews; null before that. */
-  rating: { average: number; count: number } | null
+  rating: CourseCardRating | null
   featured: boolean
   updated_at: string
 }

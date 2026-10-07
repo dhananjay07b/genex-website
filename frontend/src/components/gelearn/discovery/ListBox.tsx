@@ -7,6 +7,7 @@ import type { DiscoveryCard } from '@/types/discovery'
 import { Byline } from './Byline'
 import { CardThumb } from './CardThumb'
 import { cardMeta } from './meta'
+import { CourseRating } from '@/components/gelearn/CourseRating'
 
 const TONES = {
   sky: 'bg-surface',
@@ -55,6 +56,7 @@ export function ListRow({ card }: { card: DiscoveryCard }) {
         <h4 className="line-clamp-2 text-sm font-bold leading-snug text-text-primary">{card.title}</h4>
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-medium text-text-muted">
           {cardMeta(card)}
+          <CourseRating rating={card.rating} />
           <AccessBadge access={card.access} price={card.price} currency={card.currency} />
         </p>
       </div>
