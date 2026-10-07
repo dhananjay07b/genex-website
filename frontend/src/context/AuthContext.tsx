@@ -6,6 +6,7 @@ import { AuthContext } from './auth-context'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [session, setSession] = useState(0)
 
   const refetch = useCallback(async () => {
     try {
@@ -57,10 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await apiFetch('/api/auth/logout/', { method: 'POST' })
     setUser(null)
+    setSession(s => s + 1)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refetch }}>
+    <AuthContext.Provider value={{ user, isLoading, session, login, register, logout, refetch }}>
       {children}
     </AuthContext.Provider>
   )

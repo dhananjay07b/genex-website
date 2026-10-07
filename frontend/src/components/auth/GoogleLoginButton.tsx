@@ -17,7 +17,8 @@ declare global {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined
 
-export function GoogleLoginButton() {
+/** `redirectTo`: where to land once signed in (the page that sent the visitor to log in). */
+export function GoogleLoginButton({ redirectTo = '/account' }: { redirectTo?: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { refetch } = useAuth()
 
@@ -27,7 +28,7 @@ export function GoogleLoginButton() {
     async function handleCredential(response: { credential: string }) {
       await apiFetch('/api/accounts/google/', { method: 'POST', body: { id_token: response.credential } })
       await refetch()
-      window.location.href = '/account'
+      window.location.href = redirectTo
     }
 
     function render() {

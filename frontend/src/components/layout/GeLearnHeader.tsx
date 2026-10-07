@@ -5,6 +5,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import { cn } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
+import { returnState } from '@/lib/authRedirect'
 import { useAuth } from '@/context/useAuth'
 import { useRole } from '@/hooks/useRole'
 import { buttonVariants } from '@/components/ui/Button'
@@ -54,7 +55,8 @@ function SearchBox({ className }: { className?: string }) {
  * strip's height; pages already leave room for the 4rem bar.
  */
 export function GeLearnHeader() {
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
   const { user, isLoading } = useAuth()
   const { isLearner, isProfessional } = useRole()
 
@@ -102,10 +104,10 @@ export function GeLearnHeader() {
             </Link>
             {!isLoading && !user && (
               <>
-                <Link to="/login" className="hidden px-2.5 py-2 text-sm font-bold text-sky-700 hover:text-sky-800 sm:inline-flex">
+                <Link to="/login" state={returnState(location)} className="hidden px-2.5 py-2 text-sm font-bold text-sky-700 hover:text-sky-800 sm:inline-flex">
                   Log in
                 </Link>
-                <Link to="/register" className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'whitespace-nowrap')}>
+                <Link to="/register" state={returnState(location)} className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'whitespace-nowrap')}>
                   Join for free
                 </Link>
               </>

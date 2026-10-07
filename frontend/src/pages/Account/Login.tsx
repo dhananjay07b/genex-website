@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 import { useAuth } from '@/context/useAuth'
 import { ApiError } from '@/lib/api/client'
+import { returnState, safeReturnPath } from '@/lib/authRedirect'
 import { AuthLayout } from './AuthLayout'
 
 const schema = z.object({
@@ -26,6 +27,8 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  // Back to the page that sent the visitor here; the dashboard only when they came straight to /login.
+  const returnTo = safeReturnPath(location.state) ?? '/account'
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -39,8 +42,7 @@ export default function Login() {
     setStatus('loading')
     try {
       await login(data.email, data.password)
-      const from = (location.state as { from?: string } | null)?.from ?? '/account'
-      navigate(from, { replace: true })
+      navigate(returnTo, { replace: true })
     } catch (err) {
       setStatus('error')
       setErrorMessage(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
@@ -80,7 +82,7 @@ export default function Login() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
-          <GoogleLoginButton />
+          <GoogleLoginButton redirectTo={returnTo} />
         </motion.div>
 
         <motion.div
@@ -131,7 +133,7 @@ export default function Login() {
           transition={{ duration: 0.35, delay: 0.18 }}
           className="text-sm text-text-muted text-center mt-6"
         >
-          New to GeLearn? <Link to="/register" className="text-primary font-bold">Create an account</Link>
+          New to GeLearn? <Link to="/register" state={returnState(location)} className="text-primary font-bold">Create an account</Link>
         </motion.p>
       </AuthLayout>
     </>

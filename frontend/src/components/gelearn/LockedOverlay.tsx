@@ -3,6 +3,7 @@ import LockIcon from '@mui/icons-material/Lock'
 import { useAuth } from '@/context/useAuth'
 import { cn, formatPrice } from '@/lib/utils'
 import type { GatedFields } from '@/types/api'
+import { returnState } from '@/lib/authRedirect'
 
 interface LockedOverlayProps extends Pick<GatedFields, 'access' | 'price' | 'currency'> {
   /** 'overlay' covers a thumbnail/player; 'panel' is a standalone block (e.g. in place of a blog body). */
@@ -28,7 +29,7 @@ export function LockedOverlay({ access, price, currency, layout = 'overlay' }: L
   const location = useLocation()
   const isPaid = access === 'paid'
   const priceLabel = isPaid && price ? formatPrice(price, currency) : null
-  const goToLogin = () => navigate('/login', { state: { from: location.pathname } })
+  const goToLogin = () => navigate('/login', { state: returnState(location) })
 
   const icon = (
     <span className="size-12 rounded-full bg-white/15 flex items-center justify-center">

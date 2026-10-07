@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -17,6 +17,7 @@ import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, domainList, emailMatchesCompany, useCompanies } from '@/hooks/useCompanies'
 import { ApiError } from '@/lib/api/client'
+import { returnState, safeReturnPath } from '@/lib/authRedirect'
 import { AuthLayout } from './AuthLayout'
 
 const passwordSchema = z.string()
@@ -73,6 +74,9 @@ const FEATURES = [
 export default function Register() {
   const { register: registerUser } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Back to the page that sent the visitor here (e.g. a course they wanted to enroll in), else the dashboard.
+  const returnTo = safeReturnPath(location.state) ?? '/account'
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -112,7 +116,7 @@ export default function Register() {
         companyOther: isProfessional && data.companyChoice === OTHER_COMPANY ? data.companyOther : '',
         roleTitle: data.roleTitle,
       })
-      navigate('/account', { replace: true })
+      navigate(returnTo, { replace: true })
     } catch (err) {
       setStatus('error')
       const fields = err instanceof ApiError ? err.fields : {}
@@ -160,7 +164,7 @@ export default function Register() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
-          <GoogleLoginButton />
+          <GoogleLoginButton redirectTo={returnTo} />
         </motion.div>
 
         <motion.div
@@ -271,7 +275,7 @@ export default function Register() {
           transition={{ duration: 0.35, delay: 0.18 }}
           className="text-sm text-text-muted text-center mt-6"
         >
-          Already have an account? <Link to="/login" className="text-primary font-bold">Sign in</Link>
+          Already have an account? <Link to="/login" state={returnState(location)} className="text-primary font-bold">Sign in</Link>
         </motion.p>
       </AuthLayout>
     </>

@@ -16,6 +16,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { CourseDetail as Course, CourseItem } from '@/types/learning'
 import { useTrackView } from '@/hooks/useTrackView'
+import { returnState } from '@/lib/authRedirect'
 
 export default function CourseDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -44,7 +45,7 @@ export default function CourseDetail() {
   async function enroll() {
     if (!course) return
     if (!user) {
-      navigate('/login', { state: { from: location.pathname } })
+      navigate('/login', { state: returnState(location) })
       return
     }
     setBusy(true)

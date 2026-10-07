@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkIcon from '@mui/icons-material/Bookmark'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
+import { returnState } from '@/lib/authRedirect'
 
 interface SaveButtonProps {
   contentType: string
@@ -15,6 +16,7 @@ interface SaveButtonProps {
 export function SaveButton({ contentType, objectId, className }: SaveButtonProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +38,7 @@ export function SaveButton({ contentType, objectId, className }: SaveButtonProps
 
   async function handleClick() {
     if (!user) {
-      navigate('/login')
+      navigate('/login', { state: returnState(location) })
       return
     }
     setLoading(true)

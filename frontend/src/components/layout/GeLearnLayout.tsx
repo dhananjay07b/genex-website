@@ -4,6 +4,7 @@ import { GeLearnFooter } from './GeLearnFooter'
 import { DashboardFooterStrip } from './DashboardFooterStrip'
 import { ScrollToTop } from '@/components/utils/ScrollToTop'
 import { DevShellUrlSync } from '@/components/utils/DevShellUrlSync'
+import { useAuth } from '@/context/useAuth'
 
 // Full-bleed auth pages: no site header/footer, no page scroll — the page
 // itself is the whole viewport (see AuthLayout.tsx).
@@ -20,6 +21,7 @@ function isDashboardPath(pathname: string): boolean {
 
 export function GeLearnLayout() {
   const { pathname } = useLocation()
+  const { session } = useAuth()
 
   if (FULL_BLEED_PATHS.includes(pathname)) {
     return (
@@ -39,7 +41,8 @@ export function GeLearnLayout() {
       {/* Room for the header's audience strip; pages already offset the 4rem main bar themselves. */}
       <div className="h-8 shrink-0" aria-hidden="true" />
       <main className="flex-1">
-        <Outlet />
+        {/* Remount the page after a logout so it reloads as a visitor (no enrolment, saved state or members content left showing). */}
+        <Outlet key={session} />
       </main>
       {isDashboardPath(pathname) ? <DashboardFooterStrip /> : <GeLearnFooter />}
     </div>

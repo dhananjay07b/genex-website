@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined'
@@ -11,6 +11,7 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import { useAuth } from '@/context/useAuth'
 import { useRole } from '@/hooks/useRole'
 import { API_BASE } from '@/lib/api/client'
+import { isPrivatePath, returnState } from '@/lib/authRedirect'
 import { getMediaUrl } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,7 @@ export function AccountMenu() {
   const { user, isLoading, logout } = useAuth()
   const { isAdmin, isCompany, isProfessional } = useRole()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -35,15 +37,17 @@ export function AccountMenu() {
 
   async function handleLogout() {
     setMenuOpen(false)
+    // Signed-in-only pages (dashboard, studio, editors) go home first, so the route guard doesn't bounce to /login.
+    // Public pages stay put and reload as a visitor (see GeLearnLayout).
+    if (isPrivatePath(location.pathname)) navigate('/', { replace: true })
     await logout()
-    navigate('/')
   }
 
   if (isLoading) return null
 
   if (!user) {
     return (
-      <Link to="/register" className={cn(buttonVariants({ variant: 'primary', size: 'sm' }))}>
+      <Link to="/register" state={returnState(location)} className={cn(buttonVariants({ variant: 'primary', size: 'sm' }))}>
         Get Started
       </Link>
     )

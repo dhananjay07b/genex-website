@@ -24,8 +24,9 @@ export function DevShellUrlSync({ shell }: { shell: 'gelearn' | 'marketing' }) {
     const params = new URLSearchParams(location.search)
     if (params.get('shell') === shell) return
     params.set('shell', shell)
-    navigate({ pathname: location.pathname, search: params.toString(), hash: location.hash }, { replace: true })
-  }, [location.pathname, location.search, location.hash, shell, navigate])
+    // Carry router state over too (e.g. the login page's "come back to" path).
+    navigate({ pathname: location.pathname, search: params.toString(), hash: location.hash }, { replace: true, state: location.state })
+  }, [location.pathname, location.search, location.hash, location.state, shell, navigate])
 
   return null
 }

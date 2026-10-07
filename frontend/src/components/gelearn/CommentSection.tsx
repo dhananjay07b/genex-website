@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import ReplyIcon from '@mui/icons-material/Reply'
 import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
+import { returnState } from '@/lib/authRedirect'
 import type { Comment } from '@/types/auth'
 
 interface CommentSectionProps {
@@ -12,6 +13,7 @@ interface CommentSectionProps {
 
 export function CommentSection({ contentType, objectId }: CommentSectionProps) {
   const { user } = useAuth()
+  const location = useLocation()
   const [comments, setComments] = useState<Comment[]>([])
   const [body, setBody] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
@@ -122,7 +124,7 @@ export function CommentSection({ contentType, objectId }: CommentSectionProps) {
           </form>
         ) : (
           <p className="text-[15px] text-[#62748e] bg-[#f8fafc] rounded-2xl p-6">
-            <Link to="/login" className="text-primary font-bold">Log in</Link> to join the discussion and leave a comment.
+            <Link to="/login" state={returnState(location)} className="text-primary font-bold">Log in</Link> to join the discussion and leave a comment.
           </p>
         )}
       </div>

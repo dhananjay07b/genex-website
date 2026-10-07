@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/api/client'
 import type { RoleCardData, RoleDetail } from '@/types/discovery'
 import NotFound from '@/pages/NotFound'
 import { Section } from '../home/sections'
+import { returnState } from '@/lib/authRedirect'
 
 const LEVEL_TEXT: Record<string, { title: string; note: string }> = {
   beginner: { title: 'Beginner', note: 'Foundations, no experience needed.' },
@@ -54,7 +55,7 @@ function GoalButton({ role }: { role: RoleDetail }) {
 
   async function setGoal() {
     if (!user) {
-      navigate('/login', { state: { from: location.pathname } })
+      navigate('/login', { state: returnState(location) })
       return
     }
     setSaving(true)
