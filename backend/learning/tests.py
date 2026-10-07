@@ -861,3 +861,63 @@ class CoursePageApiTests(TestCase):
         row = api.get("/api/learning/me/enrollments/").json()["results"][0]
         self.assertIn("enrollment", row)
         self.assertNotIn("instructors", row)
+
+
+class OwnCourseLockTests(TestCase):
+    """Owners and instructors can't enroll in or review their own course, on either account type."""
+
+    def setUp(self):
+        from organizations.models import Company
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.colleague = make_user("staff2", account_type="company", company=self.genex)
+        self.teacher = make_user("teacher", account_type="professional", company=self.genex)
+        User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
+        self.learner = make_user("learner")
+        self.pro_course = Playlist.objects.create(owner=self.pro, title="Pro course", status="published")
+        self.pro_course.items.create(video=publish_video(self.pro, "One"), position=0)
+        self.co_course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company course", status="published")
+        self.co_course.items.create(video=publish_video(self.pro, "Two"), position=0)
+        self.co_course.instructors.add(self.teacher)
+
+    def _enroll(self, user, course):
+        api = APIClient()
+        api.force_authenticate(user)
+        return api.post(f"/api/learning/courses/{course.slug}/enroll/")
+
+    def test_relation_to(self):
+        self.assertEqual(self.pro_course.relation_to(self.pro), "owner")
+        self.assertEqual(self.co_course.relation_to(self.staff), "owner")
+        self.assertEqual(self.co_course.relation_to(self.colleague), "owner")
+        self.assertEqual(self.co_course.relation_to(self.teacher), "instructor")
+        self.assertIsNone(self.co_course.relation_to(self.learner))
+        self.assertIsNone(self.pro_course.relation_to(self.staff))
+
+    def test_owners_and_instructors_cannot_enroll(self):
+        for user, course, detail in [
+            (self.pro, self.pro_course, "You can't enroll in your own course."),
+            (self.staff, self.co_course, "You can't enroll in your own course."),
+            (self.colleague, self.co_course, "You can't enroll in your own course."),
+            (self.teacher, self.co_course, "You can't enroll in a course you teach."),
+        ]:
+            response = self._enroll(user, course)
+            self.assertEqual((response.status_code, response.json()["detail"]), (403, detail), user.username)
+        self.assertFalse(Enrollment.objects.exists())
+        self.assertEqual(self._enroll(self.learner, self.co_course).status_code, 200)
+        self.assertEqual(self._enroll(self.pro, self.co_course).status_code, 200)
+
+    def test_page_reports_relation_and_review_reason(self):
+        api = APIClient()
+        api.force_authenticate(self.teacher)
+        page = api.get(f"/api/learning/courses/{self.co_course.slug}/").json()
+        self.assertEqual(page["my_relation"], "instructor")
+        self.assertEqual(page["my_review"]["reason"], "You can't review a course you teach.")
+        api.force_authenticate(self.learner)
+        self.assertIsNone(api.get(f"/api/learning/courses/{self.co_course.slug}/").json()["my_relation"])
+
+    def test_admin_refuses_self_enrolment(self):
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            Enrollment(user=self.teacher, playlist=self.co_course).full_clean()
+        Enrollment(user=self.learner, playlist=self.co_course).full_clean()

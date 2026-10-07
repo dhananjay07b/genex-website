@@ -211,6 +211,22 @@ class Playlist(AccessControlled):
         if errors:
             raise ValidationError(errors)
 
+    def relation_to(self, user):
+        """
+        How `user` stands behind this course: "owner" (the Professional who owns it, or the
+        publishing company's account), "instructor" (chosen to teach it), or None. Owners and
+        instructors can't enroll in or review their own course.
+        """
+        if not user.is_authenticated:
+            return None
+        if self.owner_id == user.pk or (
+            self.company_id and user.company_id == self.company_id and user.account_type == "company"
+        ):
+            return "owner"
+        if self.pk and self.instructors.filter(pk=user.pk).exists():
+            return "instructor"
+        return None
+
     def listed_instructors(self):
         """Instructors to show: only those still eligible (verification can lapse after they were chosen)."""
         if self.company_id is None:
@@ -320,6 +336,11 @@ class Enrollment(models.Model):
     class Meta:
         ordering = ["-enrolled_at"]
         constraints = [models.UniqueConstraint(fields=["user", "playlist"], name="one_enrollment_per_course")]
+
+    def clean(self):
+        super().clean()
+        if self.user_id and self.playlist_id and self.playlist.relation_to(self.user):
+            raise ValidationError({"user": "The course's owner and instructors can't enroll in it."})
 
 
 class ItemProgress(models.Model):

@@ -240,6 +240,7 @@ class CourseDetailSerializer(CourseProgressSerializer):
     rating_summary = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     my_review = serializers.SerializerMethodField()
+    my_relation = serializers.SerializerMethodField()
     faqs = serializers.SerializerMethodField()
     learner_companies = serializers.SerializerMethodField()
 
@@ -247,7 +248,7 @@ class CourseDetailSerializer(CourseProgressSerializer):
         fields = CourseProgressSerializer.Meta.fields + [
             "summary", "outcomes", "prerequisites", "language",
             "total_minutes", "lesson_counts", "modules", "next_item_id",
-            "instructors", "publisher", "roles", "rating_summary", "reviews", "my_review", "faqs", "learner_companies",
+            "instructors", "publisher", "roles", "rating_summary", "reviews", "my_review", "my_relation", "faqs", "learner_companies",
         ]
 
     # Course-page extras (see course_page.py). Lists of courses (enrollments) only use the card fields.
@@ -283,6 +284,10 @@ class CourseDetailSerializer(CourseProgressSerializer):
 
     def get_my_review(self, obj):
         return course_page.my_review_state(obj, len(self._items(obj)), self._user())
+
+    def get_my_relation(self, obj):
+        """"owner", "instructor" or None: the page swaps Enroll for a note (and a link to manage it, for owners)."""
+        return obj.relation_to(self._user())
 
     def get_faqs(self, obj):
         return [{"question": f.question, "answer": f.answer} for f in obj.faqs.all()]

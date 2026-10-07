@@ -97,6 +97,10 @@ class EnrollView(APIView):
 
     def post(self, request, slug):
         course = get_object_or_404(Playlist, slug=slug, status=Playlist.STATUS_PUBLISHED)
+        relation = course.relation_to(request.user)
+        if relation:
+            detail = "You can't enroll in your own course." if relation == "owner" else "You can't enroll in a course you teach."
+            return Response({"detail": detail}, status=status.HTTP_403_FORBIDDEN)
         if not has_access(request.user, course):
             return Response({"detail": _locked_reason(course)}, status=status.HTTP_403_FORBIDDEN)
         Enrollment.objects.get_or_create(user=request.user, playlist=course)

@@ -14,8 +14,11 @@ def review_block_reason(user, course):
     """Why `user` can't review `course` (a message), or None if they can."""
     if not user.is_authenticated:
         return "Sign in to review this course."
-    if course.owner_id == user.pk or (course.company_id and user.company_id == course.company_id and user.account_type == "company"):
+    relation = course.relation_to(user)
+    if relation == "owner":
         return "You can't review your own course."
+    if relation == "instructor":
+        return "You can't review a course you teach."
     if not Enrollment.objects.filter(user=user, playlist=course).exists():
         return "Enroll in the course to review it."
     if not ItemProgress.objects.filter(user=user, item__playlist=course).exists():
