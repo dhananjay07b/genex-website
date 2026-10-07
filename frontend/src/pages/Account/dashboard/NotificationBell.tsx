@@ -6,6 +6,7 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
+import ReplyOutlinedIcon from '@mui/icons-material/ReplyOutlined'
 import { apiFetch } from '@/lib/api/client'
 import { useRole } from '@/hooks/useRole'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ const KIND_ICON: Record<Notification['kind'], typeof ArticleOutlinedIcon> = {
   video_status: VideocamOutlinedIcon,
   course_status: SchoolOutlinedIcon,
   course_review: StarBorderOutlinedIcon,
+  review_reply: ReplyOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
 }
 
@@ -57,13 +59,17 @@ export function NotificationBell() {
     video_status: 'videos',
     course_status: 'courses',
     course_review: 'courses',
+    review_reply: 'learning',
     comment_reply: 'comments',
   }
 
-  function goToNotification(kind: Notification['kind']) {
+  function goToNotification(notification: Notification) {
+    const { kind } = notification
     setOpen(false)
+    // Review notifications open the course's Reviews section, where the team can reply.
+    if (notification.path) navigate(notification.path)
     // Company accounts manage their courses in Company Studio, not the account dashboard.
-    if (isCompany && (kind === 'course_status' || kind === 'course_review')) navigate('/studio/courses')
+    else if (isCompany && (kind === 'course_status' || kind === 'course_review')) navigate('/studio/courses')
     else navigate(`/account?tab=${KIND_TAB[kind]}`)
   }
 
@@ -101,7 +107,7 @@ export function NotificationBell() {
                 <button
                   key={n.id}
                   type="button"
-                  onClick={() => goToNotification(n.kind)}
+                  onClick={() => goToNotification(n)}
                   className={cn(
                     'w-full flex items-start gap-2.5 p-2 rounded-xl text-left hover:bg-surface transition-colors',
                     !n.is_read && 'bg-primary/5'

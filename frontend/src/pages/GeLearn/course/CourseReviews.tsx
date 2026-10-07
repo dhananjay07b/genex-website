@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import ReplyOutlinedIcon from '@mui/icons-material/ReplyOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
@@ -7,10 +9,11 @@ import { Button } from '@/components/ui/Button'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { cn, getMediaUrl } from '@/lib/utils'
 import type { SnippetListResponse } from '@/types/api'
-import type { CourseDetail, CourseReview, MyReviewState } from '@/types/learning'
+import type { CourseDetail, CourseReview, MyReviewState, ReviewReplyInfo } from '@/types/learning'
 import { initials, longDate, plural } from './format'
 
 const MAX_LENGTH = 2000
+const MAX_REPLY = 1000
 const PAGE_SIZE = 10
 
 type Filter = 'all' | '5' | '4' | 'low' | 'completed'
@@ -32,7 +35,93 @@ export function Stars({ value, size = 18, label }: { value: number; size?: numbe
   )
 }
 
-function ReviewCard({ review }: { review: CourseReview }) {
+function ReplyBlock({ reply }: { reply: ReviewReplyInfo }) {
+  const name = reply.author.username
+    ? <Link to={`/u/${reply.author.username}`} className="font-bold text-text-primary hover:text-sky-700 hover:underline">{reply.author.display_name}</Link>
+    : <b className="text-text-primary">{reply.author.display_name}</b>
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-text-muted">
+        <ReplyOutlinedIcon sx={{ fontSize: 15 }} className="text-sky-700" />
+        Response from {name}
+        <span className="rounded-full bg-brand-tint px-2 py-0.5 font-bold text-sky-700">{reply.label}</span>
+        <span>· {longDate(reply.updated_at)}</span>
+      </p>
+      {reply.status === 'hidden' && <p className="text-xs font-semibold text-amber-800">Hidden by Genex: learners can&apos;t see this reply.</p>}
+      <p className="text-sm text-slate-700 whitespace-pre-line">{reply.body}</p>
+    </div>
+  )
+}
+
+/** The course team's reply under a review, and (for the team) a box to write, edit or delete it. */
+function ReplySection({ review, slug, onSaved }: { review: CourseReview; slug: string; onSaved: (next: CourseReview) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(review.reply?.body ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const url = `/api/learning/courses/${slug}/reviews/${review.id}/reply/`
+
+  async function save() {
+    if (!text.trim()) { setError('Write a reply first.'); return }
+    setSaving(true)
+    setError('')
+    try {
+      onSaved(await apiFetch<CourseReview>(url, { method: 'PUT', body: { body: text } }))
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save the reply. Please try again.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove() {
+    setSaving(true)
+    try {
+      await apiFetch(url, { method: 'DELETE' })
+      onSaved({ ...review, reply: null })
+      setText('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!review.reply && !review.can_reply) return null
+  return (
+    <div className={cn('flex flex-col gap-2', (review.reply || editing) && 'ml-1 border-l-2 border-sky-200 pl-3.5')}>
+      {review.reply && !editing && <ReplyBlock reply={review.reply} />}
+      {review.can_reply && editing && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={`reply-${review.id}`} className="text-xs font-bold text-text-primary">
+            {review.reply ? 'Edit your reply' : 'Reply as the course team'}
+          </label>
+          <textarea id={`reply-${review.id}`} value={text} onChange={e => setText(e.target.value)} maxLength={MAX_REPLY} rows={3}
+            placeholder="Answer the learner's question, or thank them for the feedback."
+            className="w-full resize-y rounded-md border border-border bg-white px-3 py-2 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-text-muted">Shown publicly under this review. The learner is notified.</p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setText(review.reply?.body ?? ''); setError('') }}>Cancel</Button>
+              <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : review.reply ? 'Update reply' : 'Post reply'}</Button>
+            </div>
+          </div>
+          {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
+        </div>
+      )}
+      {review.can_reply && !editing && (
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <ReplyOutlinedIcon sx={{ fontSize: 16 }} /> {review.reply ? 'Edit reply' : 'Reply'}
+          </Button>
+          {review.reply && <Button variant="ghost" size="sm" onClick={remove} disabled={saving}>Delete reply</Button>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReviewCard({ review: initial, slug }: { review: CourseReview; slug: string }) {
+  const [review, setReview] = useState(initial)
   const { author } = review
   return (
     <article className="rounded-xl border border-border bg-white p-4 flex flex-col gap-2.5">
@@ -58,6 +147,7 @@ function ReviewCard({ review }: { review: CourseReview }) {
         )}
       </div>
       {review.body && <p className="text-sm text-slate-700 whitespace-pre-line">{review.body}</p>}
+      <ReplySection review={review} slug={slug} onSaved={setReview} />
     </article>
   )
 }
@@ -223,7 +313,7 @@ export function CourseReviews({ course, signedIn, onChanged }: { course: CourseD
           )}
 
           <div aria-live="polite" className={cn('flex flex-col gap-3.5', loading && 'opacity-60')}>
-            {rows.map(review => <ReviewCard key={review.id} review={review} />)}
+            {rows.map(review => <ReviewCard key={`${review.id}-${review.reply?.updated_at ?? ''}`} review={review} slug={course.slug} />)}
             {pages && rows.length === 0 && <p className="text-sm text-text-muted">No reviews match this filter.</p>}
           </div>
           {showMore && (

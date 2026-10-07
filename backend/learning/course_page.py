@@ -16,7 +16,7 @@ from accounts.roles import display_company, display_publisher
 
 from .models import CourseReview, Enrollment, Playlist
 from .queries import published_courses
-from .reviews import review_block_reason, review_payload, with_progress
+from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
 
 LEVELS = ["beginner", "intermediate", "advanced"]
 FIRST_REVIEWS = 3
@@ -121,10 +121,9 @@ def roles_payload(course):
 
 
 def first_reviews(course, lesson_count, viewer):
-    reviews = with_progress(
-        course.reviews.filter(status=CourseReview.STATUS_VISIBLE).select_related("user__avatar", "user__company__logo")
-    )[:FIRST_REVIEWS]
-    return [review_payload(review, lesson_count, viewer) for review in reviews]
+    reviews = with_progress(course.reviews.filter(status=CourseReview.STATUS_VISIBLE).select_related(*REVIEW_SELECT))[:FIRST_REVIEWS]
+    team = bool(course.relation_to(viewer))
+    return [review_payload(review, lesson_count, viewer, can_reply=team) for review in reviews]
 
 
 def my_review_state(course, lesson_count, user):

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined'
+import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
 import { cn } from '@/lib/utils'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Select } from '@/components/ui/Select'
@@ -11,6 +12,8 @@ import { useRole } from '@/hooks/useRole'
 import { useAuth } from '@/context/useAuth'
 import { FileField } from '@/pages/Studio/fields/FileField'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/pages/Account/dashboard/ConfirmDialog'
 import type { CourseLevel, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
 import { BasicsCard, FaqCard, WhatLearnersGetCard } from './cards'
 import { OutlineEditor } from './OutlineEditor'
@@ -65,6 +68,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  const [withdrawing, setWithdrawing] = useState<'ask' | 'busy' | null>(null)
 
   const load = (loaded: MyCourse) => {
     const d = draftFromCourse(loaded)
@@ -155,7 +159,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
         return
       }
       load(result)
-      setNotice(result.status === 'pending' && status === 'published' ? 'Saved. The changes are with Genex for review.' : 'Saved.')
+      setNotice(result.revision?.status === 'pending' && !course?.revision ? 'Saved. Your changes are with Genex for review.' : 'Saved.')
     } catch (err) {
       const fields = err instanceof ApiError ? err.fields : {}
       setErrors(fields)
@@ -165,6 +169,20 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     }
   }
 
+  async function withdraw() {
+    if (!course) return
+    setWithdrawing('busy')
+    try {
+      load(await apiFetch<MyCourse>(`/api/learning/me/courses/${course.id}/revision/`, { method: 'DELETE' }))
+      setNotice('Changes withdrawn. The builder shows the live version again.')
+    } catch {
+      setFormError("Couldn't withdraw the changes. Please try again.")
+    } finally {
+      setWithdrawing(null)
+    }
+  }
+
+  const revision = course?.revision ?? null
   const heading = isEditing ? 'Edit course' : 'New course'
   const chip = status ? STATUS_CHIP[status] : null
   const Shell = isCompany ? 'div' : 'main'
@@ -194,6 +212,28 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
           </div>
         )}
 
+        {status === 'published' && revision && (
+          <div role="status" className={cn('flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3.5 mb-5 text-sm',
+            revision.status === 'rejected' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-sky-200 bg-sky-50 text-sky-900')}>
+            {revision.status === 'rejected'
+              ? <FeedbackOutlinedIcon sx={{ fontSize: 20 }} className="text-amber-700 shrink-0" />
+              : <HourglassEmptyOutlinedIcon sx={{ fontSize: 20 }} className="text-sky-700 shrink-0" />}
+            <p className="flex-1 min-w-60">
+              {revision.status === 'rejected' ? (
+                <><b className="block">Genex sent your changes back</b>
+                  {revision.rejection_reason && <>&ldquo;{revision.rejection_reason}&rdquo; </>}
+                  Edit and save to send them again, or withdraw them. Learners still see the live version.</>
+              ) : (
+                <><b className="block">Your changes are waiting for Genex review</b>
+                  Learners still see the live version. Once Genex approves, the changes replace it automatically. You can keep editing.</>
+              )}
+            </p>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setWithdrawing('ask')} disabled={withdrawing !== null}>
+              Withdraw changes
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           <div className="flex-1 min-w-0 w-full flex flex-col gap-5">
             <BasicsCard draft={draft} patch={patch} titleError={errors.title} />
@@ -220,11 +260,18 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
             <InstructorPanel isCompany={isCompany} value={draft.instructors} onChange={instructors => patch({ instructors })} error={errors.instructors} />
             <PageChecklist draft={draft} hasCover={Boolean(cover || course?.cover_url)} isCompany={isCompany} />
             <BuilderActions status={status} slug={course?.slug ?? null} dirty={dirty} saving={saving}
-              needsReview={needsReview(saved, draft)} enrolled={course?.enrolled_count ?? 0} lessonCount={lessonCount}
+              needsReview={needsReview(saved, draft)} lessonCount={lessonCount}
               onSave={() => save(false)} onSubmit={() => save(true)} onPreview={() => setPreviewing(true)} formError={formError} />
           </aside>
         </div>
       </div>
+
+      {withdrawing && (
+        <ConfirmDialog title="Withdraw your changes?"
+          description="The changes waiting for review are dropped and the builder goes back to the live version. Learners see no difference."
+          confirmLabel="Withdraw changes" confirming={withdrawing === 'busy'}
+          onCancel={() => setWithdrawing(null)} onConfirm={withdraw} />
+      )}
 
       {previewing && (
         <PreviewModal draft={draft} coverUrl={coverPreview ?? course?.cover_url ?? null}

@@ -7,7 +7,7 @@ from django.db.models.functions import Coalesce
 
 from accounts.roles import display_company
 
-from .models import MIN_REVIEWS_FOR_RATING, CourseReview, Enrollment, ItemProgress
+from .models import MIN_REVIEWS_FOR_RATING, CourseReview, Enrollment, ItemProgress, ReviewReply
 
 
 def review_block_reason(user, course):
@@ -35,15 +35,50 @@ def with_progress(reviews):
     return reviews.annotate(lessons_done=Coalesce(Subquery(done, output_field=IntegerField()), 0))
 
 
-def review_payload(review, lesson_count, viewer=None):
-    """A review as the course page shows it. `lesson_count` is the course's number of lessons."""
+# Load each review's author and its reply (with the reply's author) in the same query.
+REVIEW_SELECT = ("user__avatar", "user__company__logo", "reply__author__avatar", "reply__author__company")
+
+
+def reply_payload(reply):
+    """The course team's reply. A company account replies in the company's name, as the course publisher."""
+    author = reply.author
+    as_company = author.account_type == "company" and author.company_id
+    return {
+        "body": reply.body,
+        "status": reply.status,
+        "created_at": reply.created_at.isoformat(),
+        "updated_at": reply.updated_at.isoformat(),
+        "label": "Course publisher" if as_company else "Instructor",
+        "author": {
+            "username": None if as_company else author.username,
+            "display_name": author.company.name if as_company else (author.display_name or author.username),
+            "avatar_url": None if as_company else (author.avatar.file.url if author.avatar_id else None),
+            "role_title": "" if as_company else author.role_title,
+        },
+    }
+
+
+def review_payload(review, lesson_count, viewer=None, can_reply=False):
+    """
+    A review as the course page shows it. `lesson_count` is the course's number of
+    lessons; `can_reply` is whether the viewer is on the course team (owner or
+    instructor), who may reply and also see a reply Genex has hidden.
+    """
     author = review.user
     done = getattr(review, "lessons_done", None)
     if done is None:
         done = ItemProgress.objects.filter(user=author, item__playlist_id=review.playlist_id).count()
+    try:
+        reply = review.reply
+    except ReviewReply.DoesNotExist:
+        reply = None
+    if reply and reply.status != ReviewReply.STATUS_VISIBLE and not can_reply:
+        reply = None
     return {
         "id": review.pk,
         "rating": review.rating,
+        "reply": reply_payload(reply) if reply else None,
+        "can_reply": can_reply,
         "body": review.body,
         "created_at": review.created_at.isoformat(),
         "updated_at": review.updated_at.isoformat(),

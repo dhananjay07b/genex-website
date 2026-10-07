@@ -28,6 +28,9 @@ MAX_LINE = 120
 MAX_INSTRUCTORS = 3
 MAX_MODULES = 20
 MAX_FAQS = 6
+# What a live course promises learners: changing any of these (or the course's
+# modules or FAQs) waits for Genex review in a CourseRevision.
+PROMISED_FIELDS = ("title", "summary", "description", "outcomes", "prerequisites", "access", "price")
 
 
 def clean_text_lines(value, limit, label):
@@ -248,6 +251,33 @@ class CourseModule(models.Model):
         return f"{self.playlist} · {self.title}"
 
 
+class CourseRevision(models.Model):
+    """
+    Edits to a live course that wait for Genex review. Learners keep seeing the
+    live course; approving the course in Django admin applies the revision.
+    `changes` holds only what differs from the live course: any of
+    PROMISED_FIELDS, "faqs" ([[question, answer], …]) and "outline"
+    ({modules: [{id, title, summary, items: [{kind, id}]}], loose_items: [...]};
+    a module id below zero is a module that doesn't exist yet).
+    """
+    STATUS_PENDING = "pending"
+    STATUS_REJECTED = "rejected"
+    STATUS_CHOICES = [(STATUS_PENDING, "Waiting for review"), (STATUS_REJECTED, "Sent back")]
+
+    playlist = models.OneToOneField(Playlist, on_delete=models.CASCADE, related_name="revision", verbose_name="course")
+    changes = models.JSONField(default=dict)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    rejection_reason = models.TextField(blank=True, help_text="Shown to the author when the changes are sent back.")
+    submitted_at = models.DateTimeField(help_text="When the author last saved changes.")
+    submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        verbose_name = "Pending course change"
+
+    def __str__(self):
+        return f"Changes to {self.playlist}"
+
+
 class CourseFAQ(models.Model):
     """The course author's own questions, shown before GeLearn's standard ones."""
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="faqs")
@@ -384,6 +414,39 @@ class CourseReview(models.Model):
 
     def __str__(self):
         return f"{self.user} on {self.playlist}: {self.rating}/5"
+
+
+MAX_REPLY_LENGTH = 1000
+
+
+class ReviewReply(models.Model):
+    """
+    The course team's answer under a learner's review: one per review, written
+    by the course owner (a company account for a company course) or one of its
+    instructors. Genex can hide a reply in Django admin, as with reviews.
+    """
+    STATUS_VISIBLE = "visible"
+    STATUS_HIDDEN = "hidden"
+    STATUS_CHOICES = [(STATUS_VISIBLE, "Visible"), (STATUS_HIDDEN, "Hidden by Genex")]
+
+    review = models.OneToOneField(CourseReview, on_delete=models.CASCADE, related_name="reply")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="review_replies")
+    body = models.TextField(max_length=MAX_REPLY_LENGTH, verbose_name="reply")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_VISIBLE, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Reply to a review"
+        verbose_name_plural = "Replies to reviews"
+
+    def __str__(self):
+        return f"Reply to {self.review}"
+
+    def clean(self):
+        super().clean()
+        if self.review_id and self.author_id and not self.review.playlist.relation_to(self.author):
+            raise ValidationError({"author": "Only the course's owner or instructors can reply to its reviews."})
 
 
 @register_snippet

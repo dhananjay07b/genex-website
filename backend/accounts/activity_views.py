@@ -1,6 +1,7 @@
 from comments.models import Comment
 from comments.serializers import CommentSerializer
 from engagement.models import Notification
+from engagement.serializers import notification_path
 from pages.api import PodcastEpisodeSerializer
 from pages.models import PodcastEpisode, UserBlogPost, UserVideoPost
 from rest_framework.generics import ListAPIView
@@ -54,6 +55,9 @@ def _notification_entry(notification):
         image_url = replier.avatar.file.url if replier and replier.avatar else None
         parent_model = obj.content_type.model if obj.content_type else None
         link = f"/blog/{obj.object_id}" if parent_model == "blogpost" else f"/videos/{obj.object_id}" if parent_model == "videoitem" else "/account"
+    elif model_name == "playlist" and obj:
+        image_url = obj.cover.file.url if obj.cover_id else None
+        link = notification_path(notification) or "/account"
     else:
         image_url, link = None, "/account"
 

@@ -14,6 +14,7 @@ urlpatterns = [
     path("courses/<slug:slug>/related/", views.CourseRelatedView.as_view(), name="course-related"),
     path("courses/<slug:slug>/reviews/", views.CourseReviewListView.as_view(), name="course-reviews"),
     path("courses/<slug:slug>/reviews/me/", views.MyCourseReviewView.as_view(), name="course-review-mine"),
+    path("courses/<slug:slug>/reviews/<int:review_id>/reply/", views.ReviewReplyView.as_view(), name="course-review-reply"),
     path("courses/<slug:slug>/items/<int:item_id>/complete/", views.ItemCompleteView.as_view(), name="course-item-complete"),
     path("me/enrollments/", views.MyEnrollmentsView.as_view(), name="my-enrollments"),
     path("me/library/", views.MyLibraryView.as_view(), name="my-library"),

@@ -122,9 +122,23 @@ export interface CourseRatingSummary {
   distribution: { stars: number; percent: number }[]
 }
 
+/** The course team's answer under a review. */
+export interface ReviewReplyInfo {
+  body: string
+  /** "hidden" only reaches the course team, when Genex has hidden the reply. */
+  status: 'visible' | 'hidden'
+  created_at: string
+  updated_at: string
+  label: 'Instructor' | 'Course publisher'
+  author: { username: string | null; display_name: string; avatar_url: string | null; role_title: string }
+}
+
 export interface CourseReview {
   id: number
   rating: number
+  reply: ReviewReplyInfo | null
+  /** The viewer is the course's owner or an instructor, so may reply. */
+  can_reply: boolean
   body: string
   created_at: string
   updated_at: string
@@ -196,6 +210,14 @@ export interface CourseFaq {
 /** A lesson in the builder: the published item plus where it sits in the course. */
 export type MyCourseItem = CourseTarget & { item_id: number; module_id: number | null }
 
+export interface CourseRevisionInfo {
+  status: 'pending' | 'rejected'
+  submitted_at: string
+  rejection_reason: string
+  /** What changed: course fields, plus "faqs" and "outline". */
+  changed: string[]
+}
+
 export interface MyCourse {
   id: number
   slug: string
@@ -224,6 +246,8 @@ export interface MyCourse {
   enrolled_count: number
   /** False for a live course with learners: Genex unpublishes it instead. */
   can_delete: boolean
+  /** A live course's edits waiting for Genex review; the builder already shows them in place of the live values. */
+  revision: CourseRevisionInfo | null
   submitted_at: string | null
   updated_at: string
 }

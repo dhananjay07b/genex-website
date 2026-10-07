@@ -138,13 +138,12 @@ export function PageChecklist({ draft, hasCover, isCompany }: { draft: Draft; ha
   )
 }
 
-export function BuilderActions({ status, slug, dirty, saving, needsReview, enrolled, lessonCount, onSave, onSubmit, onPreview, formError }: {
+export function BuilderActions({ status, slug, dirty, saving, needsReview, lessonCount, onSave, onSubmit, onPreview, formError }: {
   status: string | null
   slug: string | null
   dirty: boolean
   saving: 'draft' | 'submit' | null
   needsReview: boolean
-  enrolled: number
   lessonCount: number
   onSave: () => void
   onSubmit: () => void
@@ -167,10 +166,9 @@ export function BuilderActions({ status, slug, dirty, saving, needsReview, enrol
       )}
 
       {isLive && needsReview && (
-        <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-900">
-          <b>This course is live.</b> Your changes to what learners are promised need Genex review. Until they&apos;re approved, the course is
-          hidden from GeLearn{enrolled > 0 ? ` and its ${enrolled} enrolled learner${enrolled === 1 ? '' : 's'} can't open it` : ''}.
-          Reordering or moving lessons goes live straight away.
+        <p className="rounded-lg bg-sky-50 border border-sky-200 px-3 py-2.5 text-xs text-sky-900">
+          <b>This course is live.</b> Your changes to what learners are promised go to Genex for review. Learners keep seeing the
+          live version until they&apos;re approved. Reordering or moving lessons goes live straight away.
         </p>
       )}
 
@@ -185,7 +183,7 @@ export function BuilderActions({ status, slug, dirty, saving, needsReview, enrol
       {dirty && <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700"><span className="size-2 rounded-full bg-amber-500" />Unsaved changes</p>}
       <p className="text-xs text-text-muted leading-relaxed">
         {isLive
-          ? 'Changes to the title, summary, description, outcomes, prerequisites, modules, FAQ or access go to Genex for review. Everything else goes live straight away.'
+          ? 'Changes to the title, summary, description, outcomes, prerequisites, modules, FAQ or access wait for Genex review while the live version stays up. Everything else goes live straight away.'
           : status === 'pending'
             ? 'Genex is reviewing this course. You can keep editing; changes are included in the review.'
             : lessonCount === 0

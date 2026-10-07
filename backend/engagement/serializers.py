@@ -56,10 +56,25 @@ class FollowingSerializer(serializers.ModelSerializer):
         fields = ["user", "created_at"]
 
 
+REVIEW_KINDS = ("course_review", "review_reply")
+
+
+def notification_path(notification):
+    """Where a review notification leads: the live course's Reviews section (to read or reply). None for other kinds."""
+    course = notification.content_object if notification.kind in REVIEW_KINDS else None
+    if course is None or getattr(course, "status", None) != "published":
+        return None
+    return f"/courses/{course.slug}#cp-reviews"
+
+
 class NotificationSerializer(serializers.ModelSerializer):
     content_type = serializers.SlugRelatedField(slug_field="model", read_only=True)
+    path = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = ["id", "kind", "text", "content_type", "object_id", "is_read", "created_at"]
+        fields = ["id", "kind", "text", "content_type", "object_id", "path", "is_read", "created_at"]
         read_only_fields = fields
+
+    def get_path(self, obj):
+        return notification_path(obj)

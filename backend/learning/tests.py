@@ -93,14 +93,15 @@ class CourseBuilderTests(TestCase):
         self.api.force_authenticate(self.other_pro)
         self.assertEqual(self.api.patch(f"/api/learning/me/courses/{cid}/", {"title": "Mine now"}, format="json").status_code, 404)
 
-    def test_editing_a_live_course_sends_it_back_to_review_but_reordering_does_not(self):
+    def test_editing_a_live_course_holds_the_change_but_reordering_goes_live(self):
         course = Playlist.objects.create(owner=self.pro, title="Live", status="published")
         self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([{"kind": "video", "id": self.video.pk}]), format="json")
         course.refresh_from_db()
-        self.assertEqual(course.status, "published")
+        self.assertEqual((course.status, course.items.count()), ("published", 1))
         self.api.patch(f"/api/learning/me/courses/{course.pk}/", {"price": None, "access": "members"}, format="json")
         course.refresh_from_db()
-        self.assertEqual(course.status, "pending")
+        self.assertEqual((course.status, course.access), ("published", "free"))  # live version unchanged
+        self.assertEqual(course.revision.changes, {"access": "members"})
 
 
 class CoursePublicAndEnrollmentTests(TestCase):
@@ -318,6 +319,13 @@ class CourseDetailsPhaseTests(TestCase):
         self.course.refresh_from_db()
         return self.course.status
 
+    def _held(self):
+        """What's waiting for review on the live course (keys of its revision), or None."""
+        from .revisions import revision_of
+        self.course.refresh_from_db()
+        revision = revision_of(self.course)
+        return sorted(revision.changes) if revision else None
+
     # Progress is kept when the builder saves
     def test_saving_lessons_keeps_learners_progress(self):
         from .models import ItemProgress
@@ -348,14 +356,19 @@ class CourseDetailsPhaseTests(TestCase):
         }, format="json")
         self.assertEqual(res.status_code, 200, res.content)
         body = res.json()
+        # The builder shows the held outline (new modules numbered below zero) ...
         self.assertEqual([m["title"] for m in body["modules"]], ["Basics", "Empty for now"])
         basics = body["modules"][0]["id"]
+        self.assertLess(basics, 0)
         self.assertEqual([(i["title"], i["module_id"]) for i in body["items"]],
                          [("Lesson one", basics), ("Lesson two", None), ("Lesson three", None)])
+        # ... while the live course keeps its lessons until Genex approves.
+        self.assertEqual((self._status(), self._held()), ("published", ["outline"]))
+        self.assertFalse(self.course.modules.exists())
+        self.assertEqual(self.course.items.count(), 2)
         self.assertTrue(ItemProgress.objects.filter(item=self.i2).exists())
-        self.assertEqual(self._status(), "pending")  # new module text goes to review
 
-    def test_reordering_and_moving_lessons_stays_live_but_renaming_goes_to_review(self):
+    def test_reordering_and_moving_lessons_goes_live_but_renaming_is_held(self):
         from .models import CourseModule
         a = CourseModule.objects.create(playlist=self.course, title="A", position=0)
         b = CourseModule.objects.create(playlist=self.course, title="B", position=1)
@@ -364,10 +377,12 @@ class CourseDetailsPhaseTests(TestCase):
             {"id": a.pk, "title": "A", "items": [{"kind": "video", "id": self.v2.pk}]},
         ]}
         self.assertEqual(self.api.put(self._url("outline/"), outline, format="json").status_code, 200)
-        self.assertEqual(self._status(), "published")
+        self.assertEqual((self._status(), self._held()), ("published", None))
+        self.assertEqual(list(self.course.modules.values_list("title", flat=True)), ["B", "A"])
         outline["modules"][0]["title"] = "B, renamed"
         self.api.put(self._url("outline/"), outline, format="json")
-        self.assertEqual(self._status(), "pending")
+        self.assertEqual((self._status(), self._held()), ("published", ["outline"]))
+        self.assertEqual(list(self.course.modules.values_list("title", flat=True)), ["B", "A"])
 
     def test_outline_drops_left_out_modules_and_rejects_foreign_ones(self):
         from .models import CourseModule
@@ -400,22 +415,24 @@ class CourseDetailsPhaseTests(TestCase):
         self.assertEqual(self.api.patch(self._url(course=draft), {"outcomes": [f"o{i}" for i in range(9)]}, format="json").status_code, 400)
         self.assertEqual(self.api.patch(self._url(course=draft), {"outcomes": ["x" * 121]}, format="json").status_code, 400)
 
-    def test_learner_facing_text_sends_live_course_to_review_but_language_does_not(self):
+    def test_learner_facing_text_is_held_for_review_but_language_goes_live(self):
         self.api.patch(self._url(), {"language": "Hindi", "level": "beginner"}, format="json")
-        self.assertEqual(self._status(), "published")
-        self.api.patch(self._url(), {"summary": "A new promise"}, format="json")
-        self.assertEqual(self._status(), "pending")
+        self.assertEqual((self._status(), self._held(), self.course.language), ("published", None, "Hindi"))
+        res = self.api.patch(self._url(), {"summary": "A new promise"}, format="json")
+        self.assertEqual(res.json()["summary"], "A new promise")  # the builder shows the held text
+        self.assertEqual((self._status(), self._held(), self.course.summary), ("published", ["summary"], ""))
+        self.api.patch(self._url(), {"summary": ""}, format="json")  # back to the live text: nothing left to review
+        self.assertIsNone(self._held())
 
     def test_faqs_save_limit_and_review_rule(self):
         faqs = [{"question": "Do I need SCADA experience?", "answer": "No."}]
         res = self.api.put(self._url("faqs/"), faqs, format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual([f["question"] for f in res.json()["faqs"]], ["Do I need SCADA experience?"])
-        self.assertEqual(self._status(), "pending")
-        self.course.status = "published"
-        self.course.save()
-        self.api.put(self._url("faqs/"), faqs, format="json")  # unchanged: stays live
-        self.assertEqual(self._status(), "published")
+        self.assertEqual((self._status(), self._held()), ("published", ["faqs"]))
+        self.assertFalse(self.course.faqs.exists())
+        self.api.put(self._url("faqs/"), [], format="json")  # same as live again
+        self.assertIsNone(self._held())
         too_many = [{"question": f"Q{i}", "answer": "A"} for i in range(7)]
         self.assertEqual(self.api.put(self._url("faqs/"), too_many, format="json").status_code, 400)
 
@@ -926,3 +943,169 @@ class OwnCourseLockTests(TestCase):
         with self.assertRaises(ValidationError):
             Enrollment(user=self.teacher, playlist=self.co_course).full_clean()
         Enrollment(user=self.learner, playlist=self.co_course).full_clean()
+
+
+class CourseRevisionTests(TestCase):
+    """Phase 8: a live course stays up while edits wait for review; approving applies them."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        self.api = APIClient()
+        self.root = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.learner = make_user("learner")
+        self.v1, self.v2 = publish_video(self.pro, "One"), publish_video(self.pro, "Two")
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA basics", summary="Old promise", status="published")
+        self.i1 = self.course.items.create(video=self.v1, position=0)
+        genex = Company.objects.create(name="Genex", slug="genex")
+        self.staff = make_user("staff", account_type="company", company=genex)
+        self.article = TechArticle.objects.create(title="SLD guide", read_time="8 min", date=TODAY, excerpt="e", company=genex)
+        self.co_course = Playlist.objects.create(owner=self.staff, company=genex, title="Company course", status="published")
+        self.co_course.items.create(article=self.article, position=0)
+
+    def _admin(self, action, *courses):
+        request = RequestFactory().post("/")
+        request.user = self.root
+        request._messages = type("M", (), {"add": lambda *a, **k: None})()
+        getattr(PlaylistAdmin(Playlist, AdminSite()), action)(request, Playlist.objects.filter(pk__in=[c.pk for c in courses]))
+        for c in courses:
+            c.refresh_from_db()
+
+    def test_live_page_keeps_the_old_version_until_approved(self):
+        from .models import CourseRevision, ItemProgress
+        Enrollment.objects.create(user=self.learner, playlist=self.course)
+        ItemProgress.objects.create(user=self.learner, item=self.i1)
+        self.api.force_authenticate(self.pro)
+        self.api.patch(f"/api/learning/me/courses/{self.course.pk}/", {"title": "SCADA fundamentals", "summary": "New promise"}, format="json")
+        self.api.put(f"/api/learning/me/courses/{self.course.pk}/outline/", {
+            "modules": [{"title": "Start here", "items": [{"kind": "video", "id": self.v1.pk}, {"kind": "video", "id": self.v2.pk}]}],
+        }, format="json")
+        self.api.put(f"/api/learning/me/courses/{self.course.pk}/faqs/", [{"question": "Free?", "answer": "Yes."}], format="json")
+
+        builder = self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()
+        self.assertEqual((builder["status"], builder["title"], builder["revision"]["status"]), ("published", "SCADA fundamentals", "pending"))
+        self.assertEqual(builder["revision"]["changed"], ["faqs", "outline", "summary", "title"])
+        page = APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()
+        self.assertEqual((page["title"], page["summary"], len(page["items"]), page["faqs"]), ("SCADA basics", "Old promise", 1, []))
+
+        self._admin("approve", self.course)
+        self.assertEqual((self.course.status, self.course.title, self.course.summary), ("published", "SCADA fundamentals", "New promise"))
+        self.assertFalse(CourseRevision.objects.filter(playlist=self.course).exists())
+        self.assertEqual(list(self.course.modules.values_list("title", flat=True)), ["Start here"])
+        self.assertEqual(self.course.items.count(), 2)
+        self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.i1).exists())  # progress kept
+        self.assertEqual(list(self.course.faqs.values_list("question", flat=True)), ["Free?"])
+        self.assertTrue(Notification.objects.filter(recipient=self.pro, text__contains="changes").exists())
+
+    def test_reject_keeps_live_version_and_a_new_save_resubmits(self):
+        from .models import CourseRevision
+        self.api.force_authenticate(self.pro)
+        self.api.patch(f"/api/learning/me/courses/{self.course.pk}/", {"summary": "Overpromise"}, format="json")
+        CourseRevision.objects.filter(playlist=self.course).update(rejection_reason="Too vague.")
+        self._admin("reject", self.course)
+        revision = CourseRevision.objects.get(playlist=self.course)
+        self.assertEqual((self.course.status, self.course.summary, revision.status), ("published", "Old promise", "rejected"))
+        info = self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()["revision"]
+        self.assertEqual((info["status"], info["rejection_reason"]), ("rejected", "Too vague."))
+        self.api.patch(f"/api/learning/me/courses/{self.course.pk}/", {"summary": "A clear promise"}, format="json")
+        revision.refresh_from_db()
+        self.assertEqual((revision.status, revision.rejection_reason), ("pending", ""))
+
+    def test_withdraw_drops_the_changes(self):
+        from .models import CourseRevision
+        self.api.force_authenticate(self.pro)
+        self.api.patch(f"/api/learning/me/courses/{self.course.pk}/", {"title": "Renamed"}, format="json")
+        res = self.api.delete(f"/api/learning/me/courses/{self.course.pk}/revision/")
+        self.assertEqual((res.status_code, res.json()["title"], res.json()["revision"]), (200, "SCADA basics", None))
+        self.assertFalse(CourseRevision.objects.exists())
+
+    def test_company_courses_work_the_same(self):
+        self.api.force_authenticate(self.staff)
+        self.api.patch(f"/api/learning/me/courses/{self.co_course.pk}/", {"description": "Updated"}, format="json")
+        self.co_course.refresh_from_db()
+        self.assertEqual((self.co_course.status, self.co_course.description, self.co_course.revision.changes), ("published", "", {"description": "Updated"}))
+        self._admin("approve", self.co_course)
+        self.assertEqual(self.co_course.description, "Updated")
+
+    def test_approve_skips_lessons_deleted_while_waiting(self):
+        self.api.force_authenticate(self.pro)
+        self.api.put(f"/api/learning/me/courses/{self.course.pk}/outline/", {
+            "modules": [{"title": "New", "items": [{"kind": "video", "id": self.v1.pk}, {"kind": "video", "id": self.v2.pk}]}],
+        }, format="json")
+        self.v2.delete()
+        self._admin("approve", self.course)
+        self.assertEqual(self.course.items.count(), 1)
+
+
+class ReviewReplyTests(TestCase):
+    """Phase 9: the course team answers reviews; one reply per review; Genex can hide it."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        from .models import ItemProgress
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng", display_name="Priya")
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
+        item = self.course.items.create(video=publish_video(self.pro, "One"), position=0)
+        self.learner = make_user("learner")
+        Enrollment.objects.create(user=self.learner, playlist=self.course)
+        ItemProgress.objects.create(user=self.learner, item=item)
+        self.review = CourseReview.objects.create(user=self.learner, playlist=self.course, rating=3, body="What about DNP3?")
+        self.url = f"/api/learning/courses/{self.course.slug}/reviews/{self.review.pk}/reply/"
+
+        genex = Company.objects.create(name="Genex", slug="genex")
+        self.staff = make_user("staff", account_type="company", company=genex)
+        self.teacher = make_user("teacher", account_type="professional", company=genex, display_name="Ravi")
+        User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
+        self.co_course = Playlist.objects.create(owner=self.staff, company=genex, title="Company course", status="published")
+        co_item = self.co_course.items.create(article=TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=genex), position=0)
+        self.co_course.instructors.add(self.teacher)
+        Enrollment.objects.create(user=self.learner, playlist=self.co_course)
+        ItemProgress.objects.create(user=self.learner, item=co_item)
+        self.co_review = CourseReview.objects.create(user=self.learner, playlist=self.co_course, rating=4)
+
+    def _as(self, user):
+        api = APIClient()
+        api.force_authenticate(user)
+        return api
+
+    def test_owner_replies_once_edits_and_learner_is_notified(self):
+        self.assertEqual(self._as(self.learner).put(self.url, {"body": "Me too"}, format="json").status_code, 403)
+        self.assertEqual(self._as(self.pro).put(self.url, {"body": "  "}, format="json").status_code, 400)
+        res = self._as(self.pro).put(self.url, {"body": "Module 2 covers DNP3."}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual((res.json()["reply"]["label"], res.json()["reply"]["author"]["display_name"]), ("Instructor", "Priya"))
+        self.assertEqual(Notification.objects.filter(recipient=self.learner, kind="review_reply").count(), 1)
+        self.assertEqual(self._as(self.pro).put(self.url, {"body": "Module 2, lesson 3."}, format="json").status_code, 200)
+        self.assertEqual(Notification.objects.filter(recipient=self.learner, kind="review_reply").count(), 1)  # edits don't notify again
+        page = APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()
+        self.assertEqual((page["reviews"][0]["reply"]["body"], page["reviews"][0]["can_reply"]), ("Module 2, lesson 3.", False))
+        listed = self._as(self.pro).get(f"/api/learning/courses/{self.course.slug}/reviews/").json()["results"]
+        self.assertTrue(listed[0]["can_reply"])
+        self.assertEqual(self._as(self.pro).delete(self.url).status_code, 204)
+        self.assertIsNone(APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()["reviews"][0]["reply"])
+
+    def test_hidden_reply_shows_only_to_the_course_team(self):
+        from .models import ReviewReply
+        ReviewReply.objects.create(review=self.review, author=self.pro, body="Rude reply", status=ReviewReply.STATUS_HIDDEN)
+        self.assertIsNone(APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()["reviews"][0]["reply"])
+        mine = self._as(self.pro).get(f"/api/learning/courses/{self.course.slug}/").json()["reviews"][0]["reply"]
+        self.assertEqual(mine["status"], "hidden")
+
+    def test_company_course_team_replies_as_the_publisher_or_instructor(self):
+        url = f"/api/learning/courses/{self.co_course.slug}/reviews/{self.co_review.pk}/reply/"
+        res = self._as(self.staff).put(url, {"body": "Thanks!"}, format="json")
+        self.assertEqual((res.json()["reply"]["label"], res.json()["reply"]["author"]["display_name"]), ("Course publisher", "Genex"))
+        res = self._as(self.teacher).put(url, {"body": "Glad it helped."}, format="json")  # the team shares one reply
+        self.assertEqual((res.status_code, res.json()["reply"]["label"]), (200, "Instructor"))
+        self.assertEqual(self._as(self.pro).put(url, {"body": "x"}, format="json").status_code, 403)
+
+    def test_cannot_reply_to_a_hidden_review_and_admin_refuses_outsiders(self):
+        from django.core.exceptions import ValidationError
+        from .models import ReviewReply
+        self.review.status = CourseReview.STATUS_HIDDEN
+        self.review.save()
+        self.assertEqual(self._as(self.pro).put(self.url, {"body": "Hi"}, format="json").status_code, 404)
+        with self.assertRaises(ValidationError):
+            ReviewReply(review=self.co_review, author=self.pro, body="Not mine").full_clean()

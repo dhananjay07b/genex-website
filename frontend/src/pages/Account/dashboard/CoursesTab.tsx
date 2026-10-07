@@ -78,8 +78,11 @@ export function CoursesTab({
     }
   }
 
-  const count = (key: 'all' | CourseStatus) => (courses ?? []).filter(c => key === 'all' || c.status === key).length
-  const shown = (courses ?? []).filter(c => filter === 'all' || c.status === filter)
+  // A live course with changes waiting (or sent back) also shows under "In review" (or "Needs changes").
+  const matches = (c: MyCourse, key: 'all' | CourseStatus) =>
+    key === 'all' || c.status === key || (key === 'pending' && c.revision?.status === 'pending') || (key === 'rejected' && c.revision?.status === 'rejected')
+  const count = (key: 'all' | CourseStatus) => (courses ?? []).filter(c => matches(c, key)).length
+  const shown = (courses ?? []).filter(c => matches(c, filter))
 
   return (
     <div>
@@ -126,11 +129,21 @@ export function CoursesTab({
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link to={`${basePath}/${course.id}/edit`} className="font-bold text-text-primary hover:text-primary truncate">{course.title}</Link>
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_CHIP[course.status]}`}>{STATUS_TEXT[course.status]}</span>
+                      {live && course.revision && (
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${course.revision.status === 'pending' ? STATUS_CHIP.pending : STATUS_CHIP.rejected}`}>
+                          {course.revision.status === 'pending' ? 'Changes in review' : 'Changes sent back'}
+                        </span>
+                      )}
                       <AccessBadge access={course.access} price={course.price} currency={course.currency} />
                     </div>
                     <p className="text-xs text-text-muted mt-1">
                       {modules ? `${plural(modules, 'module')} · ` : ''}{plural(course.items.length, 'lesson')} · updated {formatRelativeTime(course.updated_at)}
                     </p>
+                    {live && course.revision?.status === 'rejected' && course.revision.rejection_reason && (
+                      <p className="flex items-start gap-1 text-xs text-amber-800 mt-1">
+                        <FeedbackOutlinedIcon sx={{ fontSize: 14 }} className="mt-px shrink-0" /> Genex: {course.revision.rejection_reason}
+                      </p>
+                    )}
                     {course.status === 'rejected' && course.rejection_reason && (
                       <p className="flex items-start gap-1 text-xs text-amber-800 mt-1">
                         <FeedbackOutlinedIcon sx={{ fontSize: 14 }} className="mt-px shrink-0" /> Genex: {course.rejection_reason}

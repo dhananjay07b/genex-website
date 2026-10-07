@@ -16,10 +16,11 @@ from commerce.access import has_access
 from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
-from .models import ITEM_KINDS, CareerRole, CourseFAQ, CourseModule, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem
+from .models import MAX_REPLY_LENGTH, CareerRole, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
 from . import course_page
 from .queries import published_courses
-from .reviews import review_block_reason, review_payload, with_progress
+from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
+from .revisions import apply_faqs, apply_outline, is_live, live_value, normalise_outline, revision_of, rewords, stage
 from .serializers import (
     MAX_FAQS,
     MAX_ITEMS,
@@ -199,46 +200,15 @@ class MyCourseViewSet(
             seen.add(key)
         return None
 
-    def _sync_items(self, course, rows):
-        """
-        Make the course's lessons exactly `rows` — (ref, module_id) pairs, in
-        order — updating rows that already exist instead of recreating them, so
-        learners keep the lessons they've ticked off. Lessons no longer listed
-        are removed (with their progress).
-        """
-        existing = {}
-        for item in course.items.all():
-            field = ITEM_KINDS[item.kind][0]
-            existing[(item.kind, getattr(item, f"{field}_id"))] = item
-        keep, changed, new = set(), [], []
-        for position, (ref, module_id) in enumerate(rows):
-            key = (ref["kind"], ref["id"])
-            item = existing.get(key)
-            if item is None:
-                new.append(PlaylistItem(playlist=course, position=position, module_id=module_id,
-                                        **{f"{ITEM_KINDS[ref['kind']][0]}_id": ref["id"]}))
-                continue
-            keep.add(item.pk)
-            if (item.position, item.module_id) != (position, module_id):
-                item.position, item.module_id = position, module_id
-                changed.append(item)
-        course.items.exclude(pk__in=keep).delete()
-        PlaylistItem.objects.bulk_update(changed, ["position", "module"])
-        PlaylistItem.objects.bulk_create(new)
-
-    def _send_back_for_review(self, course):
-        if course.status == Playlist.STATUS_PUBLISHED:
-            course.status = Playlist.STATUS_PENDING
-            course.save(update_fields=["status", "updated_at"])
-
     @action(detail=True, methods=["put"])
     def outline(self, request, pk=None):
         """
         Replace the course's modules and lessons:
         `{modules: [{id?, title, summary, items: [{kind, id}]}], loose_items: [{kind, id}]}`.
-        Modules without an `id` are created; modules left out are deleted.
-        Lessons keep learners' progress. New or reworded modules send a live
-        course back for review; reordering and moving lessons don't.
+        Modules without an `id` are created; modules left out are deleted. Lessons
+        keep learners' progress. On a live course, new or reworded modules wait
+        for Genex review (with the rest of this outline) while the live version
+        stays up; reordering and moving lessons go live straight away.
         """
         course = self.get_object()
         data = OutlineSerializer(data=request.data)
@@ -249,53 +219,49 @@ class MyCourseViewSet(
         if error:
             return Response({"items": error}, status=400)
 
-        current = {m.pk: m for m in course.modules.all()}
-        ids = [m.get("id") for m in modules_in if m.get("id")]
-        if any(mid not in current for mid in ids) or len(ids) != len(set(ids)):
+        # Known modules: the live ones, plus those already held in a revision (ids below zero are new).
+        known = set(course.modules.values_list("pk", flat=True))
+        held = revision_of(course)
+        if held and "outline" in held.changes:
+            known |= {m["id"] for m in held.changes["outline"]["modules"]}
+        ids = [m.get("id") for m in modules_in if m.get("id") and m["id"] > 0]
+        if any(mid not in known for mid in ids) or len(ids) != len(set(ids)):
             return Response({"modules": "That module isn't part of this course."}, status=400)
 
-        reworded = False
+        outline = normalise_outline(modules_in, loose)
         with transaction.atomic():
-            rows, kept = [], []
-            for position, spec in enumerate(modules_in):
-                title, summary = spec["title"].strip(), spec["summary"].strip()
-                module = current.get(spec.get("id"))
-                if module is None:
-                    module = CourseModule.objects.create(playlist=course, title=title, summary=summary, position=position)
-                    reworded = True
-                else:
-                    if (module.title, module.summary) != (title, summary):
-                        reworded = True
-                    module.title, module.summary, module.position = title, summary, position
-                    module.save(update_fields=["title", "summary", "position"])
-                kept.append(module.pk)
-                rows += [(ref, module.pk) for ref in spec["items"]]
-            rows += [(ref, None) for ref in loose]
-            course.modules.exclude(pk__in=kept).delete()
-            self._sync_items(course, rows)
-            course.save(update_fields=["updated_at"])
-            if reworded:
-                self._send_back_for_review(course)
+            if is_live(course) and ((held and "outline" in held.changes) or rewords(course, outline)):
+                stage(course, request.user, {"outline": outline})
+            else:
+                apply_outline(course, outline)
+                course.save(update_fields=["updated_at"])
         return Response(self.get_serializer(course).data)
 
     @action(detail=True, methods=["put"])
     def faqs(self, request, pk=None):
-        """Replace the course's own FAQs with `[{question, answer}, …]` (at most 6). Changes send a live course back for review."""
+        """Replace the course's own FAQs with `[{question, answer}, …]` (at most 6). On a live course, changes wait for Genex review."""
         course = self.get_object()
         data = FaqInputSerializer(data=request.data, many=True)
         data.is_valid(raise_exception=True)
-        faqs = [(f["question"].strip(), f["answer"].strip()) for f in data.validated_data]
+        faqs = [[f["question"].strip(), f["answer"].strip()] for f in data.validated_data]
         if len(faqs) > MAX_FAQS:
             return Response({"faqs": f"A course can have at most {MAX_FAQS} questions."}, status=400)
-        before = list(course.faqs.values_list("question", "answer"))
-        if faqs != before:
-            with transaction.atomic():
-                course.faqs.all().delete()
-                CourseFAQ.objects.bulk_create([
-                    CourseFAQ(playlist=course, question=q, answer=a, position=i) for i, (q, a) in enumerate(faqs)
-                ])
+        with transaction.atomic():
+            if is_live(course):
+                stage(course, request.user, {"faqs": faqs})
+            elif faqs != live_value(course, "faqs"):
+                apply_faqs(course, faqs)
                 course.save(update_fields=["updated_at"])
-                self._send_back_for_review(course)
+        return Response(self.get_serializer(course).data)
+
+    @action(detail=True, methods=["delete"], url_path="revision")
+    def withdraw_revision(self, request, pk=None):
+        """Drop a live course's changes that are waiting for review (or were sent back); the live version is unchanged."""
+        course = self.get_object()
+        revision = revision_of(course)
+        if revision:
+            revision.delete()
+            course = self.get_object()  # drop the cached revision
         return Response(self.get_serializer(course).data)
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
@@ -340,10 +306,7 @@ class CourseReviewListView(generics.ListAPIView):
     def get_queryset(self):
         self.course = _published_course(self.kwargs["slug"])
         self.lesson_count = self.course.items.count()
-        reviews = with_progress(
-            self.course.reviews.filter(status=CourseReview.STATUS_VISIBLE)
-            .select_related("user__avatar", "user__company__logo")
-        )
+        reviews = with_progress(self.course.reviews.filter(status=CourseReview.STATUS_VISIBLE).select_related(*REVIEW_SELECT))
         params = self.request.query_params
         if params.get("rating", "").isdigit():
             reviews = reviews.filter(rating=int(params["rating"]))
@@ -355,7 +318,8 @@ class CourseReviewListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         page = self.paginate_queryset(self.get_queryset())
-        return self.get_paginated_response([review_payload(r, self.lesson_count, request.user) for r in page])
+        team = bool(self.course.relation_to(request.user))
+        return self.get_paginated_response([review_payload(r, self.lesson_count, request.user, can_reply=team) for r in page])
 
 
 class MyCourseReviewView(APIView):
@@ -401,6 +365,50 @@ class MyCourseReviewView(APIView):
     def delete(self, request, slug):
         course = _published_course(slug)
         CourseReview.objects.filter(user=request.user, playlist=course).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReviewReplyView(APIView):
+    """
+    The course team's reply under one review of a live course: PUT `{body}` to
+    write or edit it, DELETE to remove it. The owner (any company account, for a
+    company course) and listed instructors share one reply per review.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _review(self, request, slug, review_id):
+        course = _published_course(slug)
+        if not course.relation_to(request.user):
+            return course, None, Response({"detail": "Only the course's owner or instructors can reply to its reviews."}, status=status.HTTP_403_FORBIDDEN)
+        review = get_object_or_404(course.reviews.select_related(*REVIEW_SELECT), pk=review_id, status=CourseReview.STATUS_VISIBLE)
+        return course, review, None
+
+    def put(self, request, slug, review_id):
+        course, review, refused = self._review(request, slug, review_id)
+        if refused:
+            return refused
+        body = str(request.data.get("body", "")).strip()
+        if not body:
+            return Response({"body": "Write a reply, or delete it instead."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(body) > MAX_REPLY_LENGTH:
+            return Response({"body": f"Keep the reply under {MAX_REPLY_LENGTH} characters."}, status=status.HTTP_400_BAD_REQUEST)
+        reply, created = ReviewReply.objects.update_or_create(review=review, defaults={"author": request.user, "body": body})
+        if created:
+            name = course.company.name if request.user.account_type == "company" and course.company_id else (request.user.display_name or request.user.username)
+            Notification.objects.create(
+                recipient=review.user, kind="review_reply",
+                text=f'{name} replied to your review of "{course.title}".'[:300],
+                content_type=ContentType.objects.get_for_model(course), object_id=course.pk,
+            )
+        review.reply = reply
+        return Response(review_payload(review, course.items.count(), request.user, can_reply=True),
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    def delete(self, request, slug, review_id):
+        _, review, refused = self._review(request, slug, review_id)
+        if refused:
+            return refused
+        ReviewReply.objects.filter(review=review).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

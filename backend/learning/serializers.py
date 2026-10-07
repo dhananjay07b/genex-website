@@ -16,16 +16,10 @@ from . import course_page
 from .reviews import card_rating, rating_summary
 from .models import (
     ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
-    CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
+    PROMISED_FIELDS, CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
 
 MAX_ITEMS = 100
-
-# Editing any of these on a live course sends it back to Genex for review:
-# they are what learners are promised. Order, lessons, cover, level, topics,
-# roles and instructors go live straight away.
-REVIEWED_FIELDS = ("title", "summary", "description", "outcomes", "prerequisites", "access", "price")
-
 
 def clean_lines(value, limit, label):
     """`clean_text_lines`, reported as an API field error."""
@@ -319,6 +313,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     faqs = serializers.SerializerMethodField()
     enrolled_count = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
+    revision = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
@@ -327,7 +322,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             "cover_url", "level", "topics", "roles", "instructors",
             "access", "price", "currency",
             "status", "rejection_reason", "modules", "items", "faqs",
-            "enrolled_count", "can_delete", "submitted_at", "updated_at",
+            "enrolled_count", "can_delete", "revision", "submitted_at", "updated_at",
         ]
         read_only_fields = ["id", "slug", "currency", "status", "rejection_reason", "submitted_at", "updated_at"]
         extra_kwargs = {"language": {"allow_blank": True}}  # blank falls back to English
@@ -347,6 +342,46 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     def get_can_delete(self, obj):
         """A live course with learners can't be deleted by its author (Genex unpublishes it instead)."""
         return not (obj.status == Playlist.STATUS_PUBLISHED and obj.enrollments.exists())
+
+    def get_revision(self, obj):
+        """A live course's changes waiting for Genex review: status, when, why sent back, and which parts changed."""
+        from .revisions import revision_of
+        revision = revision_of(obj)
+        if revision is None:
+            return None
+        return {
+            "status": revision.status,
+            "submitted_at": revision.submitted_at.isoformat(),
+            "rejection_reason": revision.rejection_reason,
+            "changed": sorted(revision.changes),
+        }
+
+    def to_representation(self, obj):
+        # The builder edits the held changes, so it shows them in place of the live values.
+        data = super().to_representation(obj)
+        if data.get("revision"):
+            data.update(self._held(obj, obj.revision.changes))
+        return data
+
+    def _held(self, obj, changes):
+        held = {field: changes[field] for field in PROMISED_FIELDS if field in changes}
+        if "faqs" in changes:
+            held["faqs"] = [{"id": -(i + 1), "question": q, "answer": a} for i, (q, a) in enumerate(changes["faqs"])]
+        if "outline" in changes:
+            outline = changes["outline"]
+            refs = [(r, m["id"]) for m in outline["modules"] for r in m["items"]] + [(r, None) for r in outline["loose_items"]]
+            library = library_for_course(obj)
+            found = {}
+            for kind in {r["kind"] for r, _ in refs}:
+                ids = [r["id"] for r, _ in refs if r["kind"] == kind]
+                found.update({(kind, t.pk): t for t in library[kind].filter(pk__in=ids)} if kind in library else {})
+            live_ids = {(i.kind, getattr(i, f"{ITEM_KINDS[i.kind][0]}_id")): i.pk for i in obj.items.all()}
+            held["modules"] = [{"id": m["id"], "title": m["title"], "summary": m["summary"]} for m in outline["modules"]]
+            held["items"] = [
+                {**target_card(found[(r["kind"], r["id"])], r["kind"]), "item_id": live_ids.get((r["kind"], r["id"])), "module_id": module_id}
+                for r, module_id in refs if (r["kind"], r["id"]) in found
+            ]
+        return held
 
     def get_modules(self, obj):
         return [{"id": m.id, "title": m.title, "summary": m.summary} for m in obj.modules.all()]
@@ -401,13 +436,14 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        # Changing what learners are promised (see REVIEWED_FIELDS) on a live
-        # course sends it back for review; item order does not.
-        if instance.status == Playlist.STATUS_PUBLISHED and any(
-            validated_data.get(field, getattr(instance, field)) != getattr(instance, field)
-            for field in REVIEWED_FIELDS
-        ):
-            validated_data["status"] = Playlist.STATUS_PENDING
+        # On a live course, what learners are promised (PROMISED_FIELDS) waits for
+        # Genex review in a revision while the live version stays up; level,
+        # topics, roles and instructors go live straight away.
+        from .revisions import is_live, stage
+        if is_live(instance):
+            held = {field: validated_data.pop(field) for field in PROMISED_FIELDS if field in validated_data}
+            if held:
+                stage(instance, self.context["request"].user, held)
         return super().update(instance, validated_data)
 
 

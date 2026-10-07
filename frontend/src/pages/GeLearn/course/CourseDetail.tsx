@@ -55,6 +55,15 @@ export default function CourseDetail() {
     return () => { cancelled = true }
   }, [load, user?.id])
 
+  // A link to a section (e.g. a review notification's #cp-reviews) lands on it once the page has loaded.
+  const loaded = Boolean(course)
+  useEffect(() => {
+    const id = location.hash.slice(1)
+    if (!loaded || !id.startsWith('cp-')) return
+    const timer = window.setTimeout(() => jumpTo(id as SectionId, barRef.current), 150)
+    return () => window.clearTimeout(timer)
+  }, [loaded, location.hash])
+
   useTrackView('course', course?.id)
   const markRelatedEmpty = useCallback(() => setRelatedEmpty(true), [])
 
