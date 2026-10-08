@@ -382,6 +382,40 @@ class ItemProgress(models.Model):
         constraints = [models.UniqueConstraint(fields=["user", "item"], name="one_completion_per_item")]
 
 
+MAX_CERTIFICATE_NAME = 80
+
+
+class Certificate(models.Model):
+    """
+    GeLearn's certificate of completion: issued automatically once an enrolled
+    learner has opened every lesson of a live course from inside the course.
+    Everything printed is copied into `snapshot` when it is issued, so later
+    edits to the course or anyone's profile never change a certificate that has
+    been shared. Genex can revoke one in Django admin; it is never deleted.
+    """
+    STATUS_VALID = "valid"
+    STATUS_REVOKED = "revoked"
+    STATUS_CHOICES = [(STATUS_VALID, "Valid"), (STATUS_REVOKED, "Revoked")]
+
+    code = models.CharField(max_length=16, unique=True, help_text="Public ID, e.g. GL-7K3X-9QF2; also the verify address.")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="certificates", verbose_name="learner")
+    # SET_NULL: a certificate stays valid (from its snapshot) even if the course is later removed.
+    playlist = models.ForeignKey(Playlist, null=True, blank=True, on_delete=models.SET_NULL, related_name="certificates", verbose_name="course")
+    learner_name = models.CharField(max_length=MAX_CERTIFICATE_NAME, help_text="As printed. The learner can correct it once.")
+    name_corrected = models.BooleanField(default=False, help_text="The learner has used their one name correction.")
+    snapshot = models.JSONField(default=dict, help_text="Course, instructors and publisher as printed.")
+    issued_at = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_VALID, db_index=True)
+    revoked_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-issued_at"]
+        constraints = [models.UniqueConstraint(fields=["user", "playlist"], name="one_certificate_per_course")]
+
+    def __str__(self):
+        return f"{self.code} · {self.learner_name} · {self.snapshot.get('course', {}).get('title', '')}"
+
+
 # A course's average rating is only shown once it has this many visible reviews,
 # so one early review can't show as 5.0.
 MIN_REVIEWS_FOR_RATING = 3

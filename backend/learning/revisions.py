@@ -141,6 +141,9 @@ def apply_outline(course, outline):
     rows += [(ref, None) for ref in outline["loose_items"]]
     course.modules.exclude(pk__in=kept).delete()
     sync_items(course, rows)
+    # Removing a lesson can leave some learners with every remaining lesson opened.
+    from .certificates import issue_due
+    issue_due(course)
     return reworded
 
 

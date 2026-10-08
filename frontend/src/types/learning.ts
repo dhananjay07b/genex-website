@@ -65,6 +65,23 @@ export interface CourseEnrollment {
   completed: number
   total: number
   percent: number
+  /** Set once every lesson has been opened from the course page. */
+  certificate_code: string | null
+}
+
+/** GET /api/learning/certificates/<code>/ (and each row of /me/certificates/). */
+export interface CertificateInfo {
+  code: string
+  status: 'valid' | 'revoked'
+  issued_at: string
+  is_mine: boolean
+  /** Only for the learner, on a revoked certificate. */
+  revoked_reason?: string
+  learner_name?: string
+  can_correct_name?: boolean
+  course: { title: string; slug?: string; level?: CourseLevel; lessons?: number; minutes?: number; path?: string | null }
+  instructors?: { name: string; username: string; role_title: string; company: { name: string; logo_url: string | null } | null }[]
+  publisher?: { name: string; slug: string; logo_url: string | null } | null
 }
 
 /** A course with its lessons and the viewer's progress (enrolled-course lists). */

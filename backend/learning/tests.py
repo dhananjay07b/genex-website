@@ -139,11 +139,14 @@ class CoursePublicAndEnrollmentTests(TestCase):
         api = APIClient()
         self.assertEqual(api.post("/api/learning/courses/grid-ops/enroll/").status_code, 401)
         api.force_authenticate(self.learner)
-        self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{self.item_post.pk}/complete/").status_code, 403)  # not enrolled
+        free_item = self.course.items.get(video=self.video)
+        self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{free_item.pk}/open/").status_code, 403)  # not enrolled
 
         body = api.post("/api/learning/courses/grid-ops/enroll/").json()
         self.assertEqual(body["enrollment"]["percent"], 0)
-        self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{self.item_post.pk}/complete/").status_code, 204)
+        self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{self.item_post.pk}/open/").status_code, 403)  # paid lesson, not bought
+        res = api.post(f"/api/learning/courses/grid-ops/items/{free_item.pk}/open/")
+        self.assertEqual((res.status_code, res.json()), (200, {"completed": 1, "certificate_code": None}))
         detail = api.get("/api/learning/courses/grid-ops/").json()
         self.assertEqual((detail["enrollment"]["completed"], detail["enrollment"]["total"], detail["enrollment"]["percent"]), (1, 2, 50))
         self.assertEqual([c["slug"] for c in api.get("/api/learning/me/enrollments/").json()["results"]], ["grid-ops"])
@@ -280,7 +283,7 @@ class CompanyCourseTests(TestCase):
         self.assertEqual((data["items"][0]["kind"], data["items"][0]["is_locked"]), ("article", False))
         self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/enroll/").status_code, (200, 201))
         item_id = data["items"][0]["item_id"]
-        self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/items/{item_id}/complete/").status_code, (200, 201, 204))
+        self.assertEqual(self.api.post(f"/api/learning/courses/{course.slug}/items/{item_id}/open/").status_code, 200)
 
 
 class CourseDetailsPhaseTests(TestCase):
@@ -1109,3 +1112,105 @@ class ReviewReplyTests(TestCase):
         self.assertEqual(self._as(self.pro).put(self.url, {"body": "Hi"}, format="json").status_code, 404)
         with self.assertRaises(ValidationError):
             ReviewReply(review=self.co_review, author=self.pro, body="Not mine").full_clean()
+
+
+class CertificateTests(TestCase):
+    """Certification C1: a lesson counts when opened from the course; finishing issues a certificate."""
+
+    def setUp(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company=self.genex, role_title="SCADA Lead", display_name="R. Mehta")
+        User.objects.filter(pk=self.pro.pk).update(company_verified=True)
+        self.pro.refresh_from_db()
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA basics", status="published", level="beginner")
+        self.i1 = self.course.items.create(video=publish_video(self.pro, "One"), position=0)
+        self.i2 = self.course.items.create(video=publish_video(self.pro, "Two"), position=1)
+        self.learner = make_user("learner", display_name="Priya Nair")
+        self.api = APIClient()
+        self.api.force_authenticate(self.learner)
+        self.api.post(f"/api/learning/courses/{self.course.slug}/enroll/")
+
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.teacher = make_user("teacher", account_type="professional", company=self.genex, role_title="Protection Engineer")
+        User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
+        self.co_course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company course", status="published")
+        self.co_item = self.co_course.items.create(article=TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=self.genex), position=0)
+        self.co_course.instructors.add(self.teacher)
+
+    def _open(self, item, course=None):
+        return self.api.post(f"/api/learning/courses/{(course or self.course).slug}/items/{item.pk}/open/")
+
+    def test_opening_every_lesson_issues_one_certificate_and_notifies(self):
+        from .models import Certificate
+        self.assertIsNone(self._open(self.i1).json()["certificate_code"])
+        code = self._open(self.i2).json()["certificate_code"]
+        self.assertRegex(code, r"^GL-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$")
+        self.assertEqual(self._open(self.i2).json()["certificate_code"], code)  # opening again: same certificate
+        self.assertEqual(Certificate.objects.count(), 1)
+        self.assertTrue(Notification.objects.filter(recipient=self.learner, kind="certificate").exists())
+        page = APIClient().get(f"/api/learning/certificates/{code}/").json()
+        self.assertEqual((page["learner_name"], page["course"]["title"], page["course"]["lessons"], page["is_mine"]), ("Priya Nair", "SCADA basics", 2, False))
+        self.assertEqual(page["instructors"], [{"name": "R. Mehta", "username": "pro", "role_title": "SCADA Lead", "company": {"name": "Genex", "logo_url": None}}])
+        self.assertEqual(page["publisher"]["name"], "Genex")
+        course_page = self.api.get(f"/api/learning/courses/{self.course.slug}/").json()
+        self.assertEqual(course_page["enrollment"]["certificate_code"], code)
+        self.assertEqual([c["code"] for c in self.api.get("/api/learning/me/certificates/").json()], [code])
+
+    def test_opening_outside_the_course_or_before_enrolling_does_not_count(self):
+        from .models import ItemProgress
+        other = make_user("other")
+        api = APIClient()
+        api.force_authenticate(other)
+        self.assertEqual(api.post(f"/api/learning/courses/{self.course.slug}/items/{self.i1.pk}/open/").status_code, 403)
+        api.post(f"/api/learning/courses/{self.course.slug}/enroll/")
+        self.assertFalse(ItemProgress.objects.filter(user=other).exists())  # enrolling later starts from nothing
+        self.assertEqual(api.get(f"/api/learning/courses/{self.course.slug}/").json()["enrollment"]["completed"], 0)
+
+    def test_snapshot_is_frozen_and_name_can_be_corrected_once(self):
+        code = (self._open(self.i1), self._open(self.i2))[1].json()["certificate_code"]
+        self.course.title = "Renamed later"
+        self.course.save()
+        self.assertEqual(APIClient().get(f"/api/learning/certificates/{code}/").json()["course"]["title"], "SCADA basics")
+        url = f"/api/learning/certificates/{code}/"
+        self.assertEqual(APIClient().patch(url, {"learner_name": "Hacker"}, format="json").status_code, 403)
+        self.assertEqual(self.api.patch(url, {"learner_name": "x"}, format="json").status_code, 400)
+        res = self.api.patch(url, {"learner_name": "  Priya   S. Nair "}, format="json")
+        self.assertEqual((res.json()["learner_name"], res.json()["can_correct_name"]), ("Priya S. Nair", False))
+        self.assertEqual(self.api.patch(url, {"learner_name": "Again"}, format="json").status_code, 400)
+
+    def test_revoked_certificate_hides_the_learner(self):
+        from .models import Certificate
+        code = (self._open(self.i1), self._open(self.i2))[1].json()["certificate_code"]
+        Certificate.objects.filter(code=code).update(status="revoked", revoked_reason="Shared account.")
+        page = APIClient().get(f"/api/learning/certificates/{code}/").json()
+        self.assertEqual((page["status"], page["revoked_reason"], "learner_name" in page), ("revoked", "", False))
+        self.assertEqual(self.api.get(f"/api/learning/certificates/{code.lower()}/").json()["revoked_reason"], "Shared account.")
+        self.assertIsNone(self.api.get(f"/api/learning/courses/{self.course.slug}/").json()["enrollment"]["certificate_code"])
+
+    def test_company_course_prints_listed_instructors_and_company(self):
+        self.api.post(f"/api/learning/courses/{self.co_course.slug}/enroll/")
+        code = self._open(self.co_item, self.co_course).json()["certificate_code"]
+        page = APIClient().get(f"/api/learning/certificates/{code}/").json()
+        self.assertEqual([(p["name"], p["role_title"]) for p in page["instructors"]], [("teacher", "Protection Engineer")])
+        self.assertEqual(page["publisher"]["name"], "Genex")
+
+    def test_removing_the_last_unopened_lesson_issues_the_certificate(self):
+        from .models import Certificate
+        from .revisions import apply_outline
+        self._open(self.i1)
+        self.assertFalse(Certificate.objects.exists())
+        apply_outline(self.course, {"modules": [], "loose_items": [{"kind": "video", "id": self.i1.video_id}]})
+        self.assertEqual(Certificate.objects.filter(user=self.learner).count(), 1)
+
+    def test_backfill_command_is_idempotent(self):
+        from django.core.management import call_command
+        from .models import Certificate, ItemProgress
+        ItemProgress.objects.create(user=self.learner, item=self.i1)
+        ItemProgress.objects.create(user=self.learner, item=self.i2)
+        out = io.StringIO()
+        call_command("issue_certificates", stdout=out)
+        call_command("issue_certificates", stdout=out)
+        self.assertEqual(Certificate.objects.count(), 1)
+        self.assertIn("Issued 1", out.getvalue())

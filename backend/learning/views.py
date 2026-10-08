@@ -16,10 +16,11 @@ from commerce.access import has_access
 from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
-from .models import MAX_REPLY_LENGTH, CareerRole, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
+from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
 from . import course_page
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
+from .certificates import certificate_payload, issue_if_finished
 from .revisions import apply_faqs, apply_outline, is_live, live_value, normalise_outline, revision_of, rewords, stage
 from .serializers import (
     MAX_FAQS,
@@ -113,30 +114,30 @@ class EnrollView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ItemCompleteView(APIView):
-    """Mark (POST) or unmark (DELETE) one course item as done — enrolled learners only."""
+class ItemOpenView(APIView):
+    """
+    POST when an enrolled learner opens a lesson from the course page: that is
+    what completes it (proof of learning; there is no manual ticking). Opening the
+    same content anywhere else, or before enrolling, doesn't count. Opening the
+    last lesson issues the certificate.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
-    def _item(self, request, slug, item_id):
-        item = get_object_or_404(
-            PlaylistItem, pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
-        )
-        if not Enrollment.objects.filter(user=request.user, playlist=item.playlist).exists():
-            return None
-        return item
-
     def post(self, request, slug, item_id):
-        item = self._item(request, slug, item_id)
-        if item is None:
+        item = get_object_or_404(
+            PlaylistItem.objects.select_related("playlist"), pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
+        )
+        course = item.playlist
+        if not Enrollment.objects.filter(user=request.user, playlist=course).exists():
             return Response({"detail": "Enroll in the course to track progress."}, status=status.HTTP_403_FORBIDDEN)
+        if not has_access(request.user, item.target):
+            return Response({"detail": "This lesson is locked."}, status=status.HTTP_403_FORBIDDEN)
         ItemProgress.objects.get_or_create(user=request.user, item=item)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def delete(self, request, slug, item_id):
-        item = self._item(request, slug, item_id)
-        if item is not None:
-            ItemProgress.objects.filter(user=request.user, item=item).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        certificate = issue_if_finished(request.user, course)
+        return Response({
+            "completed": ItemProgress.objects.filter(user=request.user, item__playlist=course).count(),
+            "certificate_code": certificate.code if certificate else None,
+        })
 
 
 class MyEnrollmentsView(generics.ListAPIView):
@@ -410,6 +411,46 @@ class ReviewReplyView(APIView):
             return refused
         ReviewReply.objects.filter(review=review).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CertificateView(APIView):
+    """
+    GET: a certificate by its public code, for the learner and anyone checking it.
+    PATCH `{learner_name}`: the learner corrects the printed name, once.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def _get(self, code):
+        return get_object_or_404(Certificate.objects.select_related("playlist"), code=code.upper())
+
+    def get(self, request, code):
+        return Response(certificate_payload(self._get(code), request.user))
+
+    def patch(self, request, code):
+        certificate = self._get(code)
+        if not request.user.is_authenticated or certificate.user_id != request.user.pk:
+            return Response({"detail": "Only the learner can correct their certificate."}, status=status.HTTP_403_FORBIDDEN)
+        if certificate.status != Certificate.STATUS_VALID:
+            return Response({"detail": "This certificate has been revoked."}, status=status.HTTP_400_BAD_REQUEST)
+        if certificate.name_corrected:
+            return Response({"learner_name": "You've already corrected the name once. Contact Genex to change it again."}, status=status.HTTP_400_BAD_REQUEST)
+        name = " ".join(str(request.data.get("learner_name", "")).split())
+        if len(name) < 2 or len(name) > MAX_CERTIFICATE_NAME:
+            return Response({"learner_name": f"Enter your full name (2 to {MAX_CERTIFICATE_NAME} characters)."}, status=status.HTTP_400_BAD_REQUEST)
+        if name != certificate.learner_name:
+            certificate.learner_name = name
+            certificate.name_corrected = True
+            certificate.save(update_fields=["learner_name", "name_corrected"])
+        return Response(certificate_payload(certificate, request.user))
+
+
+class MyCertificatesView(APIView):
+    """The signed-in learner's certificates, newest first (revoked ones included, marked)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        certificates = request.user.certificates.select_related("playlist")
+        return Response([certificate_payload(c, request.user) for c in certificates])
 
 
 class CompanyProfessionalsView(APIView):

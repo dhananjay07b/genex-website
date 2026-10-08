@@ -16,7 +16,7 @@ from . import course_page
 from .reviews import card_rating, rating_summary
 from .models import (
     ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
-    PROMISED_FIELDS, CareerRole, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
+    PROMISED_FIELDS, CareerRole, Certificate, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
 
 MAX_ITEMS = 100
@@ -214,11 +214,14 @@ class CourseProgressSerializer(CourseCardSerializer):
             return None
         total = obj.items.count()
         done = len(self._completed_ids(obj))
+        certificate = obj.certificates.filter(user=user, status=Certificate.STATUS_VALID).values_list("code", flat=True).first()
         return {
             "completed_item_ids": sorted(self._completed_ids(obj)),
             "completed": done,
             "total": total,
             "percent": round(done * 100 / total) if total else 0,
+            # Set once the learner has opened every lesson: links to their certificate.
+            "certificate_code": certificate,
         }
 
 

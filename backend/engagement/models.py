@@ -45,6 +45,7 @@ class Notification(models.Model):
         ("course_status", "Course status update"),
         ("course_review", "New course review"),
         ("review_reply", "Reply to a course review"),
+        ("certificate", "Certificate earned"),
         ("comment_reply", "Comment reply"),
     ]
 

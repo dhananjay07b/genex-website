@@ -7,7 +7,7 @@ from django.utils.html import format_html, format_html_join
 from engagement.models import Notification
 
 from .models import (
-    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseModule, CourseReview, CourseRevision,
+    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseModule, Certificate, CourseReview, CourseRevision,
     Enrollment, Playlist, PlaylistItem, ReviewReply, instructor_problem,
 )
 from .revisions import apply_revision, live_value, revision_of
@@ -237,3 +237,48 @@ class CourseReviewAdmin(admin.ModelAdmin):
     @admin.action(description="Hide the replies on selected reviews")
     def hide_replies(self, request, queryset):
         ReviewReply.objects.filter(review__in=queryset).update(status=ReviewReply.STATUS_HIDDEN)
+
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    """
+    Certificates are issued automatically when a learner opens every lesson of a
+    live course. Genex can revoke one (with a reason) or restore it, and fix the
+    printed name after the learner's one correction. They are never created or
+    deleted here.
+    """
+    list_display = ("code", "learner_name", "course_title", "issued_at", "status")
+    list_filter = ("status",)
+    search_fields = ("code", "learner_name", "user__username", "user__email", "playlist__title")
+    fields = ("code", "user", "playlist", "learner_name", "name_corrected", "issued_at", "printed", "status", "revoked_reason")
+    readonly_fields = ("code", "user", "playlist", "name_corrected", "issued_at", "printed", "status")
+    actions = ["revoke", "restore"]
+
+    @admin.display(description="Course")
+    def course_title(self, obj):
+        return obj.snapshot.get("course", {}).get("title", "")
+
+    @admin.display(description="As printed")
+    def printed(self, obj):
+        snap = obj.snapshot
+        people = ", ".join(f"{p['name']} ({p['role_title'] or 'Instructor'})" for p in snap.get("instructors", [])) or "none listed"
+        publisher = (snap.get("publisher") or {}).get("name", "no company")
+        course = snap.get("course", {})
+        return f"{course.get('title', '')} · {course.get('lessons', 0)} lessons · instructors: {people} · offered by {publisher}"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description="Revoke selected certificates (type the reason on each first)")
+    def revoke(self, request, queryset):
+        for certificate in queryset.filter(status=Certificate.STATUS_VALID):
+            certificate.status = Certificate.STATUS_REVOKED
+            certificate.revoked_reason = certificate.revoked_reason or "Revoked by Genex."
+            certificate.save(update_fields=["status", "revoked_reason"])
+
+    @admin.action(description="Restore selected certificates")
+    def restore(self, request, queryset):
+        queryset.update(status=Certificate.STATUS_VALID, revoked_reason="")

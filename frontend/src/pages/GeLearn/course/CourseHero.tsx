@@ -16,7 +16,7 @@ import { SaveButton } from '@/components/engagement/SaveButton'
 import { formatPrice, getMediaUrl } from '@/lib/utils'
 import { returnState } from '@/lib/authRedirect'
 import { useRole } from '@/hooks/useRole'
-import type { CourseDetail } from '@/types/learning'
+import type { CourseDetail, CourseItem } from '@/types/learning'
 import { PublisherLogo } from './CourseSide'
 import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, plural, type SectionId } from './format'
 
@@ -27,6 +27,8 @@ interface CourseHeroProps {
   message: string
   onEnroll: () => void
   onJump: (id: SectionId) => void
+  /** Records that the learner opened a lesson from the course page. */
+  onOpen: (item: CourseItem) => void
 }
 
 function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
@@ -42,7 +44,7 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
 
 const sub = 'text-xs font-medium text-text-muted'
 
-export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump }: CourseHeroProps) {
+export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, onOpen }: CourseHeroProps) {
   const location = useLocation()
   const { isCompany } = useRole()
   const enrolled = course.enrollment !== null
@@ -150,7 +152,7 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump }
                 ) : finished && <p className="text-sm font-semibold text-emerald-800">You&apos;ve finished every lesson in this course.</p>}
                 <div className="flex flex-wrap gap-2">
                   {nextItem && (
-                    <Link to={nextItem.path} className={buttonVariants({ size: 'md' })}>
+                    <Link to={nextItem.path} onClick={() => onOpen(nextItem)} className={buttonVariants({ size: 'md' })}>
                       {course.enrollment.completed ? 'Resume' : 'Start the course'} <ArrowForwardIcon sx={{ fontSize: 18 }} />
                     </Link>
                   )}

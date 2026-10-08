@@ -60,7 +60,13 @@ REVIEW_KINDS = ("course_review", "review_reply")
 
 
 def notification_path(notification):
-    """Where a review notification leads: the live course's Reviews section (to read or reply). None for other kinds."""
+    """
+    Where a notification leads, when it has its own page: a review notification
+    opens the live course's Reviews section; a certificate opens the certificate.
+    """
+    if notification.kind == "certificate":
+        certificate = notification.content_object
+        return f"/certificates/{certificate.code}" if certificate else None
     course = notification.content_object if notification.kind in REVIEW_KINDS else None
     if course is None or getattr(course, "status", None) != "published":
         return None

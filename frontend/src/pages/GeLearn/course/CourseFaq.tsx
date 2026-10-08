@@ -13,7 +13,7 @@ function standardFaqs(course: CourseDetail): [string, string][] {
       : ['How do I buy this course?', 'Checkout is coming soon. Lessons marked Preview are open to everyone in the meantime.']
   return [
     access,
-    ['Do I have to take the lessons in order?', 'No. Open any lesson and tick it off when you finish. Your progress is saved to your account.'],
+    ['Do I have to take the lessons in order?', 'No. Open the lessons in any order from this page. Each one counts as done once you have opened it here, and your progress is saved to your account.'],
     ['Will I get a certificate?', 'Not yet. Certificates of completion are planned, and lessons you finish now will count.'],
     ['Can my company enroll a team?', 'Team enrolment is planned. Contact Genex if you want to train a group now.'],
   ]

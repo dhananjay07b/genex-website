@@ -15,7 +15,7 @@ interface LessonListProps {
   numbers: Map<number, number>
   enrolled: boolean
   nextId: number | null
-  onToggle: (item: CourseItem) => void
+  onOpen: (item: CourseItem) => void
 }
 
 function detail(item: CourseItem) {
@@ -25,7 +25,7 @@ function detail(item: CourseItem) {
   return [label, item.meta, estimate].filter(Boolean).join(' · ')
 }
 
-function LessonList({ items, numbers, enrolled, nextId, onToggle }: LessonListProps) {
+function LessonList({ items, numbers, enrolled, nextId, onOpen }: LessonListProps) {
   return (
     <ol>
       {items.map(item => {
@@ -36,13 +36,10 @@ function LessonList({ items, numbers, enrolled, nextId, onToggle }: LessonListPr
             className={cn('flex items-center gap-3 border-t border-border border-l-2 px-4 py-2.5 text-sm transition-colors hover:bg-sky-50 hover:border-l-primary',
               isNext ? 'bg-sky-50 border-l-primary' : 'border-l-transparent')}>
             {enrolled ? (
-              <button type="button" onClick={() => onToggle(item)} aria-pressed={item.completed}
-                aria-label={item.completed ? `Mark "${item.title}" as not done` : `Mark "${item.title}" as done`}
-                className="shrink-0 hover:opacity-80">
-                {item.completed
-                  ? <CheckCircleIcon sx={{ fontSize: 22 }} className="text-emerald-700" />
-                  : <RadioButtonUncheckedIcon sx={{ fontSize: 22 }} className="text-slate-400" />}
-              </button>
+              // Done once opened from this page; there is no manual ticking.
+              item.completed
+                ? <CheckCircleIcon sx={{ fontSize: 22 }} className="shrink-0 text-emerald-700" titleAccess="Done" />
+                : <RadioButtonUncheckedIcon sx={{ fontSize: 22 }} className="shrink-0 text-slate-400" titleAccess="Not opened yet" />
             ) : (
               <span className="w-6 shrink-0 text-center text-xs font-extrabold text-text-muted tabular-nums">{numbers.get(item.item_id)}</span>
             )}
@@ -53,7 +50,7 @@ function LessonList({ items, numbers, enrolled, nextId, onToggle }: LessonListPr
                 <span className="block text-xs text-text-muted truncate">{detail(item)}</span>
               </span>
             ) : (
-              <Link to={item.path} className="group min-w-0 flex-1">
+              <Link to={item.path} onClick={() => onOpen(item)} className="group min-w-0 flex-1">
                 <span className={cn('block font-semibold truncate group-hover:text-sky-700', item.completed ? 'text-text-muted' : 'text-text-primary')}>{item.title}</span>
                 <span className="block text-xs text-text-muted truncate">{detail(item)}</span>
               </Link>
@@ -70,7 +67,7 @@ function LessonList({ items, numbers, enrolled, nextId, onToggle }: LessonListPr
 }
 
 /** The lesson outline: modules (collapsible) or one plain list, plus the certificate note. */
-export function CourseModules({ course, onToggle }: { course: CourseDetail; onToggle: (item: CourseItem) => void }) {
+export function CourseModules({ course, onOpen }: { course: CourseDetail; onOpen: (item: CourseItem) => void }) {
   const enrolled = course.enrollment !== null
   const byId = new Map(course.items.map(i => [i.item_id, i]))
   const numbers = new Map(course.items.map((i, n) => [i.item_id, n + 1]))
@@ -83,7 +80,7 @@ export function CourseModules({ course, onToggle }: { course: CourseDetail; onTo
   const allOpen = course.modules.length > 0 && course.modules.every(m => open.has(m.id))
   const done = new Set(course.enrollment?.completed_item_ids ?? [])
   const list = (items: CourseItem[]) => (
-    <LessonList items={items} numbers={numbers} enrolled={enrolled} nextId={course.next_item_id} onToggle={onToggle} />
+    <LessonList items={items} numbers={numbers} enrolled={enrolled} nextId={course.next_item_id} onOpen={onOpen} />
   )
 
   const heading = course.modules.length
@@ -150,7 +147,7 @@ export function CourseModules({ course, onToggle }: { course: CourseDetail; onTo
           </p>
         </div>
       </div>
-      {!enrolled && !course.is_locked && !course.my_relation && <p className="mt-3 text-sm text-text-muted">Enroll to tick off lessons and keep your place.</p>}
+      {!enrolled && !course.is_locked && !course.my_relation && <p className="mt-3 text-sm text-text-muted">Enroll to track your progress. A lesson counts once you open it from this page.</p>}
     </div>
   )
 }

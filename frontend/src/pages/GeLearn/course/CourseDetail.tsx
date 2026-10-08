@@ -30,9 +30,6 @@ function Section({ id, label, children }: { id?: SectionId; label?: string; chil
   )
 }
 
-/** First lesson an enrolled learner hasn't finished, after ticking one off locally. */
-const firstUnfinished = (items: CourseItem[]) => items.find(i => !i.completed)?.item_id ?? null
-
 /** The course page: hero, tabs, about, career path, lessons, reviews, related courses and FAQ. */
 export default function CourseDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -98,34 +95,14 @@ export default function CourseDetail() {
     }
   }
 
-  async function toggleComplete(item: CourseItem) {
-    if (!course || !enrolled) return
-    const done = !item.completed
-    // Optimistic: flip locally, then confirm with the server.
-    const apply = (completed: boolean) => setCourse(prev => {
-      if (!prev || !prev.enrollment) return prev
-      const items = prev.items.map(i => (i.item_id === item.item_id ? { ...i, completed } : i))
-      const count = items.filter(i => i.completed).length
-      return {
-        ...prev,
-        items,
-        next_item_id: firstUnfinished(items),
-        enrollment: {
-          ...prev.enrollment,
-          completed: count,
-          completed_item_ids: items.filter(i => i.completed).map(i => i.item_id),
-          percent: prev.enrollment.total ? Math.round((count * 100) / prev.enrollment.total) : 0,
-        },
-      }
-    })
-    apply(done)
-    try {
-      await apiFetch(`/api/learning/courses/${course.slug}/items/${item.item_id}/complete/`, { method: done ? 'POST' : 'DELETE' })
-      // Finishing a first lesson can make the learner eligible to review: refresh that part.
-      if (done && course.my_review && !course.my_review.can_review) setCourse(await load())
-    } catch {
-      apply(!done)
-    }
+  /**
+   * Proof of learning: a lesson counts once an enrolled learner opens it from this page
+   * (opening the same content elsewhere doesn't). Fired as the link navigates away;
+   * opening the last lesson issues the certificate on the server.
+   */
+  function openLesson(item: CourseItem) {
+    if (!course || !enrolled || item.completed || item.is_locked) return
+    apiFetch(`/api/learning/courses/${course.slug}/items/${item.item_id}/open/`, { method: 'POST' }).catch(() => {})
   }
 
   async function reviewsChanged() {
@@ -145,7 +122,7 @@ export default function CourseDetail() {
         canonical={`/courses/${course.slug}`}
         image={course.cover_url ? getMediaUrl(course.cover_url) : undefined}
       />
-      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} />
+      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} onOpen={openLesson} />
       <CourseTabs present={present} barRef={barRef} />
 
       <Section id="cp-about" label="About"><CourseAbout course={course} signedIn={Boolean(user)} /></Section>
@@ -153,7 +130,7 @@ export default function CourseDetail() {
       {(course.items.length > 0 || hasSide) && (
         <Section id={course.items.length > 0 ? 'cp-lessons' : undefined} label={course.items.length > 0 ? 'Lessons' : 'Instructor and publisher'}>
           <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
-            {course.items.length > 0 && <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onToggle={toggleComplete} /></div>}
+            {course.items.length > 0 && <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onOpen={openLesson} /></div>}
             {hasSide && <CourseSide instructors={course.instructors} publisher={course.publisher} />}
           </div>
         </Section>
@@ -197,7 +174,7 @@ export default function CourseDetail() {
         {course.my_relation
           ? course.my_relation === 'owner' && <Link to={isCompany ? '/studio/courses' : '/account?tab=courses'} className={buttonVariants({ variant: 'secondary', size: 'sm' })}>Manage</Link>
           : enrolled
-          ? nextItem && <Link to={nextItem.path} className={buttonVariants({ size: 'sm' })}>{course.enrollment?.completed ? 'Resume' : 'Start'}</Link>
+          ? nextItem && <Link to={nextItem.path} onClick={() => openLesson(nextItem)} className={buttonVariants({ size: 'sm' })}>{course.enrollment?.completed ? 'Resume' : 'Start'}</Link>
           : !(course.is_locked && course.access === 'paid') && <Button size="sm" onClick={enroll} disabled={busy}>{course.is_locked ? 'Sign in' : 'Enroll'}</Button>}
       </div>
     </div>
