@@ -4,20 +4,51 @@ import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { SnippetListResponse } from '@/types/api'
-import type { CourseProgress } from '@/types/learning'
+import type { CertificateInfo, CourseProgress } from '@/types/learning'
+import { recordLessonOpen } from '@/pages/GeLearn/course/lessons'
+import { longDate } from '@/pages/GeLearn/course/format'
 import { EmptyState } from './EmptyState'
 
-/** Enrolled courses, with progress and a jump to the next unfinished lesson. */
+/** The learner's certificates, newest first. */
+function Certificates({ certificates }: { certificates: CertificateInfo[] }) {
+  if (!certificates.length) return null
+  return (
+    <section id="certificates" className="mt-8">
+      <h2 className="text-lg font-extrabold text-text-primary mb-3">Certificates</h2>
+      <ul className="flex flex-col gap-2.5">
+        {certificates.map(c => (
+          <li key={c.code} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-white p-3.5">
+            <span className="size-10 shrink-0 rounded-xl bg-brand-tint text-sky-700 flex items-center justify-center">
+              <WorkspacePremiumOutlinedIcon sx={{ fontSize: 22 }} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold text-text-primary leading-snug">{c.course.title}</span>
+              <span className="block text-xs text-text-muted">
+                {c.status === 'revoked' ? 'Revoked' : `Completed ${longDate(c.issued_at)}`} · ID {c.code}
+              </span>
+            </span>
+            <Link to={`/certificates/${c.code}`} className="text-sm font-bold text-primary hover:underline">View certificate</Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** Enrolled courses, with progress and a jump to the next unfinished lesson; then the learner's certificates. */
 export function LearningTab() {
   const [courses, setCourses] = useState<CourseProgress[] | null>(null)
+  const [certificates, setCertificates] = useState<CertificateInfo[]>([])
 
   useEffect(() => {
     apiFetch<SnippetListResponse<CourseProgress>>('/api/learning/me/enrollments/?limit=100')
       .then(res => setCourses(res.results))
       .catch(() => setCourses([]))
+    apiFetch<CertificateInfo[]>('/api/learning/me/certificates/').then(setCertificates).catch(() => setCertificates([]))
   }, [])
 
   return (
@@ -40,7 +71,7 @@ export function LearningTab() {
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {courses.map(course => {
             const progress = course.enrollment
-            const next = course.items.find(item => !item.completed)
+            const next = course.items.find(item => !item.completed && !item.is_locked)
             const done = progress !== null && progress.total > 0 && progress.completed === progress.total
             return (
               <li key={course.slug} className="border border-border rounded-2xl overflow-hidden flex flex-col">
@@ -65,11 +96,17 @@ export function LearningTab() {
                     <div className="h-full bg-linear-to-r from-primary to-secondary" style={{ width: `${progress?.percent ?? 0}%` }} />
                   </div>
                   {done ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary">
-                      <CheckCircleIcon sx={{ fontSize: 16 }} /> Completed
+                    <span className="flex flex-wrap items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary">
+                        <CheckCircleIcon sx={{ fontSize: 16 }} /> Completed
+                      </span>
+                      {progress?.certificate_code && (
+                        <Link to={`/certificates/${progress.certificate_code}`} className="text-xs font-bold text-primary hover:underline">View certificate</Link>
+                      )}
                     </span>
                   ) : next ? (
-                    <Link to={next.path} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
+                    <Link to={next.path} onClick={() => recordLessonOpen(course.slug, next.item_id)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
                       Continue: <span className="truncate max-w-48">{next.title}</span> <ArrowForwardIcon sx={{ fontSize: 14 }} />
                     </Link>
                   ) : null}
@@ -79,6 +116,7 @@ export function LearningTab() {
           })}
         </ul>
       )}
+      <Certificates certificates={certificates} />
     </div>
   )
 }

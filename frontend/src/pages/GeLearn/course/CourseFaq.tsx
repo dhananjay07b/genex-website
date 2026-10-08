@@ -14,7 +14,7 @@ function standardFaqs(course: CourseDetail): [string, string][] {
   return [
     access,
     ['Do I have to take the lessons in order?', 'No. Open the lessons in any order from this page. Each one counts as done once you have opened it here, and your progress is saved to your account.'],
-    ['Will I get a certificate?', 'Not yet. Certificates of completion are planned, and lessons you finish now will count.'],
+    ['Will I get a certificate?', 'Yes. Open every lesson from this page and you get a GeLearn certificate of completion, with your name, the course and its instructors. You can share it on LinkedIn and anyone can check it with its link. It is not an accredited qualification.'],
     ['Can my company enroll a team?', 'Team enrolment is planned. Contact Genex if you want to train a group now.'],
   ]
 }

@@ -418,7 +418,10 @@ class CertificateView(APIView):
     GET: a certificate by its public code, for the learner and anyone checking it.
     PATCH `{learner_name}`: the learner corrects the printed name, once.
     """
-    permission_classes = [permissions.AllowAny]
+    def get_permissions(self):
+        # PATCH needs a signed-in user. Refusing an expired session with 401 (not 403)
+        # lets the site renew the session and retry, instead of showing an error.
+        return [permissions.IsAuthenticated()] if self.request.method == "PATCH" else [permissions.AllowAny()]
 
     def _get(self, code):
         return get_object_or_404(Certificate.objects.select_related("playlist"), code=code.upper())
@@ -428,7 +431,7 @@ class CertificateView(APIView):
 
     def patch(self, request, code):
         certificate = self._get(code)
-        if not request.user.is_authenticated or certificate.user_id != request.user.pk:
+        if certificate.user_id != request.user.pk:
             return Response({"detail": "Only the learner can correct their certificate."}, status=status.HTTP_403_FORBIDDEN)
         if certificate.status != Certificate.STATUS_VALID:
             return Response({"detail": "This certificate has been revoked."}, status=status.HTTP_400_BAD_REQUEST)

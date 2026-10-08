@@ -1174,7 +1174,10 @@ class CertificateTests(TestCase):
         self.course.save()
         self.assertEqual(APIClient().get(f"/api/learning/certificates/{code}/").json()["course"]["title"], "SCADA basics")
         url = f"/api/learning/certificates/{code}/"
-        self.assertEqual(APIClient().patch(url, {"learner_name": "Hacker"}, format="json").status_code, 403)
+        self.assertEqual(APIClient().patch(url, {"learner_name": "Hacker"}, format="json").status_code, 401)  # signed out: renew, then retry
+        stranger = APIClient()
+        stranger.force_authenticate(make_user("stranger"))
+        self.assertEqual(stranger.patch(url, {"learner_name": "Hacker"}, format="json").status_code, 403)
         self.assertEqual(self.api.patch(url, {"learner_name": "x"}, format="json").status_code, 400)
         res = self.api.patch(url, {"learner_name": "  Priya   S. Nair "}, format="json")
         self.assertEqual((res.json()["learner_name"], res.json()["can_correct_name"]), ("Priya S. Nair", False))

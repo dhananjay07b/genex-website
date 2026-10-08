@@ -34,6 +34,7 @@ const ACTIVITY_ICON: Record<string, typeof ArticleOutlinedIcon> = {
   course_status: SchoolOutlinedIcon,
   course_review: SchoolOutlinedIcon,
   review_reply: ChatBubbleOutlineOutlinedIcon,
+  certificate: SchoolOutlinedIcon,
   video_submission: VideocamOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
   comment: ChatBubbleOutlineOutlinedIcon,

@@ -156,11 +156,11 @@ def learner_companies(course):
 
 
 def next_item_id(items, enrollment):
-    """The first lesson an enrolled learner hasn't finished, in course order."""
+    """The first lesson an enrolled learner hasn't opened yet and can open (locked ones are skipped), in course order."""
     if not enrollment:
         return None
     done = set(enrollment["completed_item_ids"])
-    return next((item["item_id"] for item in items if item["item_id"] not in done), None)
+    return next((item["item_id"] for item in items if item["item_id"] not in done and not item["is_locked"]), None)
 
 
 def related_courses(course):

@@ -143,7 +143,9 @@ export function CourseModules({ course, onOpen }: { course: CourseDetail; onOpen
           <WorkspacePremiumOutlinedIcon sx={{ fontSize: 28 }} className="text-text-muted" />
           <p className="text-sm">
             <b className="block text-text-primary">Certificate of completion</b>
-            <span className="text-text-muted">Planned. Lessons you finish now will count once certificates launch.</span>
+            {course.enrollment?.certificate_code
+              ? <Link to={`/certificates/${course.enrollment.certificate_code}`} className="font-bold text-sky-700 hover:underline">View your certificate</Link>
+              : <span className="text-text-muted">Open every lesson from this page to earn a GeLearn certificate you can share on LinkedIn.</span>}
           </p>
         </div>
       </div>

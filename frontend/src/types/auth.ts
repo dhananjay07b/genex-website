@@ -155,11 +155,11 @@ export interface SocialAccount {
 
 export interface Notification {
   id: number
-  kind: 'blog_status' | 'video_status' | 'course_status' | 'course_review' | 'review_reply' | 'comment_reply'
+  kind: 'blog_status' | 'video_status' | 'course_status' | 'course_review' | 'review_reply' | 'certificate' | 'comment_reply'
   text: string
   content_type: string | null
   object_id: number | null
-  /** Review notifications: the live course's Reviews section, e.g. /courses/scada#cp-reviews. */
+  /** Where it opens: a review notification's course Reviews section, or a certificate. */
   path: string | null
   is_read: boolean
   created_at: string

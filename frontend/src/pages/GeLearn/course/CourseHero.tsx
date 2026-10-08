@@ -3,6 +3,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
@@ -149,8 +150,14 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                     <PlayCircleOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700 shrink-0" />
                     <span className="min-w-0">Up next: <b className="text-text-primary">{nextItem.title}</b> · {COURSE_ITEM_KINDS[nextItem.kind].label}{nextItem.minutes ? ` · ${formatMinutes(nextItem.minutes)}` : ''}</span>
                   </p>
-                ) : finished && <p className="text-sm font-semibold text-emerald-800">You&apos;ve finished every lesson in this course.</p>}
+                ) : finished ? <p className="text-sm font-semibold text-emerald-800">You&apos;ve completed this course.</p>
+                  : course.enrollment.total > 0 && <p className="text-sm text-slate-700">The lessons you haven&apos;t opened are locked. Unlock them to complete the course and get your certificate.</p>}
                 <div className="flex flex-wrap gap-2">
+                  {course.enrollment.certificate_code && (
+                    <Link to={`/certificates/${course.enrollment.certificate_code}`} className={buttonVariants({ size: 'md' })}>
+                      <WorkspacePremiumOutlinedIcon sx={{ fontSize: 18 }} /> View your certificate
+                    </Link>
+                  )}
                   {nextItem && (
                     <Link to={nextItem.path} onClick={() => onOpen(nextItem)} className={buttonVariants({ size: 'md' })}>
                       {course.enrollment.completed ? 'Resume' : 'Start the course'} <ArrowForwardIcon sx={{ fontSize: 18 }} />

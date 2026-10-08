@@ -7,6 +7,7 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined'
 import ReplyOutlinedIcon from '@mui/icons-material/ReplyOutlined'
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import { apiFetch } from '@/lib/api/client'
 import { useRole } from '@/hooks/useRole'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,7 @@ const KIND_ICON: Record<Notification['kind'], typeof ArticleOutlinedIcon> = {
   course_status: SchoolOutlinedIcon,
   course_review: StarBorderOutlinedIcon,
   review_reply: ReplyOutlinedIcon,
+  certificate: WorkspacePremiumOutlinedIcon,
   comment_reply: ChatBubbleOutlineOutlinedIcon,
 }
 
@@ -60,6 +62,7 @@ export function NotificationBell() {
     course_status: 'courses',
     course_review: 'courses',
     review_reply: 'learning',
+    certificate: 'learning',
     comment_reply: 'comments',
   }
 

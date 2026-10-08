@@ -20,6 +20,7 @@ import { CoursePromos } from './CoursePromos'
 import { CourseFaq } from './CourseFaq'
 import { plural, type SectionId } from './format'
 import { jumpTo } from './scroll'
+import { recordLessonOpen } from './lessons'
 import { returnState } from '@/lib/authRedirect'
 
 function Section({ id, label, children }: { id?: SectionId; label?: string; children: ReactNode }) {
@@ -95,14 +96,9 @@ export default function CourseDetail() {
     }
   }
 
-  /**
-   * Proof of learning: a lesson counts once an enrolled learner opens it from this page
-   * (opening the same content elsewhere doesn't). Fired as the link navigates away;
-   * opening the last lesson issues the certificate on the server.
-   */
+  /** Proof of learning: a lesson counts once an enrolled learner opens it from this page. */
   function openLesson(item: CourseItem) {
-    if (!course || !enrolled || item.completed || item.is_locked) return
-    apiFetch(`/api/learning/courses/${course.slug}/items/${item.item_id}/open/`, { method: 'POST' }).catch(() => {})
+    if (course && enrolled && !item.completed && !item.is_locked) recordLessonOpen(course.slug, item.item_id)
   }
 
   async function reviewsChanged() {
@@ -174,7 +170,9 @@ export default function CourseDetail() {
         {course.my_relation
           ? course.my_relation === 'owner' && <Link to={isCompany ? '/studio/courses' : '/account?tab=courses'} className={buttonVariants({ variant: 'secondary', size: 'sm' })}>Manage</Link>
           : enrolled
-          ? nextItem && <Link to={nextItem.path} onClick={() => openLesson(nextItem)} className={buttonVariants({ size: 'sm' })}>{course.enrollment?.completed ? 'Resume' : 'Start'}</Link>
+          ? course.enrollment?.certificate_code
+            ? <Link to={`/certificates/${course.enrollment.certificate_code}`} className={buttonVariants({ size: 'sm' })}>Certificate</Link>
+            : nextItem && <Link to={nextItem.path} onClick={() => openLesson(nextItem)} className={buttonVariants({ size: 'sm' })}>{course.enrollment?.completed ? 'Resume' : 'Start'}</Link>
           : !(course.is_locked && course.access === 'paid') && <Button size="sm" onClick={enroll} disabled={busy}>{course.is_locked ? 'Sign in' : 'Enroll'}</Button>}
       </div>
     </div>
