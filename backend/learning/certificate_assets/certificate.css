@@ -1,0 +1,69 @@
+/*
+ * GENERATED from frontend/src/pages/GeLearn/certificate/certificate.css (cqw x 2.97 = mm on an
+ * A4 landscape sheet) by learning/management/commands/sync_certificate_css.py. Edit the
+ * frontend file, then run `manage.py sync_certificate_css`; PDF-only overrides live in
+ * templates/learning/certificate_pdf.html.
+ */
+/* Serif for names, loaded only with certificate pages. */
+
+/*
+ * The certificate sheet (final design A, mockup v42): A4 landscape, every size in
+ * container units (cqw) so the same sheet scales from a phone to a desktop.
+ * The PDF (C3) renders the same design from a server template.
+ */
+.cert-wrap { container-type: inline-size; }
+.cert-sheet {
+  --cert-grad: linear-gradient(90deg, #1AAEE8 0%, #00C5B0 50%, #00D97E 100%);
+  --cert-ink: #0F172B; --cert-ink-2: #334155; --cert-muted: #5B6676; --cert-link: #0A76A8; --cert-navy: #0A1628; --cert-line: #E2E8EE;
+  position: relative; aspect-ratio: 297 / 210; background: #fff; color: var(--cert-ink); overflow: hidden;
+  border-radius: 1.78mm; box-shadow: 0 1px 2px rgba(15,23,43,.08), 0 12px 36px rgba(15,23,43,.12); font-size: 4.75mm; line-height: 1.5;
+}
+.cert-sheet::before { content: ""; position: absolute; inset: 0; background:
+  repeating-radial-gradient(circle at 92% 108%, rgba(26,174,232,.07) 0 0.36mm, transparent 0.36mm 3.27mm),
+  repeating-radial-gradient(circle at 4% -10%, rgba(0,197,176,.06) 0 0.36mm, transparent 0.36mm 3.86mm); }
+.cert-frame { position: absolute; inset: 5.94mm; border: 1.13mm solid transparent; border-image: var(--cert-grad) 1; }
+.cert-frame::after { content: ""; position: absolute; inset: 2.08mm; border: 0.21mm solid #BFD9E6; }
+.cert-frame::before { content: ""; position: absolute; inset: 2.08mm; background:
+  linear-gradient(var(--cert-link), var(--cert-link)) left top / 7.13mm 0.59mm no-repeat, linear-gradient(var(--cert-link), var(--cert-link)) left top / 0.59mm 7.13mm no-repeat,
+  linear-gradient(var(--cert-link), var(--cert-link)) right top / 7.13mm 0.59mm no-repeat, linear-gradient(var(--cert-link), var(--cert-link)) right top / 0.59mm 7.13mm no-repeat,
+  linear-gradient(var(--cert-link), var(--cert-link)) left bottom / 7.13mm 0.59mm no-repeat, linear-gradient(var(--cert-link), var(--cert-link)) left bottom / 0.59mm 7.13mm no-repeat,
+  linear-gradient(var(--cert-link), var(--cert-link)) right bottom / 7.13mm 0.59mm no-repeat, linear-gradient(var(--cert-link), var(--cert-link)) right bottom / 0.59mm 7.13mm no-repeat; }
+.cert-in { position: absolute; inset: 15.44mm 19.01mm 13.66mm; display: grid; grid-template-rows: auto 1fr auto auto; }
+.cert-top { display: flex; justify-content: space-between; align-items: center; gap: 5.94mm; }
+.cert-pub { display: flex; align-items: center; gap: 3.56mm; min-width: 0; }
+.cert-logo { width: 16.04mm; height: 16.04mm; border-radius: 2.67mm; flex: none; display: grid; place-items: center; overflow: hidden; background: #fff; border: 0.24mm solid var(--cert-line); }
+.cert-logo img { width: 100%; height: 100%; object-fit: contain; padding: 1.49mm; }
+.cert-logo.initials { font-weight: 800; font-size: 5.64mm; color: var(--cert-link); background: #EAF6FC; border-color: #CFE8F5; }
+.cert-pub b { display: block; font-size: 5.2mm; font-weight: 800; line-height: 1.15; }
+.cert-pub small { display: block; font-size: 3.27mm; color: var(--cert-muted); font-weight: 600; }
+.cert-brand { text-align: right; }
+.cert-brand-logo { display: block; height: 11.88mm; width: auto; margin: 0 0 2.08mm auto; }
+.cert-brand small { display: block; font-size: 3.12mm; font-weight: 700; color: var(--cert-muted); letter-spacing: 0.36mm; text-transform: uppercase; }
+.cert-body { align-self: center; display: grid; gap: 2.67mm; max-width: 184.14mm; }
+.cert-kicker { font-size: 3.42mm; font-weight: 800; letter-spacing: 1.19mm; text-transform: uppercase; color: var(--cert-link); display: flex; align-items: center; gap: 2.97mm; }
+.cert-kicker::after { content: ""; width: 20.79mm; height: 0.42mm; background: var(--cert-grad); }
+.cert-lead { font-size: 3.86mm; color: var(--cert-ink-2); }
+.cert-serif { font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif; font-weight: 600; }
+.cert-name { font-size: 14.85mm; line-height: 1.05; letter-spacing: -0.09mm; color: var(--cert-navy); overflow-wrap: anywhere; }
+.cert-course { font-size: 7.28mm; font-weight: 800; line-height: 1.2; letter-spacing: -0.09mm; }
+.cert-meta { font-size: 3.56mm; color: var(--cert-muted); font-weight: 600; }
+.cert-meta i { font-style: normal; margin-inline: 1.78mm; opacity: .6; }
+.cert-foot { display: grid; grid-template-columns: 1fr auto auto; align-items: end; gap: 8.91mm; margin-top: 3.56mm; }
+.cert-people { display: flex; gap: 8.91mm; min-width: 0; }
+.cert-person { display: grid; gap: 0.74mm; min-width: 0; }
+.cert-person .nm { font-size: 6.09mm; line-height: 1.1; color: var(--cert-navy); padding-bottom: 1.49mm; border-bottom: 0.3mm solid #B8C4D0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cert-person .role { font-size: 3.27mm; font-weight: 700; color: var(--cert-ink-2); }
+.cert-person .co { display: flex; align-items: center; gap: 1.49mm; font-size: 3.12mm; color: var(--cert-muted); font-weight: 600; white-space: nowrap; }
+.cert-person .mk { width: 4.46mm; height: 4.46mm; border-radius: 0.89mm; flex: none; overflow: hidden; display: grid; place-items: center; background: #EAF6FC; color: var(--cert-link); font-size: 2.08mm; font-weight: 800; }
+.cert-person .mk img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.cert-person .lbl { font-size: 2.67mm; letter-spacing: 0.45mm; text-transform: uppercase; color: var(--cert-muted); font-weight: 700; }
+.cert-people.n3 { gap: 6.53mm; }
+.cert-people.n3 .nm { font-size: 5.35mm; }
+.cert-people.n3 .co, .cert-people.n3 .role { font-size: 2.82mm; }
+.cert-seal { width: 40.1mm; height: 40.1mm; transform: rotate(-8deg); margin-bottom: -1.78mm; }
+.cert-verify { display: grid; justify-items: end; gap: 1.49mm; text-align: right; }
+.cert-qr { width: 22.57mm; height: 22.57mm; padding: 1.19mm; background: #fff; border: 0.24mm solid var(--cert-line); }
+.cert-verify .id { font-size: 3.12mm; font-weight: 800; letter-spacing: 0.15mm; font-variant-numeric: tabular-nums; }
+.cert-verify .url { font-size: 2.82mm; color: var(--cert-link); font-weight: 600; overflow-wrap: anywhere; }
+.cert-legal { margin-top: 4.16mm; padding-top: 2.67mm; border-top: 0.24mm solid var(--cert-line); display: flex; justify-content: space-between; gap: 5.94mm; font-size: 2.73mm; color: var(--cert-muted); }
+.cert-legal b { color: var(--cert-ink-2); }

@@ -111,3 +111,21 @@ async function request<T>(path: string, options: ApiOptions = {}, isRetry = fals
 export function apiFetch<T>(path: string, options?: ApiOptions): Promise<T> {
   return request<T>(path, options)
 }
+
+/**
+ * Downloads a file the API serves to a signed-in user (e.g. a certificate PDF) and saves
+ * it as `filename`. Renews an expired session first, like apiFetch.
+ */
+export async function apiDownload(path: string, filename: string, isRetry = false): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', cache: 'no-store' })
+  if (res.status === 401 && !isRetry && (await refreshSession())) return apiDownload(path, filename, true)
+  if (!res.ok) throw new ApiError(res.status, `Download failed (${res.status})`)
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}

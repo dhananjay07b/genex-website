@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<meta name="description" content="{{ text }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GeLearn by Genex Technocrats">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ text }}">
+<meta property="og:url" content="{{ page }}">
+{% if image %}<meta property="og:image" content="{{ image }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="848">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ image }}">{% endif %}
+<link rel="canonical" href="{{ page }}">
+<meta http-equiv="refresh" content="0; url={{ page }}">
+</head>
+<body style="font-family: sans-serif; padding: 24px">
+<p>Opening the certificate… <a href="{{ page }}">Continue to the certificate</a></p>
+</body>
+</html>

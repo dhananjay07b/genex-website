@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
@@ -38,10 +39,9 @@ export function AuthLayout({ eyebrow, headline, description, panelExtra, footerI
         ))}
 
         <div className="relative flex flex-col h-full">
-          <div className="flex items-center gap-2.5">
-            <img src="/favicon1:1.svg" alt="" className="h-20 rounded-lg" />
-            <span className="text-3xl font-extrabold text-white tracking-tight">GeLearn</span>
-          </div>
+          <Link to="/" aria-label="GeLearn home" className="self-start rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary">
+            <img src="/brand/gelearn-logo-white.svg" alt="GeLearn" className="h-12 w-auto" />
+          </Link>
 
           <div className="flex-1 flex flex-col justify-center pt-6">
             <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-3.5">{eyebrow}</p>
@@ -80,13 +80,18 @@ export function AuthLayout({ eyebrow, headline, description, panelExtra, footerI
       </div>
 
       {/* Form panel — scrolls internally as a fallback on short viewports, so the page itself never scrolls */}
-      <div className="flex-1 flex items-center justify-center px-6 py-10 overflow-y-auto">
+      {/* my-auto (not items-center) centres a short form but lets a tall one scroll back to its top. */}
+      <div className="flex-1 flex justify-center px-6 py-10 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className={`w-full ${panelWidthClassName}`}
+          className={`w-full my-auto ${panelWidthClassName}`}
         >
+          {/* Phones don't show the brand panel: the logo (and the way home) sits above the form. */}
+          <Link to="/" aria-label="GeLearn home" className="mb-8 inline-flex rounded-md lg:hidden">
+            <img src="/brand/gelearn-logo.svg" alt="GeLearn" className="h-9 w-auto" />
+          </Link>
           {children}
         </motion.div>
       </div>

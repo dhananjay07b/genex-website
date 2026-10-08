@@ -1,4 +1,10 @@
+import hashlib
+
+from django.core.cache import cache
 from django.db import transaction
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, mixins, permissions, status, viewsets
@@ -9,6 +15,7 @@ from rest_framework.views import APIView
 
 from django.contrib.contenttypes.models import ContentType
 
+from accounts.models import User
 from accounts.roles import IsContributor, is_admin, is_company
 from engagement.models import Notification
 from accounts.uploads import save_uploaded_image
@@ -20,6 +27,7 @@ from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certific
 from . import course_page
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
+from .certificate_pdf import certificate_url, render_pdf, render_png
 from .certificates import certificate_payload, issue_if_finished
 from .revisions import apply_faqs, apply_outline, is_live, live_value, normalise_outline, revision_of, rewords, stage
 from .serializers import (
@@ -445,6 +453,73 @@ class CertificateView(APIView):
             certificate.name_corrected = True
             certificate.save(update_fields=["learner_name", "name_corrected"])
         return Response(certificate_payload(certificate, request.user))
+
+
+class CertificatePdfView(APIView):
+    """The learner's certificate as an A4 landscape PDF (only they can download it)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, code):
+        certificate = get_object_or_404(Certificate, code=code.upper(), user=request.user, status=Certificate.STATUS_VALID)
+        response = HttpResponse(render_pdf(certificate), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="GeLearn-certificate-{certificate.code}.pdf"'
+        return response
+
+
+def _image_cache_key(certificate):
+    return f"certificate-png:{certificate.code}:{hashlib.sha1(certificate.learner_name.encode()).hexdigest()[:10]}"
+
+
+class CertificateImageView(APIView):
+    """
+    A picture of a valid certificate (1200 px wide PNG): the link preview LinkedIn and
+    other sites show when the certificate is shared. Cached; a name correction makes a new one.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, code):
+        certificate = get_object_or_404(Certificate, code=code.upper(), status=Certificate.STATUS_VALID)
+        key = _image_cache_key(certificate)
+        png = cache.get(key)
+        if png is None:
+            png = render_png(certificate)
+            cache.set(key, png, 60 * 60 * 24 * 7)
+        response = HttpResponse(png, content_type="image/png")
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
+
+
+class CertificateShareView(APIView):
+    """
+    The link shared on LinkedIn. Link-preview robots don't run the site's JavaScript,
+    so this small server page carries the preview tags (title, text, certificate
+    picture); people who open it are sent straight on to the certificate page.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, code):
+        certificate = get_object_or_404(Certificate.objects.select_related("playlist"), code=code.upper())
+        page = certificate_url(certificate.code)
+        title, text, image = "GeLearn certificate", "This certificate has been revoked.", None
+        if certificate.status == Certificate.STATUS_VALID:
+            course = certificate.snapshot["course"]["title"]
+            title = f"{certificate.learner_name} completed {course} on GeLearn"
+            text = f"GeLearn certificate of completion {certificate.code}, from Genex Technocrats. Verify it here."
+            image = request.build_absolute_uri(reverse("certificate-image", args=[certificate.code]))
+        html = render_to_string("learning/certificate_share.html", {"title": title, "text": text, "image": image, "page": page})
+        return HttpResponse(html)
+
+
+class PublicCertificatesView(APIView):
+    """`?user=<username>`: the valid certificates a learner shows on their public profile (only if they switched it on)."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        user = get_object_or_404(User, username=request.query_params.get("user", ""))
+        if not user.show_certificates and request.user != user:
+            return Response([])
+        certificates = user.certificates.filter(status=Certificate.STATUS_VALID).select_related("playlist")
+        return Response([certificate_payload(c, request.user) for c in certificates])
 
 
 class MyCertificatesView(APIView):

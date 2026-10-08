@@ -32,8 +32,7 @@
 .cert-pub b { display: block; font-size: 1.75cqw; font-weight: 800; line-height: 1.15; }
 .cert-pub small { display: block; font-size: 1.1cqw; color: var(--cert-muted); font-weight: 600; }
 .cert-brand { text-align: right; }
-.cert-wordmark { font-weight: 800; font-size: 2.4cqw; letter-spacing: -.05cqw; line-height: 1.2; }
-.cert-grad-text { background: var(--cert-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cert-brand-logo { display: block; height: 4cqw; width: auto; margin: 0 0 .7cqw auto; }
 .cert-brand small { display: block; font-size: 1.05cqw; font-weight: 700; color: var(--cert-muted); letter-spacing: .12cqw; text-transform: uppercase; }
 .cert-body { align-self: center; display: grid; gap: .9cqw; max-width: 62cqw; }
 .cert-kicker { font-size: 1.15cqw; font-weight: 800; letter-spacing: .4cqw; text-transform: uppercase; color: var(--cert-link); display: flex; align-items: center; gap: 1cqw; }

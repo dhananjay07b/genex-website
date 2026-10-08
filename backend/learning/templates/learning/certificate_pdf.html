@@ -1,0 +1,95 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GeLearn certificate {{ code }}</title>
+<style>
+  @font-face { font-family: "Raleway"; src: url("{{ fonts }}/Raleway.ttf"); font-weight: 100 900; }
+  @font-face { font-family: "Cormorant Garamond"; src: url("{{ fonts }}/CormorantGaramond.ttf"); font-weight: 300 700; }
+  @page { size: 297mm 210mm; margin: 0; }
+  /* The website sizes boxes border-box (Tailwind's base); without it logos overflow their tiles. */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; font-family: "Raleway", sans-serif; }
+  {{ css|safe }}
+  /*
+   * PDF-only overrides for what WeasyPrint draws differently: the sheet is the page;
+   * corner marks as elements (it misreads the layered
+   * background); the seal as a picture (it can't draw text on a curve).
+   */
+  .cert-sheet { width: 297mm; height: 210mm; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
+  .cert-sheet::before { background: url("{{ background }}") no-repeat 0 0 / 297mm 210mm; }
+  .cert-frame::before { content: none; }
+  .pdf-corner { position: absolute; width: 7.13mm; height: 7.13mm; border: 0 solid #0A76A8; }
+  .pdf-corner.tl { top: 2.08mm; left: 2.08mm; border-top-width: .59mm; border-left-width: .59mm; }
+  .pdf-corner.tr { top: 2.08mm; right: 2.08mm; border-top-width: .59mm; border-right-width: .59mm; }
+  .pdf-corner.bl { bottom: 2.08mm; left: 2.08mm; border-bottom-width: .59mm; border-left-width: .59mm; }
+  .pdf-corner.br { bottom: 2.08mm; right: 2.08mm; border-bottom-width: .59mm; border-right-width: .59mm; }
+  img.cert-seal { display: block; }
+  .cert-qr { display: block; box-sizing: border-box; }
+  .cert-qr svg { display: block; width: 100%; height: 100%; }
+  .cert-verify { display: block; text-align: right; }
+  .cert-verify .url { white-space: nowrap; }
+  .cert-verify > * { display: block; margin-top: 1.5mm; }
+  .cert-verify .cert-qr { margin: 0 0 0 auto; }
+  .cert-pub b { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="cert-sheet">
+  <div class="cert-frame"><span class="pdf-corner tl"></span><span class="pdf-corner tr"></span><span class="pdf-corner bl"></span><span class="pdf-corner br"></span></div>
+  <div class="cert-in">
+    <div class="cert-top">
+      {% if publisher %}
+      <div class="cert-pub">
+        {% if publisher.logo %}<span class="cert-logo"><img src="{{ publisher.logo }}" alt=""></span>{% else %}<span class="cert-logo initials">{{ publisher.initials }}</span>{% endif %}
+        <div><small>Offered by</small><b>{{ publisher.name }}</b></div>
+      </div>
+      {% elif lead %}
+      <div class="cert-pub"><span class="cert-logo initials">{{ lead.initials }}</span><div><small>Course by</small><b>{{ lead.name }}</b></div></div>
+      {% else %}<span></span>{% endif %}
+      <div class="cert-brand"><img class="cert-brand-logo" src="{{ logo }}" alt="GeLearn"><small>by Genex Technocrats</small></div>
+    </div>
+
+    <div class="cert-body">
+      <div class="cert-kicker">Certificate of completion</div>
+      <div class="cert-lead">This certifies that</div>
+      <div class="cert-name cert-serif">{{ learner_name }}</div>
+      <div class="cert-lead">has successfully completed every lesson of the course</div>
+      <div class="cert-course">{{ course.title }}</div>
+      <div class="cert-meta">{% for part in meta %}<span>{% if not forloop.first %}<i>·</i>{% endif %}{{ part }}</span>{% endfor %}</div>
+    </div>
+
+    <div class="cert-foot">
+      <div class="cert-people n{{ people_count }}">
+        {% for person in instructors %}
+        <div class="cert-person">
+          <span class="nm cert-serif">{{ person.name }}</span>
+          {% if person.role_title %}<span class="role">{{ person.role_title }}</span>{% endif %}
+          {% if person.company %}<span class="co">{% if person.company.logo %}<span class="mk"><img src="{{ person.company.logo }}" alt=""></span>{% else %}<span class="mk">{{ person.company.initials }}</span>{% endif %}{{ person.company.name }}</span>{% endif %}
+          <span class="lbl">Instructor</span>
+        </div>
+        {% empty %}{% if publisher %}
+        <div class="cert-person">
+          <span class="nm cert-serif">{{ publisher.name }}</span>
+          <span class="role">Course publisher</span>
+          <span class="co">{% if publisher.logo %}<span class="mk"><img src="{{ publisher.logo }}" alt=""></span>{% else %}<span class="mk">{{ publisher.initials }}</span>{% endif %}Verified company</span>
+          <span class="lbl">Offered by</span>
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+      <img class="cert-seal" src="{{ seal }}" alt="GeLearn verified completion seal">
+      <div class="cert-verify">
+        <span class="cert-qr">{{ qr|safe }}</span>
+        <span class="id">ID {{ code }}</span>
+        <span class="url">Verify at {{ printed_url }}</span>
+      </div>
+    </div>
+
+    <div class="cert-legal">
+      <span><b>GeLearn</b> is the learning platform of <b>Genex Technocrats Pvt. Ltd.</b></span>
+      <span>GeLearn confirms the learner completed every lesson. This is not an accredited or academic qualification.</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

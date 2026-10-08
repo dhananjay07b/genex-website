@@ -89,10 +89,9 @@ export function GeLearnHeader() {
           <Link
             to="/"
             aria-label="GeLearn home"
-            className="flex shrink-0 items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <img src="/favicon1:1.svg" alt="" className="h-11 w-auto" />
-            <span className="text-xl font-extrabold text-text-primary">GeLearn</span>
+            <img src="/brand/gelearn-logo.svg" alt="GeLearn" className="h-8 w-auto sm:h-9" />
           </Link>
 
           <ExploreMenu />

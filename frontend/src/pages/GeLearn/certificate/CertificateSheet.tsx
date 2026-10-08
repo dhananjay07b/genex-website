@@ -59,7 +59,7 @@ export function CertificateSheet({ certificate }: { certificate: Valid }) {
               </div>
             ) : <span />}
             <div className="cert-brand">
-              <div className="cert-wordmark"><span className="cert-grad-text">Ge</span>Learn</div>
+              <img className="cert-brand-logo" src="/brand/gelearn-logo.svg" alt="GeLearn" />
               <small>by Genex Technocrats</small>
             </div>
           </div>

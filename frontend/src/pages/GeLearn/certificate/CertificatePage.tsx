@@ -6,9 +6,10 @@ import BlockIcon from '@mui/icons-material/Block'
 import LinkIcon from '@mui/icons-material/Link'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import CheckIcon from '@mui/icons-material/Check'
+import DownloadIcon from '@mui/icons-material/Download'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button, buttonVariants } from '@/components/ui/Button'
-import { apiFetch, ApiError } from '@/lib/api/client'
+import { apiDownload, apiFetch, ApiError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import type { CertificateInfo } from '@/types/learning'
 import { longDate } from '../course/format'
@@ -20,6 +21,20 @@ type Valid = Parameters<typeof CertificateSheet>[0]['certificate']
 /** Share on LinkedIn (opens LinkedIn's share window with the certificate link) and Copy link. */
 function ShareBox({ certificate }: { certificate: Valid }) {
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function downloadPdf() {
+    setDownloading(true)
+    setError('')
+    try {
+      await apiDownload(`/api/learning/certificates/${certificate.code}/pdf/`, `GeLearn-certificate-${certificate.code}.pdf`)
+    } catch {
+      setError("Couldn't download the PDF. Please try again.")
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   async function copyLink() {
     try {
@@ -33,8 +48,12 @@ function ShareBox({ certificate }: { certificate: Valid }) {
 
   return (
     <Box title="Share your achievement">
+      <Button size="md" className="w-full justify-center" onClick={downloadPdf} disabled={downloading}>
+        <DownloadIcon sx={{ fontSize: 19 }} /> {downloading ? 'Preparing PDF…' : 'Download PDF'}
+      </Button>
+      {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
       <a href={linkedInShareUrl(certificate.code)} target="_blank" rel="noopener noreferrer"
-        className={cn(buttonVariants({ size: 'md' }), 'w-full justify-center')}>
+        className={cn(buttonVariants({ variant: 'secondary', size: 'md' }), 'w-full justify-center')}>
         <LinkedInIcon sx={{ fontSize: 20 }} /> Share on LinkedIn
       </a>
       <Button variant="secondary" size="md" className="w-full justify-center" onClick={copyLink}>

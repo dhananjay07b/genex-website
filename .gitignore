@@ -18,3 +18,5 @@ solarlive-reference/
 backend/db.sqlite3.bak-20260915142550
 backend/db.sqlite3.bak-20260915170716
 backend/db.sqlite3.bak-20260916153047
+# Raw brand files the user drops in for placement (copies live in frontend/public/brand)
+brand-incoming/

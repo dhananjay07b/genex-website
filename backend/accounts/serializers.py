@@ -45,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
             "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
-            "role_title", "years_experience", "linkedin_url", "expertise", "career_goal",
+            "role_title", "years_experience", "linkedin_url", "expertise", "career_goal", "show_certificates",
         ]
         # account_type is fixed at registration — only Admin can change it (Django admin).
         read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified"]

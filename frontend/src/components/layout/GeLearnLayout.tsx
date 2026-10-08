@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { GeLearnHeader } from './GeLearnHeader'
 import { GeLearnFooter } from './GeLearnFooter'
@@ -19,7 +20,18 @@ function isDashboardPath(pathname: string): boolean {
   return DASHBOARD_PATHS.includes(pathname) || pathname.startsWith('/u/') || pathname.startsWith('/studio') || pathname.startsWith('/account/')
 }
 
+/** GeLearn's own tab icon (the shared index.html carries the Genex one for the marketing site). */
+function useGeLearnFavicon() {
+  useEffect(() => {
+    const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')]
+    const before = links.map(link => [link, link.href, link.type] as const)
+    links.forEach(link => { link.href = '/brand/gelearn-icon.svg'; link.type = 'image/svg+xml' })
+    return () => before.forEach(([link, href, type]) => { link.href = href; link.type = type })
+  }, [])
+}
+
 export function GeLearnLayout() {
+  useGeLearnFavicon()
   const { pathname } = useLocation()
   const { session } = useAuth()
 

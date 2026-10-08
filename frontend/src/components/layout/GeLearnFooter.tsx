@@ -67,9 +67,8 @@ export function GeLearnFooter() {
     <footer className="border-t border-border bg-slate-50" aria-label="GeLearn footer">
       <div className="mx-auto grid max-w-330 grid-cols-2 gap-8 px-4 pt-12 pb-8 md:px-6 lg:grid-cols-5">
         <div className="col-span-2 lg:col-span-1">
-          <Link to="/" className="inline-flex items-center gap-1.5">
-            <img src="/favicon1:1.svg" alt="" className="h-10 w-auto" />
-            <span className="text-lg font-extrabold text-text-primary">GeLearn</span>
+          <Link to="/" aria-label="GeLearn home" className="inline-flex items-center">
+            <img src="/brand/gelearn-logo.svg" alt="GeLearn" className="h-9 w-auto" />
           </Link>
           <p className="mt-3 max-w-xs text-sm text-text-muted">
             The learning platform of Genex Technocrats Pvt. Ltd., built for the power, energy and automation sector.

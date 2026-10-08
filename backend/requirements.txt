@@ -7,3 +7,7 @@ dj-rest-auth>=6
 djangorestframework-simplejwt>=5.3
 gunicorn>=23.0
 python-dotenv>=1.0
+# Certificates: PDF (needs Pango on the server), PNG preview from the PDF, QR codes
+weasyprint>=62
+pymupdf>=1.24
+segno>=1.6

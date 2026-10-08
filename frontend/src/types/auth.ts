@@ -52,6 +52,8 @@ export interface User {
   expertise: number[]
   /** CareerRole id the user is working toward (GeLearn suggests courses for it). */
   career_goal: number | null
+  /** Lists the learner's GeLearn certificates on their public profile. */
+  show_certificates: boolean
 }
 
 export interface PublicUser {

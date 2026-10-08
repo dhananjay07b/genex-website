@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import User
@@ -1217,3 +1218,57 @@ class CertificateTests(TestCase):
         call_command("issue_certificates", stdout=out)
         self.assertEqual(Certificate.objects.count(), 1)
         self.assertIn("Issued 1", out.getvalue())
+
+
+class CertificateFilesTests(TestCase):
+    """Certification C3: PDF, link-preview picture and share page, public-profile opt-in."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        from .models import Certificate
+        cache.clear()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng", display_name="R. Mehta")
+        self.learner = make_user("learner", display_name="Priya Nair")
+        course = Playlist.objects.create(owner=self.pro, title="SCADA basics", status="published")
+        self.certificate = Certificate.objects.create(
+            code="GL-ABCD-EFGH", user=self.learner, playlist=course, learner_name="Priya Nair", issued_at=timezone.now(),
+            snapshot={"course": {"title": "SCADA basics", "slug": course.slug, "level": "", "lessons": 3, "minutes": 40},
+                      "instructors": [{"name": "R. Mehta", "username": "pro", "role_title": "Eng", "company": None}], "publisher": None},
+        )
+        self.base = "/api/learning/certificates/GL-ABCD-EFGH/"
+
+    def test_pdf_is_for_the_learner_only(self):
+        self.assertEqual(APIClient().get(self.base + "pdf/").status_code, 401)
+        other = APIClient()
+        other.force_authenticate(self.pro)
+        self.assertEqual(other.get(self.base + "pdf/").status_code, 404)
+        api = APIClient()
+        api.force_authenticate(self.learner)
+        res = api.get(self.base + "pdf/")
+        self.assertEqual((res.status_code, res["Content-Type"]), (200, "application/pdf"))
+        self.assertTrue(res.content.startswith(b"%PDF"))
+        self.assertIn("GeLearn-certificate-GL-ABCD-EFGH.pdf", res["Content-Disposition"])
+
+    def test_preview_picture_and_share_page(self):
+        res = APIClient().get(self.base + "image.png")
+        self.assertEqual((res.status_code, res["Content-Type"]), (200, "image/png"))
+        self.assertTrue(res.content.startswith(b"\x89PNG"))
+        page = APIClient().get(self.base + "share/").content.decode()
+        self.assertIn('property="og:title" content="Priya Nair completed SCADA basics on GeLearn"', page)
+        self.assertIn("/api/learning/certificates/GL-ABCD-EFGH/image.png", page)
+        self.assertIn('http-equiv="refresh" content="0; url=http://localhost:5173/certificates/GL-ABCD-EFGH"', page)
+
+    def test_revoked_certificate_has_no_picture_or_pdf(self):
+        self.certificate.status = "revoked"
+        self.certificate.save()
+        self.assertEqual(APIClient().get(self.base + "image.png").status_code, 404)
+        self.assertNotIn("og:image", APIClient().get(self.base + "share/").content.decode())
+
+    def test_public_profile_lists_certificates_only_when_switched_on(self):
+        url = "/api/learning/certificates/?user=learner"
+        self.assertEqual(APIClient().get(url).json(), [])
+        api = APIClient()
+        api.force_authenticate(self.learner)
+        self.assertEqual(len(api.get(url).json()), 1)  # the learner always sees their own
+        self.assertEqual(api.patch("/api/accounts/me/", {"show_certificates": True}, format="json").status_code, 200)
+        self.assertEqual([c["code"] for c in APIClient().get(url).json()], ["GL-ABCD-EFGH"])

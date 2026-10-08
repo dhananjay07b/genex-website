@@ -18,6 +18,7 @@ import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, domainList, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
+import { CertificatePrivacy } from './CertificatePrivacy'
 import type { CareerRole, Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
@@ -528,6 +529,8 @@ export function SettingsTab() {
         )}
         {disconnectError && <p className="text-xs font-semibold text-red-600 mt-3">{disconnectError}</p>}
       </section>
+
+      <CertificatePrivacy />
 
       {/* Notifications */}
       <section className="border border-border rounded-2xl p-5">

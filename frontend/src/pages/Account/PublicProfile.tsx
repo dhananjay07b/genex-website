@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import PersonRemoveOutlinedIcon from '@mui/icons-material/PersonRemoveOutlined'
@@ -18,7 +19,7 @@ import { getMediaUrl, formatRelativeTime, cn } from '@/lib/utils'
 import { useAuth } from '@/context/useAuth'
 import type { PublicProfile as PublicProfileType, FollowRow, User } from '@/types/auth'
 import type { BlogPostItem, VideoItem, PodcastItem, SnippetListResponse } from '@/types/api'
-import type { CourseCard } from '@/types/learning'
+import type { CertificateInfo, CourseCard } from '@/types/learning'
 import { EmptyState } from './dashboard/EmptyState'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
@@ -34,6 +35,7 @@ export default function PublicProfile() {
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [podcasts, setPodcasts] = useState<PodcastItem[]>([])
   const [courses, setCourses] = useState<CourseCard[]>([])
+  const [certificates, setCertificates] = useState<CertificateInfo[]>([])
   const [filterState, setFilterState] = useState<{ forUsername: string; value: 'blogposts' | 'videos' | 'podcasts' } | null>(null)
   const filter = filterState && filterState.forUsername === username ? filterState.value : null
 
@@ -61,6 +63,9 @@ export default function PublicProfile() {
       .then(res => setPodcasts(res.results)).catch(() => setPodcasts([]))
     apiFetch<SnippetListResponse<CourseCard>>(`/api/learning/courses/?owner=${encodeURIComponent(username)}&limit=12`)
       .then(res => setCourses(res.results)).catch(() => setCourses([]))
+    // Empty unless the learner chose to show their certificates (Settings).
+    apiFetch<CertificateInfo[]>(`/api/learning/certificates/?user=${encodeURIComponent(username)}`)
+      .then(setCertificates).catch(() => setCertificates([]))
   }, [username])
 
   useEffect(() => {
@@ -338,6 +343,30 @@ export default function PublicProfile() {
             <p className="text-xs font-semibold text-text-muted mt-0.5">Podcast Features</p>
           </button>
         </div>
+
+        {/* Certificates: only when the learner switched them on in Settings */}
+        {filter === null && certificates.length > 0 && (
+          <section className="pt-10">
+            <h2 className="text-lg font-extrabold text-text-primary mb-4">Certificates</h2>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {certificates.map(c => (
+                <li key={c.code}>
+                  <Link to={`/certificates/${c.code}`} className="group flex gap-3 border border-border rounded-2xl p-3 hover:border-primary/40 transition-colors">
+                    <span className="size-12 rounded-xl bg-brand-tint flex items-center justify-center shrink-0 text-sky-700">
+                      <WorkspacePremiumOutlinedIcon sx={{ fontSize: 24 }} />
+                    </span>
+                    <span className="min-w-0 flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-text-primary leading-snug line-clamp-2 group-hover:text-primary transition-colors">{c.course.title}</span>
+                      <span className="text-xs text-text-muted">
+                        {c.publisher ? `${c.publisher.name} · ` : ''}Completed {new Date(c.issued_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Courses */}
         {filter === null && courses.length > 0 && (

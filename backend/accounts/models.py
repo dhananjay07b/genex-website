@@ -72,6 +72,10 @@ class User(AbstractUser):
         help_text="The role this person is working toward; GeLearn suggests courses for it.",
     )
     # GeLearn featuring — Admin-only; never exposed as writable through the API.
+    show_certificates = models.BooleanField(
+        default=False, verbose_name="Show certificates on public profile",
+        help_text="The learner's choice: list their GeLearn certificates on their public profile.",
+    )
     is_featured = models.BooleanField(
         default=False, help_text="Show in 'Our Leading Professionals' on the GeLearn home page.",
     )
