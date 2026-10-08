@@ -115,6 +115,12 @@ export function HeroSlideshow({ slides: apiSlides }: { slides?: HeroSlideApiValu
         </motion.div>
       </AnimatePresence>
 
+      {/* Top scrim — keeps the transparent navbar legible over any slide */}
+      {/* <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-1 h-40 bg-linear-to-b from-black/55 via-black/25 to-transparent"
+        aria-hidden="true"
+      /> */}
+
       {/* Text — bottom-left, editorial */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-6 lg:px-16 pb-28">
         <AnimatePresence mode="wait">
