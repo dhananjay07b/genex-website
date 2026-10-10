@@ -8,7 +8,9 @@ are picked, never typed (pages/links.py). The courses, content and people
 inside each section are filled in live by
 /api/discovery/home/, which returns the arranged sections as `layout`.
 """
+from django.core.exceptions import ValidationError
 from wagtail import blocks
+from wagtail.blocks.struct_block import StructBlockValidationError
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.snippets.blocks import SnippetChooserBlock
 
@@ -21,20 +23,42 @@ from .links import LinkBlock
 # ── Building blocks ──────────────────────────────────────────────────────────
 
 class HeroSlide(ImageApiStructBlock):
+    variant = blocks.ChoiceBlock(
+        choices=[("card", "Text and image (half width)"), ("banner", "Image only (full width)")], default="card",
+        label="Slide type",
+        help_text="An image-only slide fills the width of two text slides and shows only the image and its link.",
+    )
     kicker = blocks.CharBlock(required=False, max_length=60, help_text="Small label above the heading.")
-    heading = blocks.CharBlock(max_length=120)
+    heading = blocks.CharBlock(required=False, max_length=120, help_text="Required for text and image slides.")
     body = blocks.TextBlock(required=False, max_length=300)
     cta_label = blocks.CharBlock(required=False, max_length=40)
-    cta_url = LinkBlock(optional=True, label="Button link")
+    cta_url = LinkBlock(
+        optional=True, label="Button link",
+        help_text="On an image-only slide the whole image links here, and the button label is used as its accessible name.",
+    )
     tone = blocks.ChoiceBlock(
         choices=[("slate", "Blue-grey"), ("sky", "Pale blue"), ("mint", "Mint")], default="slate",
         help_text="Background colour of the slide.",
     )
-    image = ImageChooserBlock(required=False, help_text="Shown beside the text. Landscape, at least 1200px wide.")
+    image = ImageChooserBlock(
+        required=False,
+        help_text="Text and image: shown beside the text, landscape, at least 1200px wide. "
+                  "Image only: a wide banner, about 2800 x 660 px; the edges are cropped on phones, "
+                  "so keep words and logos near the middle. The image's title is its alt text.",
+    )
 
     class Meta:
         icon = "image"
         label = "Slide"
+
+    def clean(self, value):
+        value = super().clean(value)
+        if value.get("variant") == "banner":
+            if not value.get("image"):
+                raise StructBlockValidationError({"image": ValidationError("An image-only slide needs an image.")})
+        elif not value.get("heading"):
+            raise StructBlockValidationError({"heading": ValidationError("A text and image slide needs a heading.")})
+        return value
 
 
 class PromoCard(blocks.StructBlock):

@@ -21,10 +21,10 @@ import type {
 } from './types'
 
 /** A link that works for both GeLearn routes and full https:// URLs typed into the CMS. */
-function SmartLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+function SmartLink({ href, className, label, children }: { href: string; className?: string; label?: string; children: ReactNode }) {
   return isExternalHref(href)
-    ? <a href={href} className={className}>{children}</a>
-    : <Link to={href} className={className}>{children}</Link>
+    ? <a href={href} className={className} aria-label={label}>{children}</a>
+    : <Link to={href} className={className} aria-label={label}>{children}</Link>
 }
 
 /** The page-width container every section sits in. */
@@ -61,29 +61,42 @@ export function HeroSection({ value }: { value: HeroValue }) {
   const [paused, setPaused] = useState(false)
   const slides = value.slides
 
+  // Slides can differ in width (a banner is two cards wide), so each page is a scroll position where a slide
+  // starts, not a multiple of one slide's width. Positions past the end of the rail collapse into the last page.
+  const stopsRef = useRef<number[]>([0])
+
   const measure = useCallback(() => {
     const rail = railRef.current
-    const first = rail?.firstElementChild as HTMLElement | null
-    if (!rail || !first) return
-    const perView = Math.max(1, Math.round(rail.clientWidth / first.offsetWidth))
-    setPages(Math.max(1, slides.length - perView + 1))
-    setPage(Math.round(rail.scrollLeft / first.offsetWidth))
-  }, [slides.length])
+    if (!rail || !rail.firstElementChild) return
+    const children = [...rail.children] as HTMLElement[]
+    const origin = children[0].offsetLeft
+    const maxScroll = rail.scrollWidth - rail.clientWidth
+    const stops: number[] = []
+    for (const child of children) {
+      const stop = Math.min(child.offsetLeft - origin, maxScroll)
+      if (!stops.length || stop - stops[stops.length - 1] > 1) stops.push(stop)
+    }
+    stopsRef.current = stops
+    setPages(stops.length)
+    let nearest = 0
+    stops.forEach((stop, i) => { if (Math.abs(stop - rail.scrollLeft) < Math.abs(stops[nearest] - rail.scrollLeft)) nearest = i })
+    setPage(nearest)
+  }, [])
 
   const go = useCallback((target: number) => {
     const rail = railRef.current
-    const first = rail?.firstElementChild as HTMLElement | null
-    if (!rail || !first) return
-    const wrapped = ((target % pages) + pages) % pages
+    if (!rail) return
+    const stops = stopsRef.current
+    const wrapped = ((target % stops.length) + stops.length) % stops.length
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    rail.scrollTo({ left: wrapped * first.offsetWidth, behavior: reduce ? 'auto' : 'smooth' })
-  }, [pages])
+    rail.scrollTo({ left: stops[wrapped], behavior: reduce ? 'auto' : 'smooth' })
+  }, [])
 
   useEffect(() => {
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [measure])
+  }, [measure, slides])
 
   useEffect(() => {
     if (paused || pages < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -106,6 +119,24 @@ export function HeroSection({ value }: { value: HeroValue }) {
         className="scrollbar-hidden -mx-2 flex snap-x snap-mandatory overflow-x-auto"
       >
         {slides.map((slide, i) => {
+          if (slide.variant === 'banner') {
+            if (!slide.image) return null
+            const picture = (
+              <img src={getMediaUrl(slide.image.url)} alt={slide.cta_url ? '' : slide.image.alt} className="absolute inset-0 size-full object-cover" />
+            )
+            const frame = 'relative block h-full min-h-60 overflow-hidden rounded-2xl border border-border bg-slate-100'
+            return (
+              <div key={i} className="w-full shrink-0 snap-start px-2">
+                {slide.cta_url
+                  ? (
+                    <SmartLink href={slide.cta_url} label={slide.cta_label || slide.image.alt} className={cn(frame, 'hover:opacity-95 focus-visible:outline-2 focus-visible:outline-primary')}>
+                      {picture}
+                    </SmartLink>
+                  )
+                  : <div className={frame}>{picture}</div>}
+              </div>
+            )
+          }
           const tone = SLIDE_TONES[slide.tone] ?? SLIDE_TONES.slate
           return (
             <div key={i} className="w-full shrink-0 snap-start px-2 lg:w-1/2">

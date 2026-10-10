@@ -10,6 +10,8 @@ export interface SeeAll {
 }
 
 export interface HeroSlide {
+  /** 'banner' = image only, the width of two cards. Older slides saved before the option have none (a card). */
+  variant?: 'card' | 'banner'
   kicker: string
   heading: string
   body: string

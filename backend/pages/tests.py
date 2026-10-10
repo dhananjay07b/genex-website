@@ -353,3 +353,37 @@ class MarketingLinkPickerTests(TestCase):
         self.assertEqual(settings_row.cta_href, "/contact#demo")  # nothing picked yet: the default
         settings_row.cta_page, settings_row.cta_section = self.contact, "demo"
         self.assertEqual(settings_row.cta_href, f"{self.contact.url_path.rstrip('/')}#demo")
+
+
+class HeroBannerSlideTests(TestCase):
+    """GeLearn hero: an image-only slide fills the width of two cards; cards keep their heading."""
+
+    def setUp(self):
+        from .gelearn_blocks import HeroSlide
+        self.block = HeroSlide()
+
+    def test_banner_needs_an_image_and_no_heading(self):
+        from wagtail.blocks.struct_block import StructBlockValidationError
+        from wagtail.images.models import Image
+        from wagtail.images.tests.utils import get_test_image_file
+
+        with self.assertRaises(StructBlockValidationError) as caught:
+            self.block.clean(self.block.to_python({"variant": "banner"}))
+        self.assertIn("image", caught.exception.block_errors)
+
+        image = Image.objects.create(title="Solar farm at dusk", file=get_test_image_file())
+        value = self.block.clean(self.block.to_python({"variant": "banner", "image": image.pk}))
+        data = self.block.get_api_representation(value)
+        self.assertEqual(data["variant"], "banner")
+        self.assertEqual(data["image"]["alt"], "Solar farm at dusk")
+
+    def test_card_still_needs_a_heading(self):
+        from wagtail.blocks.struct_block import StructBlockValidationError
+
+        with self.assertRaises(StructBlockValidationError) as caught:
+            self.block.clean(self.block.to_python({"variant": "card"}))
+        self.assertIn("heading", caught.exception.block_errors)
+
+    def test_slides_saved_before_the_option_are_cards(self):
+        value = self.block.to_python({"heading": "Learn the grid", "tone": "sky", "image": None})
+        self.assertEqual(self.block.get_api_representation(value)["variant"], "card")
