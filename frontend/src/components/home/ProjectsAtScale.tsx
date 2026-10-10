@@ -155,7 +155,8 @@ export function ProjectsAtScale({ projects: apiProjects }: { projects?: ProjectS
         <div className="flex flex-col lg:flex-row lg:h-96 gap-4">
           {PROJECTS.map((project, i) => (
             <div
-              key={project.href}
+              // CMS projects can share a link (or all fall back to /portfolio), so the link alone isn't unique.
+              key={`${i}:${project.href}`}
               style={{
                 flexGrow: getFlexGrow(i),
                 flexShrink: 1,
