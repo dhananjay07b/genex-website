@@ -7,6 +7,7 @@ import LinkIcon from '@mui/icons-material/Link'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import CheckIcon from '@mui/icons-material/Check'
 import DownloadIcon from '@mui/icons-material/Download'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { apiDownload, apiFetch, ApiError } from '@/lib/api/client'
@@ -21,18 +22,19 @@ type Valid = Parameters<typeof CertificateSheet>[0]['certificate']
 /** Share on LinkedIn (opens LinkedIn's share window with the certificate link) and Copy link. */
 function ShareBox({ certificate }: { certificate: Valid }) {
   const [copied, setCopied] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState<'' | 'pdf' | 'png'>('')
   const [error, setError] = useState('')
 
-  async function downloadPdf() {
-    setDownloading(true)
+  async function download(kind: 'pdf' | 'png') {
+    setDownloading(kind)
     setError('')
+    const base = `/api/learning/certificates/${certificate.code}`
     try {
-      await apiDownload(`/api/learning/certificates/${certificate.code}/pdf/`, `GeLearn-certificate-${certificate.code}.pdf`)
+      await apiDownload(kind === 'pdf' ? `${base}/pdf/` : `${base}/image.png?download=1`, `GeLearn-certificate-${certificate.code}.${kind}`)
     } catch {
-      setError("Couldn't download the PDF. Please try again.")
+      setError(`Couldn't download the ${kind === 'pdf' ? 'PDF' : 'image'}. Please try again.`)
     } finally {
-      setDownloading(false)
+      setDownloading('')
     }
   }
 
@@ -48,8 +50,11 @@ function ShareBox({ certificate }: { certificate: Valid }) {
 
   return (
     <Box title="Share your achievement">
-      <Button size="md" className="w-full justify-center" onClick={downloadPdf} disabled={downloading}>
-        <DownloadIcon sx={{ fontSize: 19 }} /> {downloading ? 'Preparing PDF…' : 'Download PDF'}
+      <Button size="md" className="w-full justify-center" onClick={() => download('pdf')} disabled={downloading !== ''}>
+        <DownloadIcon sx={{ fontSize: 19 }} /> {downloading === 'pdf' ? 'Preparing PDF…' : 'Download PDF'}
+      </Button>
+      <Button variant="secondary" size="md" className="w-full justify-center" onClick={() => download('png')} disabled={downloading !== ''}>
+        <ImageOutlinedIcon sx={{ fontSize: 19 }} /> {downloading === 'png' ? 'Preparing image…' : 'Download image'}
       </Button>
       {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
       <a href={linkedInShareUrl(certificate.code)} target="_blank" rel="noopener noreferrer"
@@ -59,7 +64,10 @@ function ShareBox({ certificate }: { certificate: Valid }) {
       <Button variant="secondary" size="md" className="w-full justify-center" onClick={copyLink}>
         {copied ? <><CheckIcon sx={{ fontSize: 18 }} /> Link copied</> : <><LinkIcon sx={{ fontSize: 18 }} /> Copy certificate link</>}
       </Button>
-      <p className="text-xs text-text-muted">The link opens this certificate with a &ldquo;Verified by GeLearn&rdquo; banner. Paste it in a CV, an email or a job application so anyone can check it is real.</p>
+      <p className="text-xs text-text-muted">
+        Download image saves the certificate as a picture you can attach to a LinkedIn post. The link opens this certificate with a
+        &ldquo;Verified by GeLearn&rdquo; banner; paste it in a CV, an email or a job application so anyone can check it is real.
+      </p>
     </Box>
   )
 }

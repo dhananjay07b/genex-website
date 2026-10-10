@@ -1253,6 +1253,9 @@ class CertificateFilesTests(TestCase):
         res = APIClient().get(self.base + "image.png")
         self.assertEqual((res.status_code, res["Content-Type"]), (200, "image/png"))
         self.assertTrue(res.content.startswith(b"\x89PNG"))
+        big = APIClient().get(self.base + "image.png?download=1")
+        self.assertIn('filename="GeLearn-certificate-GL-ABCD-EFGH.png"', big["Content-Disposition"])
+        self.assertGreater(len(big.content), len(res.content))  # the sharper download
         page = APIClient().get(self.base + "share/").content.decode()
         self.assertIn('property="og:title" content="Priya Nair completed SCADA basics on GeLearn"', page)
         self.assertIn("/api/learning/certificates/GL-ABCD-EFGH/image.png", page)

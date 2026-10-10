@@ -466,26 +466,32 @@ class CertificatePdfView(APIView):
         return response
 
 
-def _image_cache_key(certificate):
-    return f"certificate-png:{certificate.code}:{hashlib.sha1(certificate.learner_name.encode()).hexdigest()[:10]}"
+def _image_cache_key(certificate, width):
+    name = hashlib.sha1(certificate.learner_name.encode()).hexdigest()[:10]
+    return f"certificate-png:{certificate.code}:{width}:{name}"
 
 
 class CertificateImageView(APIView):
     """
-    A picture of a valid certificate (1200 px wide PNG): the link preview LinkedIn and
-    other sites show when the certificate is shared. Cached; a name correction makes a new one.
+    A picture of a valid certificate: 1200 px wide for the link preview LinkedIn and
+    other sites show when it's shared; `?download=1` gives a sharper 2400 px file to
+    save (Download image). Cached per size; a name correction makes new ones.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, code):
         certificate = get_object_or_404(Certificate, code=code.upper(), status=Certificate.STATUS_VALID)
-        key = _image_cache_key(certificate)
+        download = request.query_params.get("download") == "1"
+        width = 2400 if download else 1200
+        key = _image_cache_key(certificate, width)
         png = cache.get(key)
         if png is None:
-            png = render_png(certificate)
+            png = render_png(certificate, width=width)
             cache.set(key, png, 60 * 60 * 24 * 7)
         response = HttpResponse(png, content_type="image/png")
         response["Cache-Control"] = "public, max-age=86400"
+        if download:
+            response["Content-Disposition"] = f'attachment; filename="GeLearn-certificate-{certificate.code}.png"'
         return response
 
 
