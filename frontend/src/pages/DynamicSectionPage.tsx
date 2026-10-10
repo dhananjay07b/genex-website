@@ -13,16 +13,18 @@ interface DynamicSectionPageProps {
 }
 
 export default function DynamicSectionPage({ sectionSlug, fallbackTitle, fallbackDescription }: DynamicSectionPageProps) {
-  const [page, setPage] = useState<SectionPageData | null | undefined>(undefined)
+  // Each result remembers the section it was loaded for; anything older counts as still loading.
+  const [loaded, setLoaded] = useState<{ slug: string; page: SectionPageData | null } | null>(null)
 
   useEffect(() => {
-    setPage(undefined)
     apiFetch<WagtailListResponse<SectionPageData>>(
       `/api/v2/pages/?type=pages.SectionPage&slug=${sectionSlug}&fields=*&limit=1`
     )
-      .then(res => setPage(res.items[0] ?? null))
-      .catch(() => setPage(null))
+      .then(res => setLoaded({ slug: sectionSlug, page: res.items[0] ?? null }))
+      .catch(() => setLoaded({ slug: sectionSlug, page: null }))
   }, [sectionSlug])
+
+  const page = loaded?.slug === sectionSlug ? loaded.page : undefined
 
   if (page === undefined) return null
 

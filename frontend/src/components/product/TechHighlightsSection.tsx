@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { getMuiIcon } from '@/lib/muiIconRegistry'
+import { MuiIcon } from '@/components/ui/MuiIcon'
 import type { TechHighlightCardType, TechHighlightItemValue } from '@/types/api'
 
 interface CardBodyProps {
@@ -35,11 +35,10 @@ function SubTextCaption({ sub_text }: { sub_text: string | null }) {
 // ── Icon Card — plain baseline: icon chip, heading, description, caption ──
 
 function IconCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   return (
     <>
       <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
-        <Icon style={{ fontSize: 24 }} />
+        <MuiIcon name={icon} style={{ fontSize: 24 }} />
       </div>
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
@@ -53,7 +52,6 @@ function IconCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
 // ── Ring Stat Card — icon inside an animated gauge ring, stat + label centered ──
 
 function RingStatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   const r = 27
   return (
     <div className="flex flex-col items-center text-center gap-3">
@@ -74,7 +72,7 @@ function RingStatCardBody({ icon, heading, description, sub_text }: CardBodyProp
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <Icon style={{ fontSize: 22 }} className="text-primary" />
+          <MuiIcon name={icon} style={{ fontSize: 22 }} className="text-primary" />
         </div>
       </div>
       {sub_text && (
@@ -91,7 +89,6 @@ function RingStatCardBody({ icon, heading, description, sub_text }: CardBodyProp
 const DIAGRAM_BAR_HEIGHTS = [10, 18, 14, 26, 20, 30]
 
 function DiagramCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   const barW = 12
   const gap = 10
   const chartH = 32
@@ -103,7 +100,7 @@ function DiagramCardBody({ icon, heading, description, sub_text }: CardBodyProps
   return (
     <>
       <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
-        <Icon style={{ fontSize: 24 }} />
+        <MuiIcon name={icon} style={{ fontSize: 24 }} />
       </div>
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
@@ -151,7 +148,6 @@ const SUPPORT_CHAT_PAIRS: { q: string; a: string }[] = [
 ]
 
 function ChatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   const [pairIndex, setPairIndex] = useState(() => Math.floor(Math.random() * SUPPORT_CHAT_PAIRS.length))
 
   useEffect(() => {
@@ -171,7 +167,7 @@ function ChatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
   return (
     <>
       <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
-        <Icon style={{ fontSize: 24 }} />
+        <MuiIcon name={icon} style={{ fontSize: 24 }} />
       </div>
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>
@@ -204,7 +200,6 @@ function ChatCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
 // ── Security Card — icon inside a shield outline that pulses once on scroll-in ──
 
 function SecurityCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   return (
     <>
       <div className="relative size-14 shrink-0">
@@ -223,7 +218,7 @@ function SecurityCardBody({ icon, heading, description, sub_text }: CardBodyProp
           />
         </motion.svg>
         <div className="absolute inset-0 flex items-center justify-center pb-1">
-          <Icon style={{ fontSize: 20 }} className="text-primary" />
+          <MuiIcon name={icon} style={{ fontSize: 20 }} className="text-primary" />
         </div>
       </div>
       <div className="flex flex-col gap-2">
@@ -240,12 +235,11 @@ function SecurityCardBody({ icon, heading, description, sub_text }: CardBodyProp
 const SIGNAL_BAR_HEIGHTS = [8, 14, 20, 26]
 
 function SignalCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   return (
     <>
       <div className="flex items-center gap-3">
         <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
-          <Icon style={{ fontSize: 24 }} />
+          <MuiIcon name={icon} style={{ fontSize: 24 }} />
         </div>
         <div className="flex items-end gap-1 h-7" aria-hidden="true">
           {SIGNAL_BAR_HEIGHTS.map((h, i) => (
@@ -272,11 +266,10 @@ function SignalCardBody({ icon, heading, description, sub_text }: CardBodyProps)
 // ── Timeline Card — 3 dots connected by a line that draws in, for process highlights ──
 
 function TimelineCardBody({ icon, heading, description, sub_text }: CardBodyProps) {
-  const Icon = getMuiIcon(icon)
   return (
     <>
       <div className="size-12 rounded-2xl bg-white text-[#0f2930] flex items-center justify-center shrink-0 border border-[#e2e8f0]">
-        <Icon style={{ fontSize: 24 }} />
+        <MuiIcon name={icon} style={{ fontSize: 24 }} />
       </div>
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-[#0f2930] leading-snug">{heading}</h3>

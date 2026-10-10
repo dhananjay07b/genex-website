@@ -20,8 +20,15 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
+      // buttonVariants is a style helper shared with <Link>s, kept beside <Button>.
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true, allowExportNames: ['buttonVariants'] }],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
     },
+  },
+  {
+    // The route table defines its lazy pages and exports the router; hot reload doesn't apply to it.
+    files: ['src/router.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { getMuiIcon } from '@/lib/muiIconRegistry'
+import { MuiIcon } from '@/components/ui/MuiIcon'
 import { getMediaUrl } from '@/lib/utils'
 import type { InnovationCardValue } from '@/types/api'
 
@@ -10,7 +10,6 @@ const staggerChild = {
 }
 
 export function InnovationCard({ item }: { item: InnovationCardValue }) {
-  const Icon = getMuiIcon(item.icon)
 
   return (
     <motion.div
@@ -21,7 +20,7 @@ export function InnovationCard({ item }: { item: InnovationCardValue }) {
     >
       {item.icon ? (
         <div className="size-12 rounded-xl bg-[#f1f5f8] flex items-center justify-center mb-6">
-          <Icon style={{ fontSize: 24 }} className="text-primary" />
+          <MuiIcon name={item.icon} style={{ fontSize: 24 }} className="text-primary" />
         </div>
       ) : item.icon_url ? (
         <img src={getMediaUrl(item.icon_url)} alt="" aria-hidden="true" className="w-12 h-12 mb-6 rounded-xl object-cover" />

@@ -124,7 +124,7 @@ export function OperationsMap() {
   const sectionRef   = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [activePin,  setActivePin]  = useState<Pin | null>(null)
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0, flip: false })
   const [dotsActive, setDotsActive] = useState(false)
 
   const isInView = useInView(sectionRef, { once: true, amount: 0.15 })
@@ -140,10 +140,9 @@ export function OperationsMap() {
     const containerRect = containerRef.current.getBoundingClientRect()
     const target = (e.currentTarget as SVGGElement).getBoundingClientRect()
     setActivePin(pin)
-    setTooltipPos({
-      x: target.left + target.width / 2 - containerRect.left,
-      y: target.top - containerRect.top,
-    })
+    const x = target.left + target.width / 2 - containerRect.left
+    // Near the right edge the tooltip opens to the left of the pin (measured here, not while rendering).
+    setTooltipPos({ x, y: target.top - containerRect.top, flip: x > containerRect.width * 0.75 })
   }, [])
 
   const handlePinLeave = useCallback(() => setActivePin(null), [])
@@ -358,9 +357,7 @@ export function OperationsMap() {
                   key={activePin.id}
                   className="pointer-events-none absolute z-10 bg-white rounded-xl shadow-lg border border-border px-3.5 py-2.5"
                   style={{
-                    left: tooltipPos.x > (containerRef.current?.offsetWidth ?? 500) * 0.75
-                      ? tooltipPos.x - 140
-                      : tooltipPos.x + 10,
+                    left: tooltipPos.flip ? tooltipPos.x - 140 : tooltipPos.x + 10,
                     top: tooltipPos.y - 52,
                   }}
                   initial={{ opacity: 0, y: 4 }}

@@ -173,7 +173,7 @@ function ParticleField() {
     const onMove  = (e: MouseEvent)  => { cursorRef.current = { x: e.clientX, y: e.clientY } }
     const onLeave = ()                => { cursorRef.current = { x: -9999, y: -9999 } }
     const onTouch = (e: TouchEvent)  => { cursorRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }
-    const onVis   = ()               => { document.hidden ? cancelAnimationFrame(animFrameRef.current) : loop() }
+    const onVis   = ()               => { if (document.hidden) cancelAnimationFrame(animFrameRef.current); else loop() }
 
     let resizeTimer: ReturnType<typeof setTimeout>
     const onResize = () => {

@@ -15,7 +15,8 @@ interface DynamicContentPageProps {
 
 export default function DynamicContentPage({ sectionSlug, fallbackPath }: DynamicContentPageProps) {
   const location = useLocation()
-  const [page, setPage] = useState<ContentPageData | null | undefined>(undefined)
+  // Each result remembers the address it was loaded for; anything older counts as still loading.
+  const [loaded, setLoaded] = useState<{ path: string; page: ContentPageData | null } | null>(null)
 
   const innerSegments = location.pathname
     .split('/')
@@ -23,16 +24,17 @@ export default function DynamicContentPage({ sectionSlug, fallbackPath }: Dynami
     .slice(1) // drop the leading section segment (e.g. "portfolio")
 
   useEffect(() => {
-    setPage(undefined)
-    if (innerSegments.length === 0) { setPage(null); return }
+    if (innerSegments.length === 0) return  // nothing to resolve: redirected below
+    const path = location.pathname
     resolveContentPage(sectionSlug, innerSegments)
-      .then(result => setPage(result))
-      .catch(() => setPage(null))
+      .then(result => setLoaded({ path, page: result }))
+      .catch(() => setLoaded({ path, page: null }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
+  const page = loaded?.path === location.pathname ? loaded.page : undefined
+  if (innerSegments.length === 0 || page === null) return <Navigate to={fallbackPath} replace />
   if (page === undefined) return null
-  if (page === null) return <Navigate to={fallbackPath} replace />
 
   const body = page.hide_footer_cta ? page.body.filter(b => b.type !== 'cta') : page.body
 
