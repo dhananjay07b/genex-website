@@ -19,7 +19,7 @@ import { returnState } from '@/lib/authRedirect'
 import { useRole } from '@/hooks/useRole'
 import type { CourseDetail, CourseItem } from '@/types/learning'
 import { PublisherLogo } from './CourseSide'
-import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, plural, type SectionId } from './format'
+import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, paidLessonNote, paidLessons, plural, type SectionId } from './format'
 
 interface CourseHeroProps {
   course: CourseDetail
@@ -181,6 +181,7 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                   {accessNote}
                   {!signedIn && course.access !== 'paid' && <> · <Link to="/register" state={returnState(location)} className="font-semibold text-sky-700 hover:underline">Create an account</Link></>}
                 </p>
+                {paidLessons(course) > 0 && <p className="mt-1.5 text-sm font-semibold text-amber-800">{paidLessonNote(paidLessons(course))}</p>}
               </>
             )}
             {message && <p role="alert" className="mt-2 text-sm font-semibold text-red-600">{message}</p>}

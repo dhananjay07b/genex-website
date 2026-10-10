@@ -52,6 +52,7 @@ function LessonRow({ item, index, count, place, modules, onMove, onRemove, onRel
 export function OutlineEditor({ draft, patch, error }: { draft: Draft; patch: Patch; error?: string }) {
   const { modules, loose } = draft
   const lessons = allLessons(draft)
+  const paid = lessons.filter(l => l.access === 'paid')
   const total = totalMinutes(lessons)
 
   const setModule = (i: number, next: Partial<DraftModule>) =>
@@ -129,6 +130,17 @@ export function OutlineEditor({ draft, patch, error }: { draft: Draft; patch: Pa
         </div>
       )}
 
+      {paid.length > 0 && draft.access !== 'paid' && (
+        // Learners must open every lesson to complete a course; a paid one has to be bought first.
+        <p role="status" className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <InfoOutlinedIcon sx={{ fontSize: 16 }} className="mt-px shrink-0 text-amber-700" />
+          <span>
+            <b>{paid.length === 1 ? '1 lesson is paid' : `${paid.length} lessons are paid`}</b> ({paid.map(l => `“${l.title}”`).join(', ')}).
+            Learners must buy {paid.length === 1 ? 'it' : 'them'} to complete this {draft.access === 'free' ? 'free' : 'members'} course and get the certificate.
+            The course page tells them before they enroll.
+          </span>
+        </p>
+      )}
       {error && <p className="text-xs text-red-500">{error}</p>}
       <AddButton disabled={modules.length >= LIMITS.modules}
         onClick={() => patch({ modules: [...modules, { key: newKey(), id: null, title: '', summary: '', items: [] }] })}>

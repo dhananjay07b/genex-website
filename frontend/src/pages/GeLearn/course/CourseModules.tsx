@@ -8,7 +8,7 @@ import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOu
 import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
 import { cn } from '@/lib/utils'
 import type { CourseDetail, CourseItem } from '@/types/learning'
-import { formatMinutes, lessonFormats, plural } from './format'
+import { formatMinutes, lessonFormats, paidLessonNote, paidLessons, plural } from './format'
 
 interface LessonListProps {
   items: CourseItem[]
@@ -95,6 +95,7 @@ export function CourseModules({ course, onOpen }: { course: CourseDetail; onOpen
         <div>
           <h2 className="text-xl font-extrabold text-text-primary lg:text-2xl">{heading}</h2>
           <p className="mt-1 text-sm text-text-muted">{summary}</p>
+          {paidLessons(course) > 0 && <p className="mt-1 text-sm font-semibold text-amber-800">{paidLessonNote(paidLessons(course))}</p>}
         </div>
         {course.modules.length > 1 && (
           <button type="button" onClick={() => setOpen(allOpen ? new Set() : new Set(course.modules.map(m => m.id)))}

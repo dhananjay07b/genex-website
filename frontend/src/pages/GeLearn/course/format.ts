@@ -55,3 +55,10 @@ export const SECTIONS = [
   ['cp-faq', 'FAQ'],
 ] as const
 export type SectionId = (typeof SECTIONS)[number][0]
+
+/** Paid lessons inside a free or members course: they must be bought to complete it (and get the certificate). */
+export const paidLessons = (course: { access: string; items: { access: string }[] }) =>
+  course.access === 'paid' ? 0 : course.items.filter(item => item.access === 'paid').length
+
+export const paidLessonNote = (n: number) =>
+  `${n === 1 ? '1 lesson is' : `${n} lessons are`} paid: buy ${n === 1 ? 'it' : 'them'} to complete the course and get the certificate.`
