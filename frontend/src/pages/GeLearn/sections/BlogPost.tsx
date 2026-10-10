@@ -84,7 +84,7 @@ export default function BlogPost() {
   const [activeTag, setActiveTag] = useState<Topic | null>(null)
 
   useEffect(() => {
-    if (!id) { setPost(null); return }
+    if (!id) return  // no id: redirected below
     apiFetch<BlogPostItem>(`/api/snippets/blog-posts/${id}/`)
       .then(p => setPost(p))
       .catch(() => setPost(null))
@@ -96,8 +96,8 @@ export default function BlogPost() {
       .catch(() => {})
   }, [id])
 
+  if (!id || post === null) return <Navigate to="/blog" replace />
   if (post === undefined) return null
-  if (post === null) return <Navigate to="/blog" replace />
 
   const postIdx = allPosts.findIndex(p => p.id === post.id)
   const heroImg = post.image_url ? getMediaUrl(post.image_url) : FALLBACK_IMAGE

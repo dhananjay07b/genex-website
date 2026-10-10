@@ -31,7 +31,7 @@ export default function VideoDetail() {
   const authorHover = useHoverIntent()
 
   useEffect(() => {
-    if (!id) { setVideo(null); return }
+    if (!id) return  // no id: redirected below
     apiFetch<VideoItem>(`/api/snippets/videos/${id}/`)
       .then(v => setVideo(v))
       .catch(() => setVideo(null))
@@ -40,8 +40,8 @@ export default function VideoDetail() {
       .catch(() => {})
   }, [id])
 
+  if (!id || video === null) return <Navigate to="/videos" replace />
   if (video === undefined) return null
-  if (video === null) return <Navigate to="/videos" replace />
 
   const embed = !video.is_locked && video.video_url ? embedVideoUrl(video.video_url) : null
   const directUrl = !video.is_locked && video.video_url && !embed ? video.video_url : null

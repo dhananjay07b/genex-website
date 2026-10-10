@@ -104,7 +104,7 @@ export default function GeAcademyDetail() {
   const [related, setRelated] = useState<TechArticleItem[]>([])
 
   useEffect(() => {
-    if (!id) { setArticle(null); return }
+    if (!id) return  // no id: redirected below
     apiFetch<TechArticleItem>(`/api/snippets/tech-articles/${id}/`)
       .then(a => setArticle(a))
       .catch(() => setArticle(null))
@@ -113,8 +113,8 @@ export default function GeAcademyDetail() {
       .catch(() => {})
   }, [id])
 
+  if (!id || article === null) return <Navigate to="/geacademy" replace />
   if (article === undefined) return null
-  if (article === null) return <Navigate to="/geacademy" replace />
 
   const diff = DIFFICULTY_STYLE[article.difficulty] ?? { bg: '#f7f7f7', text: '#3f3f3f' }
 

@@ -88,7 +88,7 @@ export default function CaseStudyDetail() {
   const [related, setRelated] = useState<CaseStudyItem[]>([])
 
   useEffect(() => {
-    if (!id) { setCs(null); return }
+    if (!id) return  // no id: redirected below
     apiFetch<CaseStudyItem>(`/api/snippets/case-studies/${id}/`)
       .then(item => setCs(item))
       .catch(() => setCs(null))
@@ -97,8 +97,8 @@ export default function CaseStudyDetail() {
       .catch(() => {})
   }, [id])
 
+  if (!id || cs === null) return <Navigate to="/research" replace />
   if (cs === undefined) return null
-  if (cs === null) return <Navigate to="/research" replace />
 
   const heroImg = cs.image_url ?? FALLBACK_IMAGE
 

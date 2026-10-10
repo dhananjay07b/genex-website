@@ -28,7 +28,7 @@ export default function PodcastDetail() {
   const [authorPanelUser, setAuthorPanelUser] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) { setEpisode(null); return }
+    if (!id) return  // no id: redirected below
     apiFetch<PodcastItem>(`/api/snippets/podcasts/${id}/`)
       .then(ep => setEpisode(ep))
       .catch(() => setEpisode(null))
@@ -37,8 +37,8 @@ export default function PodcastDetail() {
       .catch(() => {})
   }, [id])
 
+  if (!id || episode === null) return <Navigate to="/podcasts" replace />
   if (episode === undefined) return null
-  if (episode === null) return <Navigate to="/podcasts" replace />
 
   const [lead, ...moreCollaborators] = episode.collaborators
 

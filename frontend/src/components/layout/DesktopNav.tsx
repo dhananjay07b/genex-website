@@ -32,9 +32,12 @@ export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
     closeTimer.current = setTimeout(() => setOpenIndex(null), 120)
   }, [])
 
-  useEffect(() => {
-    close()
-  }, [location.pathname, close])
+  // Close the open menu when the page changes (adjusting state during render, not in an effect).
+  const [menuPath, setMenuPath] = useState(location.pathname)
+  if (menuPath !== location.pathname) {
+    setMenuPath(location.pathname)
+    setOpenIndex(null)
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

@@ -18,10 +18,13 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
   const [openSection, setOpenSection] = useState<string | null>(null)
   const location = useLocation()
 
-  useEffect(() => {
+  // Close the menu when the page changes (adjusting state during render, not in an effect).
+  const [menuPath, setMenuPath] = useState(location.pathname)
+  if (menuPath !== location.pathname) {
+    setMenuPath(location.pathname)
     setIsOpen(false)
     setOpenSection(null)
-  }, [location.pathname])
+  }
 
   useEffect(() => {
     if (isOpen) {
