@@ -47,7 +47,11 @@ function extractErrorMessage(body: unknown): string | null {
 
 let refreshPromise: Promise<boolean> | null = null
 
-async function refreshSession(): Promise<boolean> {
+/**
+ * Renews the short-lived sign-in cookie with the refresh cookie (one request at a time).
+ * Resolves false once the refresh cookie has expired too, i.e. the user is signed out.
+ */
+export async function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = fetch(`${API_BASE}/api/auth/token/refresh/`, {
       method: 'POST',

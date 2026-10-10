@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, refreshSession } from '@/lib/api/client'
 import type { RegisterInput, User } from '@/types/auth'
 import { AuthContext } from './auth-context'
+
+/** Renew a little before the 5-minute sign-in cookie runs out. */
+const RENEW_EVERY_MS = 4 * 60 * 1000
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -54,6 +57,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [refetch]
   )
+
+  // Keep the session fresh while signed in. The sign-in cookie lasts 5 minutes and is
+  // only renewed when a request is refused; public pages never are, so without this a
+  // signed-in learner who idles for 5 minutes gets the visitor version of public pages.
+  const signedIn = Boolean(user)
+  useEffect(() => {
+    if (!signedIn) return
+    let last = Date.now()
+    const renew = async () => {
+      last = Date.now()
+      if (!(await refreshSession())) await refetch()  // refresh cookie expired too: show as signed out
+    }
+    const timer = window.setInterval(() => { void renew() }, RENEW_EVERY_MS)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - last > RENEW_EVERY_MS) void renew()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [signedIn, refetch])
 
   const logout = useCallback(async () => {
     await apiFetch('/api/auth/logout/', { method: 'POST' })
