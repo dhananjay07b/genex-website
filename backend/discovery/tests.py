@@ -160,7 +160,7 @@ class PublicHomeTests(DiscoveryTestBase):
 
     def test_topic_groups_and_stats(self):
         data = self.home()
-        self.assertEqual(data["topic_groups"][0]["name"], "Renewables")
+        self.assertEqual(data["topic_groups"][0]["name"], "Solar & Renewables")
         self.assertEqual(data["topic_groups"][0]["topics"][0]["name"], "Solar PV")
         self.assertEqual(data["stats"]["courses"], 1)
 
@@ -297,7 +297,7 @@ class ExploreMenuTests(DiscoveryTestBase):
         Company.objects.create(name="Genex Technocrats", slug="genex")
         Company.objects.create(name="Dormant Co", slug="dormant", is_active=False)
         data = self.api.get("/api/discovery/explore/").json()
-        self.assertEqual(data["topic_groups"][0]["name"], "Renewables")
+        self.assertEqual(data["topic_groups"][0]["name"], "Solar & Renewables")
         self.assertEqual(data["roles"][0]["name"], "Solar O&M Engineer")
         self.assertEqual(data["companies"], [{"name": "Genex Technocrats", "slug": "genex"}])
 
@@ -307,7 +307,7 @@ class BrowsePagesTests(DiscoveryTestBase):
 
     def test_topic_page(self):
         data = self.api.get("/api/discovery/topics/solar/").json()
-        self.assertEqual((data["name"], data["group"]), ("Solar PV", "Renewables"))
+        self.assertEqual((data["name"], data["group"]), ("Solar PV", "Solar & Renewables"))
         self.assertTrue(data["description"])
         self.assertEqual([c["title"] for c in data["reading"]], ["Reading an SLD"])
         self.assertIn("Wind Energy", [t["name"] for t in data["related"]])

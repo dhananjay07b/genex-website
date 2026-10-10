@@ -125,9 +125,9 @@ class GeLearnPhase1ContentTests(TestCase):
         from .models import Topic
         api = APIClient()
         rows = {row["name"]: row for row in api.get("/api/snippets/topics/").json()}
-        # Seeded by pages/0039.
-        self.assertEqual(rows["Solar PV"]["group"], "Renewables")
-        self.assertEqual(rows["SCADA & Monitoring"]["group"], "Automation & data")
+        # Seeded by pages/0039, renamed/regrouped 2026-10-10 per the Home Redesign plan's topic list.
+        self.assertEqual(rows["Solar PV"]["group"], "Solar & Renewables")
+        self.assertEqual(rows["SCADA & Monitoring"]["group"], "Monitoring, Automation & IoT")
         Topic.objects.create(name="Ungrouped topic")
         rows = {row["name"]: row for row in api.get("/api/snippets/topics/").json()}
         self.assertIsNone(rows["Ungrouped topic"]["group"])
