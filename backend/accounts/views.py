@@ -1,6 +1,8 @@
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, SocialLoginView
+from dj_rest_auth.views import LogoutView
+from django.contrib.auth import logout as django_logout
 from django.middleware.csrf import get_token
 from rest_framework import serializers, status
 from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateAPIView
@@ -92,6 +94,24 @@ class SocialAccountDisconnectView(DestroyAPIView):
 class GenexRegisterView(RegisterView):
     """dj-rest-auth hardcodes throttle_scope='dj_rest_auth' (disabled) — use our own scope."""
     throttle_scope = "registration"
+
+
+class GenexLogoutView(LogoutView):
+    """
+    Signs the visitor out completely. dj-rest-auth only clears the JWT cookies,
+    but registration, email confirmation and Google sign-in also start a Django
+    session (allauth logs the new user in), and SessionAuthentication keeps
+    accepting it — so after a logout a refresh came back signed in.
+
+    No authentication runs here, so an expired access cookie can't turn the
+    logout into a 401 and leave the visitor stuck signed in.
+    """
+    authentication_classes = []
+
+    def logout(self, request):
+        response = super().logout(request)
+        django_logout(request._request)
+        return response
 
 
 class GenexResendEmailView(ResendEmailVerificationView):

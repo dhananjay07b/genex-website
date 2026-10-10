@@ -388,3 +388,45 @@ class FeaturedProfessionalTests(TestCase):
         api.patch("/api/accounts/me/", {"is_featured": True, "gelearn_rating": "5.0", "featured_order": 1}, format="json")
         pro.refresh_from_db()
         self.assertEqual((pro.is_featured, pro.gelearn_rating, pro.featured_order), (False, None, 0))
+
+
+class LogoutTests(TestCase):
+    """A logout must end every kind of sign-in, so a refresh afterwards comes back signed out."""
+
+    def setUp(self):
+        self.user = make_user("member")
+        self.client = APIClient(enforce_csrf_checks=True)
+
+    def logout_and_reload(self):
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 200)
+        csrf = self.client.cookies["csrftoken"].value
+        self.assertEqual(self.client.post("/api/auth/logout/", HTTP_X_CSRFTOKEN=csrf).status_code, 200)
+        # A browser drops the cookies the logout deleted; the test client keeps them as "".
+        for name in [name for name, cookie in self.client.cookies.items() if not cookie.value]:
+            del self.client.cookies[name]
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 401)
+        self.assertEqual(self.client.post("/api/auth/token/refresh/", HTTP_X_CSRFTOKEN=csrf).status_code, 401)
+
+    def test_email_login(self):
+        self.client.post("/api/auth/login/", {"email": "member@example.org", "password": "Passw0rd!x"}, format="json")
+        self.logout_and_reload()
+
+    def test_registration_session(self):
+        """Registration signs the new user in with a Django session, not the JWT cookies."""
+        self.client.post(
+            "/api/auth/registration/",
+            {"username": "newbie", "email": "newbie@example.org", "password1": "Passw0rd!xyz",
+             "password2": "Passw0rd!xyz", "display_name": "Newbie", "account_type": "learner"},
+            format="json",
+        )
+        self.assertIn("sessionid", self.client.cookies)
+        self.logout_and_reload()
+
+    def test_django_session(self):
+        self.client.force_login(self.user)
+        self.logout_and_reload()
+
+    def test_expired_access_cookie(self):
+        """A stale access cookie must not turn the logout into a 401."""
+        self.client.cookies["genex-auth"] = "expired.or.garbage"
+        self.assertEqual(self.client.post("/api/auth/logout/").status_code, 200)
