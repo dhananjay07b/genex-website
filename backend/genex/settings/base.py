@@ -138,6 +138,11 @@ WAGTAILSEARCH_BACKENDS = {
 
 WAGTAILAPI_LIMIT_MAX = 200
 
+# Django's default (1000) is too low for the CMS: the GeLearn index page's two
+# section lists post a field per block child (every link picker alone is ~10),
+# so saving it raised TooManyFieldsSent. Wagtail's docs recommend 10000.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10_000
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
