@@ -1,11 +1,22 @@
 from .base import *
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 DEBUG = False
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", SECRET_KEY)
+# No fallback: a missing or placeholder key would let anyone forge sign-in
+# tokens and password-reset links, so the server refuses to start instead.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+if len(SECRET_KEY) < 50 or SECRET_KEY.startswith("django-insecure"):
+    raise ImproperlyConfigured(
+        "Set DJANGO_SECRET_KEY to a long random value (50+ characters). Generate one with: "
+        "python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
+    )
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").split(",") if host.strip()]
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured("Set ALLOWED_HOSTS to the site's domains, comma-separated.")
 
 # Lock CORS to the marketing site and the GeLearn subdomain (the only origin that
 # calls the auth/comments/blog-submission endpoints). The .vercel.app entry is

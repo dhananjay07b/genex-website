@@ -10,7 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # load_dotenv() no-ops silently when the file doesn't exist.
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = "django-insecure-change-this-in-production"
+# SECRET_KEY is set per environment: dev.py has a fixed local key, production.py
+# requires DJANGO_SECRET_KEY.
 
 DEBUG = False
 
