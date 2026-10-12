@@ -85,29 +85,32 @@ export function GeLearnHeader() {
 
       {/* Main bar */}
       <div className="relative h-16 border-b border-border bg-white">
-        <div className="mx-auto flex h-full max-w-330 items-center gap-3 px-4 md:gap-4 md:px-6">
+        <div className="mx-auto flex h-full max-w-330 items-center gap-2 px-4 sm:gap-3 md:gap-4 md:px-6">
           <Link
             to="/"
             aria-label="GeLearn home"
             className="flex shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <img src="/brand/gelearn-logo.svg" alt="GeLearn" className="h-8 w-auto sm:h-9" />
+            {/* Phones get the square mark so Explore, search and the account links all fit. */}
+            <img src="/brand/gelearn-icon.svg" alt="GeLearn" className="size-8 sm:hidden" />
+            <img src="/brand/gelearn-logo.svg" alt="GeLearn" className="hidden h-9 w-auto sm:block" />
           </Link>
 
           <ExploreMenu />
           <SearchBox className="hidden flex-1 lg:flex" />
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 lg:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 lg:ml-0">
             <Link to="/search" aria-label="Search" className="flex size-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden">
               <SearchIcon sx={{ fontSize: 22 }} />
             </Link>
             {!isLoading && !user && (
               <>
-                <Link to="/login" state={returnState(location)} className="hidden px-2.5 py-2 text-sm font-bold text-sky-700 hover:text-sky-800 sm:inline-flex">
+                <Link to="/login" state={returnState(location)} className="inline-flex px-2 py-2 text-sm font-bold whitespace-nowrap text-sky-700 hover:text-sky-800 sm:px-2.5">
                   Log in
                 </Link>
-                <Link to="/register" state={returnState(location)} className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'whitespace-nowrap')}>
-                  Join for free
+                <Link to="/register" state={returnState(location)} className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'whitespace-nowrap px-3 sm:px-4')}>
+                  <span className="sm:hidden">Join</span>
+                  <span className="hidden sm:inline">Join for free</span>
                 </Link>
               </>
             )}
