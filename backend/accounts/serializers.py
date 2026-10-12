@@ -218,6 +218,14 @@ class GenexRegisterSerializer(RegisterSerializer):
     def validate_account_type(self, value):
         return validate_account_type_choice(value)
 
+    def validate_email(self, email):
+        # dj-rest-auth only refuses an email that's already *verified*; verification
+        # is optional here, so check every account, ignoring case.
+        email = super().validate_email(email)
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("An account with this email already exists. Log in or reset your password instead.")
+        return email
+
     def validate(self, data):
         data = super().validate(data)
         if data.get("account_type") == User.ACCOUNT_PROFESSIONAL:

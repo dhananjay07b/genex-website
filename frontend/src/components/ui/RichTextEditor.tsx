@@ -1,7 +1,5 @@
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import FormatBoldIcon from '@mui/icons-material/FormatBold'
 import FormatItalicIcon from '@mui/icons-material/FormatItalic'
@@ -34,18 +32,14 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ value, onChange, error, label, variant = 'full', minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
   const basic = variant === 'basic'
+  // StarterKit includes Link and Underline (Tiptap v3); 'basic' switches off what the server would strip.
+  const link = { openOnClick: false, autolink: true }
   const editor = useEditor({
     extensions: basic
-      ? [
-          StarterKit.configure({ heading: { levels: [2, 3, 4] }, code: false, codeBlock: false, strike: false }),
-          Link.configure({ openOnClick: false, autolink: true }),
-        ]
-      : [
-          StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
-          Underline,
-          Link.configure({ openOnClick: false, autolink: true }),
-          Image,
-        ],
+      ? [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link, code: false, codeBlock: false, strike: false, underline: false })]
+      : [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link }), Image],
+    // Re-render on every change so the toolbar's active states (bold, lists…) follow the cursor.
+    shouldRerenderOnTransaction: true,
     content: value,
     onUpdate: ({ editor: e }) => onChange(e.getHTML()),
     editorProps: {

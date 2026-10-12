@@ -493,3 +493,44 @@ class AuthRateLimitTests(TestCase):
         self.assertEqual(parse(None, "10/15m"), (10, 900))
         self.assertEqual(parse(None, "5/hour"), (5, 3600))
         self.assertEqual(parse(None, "3/2h"), (3, 7200))
+
+
+class DuplicateEmailTests(TestCase):
+    """One account per email, ignoring case, however the existing account was made."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # registration is throttled per IP
+        self.client = APIClient()
+
+    def _register(self, email, username="newperson"):
+        return self.client.post("/api/auth/registration/", {
+            "username": username, "email": email, "password1": "Str0ng!Passw0rd", "password2": "Str0ng!Passw0rd",
+        }, format="json")
+
+    def test_email_of_account_without_an_email_record_is_refused(self):
+        make_user("scripted", email="scripted@example.org")  # e.g. created in admin or by a script
+        res = self._register("scripted@example.org")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("already exists", res.json()["email"][0])
+
+    def test_email_of_unverified_signup_is_refused(self):
+        self.assertEqual(self._register("first@example.org", username="first").status_code, 201)
+        res = self._register("first@example.org", username="second")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(User.objects.filter(email__iexact="first@example.org").count(), 1)
+
+    def test_check_ignores_case(self):
+        make_user("mixed", email="Mixed.Case@Example.org")
+        self.assertEqual(self._register("mixed.case@example.org").status_code, 400)
+
+    def test_database_refuses_a_duplicate_from_any_path(self):
+        from django.db import IntegrityError, transaction
+        make_user("one", email="same@example.org")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(username="two", email="SAME@example.org", password="x")
+
+    def test_blank_emails_are_not_treated_as_duplicates(self):
+        User.objects.create_user(username="noemail1", email="", password="x")
+        User.objects.create_user(username="noemail2", email="", password="x")
+        self.assertEqual(User.objects.filter(email="").count(), 2)

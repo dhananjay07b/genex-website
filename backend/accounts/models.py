@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 
 
 def get_default_tier_id():
@@ -85,6 +86,16 @@ class User(AbstractUser):
         validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("5"))],
         help_text="0.0 to 5.0, set by Genex. Shown on the Professional's cards.",
     )
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            # One account per email, ignoring case — whichever way the account is
+            # made (sign-up, Google, admin, scripts). Blank emails are allowed.
+            models.UniqueConstraint(
+                Lower("email"), condition=~models.Q(email=""), name="accounts_user_email_ci_unique",
+                violation_error_message="Another account already uses this email.",
+            ),
+        ]
 
     def __str__(self):
         return self.display_name or self.username
