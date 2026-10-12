@@ -10,7 +10,7 @@ CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Emails print to this terminal unless EMAIL_HOST is set in backend/.env (base.py).
 
 # Looser auth throttles locally so testing sign-ups doesn't lock you out.
 REST_FRAMEWORK = {

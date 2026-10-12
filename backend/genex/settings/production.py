@@ -49,6 +49,13 @@ SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
 CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
 REST_AUTH = {**REST_AUTH, "JWT_AUTH_SECURE": True, "JWT_AUTH_COOKIE_DOMAIN": COOKIE_DOMAIN}
 
+# --- Email -----------------------------------------------------------------
+# SMTP settings come from base.py. Without a host every email (password resets,
+# verification, enquiry copies) would be lost, so the server refuses to start.
+if not EMAIL_HOST:
+    raise ImproperlyConfigured("Set EMAIL_HOST (and EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) to your email provider's SMTP details.")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
 # Lock CORS to the marketing site and the GeLearn subdomain (the only origin that
 # calls the auth/comments/blog-submission endpoints). The .vercel.app entry is
 # the temporary pre-launch deployment — drop it once the real domains are live

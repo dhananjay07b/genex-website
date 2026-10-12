@@ -226,3 +226,22 @@ SOCIALACCOUNT_PROVIDERS = {
 # admin and a copy is emailed here.
 ENQUIRY_EMAIL = os.environ.get("ENQUIRY_EMAIL", "info@genextechnocrats.com")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "GeLearn by Genex <no-reply@genextechnocrats.com>")
+
+# --- Email delivery (SMTP) ---------------------------------------------------
+# Any provider with SMTP works (Hostinger, Zoho, Google Workspace, SES, Brevo…).
+# With no EMAIL_HOST, emails are printed to the terminal instead of sent —
+# the local default; production.py refuses to start without one.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "").strip()
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+# Port 465 uses SSL from the start; 587 upgrades with STARTTLS.
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", str(EMAIL_PORT == 465)).lower() == "true"
+EMAIL_USE_TLS = not EMAIL_USE_SSL and os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+# Emails go out during the request (sign-up, reset, contact form): don't let a
+# slow mail server hang them for minutes.
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
