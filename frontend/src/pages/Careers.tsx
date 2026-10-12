@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
+import { CTABand } from '@/components/ui/CTABand'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
@@ -214,38 +214,17 @@ export default function Careers() {
         </div>
       </section>
 
-      {/* Open application CTA */}
-      <section className="bg-brand-tint py-20 lg:py-28">
-        <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.5, ease: 'easeOut' as const }}
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-4">
-              Open Application
-            </p>
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-text-primary leading-tight mb-4">
-              {cta?.heading ?? "Don't see your role listed?"}
-            </h2>
-            <p className="text-base text-text-muted leading-relaxed mb-10 max-w-lg mx-auto">
-              {cta?.description ?? "We hire for exceptional engineers and domain experts regardless of open postings. Send us your CV and a short note on what you'd like to build."}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href={`mailto:careers@genextechnocrats.com?subject=${subject}`}
-                rel="noopener noreferrer"
-              >
-                <Button variant="primary" size="lg">{cta?.primary_cta_text ?? 'Send Your Profile'}</Button>
-              </a>
-              <SmartLink to={cta?.secondary_cta_link ?? '/contact'}>
-                <Button variant="secondary" size="lg">{cta?.secondary_cta_text ?? 'Contact Us'}</Button>
-              </SmartLink>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      {/* Open application CTA — CMS text/links win; empty fields fall back to these. */}
+      <CTABand
+        cta={cta}
+        eyebrow="Open Application"
+        heading="Don't see your role listed?"
+        description="We hire for exceptional engineers and domain experts regardless of open postings. Send us your CV and a short note on what you'd like to build."
+        primaryText="Send Your Profile"
+        primaryLink={`mailto:careers@genextechnocrats.com?subject=${subject}`}
+        secondaryText="Contact Us"
+        secondaryLink="/contact"
+      />
     </main>
   )
 }

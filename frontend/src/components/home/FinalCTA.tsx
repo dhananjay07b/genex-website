@@ -25,7 +25,7 @@ export function FinalCTA({ cta }: FinalCTAProps) {
           viewport={{ once: true }}
           transition={{ duration: 0.55, delay: 0.1 }}
         >
-          {cta?.heading ?? 'Ready to build smarter infrastructure?'}
+          {cta?.heading || 'Ready to build smarter infrastructure?'}
         </motion.h2>
 
         <motion.p
@@ -35,7 +35,7 @@ export function FinalCTA({ cta }: FinalCTAProps) {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          {cta?.description ?? 'Talk to our engineering team — no sales pitch.'}
+          {cta?.description || 'Talk to our engineering team — no sales pitch.'}
         </motion.p>
 
         <motion.div
@@ -46,10 +46,10 @@ export function FinalCTA({ cta }: FinalCTAProps) {
           className="mt-10"
         >
           <SmartLink
-            to={cta?.primary_cta_link ?? '/contact#demo'}
+            to={cta?.primary_cta_link || '/contact#demo'}
             className={buttonVariants({ variant: 'dark', size: 'lg' })}
           >
-            {cta?.primary_cta_text ?? 'Request Demo'}
+            {cta?.primary_cta_text || 'Request Demo'}
           </SmartLink>
         </motion.div>
       </motion.div>

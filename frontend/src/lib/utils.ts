@@ -14,9 +14,13 @@ export function getMediaUrl(url: string | null | undefined): string {
   return `${API_BASE}${url}`
 }
 
-/** True for an absolute URL (e.g. a cross-origin GeLearn subdomain link) vs an internal route. */
+/**
+ * True for an address the router can't handle — an absolute URL (e.g. the
+ * cross-origin GeLearn subdomain) or a mailto:/tel: link — so it needs a plain
+ * <a>; false for an internal route.
+ */
 export function isExternalHref(href: string): boolean {
-  return /^https?:\/\//i.test(href)
+  return /^(https?:\/\/|mailto:|tel:)/i.test(href)
 }
 
 /** YouTube/Vimeo watch URL → its embeddable iframe URL, or null if it's neither (e.g. a direct file/CDN link). */

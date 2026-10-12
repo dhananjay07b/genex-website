@@ -82,9 +82,11 @@ async function request<T>(path: string, options: ApiOptions = {}, isRetry = fals
     // after a refresh, before this was added).
     cache: 'no-store',
     headers: {
-      // Omitted for FormData — the browser sets multipart/form-data with the
-      // correct boundary itself; a manual Content-Type here breaks the upload.
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      // Only when there's a JSON body. Omitted for FormData — the browser sets
+      // multipart/form-data with the correct boundary itself. Omitted for GETs:
+      // the API is on another origin, and the header alone would make the
+      // browser send an extra CORS preflight (OPTIONS) before every read.
+      ...(isFormData || options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(isMutation ? { 'X-CSRFToken': getCookie('csrftoken') ?? '' } : {}),
       ...options.headers,
     },

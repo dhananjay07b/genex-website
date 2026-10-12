@@ -12,7 +12,8 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonVariants } from '@/components/ui/Button'
+import { SmartLink } from '@/components/ui/SmartLink'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
@@ -350,15 +351,16 @@ export default function Contact() {
               </p>
             )}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {cta.primary_cta_text && (
-                <a href={cta.primary_cta_link ?? '#'}>
-                  <Button variant="primary" size="lg">{cta.primary_cta_text}</Button>
-                </a>
+              {/* A button needs both its text and a link from the CMS; otherwise it's left out. */}
+              {cta.primary_cta_text && cta.primary_cta_link && (
+                <SmartLink to={cta.primary_cta_link} className={buttonVariants({ variant: 'primary', size: 'lg' })}>
+                  {cta.primary_cta_text}
+                </SmartLink>
               )}
-              {cta.secondary_cta_text && (
-                <a href={cta.secondary_cta_link ?? '#'}>
-                  <Button variant="secondary" size="lg">{cta.secondary_cta_text}</Button>
-                </a>
+              {cta.secondary_cta_text && cta.secondary_cta_link && (
+                <SmartLink to={cta.secondary_cta_link} className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+                  {cta.secondary_cta_text}
+                </SmartLink>
               )}
             </div>
           </div>
