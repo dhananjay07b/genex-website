@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { renderStreamField } from '@/lib/streamfield/renderStreamField'
-import { blockRegistry } from '@/lib/streamfield/blockRegistry'
+import { blockRegistry, pageHeadingBlockId } from '@/lib/streamfield/blockRegistry'
+import { PageHero } from '@/components/ui/PageHero'
 import { resolveContentPage } from '@/lib/streamfield/resolveContentPage'
 import type { ContentPageData } from '@/types/api'
 
@@ -37,6 +38,7 @@ export default function DynamicContentPage({ sectionSlug, fallbackPath }: Dynami
   if (page === undefined) return null
 
   const body = page.hide_footer_cta ? page.body.filter(b => b.type !== 'cta') : page.body
+  const headingBlock = pageHeadingBlockId(body)
 
   return (
     <main>
@@ -46,7 +48,9 @@ export default function DynamicContentPage({ sectionSlug, fallbackPath }: Dynami
         canonical={location.pathname}
         image={page.icon_url}
       />
-      {renderStreamField(body, blockRegistry)}
+      {/* Nothing in the body gives the page its <h1> (e.g. no hero yet) — show the page title. */}
+      {!headingBlock && <PageHero label={sectionSlug.charAt(0).toUpperCase() + sectionSlug.slice(1)} headline={page.title} subline={page.search_description || undefined} />}
+      {renderStreamField(body, blockRegistry, headingBlock)}
     </main>
   )
 }

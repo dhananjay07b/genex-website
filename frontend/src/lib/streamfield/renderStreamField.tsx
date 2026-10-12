@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import type { StreamBlock } from '@/types/api'
 
-export type BlockComponentMap = Record<string, ComponentType<{ value: unknown; blockId: string }>>
+export type BlockComponentMap = Record<string, ComponentType<{ value: unknown; blockId: string; isPageHeading?: boolean }>>
 
 /**
  * Renders a heterogeneous StreamField `body` array by looking up each block's
@@ -12,6 +12,8 @@ export type BlockComponentMap = Record<string, ComponentType<{ value: unknown; b
 export function renderStreamField(
   body: StreamBlock<unknown>[] | undefined,
   componentMap: BlockComponentMap,
+  /** The block whose heading is the page's <h1> (see pageHeadingBlockId in blockRegistry). */
+  pageHeadingBlockId?: string | null,
 ): ReactNode[] {
   if (!body) return []
   return body.map((block) => {
@@ -22,6 +24,6 @@ export function renderStreamField(
       }
       return null
     }
-    return <Component key={block.id} value={block.value} blockId={block.id} />
+    return <Component key={block.id} value={block.value} blockId={block.id} isPageHeading={block.id === pageHeadingBlockId} />
   })
 }

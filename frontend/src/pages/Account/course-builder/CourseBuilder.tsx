@@ -184,6 +184,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
 
   const revision = course?.revision ?? null
   const heading = isEditing ? 'Edit course' : 'New course'
+  const PageHeading = isCompany ? 'h2' : 'h1'
   const chip = status ? STATUS_CHIP[status] : null
   const Shell = isCompany ? 'div' : 'main'
 
@@ -195,7 +196,8 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
       <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16')}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</p>
+            {/* Company Studio's layout already has the page <h1> (the company name). */}
+            <PageHeading className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</PageHeading>
             {chip && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${chip.className}`}>{chip.label}</span>}
             {notice && <span role="status" className="text-xs font-bold text-emerald-700">{notice}</span>}
           </div>

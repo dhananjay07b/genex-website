@@ -148,9 +148,9 @@ export default function SubmitPost() {
         {status === 'success' ? (
           <div className="flex flex-col items-center text-center py-16 bg-white rounded-2xl shadow-sm border border-border">
             <CheckCircleIcon className="w-14 h-14 text-secondary mb-6" />
-            <h2 className="text-2xl font-extrabold text-text-primary mb-3">
+            <h1 className="text-2xl font-extrabold text-text-primary mb-3">
               {isEditing ? 'Changes saved.' : 'Submission received.'}
-            </h2>
+            </h1>
             <p className="text-text-muted max-w-sm leading-relaxed mb-6">
               Our editorial team will review your post. You can track its status from your account page.
             </p>
@@ -161,7 +161,7 @@ export default function SubmitPost() {
             {/* Editor column */}
             <div className="flex-1 min-w-0 w-full bg-white border border-border rounded-3xl shadow-sm p-6 lg:p-8">
               <div className="flex items-center justify-between gap-3 mb-4">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">{isEditing ? 'Edit Post' : 'Submit a Post'}</p>
+                <h1 className="text-xs font-bold uppercase tracking-widest text-primary">{isEditing ? 'Edit Post' : 'Submit a Post'}</h1>
                 <Link
                   to="/account"
                   className="flex items-center gap-1.5 border border-border rounded-full px-4 py-2 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors"

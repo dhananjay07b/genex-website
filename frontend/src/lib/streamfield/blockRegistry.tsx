@@ -53,6 +53,7 @@ import type {
   TeamSectionApiValue,
   VisionMissionCardApiValue,
   CertificationApiValue,
+  StreamBlock,
 } from '@/types/api'
 
 /**
@@ -67,8 +68,8 @@ export const blockRegistry: BlockComponentMap = {
   hero: ({ value }) => <HeroBlockSection value={value as HeroSectionApiValue} />,
   intro: ({ value }) => <IntroductionNoteSection {...(value as IntroductionSectionValue)} />,
   card_section: ({ value }) => <CardGridSection value={value as CardGridSectionValue} />,
-  portfolio_section: ({ value }) => <PortfolioSection value={value as PortfolioSectionValue} />,
-  innovations_section: ({ value }) => <InnovationsSection value={value as InnovationsSectionValue} />,
+  portfolio_section: ({ value, isPageHeading }) => <PortfolioSection value={value as PortfolioSectionValue} isPageHeading={isPageHeading} />,
+  innovations_section: ({ value, isPageHeading }) => <InnovationsSection value={value as InnovationsSectionValue} isPageHeading={isPageHeading} />,
   stats: ({ value }) => <StatsGridSection {...(value as StatsGridSectionValue)} />,
   side_section: ({ value }) => <SideImageSection value={value as SideImageSectionValue} />,
   overview: ({ value }) => <OverviewSection {...(value as OverviewSectionValue)} />,
@@ -95,4 +96,20 @@ export const blockRegistry: BlockComponentMap = {
   leader: ({ value }) => <LeaderSection value={value as LeaderApiValue} />,
   team_section: ({ value }) => <TeamGridSection value={value as TeamSectionApiValue} />,
   cta: ({ value }) => <CTABandBlockSection value={value as CTABandValue} />,
+}
+
+// Listing blocks whose own heading can serve as the page's <h1> when they open the page.
+const LISTING_HEADING_BLOCKS = new Set(['portfolio_section', 'innovations_section'])
+
+/**
+ * Every Section/Content page needs exactly one <h1>. A hero block always renders
+ * one ('hero'); otherwise a listing block that opens the page lends its heading
+ * (its block id). null means nothing in the body provides one — the page must
+ * render its own title.
+ */
+export function pageHeadingBlockId(body: StreamBlock<unknown>[]): string | null {
+  if (body.some(b => b.type === 'hero')) return 'hero'
+  const first = body[0]
+  if (first && LISTING_HEADING_BLOCKS.has(first.type) && (first.value as { heading?: string } | null)?.heading) return first.id
+  return null
 }

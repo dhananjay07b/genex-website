@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { apiFetch } from '@/lib/api/client'
 import { renderStreamField } from '@/lib/streamfield/renderStreamField'
-import { blockRegistry } from '@/lib/streamfield/blockRegistry'
+import { blockRegistry, pageHeadingBlockId } from '@/lib/streamfield/blockRegistry'
+import { PageHero } from '@/components/ui/PageHero'
+import NotFound from './NotFound'
 import type { SectionPageData, WagtailListResponse } from '@/types/api'
 
 interface DynamicSectionPageProps {
@@ -27,17 +29,22 @@ export default function DynamicSectionPage({ sectionSlug, fallbackTitle, fallbac
   const page = loaded?.slug === sectionSlug ? loaded.page : undefined
 
   if (page === undefined) return null
+  // Not created (or not published) in the CMS yet: say so instead of a blank page.
+  if (page === null) return <NotFound />
 
-  const body = page?.hide_footer_cta ? (page?.body ?? []).filter(b => b.type !== 'cta') : page?.body ?? []
+  const body = page.hide_footer_cta ? page.body.filter(b => b.type !== 'cta') : page.body
+  const headingBlock = pageHeadingBlockId(body)
 
   return (
     <main>
       <PageMeta
-        title={page?.seo_title || fallbackTitle}
-        description={page?.search_description || fallbackDescription}
+        title={page.seo_title || fallbackTitle}
+        description={page.search_description || fallbackDescription}
         canonical={`/${sectionSlug}`}
       />
-      {renderStreamField(body, blockRegistry)}
+      {/* Nothing in the body gives the page its <h1> — show the page title. */}
+      {!headingBlock && <PageHero label="Genex Technocrats" headline={page.title} subline={page.search_description || undefined} />}
+      {renderStreamField(body, blockRegistry, headingBlock)}
     </main>
   )
 }
