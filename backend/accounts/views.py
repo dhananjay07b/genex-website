@@ -1,7 +1,7 @@
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, SocialLoginView
-from dj_rest_auth.views import LogoutView
+from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.contrib.auth import logout as django_logout
 from django.middleware.csrf import get_token
 from rest_framework import serializers, status
@@ -10,6 +10,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .serializers import UserSerializer
+from .throttles import (
+    LoginIPThrottle,
+    LoginThrottle,
+    PasswordChangeThrottle,
+    PasswordResetConfirmThrottle,
+    PasswordResetThrottle,
+)
 
 
 class MeView(RetrieveUpdateAPIView):
@@ -44,6 +51,7 @@ class GoogleLoginView(SocialLoginView):
     the same JWT-cookie flow as email/password login.
     """
     adapter_class = GoogleOAuth2Adapter
+    throttle_classes = [LoginIPThrottle]
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):
@@ -94,6 +102,23 @@ class SocialAccountDisconnectView(DestroyAPIView):
 class GenexRegisterView(RegisterView):
     """dj-rest-auth hardcodes throttle_scope='dj_rest_auth' (disabled) — use our own scope."""
     throttle_scope = "registration"
+
+
+# dj-rest-auth's own views use the disabled "dj_rest_auth" scope; these add attempt limits.
+class GenexLoginView(LoginView):
+    throttle_classes = [LoginThrottle, LoginIPThrottle]
+
+
+class GenexPasswordResetView(PasswordResetView):
+    throttle_classes = [PasswordResetThrottle]
+
+
+class GenexPasswordResetConfirmView(PasswordResetConfirmView):
+    throttle_classes = [PasswordResetConfirmThrottle]
+
+
+class GenexPasswordChangeView(PasswordChangeView):
+    throttle_classes = [PasswordChangeThrottle]
 
 
 class GenexLogoutView(LogoutView):

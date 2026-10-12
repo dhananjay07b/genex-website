@@ -57,6 +57,7 @@ export function SettingsTab() {
   const [newPassword1, setNewPassword1] = useState('')
   const [newPassword2, setNewPassword2] = useState('')
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [passwordError, setPasswordError] = useState('')
 
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
@@ -223,7 +224,8 @@ export function SettingsTab() {
       setOldPassword('')
       setNewPassword1('')
       setNewPassword2('')
-    } catch {
+    } catch (err) {
+      setPasswordError(err instanceof ApiError && err.status === 429 ? err.message : "Couldn't update password.")
       setPasswordStatus('error')
     }
   }
@@ -485,7 +487,7 @@ export function SettingsTab() {
                 {passwordStatus === 'saving' ? 'Updating…' : 'Update Password'}
               </Button>
               {passwordStatus === 'saved' && <span className="text-xs font-semibold text-secondary">Password updated.</span>}
-              {passwordStatus === 'error' && <span className="text-xs font-semibold text-red-600">Couldn&apos;t update password.</span>}
+              {passwordStatus === 'error' && <span role="alert" className="text-xs font-semibold text-red-600">{passwordError}</span>}
             </div>
           </div>
         </div>

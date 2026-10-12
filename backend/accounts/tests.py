@@ -430,3 +430,66 @@ class LogoutTests(TestCase):
         """A stale access cookie must not turn the logout into a 401."""
         self.client.cookies["genex-auth"] = "expired.or.garbage"
         self.assertEqual(self.client.post("/api/auth/logout/").status_code, 200)
+
+
+class AuthRateLimitTests(TestCase):
+    """Login and password endpoints allow 10 attempts per 15 minutes, then a plain-language 429."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient(enforce_csrf_checks=False)
+        self.user = make_user("ratelimit")
+
+    def _login(self, email, password="wrong-password", ip="10.0.0.1"):
+        return self.client.post("/api/auth/login/", {"email": email, "password": password}, format="json", REMOTE_ADDR=ip)
+
+    def test_eleventh_login_attempt_is_refused_with_a_clear_message(self):
+        for _ in range(10):
+            self.assertEqual(self._login(self.user.email).status_code, 400)
+        res = self._login(self.user.email, password="Passw0rd!x")  # even the right password
+        self.assertEqual(res.status_code, 429)
+        self.assertRegex(res.json()["detail"], r"^Too many attempts\. Please try again in (a minute|\d+ minutes)\.$")
+        self.assertIn("Retry-After", res)
+
+    def test_limit_is_per_email_and_network(self):
+        for _ in range(10):
+            self._login(self.user.email)
+        other = make_user("colleague")
+        self.assertEqual(self._login(other.email, password="Passw0rd!x").status_code, 200)  # same office IP
+        self.assertEqual(self._login(self.user.email, password="Passw0rd!x", ip="10.0.0.2").status_code, 200)
+
+    def test_faked_forwarded_for_header_does_not_reset_the_count(self):
+        for i in range(10):
+            self.client.post("/api/auth/login/", {"email": self.user.email, "password": "x"}, format="json",
+                             REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR=f"1.2.3.{i}")
+        res = self.client.post("/api/auth/login/", {"email": self.user.email, "password": "x"}, format="json",
+                               REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="9.9.9.9")
+        self.assertEqual(res.status_code, 429)
+
+    def test_password_reset_request_is_limited(self):
+        for _ in range(10):
+            res = self.client.post("/api/auth/password/reset/", {"email": self.user.email}, format="json")
+            self.assertEqual(res.status_code, 200)
+        res = self.client.post("/api/auth/password/reset/", {"email": self.user.email}, format="json")
+        self.assertEqual(res.status_code, 429)
+
+    def test_password_reset_confirm_is_limited(self):
+        body = {"uid": "x", "token": "y", "new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!"}
+        for _ in range(10):
+            self.assertEqual(self.client.post("/api/auth/password/reset/confirm/", body, format="json").status_code, 400)
+        self.assertEqual(self.client.post("/api/auth/password/reset/confirm/", body, format="json").status_code, 429)
+
+    def test_password_change_is_limited_per_user(self):
+        self.client.force_authenticate(self.user)
+        body = {"old_password": "wrong", "new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!"}
+        for _ in range(10):
+            self.client.post("/api/auth/password/change/", body, format="json")
+        self.assertEqual(self.client.post("/api/auth/password/change/", body, format="json").status_code, 429)
+
+    def test_window_rate_parsing(self):
+        from .throttles import WindowRateThrottle
+        parse = WindowRateThrottle.parse_rate
+        self.assertEqual(parse(None, "10/15m"), (10, 900))
+        self.assertEqual(parse(None, "5/hour"), (5, 3600))
+        self.assertEqual(parse(None, "3/2h"), (3, 7200))

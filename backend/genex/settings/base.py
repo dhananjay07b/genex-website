@@ -153,15 +153,23 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "EXCEPTION_HANDLER": "genex.exceptions.api_exception_handler",
+    # How many proxies sit in front of Django. 0 = use the connection's own IP and
+    # ignore X-Forwarded-For, which a visitor can fake to dodge every rate limit.
+    # Production sets this to the real proxy count (production.py).
+    "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "0")),
     "DEFAULT_THROTTLE_RATES": {
         "registration": "5/hour",
         "resend-email": "3/hour",
-        # None (not removed) — dj-rest-auth's Login/Logout/PasswordChange/
-        # PasswordReset views all hardcode throttle_scope="dj_rest_auth", so
-        # the scope must stay registered; a missing key raises
-        # ImproperlyConfigured, but an explicit None rate disables the
-        # throttle cleanly (DRF's documented way to opt a scope out).
+        # None (not removed) — dj-rest-auth's views all hardcode
+        # throttle_scope="dj_rest_auth", so the scope must stay registered; our
+        # overrides in accounts/views.py set real limits (accounts/throttles.py).
         "dj_rest_auth": None,
+        "login": "10/15m",
+        "login-ip": "50/15m",
+        "password-reset": "10/15m",
+        "password-reset-confirm": "10/15m",
+        "password-change": "10/15m",
         "comment-create": "20/hour",
         "blog-submission": "5/day",
         "video-submission": "5/day",

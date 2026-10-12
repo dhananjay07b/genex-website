@@ -10,7 +10,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { AuthLayout } from './AuthLayout'
 
 const schema = z.object({
@@ -21,6 +21,7 @@ type FormData = z.infer<typeof schema>
 
 export default function ForgotPassword() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'sent'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const {
     register,
@@ -33,7 +34,9 @@ export default function ForgotPassword() {
     try {
       await apiFetch('/api/auth/password/reset/', { method: 'POST', body: { email: data.email } })
       setStatus('sent')
-    } catch {
+    } catch (err) {
+      // 429: too many requests; the server says when to try again.
+      setErrorMessage(err instanceof ApiError && err.status === 429 ? err.message : 'Something went wrong. Please try again.')
       setStatus('error')
     }
   }
@@ -86,7 +89,7 @@ export default function ForgotPassword() {
               <Input label="Email" type="email" placeholder="rahul@company.com" error={errors.email?.message} {...register('email')} />
 
               {status === 'error' && (
-                <p className="text-sm text-red-500">Something went wrong. Please try again.</p>
+                <p role="alert" className="text-sm text-red-500">{errorMessage}</p>
               )}
 
               <Button type="submit" variant="primary" size="lg" disabled={status === 'loading'} className="w-full justify-center mt-2">

@@ -10,7 +10,7 @@ import LockResetOutlinedIcon from '@mui/icons-material/LockResetOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { AuthLayout } from './AuthLayout'
 
 const schema = z
@@ -25,10 +25,13 @@ const schema = z
 
 type FormData = z.infer<typeof schema>
 
+const INVALID_LINK = 'This reset link is invalid or has expired. Request a new one below.'
+
 export default function ResetPasswordConfirm() {
   const { uid, token } = useParams<{ uid: string; token: string }>()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'done'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const {
     register,
@@ -38,6 +41,7 @@ export default function ResetPasswordConfirm() {
 
   async function onSubmit(data: FormData) {
     if (!uid || !token) {
+      setErrorMessage(INVALID_LINK)
       setStatus('error')
       return
     }
@@ -48,7 +52,8 @@ export default function ResetPasswordConfirm() {
         body: { uid, token, new_password1: data.password1, new_password2: data.password2 },
       })
       setStatus('done')
-    } catch {
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError && err.status === 429 ? err.message : INVALID_LINK)
       setStatus('error')
     }
   }
@@ -102,7 +107,7 @@ export default function ResetPasswordConfirm() {
               <PasswordInput label="Confirm New Password" placeholder="Re-enter password" error={errors.password2?.message} {...register('password2')} />
 
               {status === 'error' && (
-                <p className="text-sm text-red-500">This reset link is invalid or has expired. Request a new one below.</p>
+                <p role="alert" className="text-sm text-red-500">{errorMessage}</p>
               )}
 
               <Button type="submit" variant="primary" size="lg" disabled={status === 'loading'} className="w-full justify-center mt-2">

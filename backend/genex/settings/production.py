@@ -22,6 +22,10 @@ if not ALLOWED_HOSTS:
 # calls the auth/comments/blog-submission endpoints). The .vercel.app entry is
 # the temporary pre-launch deployment — drop it once the real domains are live
 # on the in-house server, by overriding CORS_ALLOWED_ORIGINS via env var.
+# The server sits behind one reverse proxy (nginx), whose X-Forwarded-For entry
+# is the visitor's real IP for rate limits. Set NUM_PROXIES if that changes.
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1"))}
+
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
     "https://genextechnocrats.vercel.app,https://genextechnocrats.com,https://gelearn.genextechnocrats.com",
