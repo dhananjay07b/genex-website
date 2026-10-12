@@ -18,14 +18,41 @@ ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").sp
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("Set ALLOWED_HOSTS to the site's domains, comma-separated.")
 
+# Reverse proxies in front of Django (nginx, Apache, Caddy, IIS, a host's load
+# balancer — any of them). Each must send X-Forwarded-For and X-Forwarded-Proto.
+# 1 is the usual setup; 2 for a cloud load balancer plus a proxy on the server;
+# 0 if Django faces the internet directly. Visitor IPs for rate limits come from this.
+NUM_PROXIES = int(os.environ.get("NUM_PROXIES", "1"))
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": NUM_PROXIES}
+
+# --- HTTPS -----------------------------------------------------------------
+# The proxy handles TLS and tells Django the original scheme; without this,
+# Django would treat every request as plain HTTP and redirect forever. With no
+# proxy the header isn't trusted, since a visitor could fake it.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if NUM_PROXIES else None
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "true").lower() == "true"
+# Browsers remember to use HTTPS only. Subdomains and preload stay off until
+# every *.genextechnocrats.com host is confirmed to serve HTTPS — they're hard to undo.
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "false").lower() == "true"
+
+# --- Cookies ---------------------------------------------------------------
+# Sent over HTTPS only. The csrftoken cookie stays readable by JavaScript: the
+# frontend copies it into the X-CSRFToken header (lib/api/client.ts).
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+# The API and the frontends live on different subdomains, so the frontend can
+# only read csrftoken if it's shared across them: set COOKIE_DOMAIN to
+# ".genextechnocrats.com" (leading dot) once the real domains are live.
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN") or None
+SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+REST_AUTH = {**REST_AUTH, "JWT_AUTH_SECURE": True, "JWT_AUTH_COOKIE_DOMAIN": COOKIE_DOMAIN}
+
 # Lock CORS to the marketing site and the GeLearn subdomain (the only origin that
 # calls the auth/comments/blog-submission endpoints). The .vercel.app entry is
 # the temporary pre-launch deployment — drop it once the real domains are live
 # on the in-house server, by overriding CORS_ALLOWED_ORIGINS via env var.
-# The server sits behind one reverse proxy (nginx), whose X-Forwarded-For entry
-# is the visitor's real IP for rate limits. Set NUM_PROXIES if that changes.
-REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1"))}
-
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
     "https://genextechnocrats.vercel.app,https://genextechnocrats.com,https://gelearn.genextechnocrats.com",
