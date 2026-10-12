@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "commerce",
     "studio",
     "learning",
+    "enquiries",
     "comments",
     "engagement",
     "discovery",
@@ -165,6 +166,7 @@ REST_FRAMEWORK = {
         "video-submission": "5/day",
         "view-track": "120/hour",
         "search": "60/minute",
+        "enquiry": "10/hour",
     },
 }
 
@@ -209,3 +211,9 @@ SOCIALACCOUNT_PROVIDERS = {
         "SCOPE": ["profile", "email"],
     },
 }
+
+# --- Contact form ----------------------------------------------------------
+# Website enquiries (Contact page, Careers applications) are saved in Django
+# admin and a copy is emailed here.
+ENQUIRY_EMAIL = os.environ.get("ENQUIRY_EMAIL", "info@genextechnocrats.com")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "GeLearn by Genex <no-reply@genextechnocrats.com>")

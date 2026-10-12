@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,18 +13,23 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
 
 const schema = z.object({
   name:        z.string().min(2, 'Name is required'),
-  company:     z.string().min(1, 'Company name is required'),
+  company:     z.string(),  // required for enquiries, optional for job applications (checked on submit)
   email:       z.string().email('Enter a valid email address'),
   phone:       z.string().regex(/^[+\d\s\-()]{7,}$/, 'Enter a valid phone number'),
   projectType: z.string().min(1, 'Please select a project type'),
   message:     z.string().min(10, 'Message must be at least 10 characters'),
+  // Hidden from people; bots that fill every field give themselves away.
+  website:     z.string().optional(),
 })
+
+/** Careers → Apply opens this form with ?subject=Application: <role>; those get their own type. */
+const JOB_APPLICATION = { value: 'job-application', label: 'Job application' }
 
 type FormData = z.infer<typeof schema>
 
@@ -52,6 +58,10 @@ interface ContactPageData {
 
 export default function Contact() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [searchParams] = useSearchParams()
+  const subject = (searchParams.get('subject') ?? '').slice(0, 200)
+  const isApplication = subject.startsWith('Application:')
   const [page, setPage] = useState<ContactPageData | null | undefined>(undefined)
 
   useEffect(() => {
@@ -63,25 +73,48 @@ export default function Contact() {
   const body = page?.body ?? []
   const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
   const contactDetails = (body.find(b => b.type === 'contact_details')?.value as ContactDetailApiValue[] | undefined) ?? []
-  const projectTypes = (body.find(b => b.type === 'project_types')?.value as ProjectTypeApiValue[] | undefined) ?? []
+  const cmsProjectTypes = (body.find(b => b.type === 'project_types')?.value as ProjectTypeApiValue[] | undefined) ?? []
+  const projectTypes = isApplication ? [JOB_APPLICATION, ...cmsProjectTypes] : cmsProjectTypes
   const map = body.find(b => b.type === 'map')?.value as MapEmbedApiValue | undefined
   const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
 
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { projectType: isApplication ? JOB_APPLICATION.value : '' },
   })
 
   async function onSubmit(data: FormData) {
+    if (!isApplication && !data.company.trim()) {
+      setError('company', { message: 'Company name is required' })
+      return
+    }
     setStatus('loading')
+    setErrorMessage('')
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200))
-      console.log('Form data:', data)
+      // Saved in Django admin (Enquiries) and emailed to the Genex inbox.
+      await apiFetch('/api/enquiries/', {
+        method: 'POST',
+        body: {
+          name: data.name,
+          company: data.company,
+          email: data.email,
+          phone: data.phone,
+          project_type: projectTypes.find(t => t.value === data.projectType)?.label ?? data.projectType,
+          subject,
+          message: data.message,
+          website: data.website ?? '',
+        },
+      })
       setStatus('success')
-    } catch {
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError && err.status === 429
+        ? "You've sent several messages already. Please try again in an hour, or email us directly at"
+        : err instanceof ApiError && err.status === 400 ? `${err.message} If this keeps happening, email us at` : 'Something went wrong. Email us directly at')
       setStatus('error')
     }
   }
@@ -132,7 +165,14 @@ export default function Contact() {
                     noValidate
                     className="space-y-6"
                   >
-                    <h2 className="text-xl font-bold text-text-primary mb-2">Send us a message</h2>
+                    <h2 className="text-xl font-bold text-text-primary mb-2">{isApplication ? 'Apply' : 'Send us a message'}</h2>
+                    {subject && (
+                      <p className="-mt-3 text-sm text-text-muted">
+                        Regarding: <span className="font-semibold text-text-primary">{subject.replace(/^Application:\s*/, '')}</span>
+                      </p>
+                    )}
+                    {/* Spam trap: invisible to people and screen readers. */}
+                    <input type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" {...register('website')} />
 
                     {/* Row 1 */}
                     <div className="grid sm:grid-cols-2 gap-5">
@@ -143,7 +183,7 @@ export default function Contact() {
                         {...register('name')}
                       />
                       <Input
-                        label="Company"
+                        label={isApplication ? 'Current company (optional)' : 'Company'}
                         placeholder="Your Company Pvt. Ltd."
                         error={errors.company?.message}
                         {...register('company')}
@@ -180,7 +220,9 @@ export default function Contact() {
                     {/* Message */}
                     <Textarea
                       label="Message"
-                      placeholder="Tell us about your project — scale, location, timeline, and any specific requirements."
+                      placeholder={isApplication
+                        ? 'Tell us about your experience and why this role. Add a link to your CV or LinkedIn profile.'
+                        : 'Tell us about your project — scale, location, timeline, and any specific requirements.'}
                       rows={6}
                       error={errors.message?.message}
                       {...register('message')}
@@ -188,7 +230,7 @@ export default function Contact() {
 
                     {status === 'error' && (
                       <p className="text-sm text-red-500">
-                        Something went wrong. Email us directly at{' '}
+                        {errorMessage}{' '}
                         <a href="mailto:info@genextechnocrats.com" className="underline">
                           info@genextechnocrats.com
                         </a>
@@ -208,7 +250,7 @@ export default function Contact() {
                           Sending…
                         </>
                       ) : (
-                        'Send Message →'
+                        isApplication ? 'Send Application →' : 'Send Message →'
                       )}
                     </Button>
 
