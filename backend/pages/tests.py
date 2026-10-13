@@ -387,3 +387,25 @@ class HeroBannerSlideTests(TestCase):
     def test_slides_saved_before_the_option_are_cards(self):
         value = self.block.to_python({"heading": "Learn the grid", "tone": "sky", "image": None})
         self.assertEqual(self.block.get_api_representation(value)["variant"], "card")
+
+
+class SiteSettingsApiTests(TestCase):
+    """Contact details, social links and the header button come from Wagtail's Site Settings."""
+
+    def test_defaults_and_edits(self):
+        from rest_framework.test import APIClient
+        from wagtail.models import Site
+        from .models import SiteSettings
+        client = APIClient()
+        data = client.get("/api/snippets/site-settings/").json()
+        self.assertEqual(data["phone"], "")  # not set: the site hides it
+        self.assertEqual(data["email"], "info@genextechnocrats.com")  # not set: the default address
+        self.assertEqual(data["cta"], {"label": "Request Demo", "href": "/contact#demo"})
+
+        row = SiteSettings.for_site(Site.objects.get(is_default_site=True))
+        row.phone, row.whatsapp, row.linkedin = "+91 141 400 0000", "https://wa.me/911414000000", "https://www.linkedin.com/company/genex"
+        row.save()
+        data = client.get("/api/snippets/site-settings/").json()
+        self.assertEqual(data["phone"], "+91 141 400 0000")
+        self.assertEqual(data["whatsapp"], "https://wa.me/911414000000")
+        self.assertEqual(data["social"]["linkedin"], "https://www.linkedin.com/company/genex")

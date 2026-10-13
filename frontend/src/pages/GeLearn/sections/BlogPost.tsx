@@ -12,6 +12,7 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { useSiteSettings } from '@/hooks/useSiteSettings'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -73,6 +74,7 @@ function shareUrl(kind: 'twitter' | 'linkedin' | 'facebook' | 'whatsapp', pageUr
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BlogPost() {
+  const site = useSiteSettings()  // contact box: Wagtail → Settings → Site Settings
   const { id } = useParams<{ id: string }>()
   useTrackView('blog', Number(id))
   const navigate = useNavigate()
@@ -367,10 +369,10 @@ export default function BlogPost() {
               </h3>
               <div className="space-y-6 mb-8">
                 {[
-                  { Icon: PhoneOutlinedIcon, label: 'Call Us', value: '+91 98765 43210' },
-                  { Icon: MailOutlinedIcon,   label: 'Email Us', value: 'info@genextechnocrats.in' },
-                  { Icon: AccessTimeOutlinedIcon, label: 'Office Hours', value: 'Mon – Sat: 9:00 am – 6:00 pm' },
-                ].map(({ Icon, label, value }) => (
+                  { Icon: PhoneOutlinedIcon, label: 'Call Us', value: site?.phone ?? '' },
+                  { Icon: MailOutlinedIcon, label: 'Email Us', value: site?.email ?? 'info@genextechnocrats.com' },
+                  { Icon: AccessTimeOutlinedIcon, label: 'Office Hours', value: site?.office_hours ?? '' },
+                ].filter(row => row.value).map(({ Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-4">
                     <div className="size-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                       <Icon style={{ fontSize: 18 }} className="text-white" />

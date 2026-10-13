@@ -24,8 +24,9 @@ export const navConfig: NavConfig = {
     label: 'Request Demo',
     href: '/contact#demo',
   },
+  // Real values come from Wagtail → Settings → Site Settings (useNavConfig); empty = hidden.
   contact: {
-    phone: '+91 00000 00000',
-    whatsapp: 'https://wa.me/910000000000',
+    phone: '',
+    whatsapp: '',
   },
 }

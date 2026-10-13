@@ -102,9 +102,13 @@ class BasePage(Page):
 # ---------------------------------------------------------------------------
 @register_setting
 class SiteSettings(BaseSiteSetting):
-    phone      = models.CharField(max_length=30, blank=True)
-    whatsapp   = models.URLField(blank=True)
-    email      = models.EmailField(blank=True)
+    phone      = models.CharField(max_length=30, blank=True, help_text="Shown as written, e.g. +91 141 400 0000. Left empty, it's hidden.")
+    whatsapp   = models.URLField(blank=True, help_text="A wa.me link, e.g. https://wa.me/911414000000. Left empty, it's hidden.")
+    email      = models.EmailField(blank=True, help_text="Left empty, info@genextechnocrats.com is shown.")
+    office_hours = models.CharField(max_length=100, blank=True, default="Mon – Sat: 9:00 am – 6:00 pm")
+    linkedin   = models.URLField(blank=True, verbose_name="LinkedIn")
+    twitter    = models.URLField(blank=True, verbose_name="X (Twitter)")
+    youtube    = models.URLField(blank=True, verbose_name="YouTube")
     cta_label  = models.CharField(max_length=50, default="Request Demo")
     # The header button's destination: picked, never typed (see pages/links.py).
     cta_page   = models.ForeignKey(
@@ -121,7 +125,13 @@ class SiteSettings(BaseSiteSetting):
             FieldPanel("phone"),
             FieldPanel("whatsapp"),
             FieldPanel("email"),
+            FieldPanel("office_hours"),
         ], heading="Contact"),
+        MultiFieldPanel([
+            FieldPanel("linkedin"),
+            FieldPanel("twitter"),
+            FieldPanel("youtube"),
+        ], heading="Social links", help_text="Each one shows as an icon in the footer once filled in."),
         MultiFieldPanel([
             FieldPanel("cta_label"),
             FieldPanel("cta_page"),

@@ -6,8 +6,10 @@ import ChatIcon from '@mui/icons-material/Chat'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import YouTubeIcon from '@mui/icons-material/YouTube'
+import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import { isExternalHref } from '@/lib/utils'
 import { gelearnPath } from '@/lib/host'
+import { telHref, useSiteSettings } from '@/hooks/useSiteSettings'
 
 const footerSections = [
   {
@@ -55,13 +57,18 @@ const footerSections = [
   },
 ]
 
-const socialLinks = [
-  { icon: WhatsAppIcon, label: 'WhatsApp',    href: 'https://wa.me/910000000000' },
-  { icon: TwitterIcon,  label: 'Twitter / X', href: 'https://twitter.com' },
-  { icon: YouTubeIcon,  label: 'YouTube',     href: 'https://youtube.com' },
-]
 
 export function Footer() {
+  const site = useSiteSettings()
+  const email = site?.email ?? 'info@genextechnocrats.com'
+  // Only the profiles filled in under Site Settings → Social links.
+  const socialLinks = [
+    { icon: LinkedInIcon, label: 'LinkedIn', href: site?.social.linkedin },
+    { icon: TwitterIcon, label: 'X (Twitter)', href: site?.social.twitter },
+    { icon: YouTubeIcon, label: 'YouTube', href: site?.social.youtube },
+    { icon: WhatsAppIcon, label: 'WhatsApp', href: site?.whatsapp },
+  ].filter((l): l is typeof l & { href: string } => Boolean(l.href))
+
   return (
     <footer className="bg-white border-t border-border" aria-label="Site footer">
       {/* Main grid */}
@@ -80,35 +87,39 @@ export function Footer() {
               Full-stack power and automation intelligence — from hardware in the field to insights on the dashboard.
             </p>
 
-            {/* Contact */}
+            {/* Contact — Wagtail → Settings → Site Settings; anything left empty is hidden. */}
             <ul className="mt-6 space-y-2.5">
+              {site?.phone && (
+                <li>
+                  <a
+                    href={telHref(site.phone)}
+                    className="flex items-center gap-2.5 text-sm text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    <PhoneIcon sx={{ fontSize: 14 }} className="shrink-0 text-primary" />
+                    {site.phone}
+                  </a>
+                </li>
+              )}
+              {site?.whatsapp && (
+                <li>
+                  <a
+                    href={site.whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm text-text-muted hover:text-[#25D366] transition-colors"
+                  >
+                    <ChatIcon sx={{ fontSize: 14 }} className="shrink-0 text-[#25D366]" />
+                    WhatsApp Us
+                  </a>
+                </li>
+              )}
               <li>
                 <a
-                  href="tel:+910000000000"
-                  className="flex items-center gap-2.5 text-sm text-text-muted hover:text-text-primary transition-colors"
-                >
-                  <PhoneIcon sx={{ fontSize: 14 }} className="shrink-0 text-primary" />
-                  +91 00000 00000
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://wa.me/910000000000"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 text-sm text-text-muted hover:text-[#25D366] transition-colors"
-                >
-                  <ChatIcon sx={{ fontSize: 14 }} className="shrink-0 text-[#25D366]" />
-                  WhatsApp Us
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:info@genextechnocrats.com"
+                  href={`mailto:${email}`}
                   className="flex items-center gap-2.5 text-sm text-text-muted hover:text-text-primary transition-colors"
                 >
                   <EmailIcon sx={{ fontSize: 14 }} className="shrink-0 text-primary" />
-                  info@genextechnocrats.com
+                  {email}
                 </a>
               </li>
               <li className="flex items-start gap-2.5 text-sm text-text-muted">
@@ -118,6 +129,7 @@ export function Footer() {
             </ul>
 
             {/* Social links */}
+            {socialLinks.length > 0 && (
             <div className="mt-6 flex items-center gap-3">
               {socialLinks.map(({ icon: Icon, label, href }) => (
                 <a
@@ -132,6 +144,7 @@ export function Footer() {
                 </a>
               ))}
             </div>
+            )}
           </div>
 
           {/* Nav columns */}

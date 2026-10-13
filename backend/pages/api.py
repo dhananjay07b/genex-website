@@ -12,6 +12,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
+from django.urls import path
 from wagtail.rich_text import expand_db_html
 
 from accounts.roles import IsProfessional, display_company, display_publisher, is_admin
@@ -20,6 +22,7 @@ from commerce.access import has_access
 
 from .models import (
     AccessControlled,
+    SiteSettings,
     BlogPost,
     CaseStudy,
     PodcastEpisode,
@@ -515,4 +518,24 @@ router.register(r"podcasts", PodcastEpisodeViewSet, basename="podcast")
 router.register(r"blog-submissions", UserBlogPostViewSet, basename="userblogpost")
 router.register(r"video-submissions", UserVideoPostViewSet, basename="uservideopost")
 
-urlpatterns = router.urls
+class SiteSettingsView(APIView):
+    """
+    Wagtail → Settings → Site Settings: the contact details, social links and
+    header button every page shows. Public and read-only.
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        s = SiteSettings.for_request(request._request)
+        return Response({
+            "phone": s.phone,
+            "whatsapp": s.whatsapp,
+            "email": s.email or "info@genextechnocrats.com",
+            "office_hours": s.office_hours,
+            "social": {"linkedin": s.linkedin, "twitter": s.twitter, "youtube": s.youtube},
+            "cta": {"label": s.cta_label, "href": s.cta_href},
+        })
+
+
+urlpatterns = router.urls + [path("site-settings/", SiteSettingsView.as_view(), name="site-settings")]

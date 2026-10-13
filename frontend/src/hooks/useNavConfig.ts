@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api/client'
 import { gelearnPath } from '@/lib/host'
 import type { NavConfig, NavItem, NavSubItem } from '@/types/navigation'
 import type { WagtailListResponse } from '@/types/api'
+import { useSiteSettings } from './useSiteSettings'
 
 interface WagtailNavPage {
   id: number
@@ -171,5 +172,7 @@ export function useNavConfig(): NavConfig {
     return () => { cancelled = true }
   }, [])
 
-  return config
+  // The header button and contact details are edited in Wagtail → Settings → Site Settings.
+  const site = useSiteSettings()
+  return site ? { ...config, cta: site.cta, contact: { phone: site.phone, whatsapp: site.whatsapp } } : config
 }

@@ -9,6 +9,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import { PageHero } from '@/components/ui/PageHero'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { useSiteSettings } from '@/hooks/useSiteSettings'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
@@ -58,6 +59,7 @@ interface ContactPageData {
 }
 
 export default function Contact() {
+  const site = useSiteSettings()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [searchParams] = useSearchParams()
@@ -294,25 +296,27 @@ export default function Contact() {
                 )
               })}
 
-              {/* WhatsApp */}
-              <div className="flex gap-4">
-                <div className="shrink-0 w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <ChatIcon className="w-5 h-5 text-secondary" aria-hidden="true" />
+              {/* WhatsApp — Wagtail → Settings → Site Settings; hidden until it's filled in. */}
+              {site?.whatsapp && (
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                    <ChatIcon className="w-5 h-5 text-secondary" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+                      WhatsApp
+                    </p>
+                    <a
+                      href={site.whatsapp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-secondary border border-secondary/30 rounded-full px-4 py-1.5 hover:bg-secondary/10 transition-colors duration-200"
+                    >
+                      Chat with us
+                    </a>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
-                    WhatsApp
-                  </p>
-                  <a
-                    href="https://wa.me/91XXXXXXXXXX"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-secondary border border-secondary/30 rounded-full px-4 py-1.5 hover:bg-secondary/10 transition-colors duration-200"
-                  >
-                    Chat with us
-                  </a>
-                </div>
-              </div>
+              )}
 
               {/* Map placeholder */}
               <div className="border-t border-border pt-8">

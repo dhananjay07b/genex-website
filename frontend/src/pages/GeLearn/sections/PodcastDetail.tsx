@@ -7,6 +7,7 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
+import { useSiteSettings } from '@/hooks/useSiteSettings'
 import { LockedOverlay } from '@/components/gelearn/LockedOverlay'
 import { CommentSection } from '@/components/gelearn/CommentSection'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
@@ -21,6 +22,7 @@ import { useTrackView } from '@/hooks/useTrackView'
 const PLACEHOLDER_GRADIENT = 'linear-gradient(135deg, #1AAEE8, #0f2930)'
 
 export default function PodcastDetail() {
+  const site = useSiteSettings()  // contact box: Wagtail → Settings → Site Settings
   const { id } = useParams<{ id: string }>()
   useTrackView('podcast', Number(id))
   const [episode, setEpisode] = useState<PodcastItem | null | undefined>(undefined)
@@ -201,10 +203,10 @@ export default function PodcastDetail() {
               <h3 className="text-xl font-bold text-white mb-6">Want to be a guest?</h3>
               <div className="space-y-6 mb-8">
                 {[
-                  { Icon: PhoneOutlinedIcon, label: 'Call Us', value: '+91 98765 43210' },
-                  { Icon: MailOutlinedIcon, label: 'Email Us', value: 'info@genextechnocrats.com' },
-                  { Icon: AccessTimeOutlinedIcon, label: 'Office Hours', value: 'Mon – Sat: 9:00 am – 6:00 pm' },
-                ].map(({ Icon, label, value }) => (
+                  { Icon: PhoneOutlinedIcon, label: 'Call Us', value: site?.phone ?? '' },
+                  { Icon: MailOutlinedIcon, label: 'Email Us', value: site?.email ?? 'info@genextechnocrats.com' },
+                  { Icon: AccessTimeOutlinedIcon, label: 'Office Hours', value: site?.office_hours ?? '' },
+                ].filter(row => row.value).map(({ Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-4">
                     <div className="size-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                       <Icon style={{ fontSize: 18 }} className="text-white" />
