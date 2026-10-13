@@ -106,7 +106,13 @@ class NotificationListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user).select_related("content_type")
+        # Each notification's link needs the course or certificate it points at:
+        # prefetch them in one query per kind instead of one per notification.
+        return (
+            Notification.objects.filter(recipient=self.request.user)
+            .select_related("content_type")
+            .prefetch_related("content_object")
+        )
 
 
 class NotificationMarkReadView(APIView):

@@ -105,7 +105,12 @@ class ActivityFeedView(APIView):
         user = request.user
         entries = []
 
-        notifications = Notification.objects.filter(recipient=user).select_related("content_type").order_by("-created_at")[:20]
+        # Links need each notification's course/certificate: one query per kind, not per row.
+        notifications = (
+            Notification.objects.filter(recipient=user)
+            .select_related("content_type").prefetch_related("content_object")
+            .order_by("-created_at")[:20]
+        )
         entries += [_notification_entry(n) for n in notifications]
 
         blog_subs = UserBlogPost.objects.filter(author=user).order_by("-created_at")[:10]
