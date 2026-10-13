@@ -534,3 +534,43 @@ class DuplicateEmailTests(TestCase):
         User.objects.create_user(username="noemail1", email="", password="x")
         User.objects.create_user(username="noemail2", email="", password="x")
         self.assertEqual(User.objects.filter(email="").count(), 2)
+
+
+class SessionEndpointTests(TestCase):
+    """/api/accounts/session/ tells the frontend who's signed in without ever answering 401."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = make_user("sess")
+
+    def test_visitor_gets_200_and_a_csrf_cookie(self):
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"user": None, "can_refresh": False})
+        self.assertIn("csrftoken", res.cookies)
+        self.assertEqual(res["Cache-Control"], "no-store")
+
+    def test_signed_in_with_jwt_cookie(self):
+        from rest_framework_simplejwt.tokens import AccessToken
+        self.client.cookies["genex-auth"] = str(AccessToken.for_user(self.user))
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.json()["user"]["username"], "sess")
+
+    def test_expired_sign_in_with_valid_refresh_cookie_can_refresh(self):
+        from datetime import timedelta
+        from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+        expired = AccessToken.for_user(self.user)
+        expired.set_exp(lifetime=-timedelta(minutes=1))
+        self.client.cookies["genex-auth"] = str(expired)
+        self.client.cookies["genex-refresh"] = str(RefreshToken.for_user(self.user))
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"user": None, "can_refresh": True})
+
+    def test_invalid_refresh_cookie_is_not_worth_trying(self):
+        self.client.cookies["genex-refresh"] = "not-a-token"
+        self.assertEqual(self.client.get("/api/accounts/session/").json(), {"user": None, "can_refresh": False})
+
+    def test_django_session_sign_in_counts(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get("/api/accounts/session/").json()["user"]["username"], "sess")

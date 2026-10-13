@@ -1,13 +1,18 @@
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, SocialLoginView
+from dj_rest_auth.jwt_auth import JWTCookieAuthentication
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
-from django.contrib.auth import logout as django_logout
+from django.conf import settings
+from django.contrib.auth import get_user, logout as django_logout
 from django.middleware.csrf import get_token
-from rest_framework import serializers, status
+from rest_framework import exceptions, serializers, status
 from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import UserSerializer
 from .throttles import (
@@ -17,6 +22,53 @@ from .throttles import (
     PasswordResetConfirmThrottle,
     PasswordResetThrottle,
 )
+
+
+class SessionView(APIView):
+    """
+    Who is signed in, without ever answering 401. The frontend calls this on
+    every page load: /me/ refuses visitors, which made every visitor page log
+    two failed requests (the 401 and the refresh attempt it triggered).
+
+    `can_refresh` says whether a still-valid refresh cookie exists, so the
+    frontend renews an expired sign-in only when that can actually work. The
+    browser can't tell — the cookie is HTTP-only.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        user = None
+        try:
+            result = JWTCookieAuthentication().authenticate(request)
+        except exceptions.APIException:  # expired or invalid sign-in cookie: not signed in
+            result = None
+        if result:
+            user = result[0]
+        else:
+            # A Django session (registration, email confirmation and Google sign-in start one).
+            # Read it directly: with no authentication classes DRF has already set request.user
+            # to anonymous. A GET needs no CSRF check.
+            session_user = get_user(request._request)
+            if session_user.is_authenticated and session_user.is_active:
+                user = session_user
+
+        can_refresh = False
+        raw_refresh = request.COOKIES.get(settings.REST_AUTH["JWT_AUTH_REFRESH_COOKIE"])
+        if user is None and raw_refresh:
+            try:
+                RefreshToken(raw_refresh)  # checks its signature and expiry
+                can_refresh = True
+            except TokenError:
+                pass
+
+        response = Response({
+            "user": UserSerializer(user, context={"request": request}).data if user else None,
+            "can_refresh": can_refresh,
+        })
+        response["Cache-Control"] = "no-store"
+        get_token(request)  # visitors need the csrftoken cookie before signing in (see MeView)
+        return response
 
 
 class MeView(RetrieveUpdateAPIView):

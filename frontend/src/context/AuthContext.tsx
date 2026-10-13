@@ -6,6 +6,12 @@ import { AuthContext } from './auth-context'
 /** Renew a little before the 5-minute sign-in cookie runs out. */
 const RENEW_EVERY_MS = 4 * 60 * 1000
 
+interface SessionState {
+  user: User | null
+  /** A still-valid refresh cookie exists (the browser can't see it — it's HTTP-only). */
+  can_refresh: boolean
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -13,8 +19,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refetch = useCallback(async () => {
     try {
-      const me = await apiFetch<User>('/api/accounts/me/')
-      setUser(me)
+      // The session check never answers 401, so a visitor's page load makes no failing requests.
+      let session = await apiFetch<SessionState>('/api/accounts/session/')
+      // Sign-in cookie expired but the refresh cookie is still good: renew, then ask again.
+      if (!session.user && session.can_refresh && (await refreshSession())) {
+        session = await apiFetch<SessionState>('/api/accounts/session/')
+      }
+      setUser(session.user)
     } catch {
       setUser(null)
     }

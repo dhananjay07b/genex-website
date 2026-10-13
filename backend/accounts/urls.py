@@ -8,9 +8,10 @@ from .public_views import (
     PublicUserPodcastAppearancesView,
     PublicUserVideosView,
 )
-from .views import GoogleLoginView, MeView, SocialAccountDisconnectView, SocialAccountListView
+from .views import GoogleLoginView, MeView, SessionView, SocialAccountDisconnectView, SocialAccountListView
 
 urlpatterns = [
+    path("session/", SessionView.as_view(), name="account-session"),
     path("me/", MeView.as_view(), name="account-me"),
     path("me/comments/", MyCommentsView.as_view(), name="my-comments"),
     path("me/activity/", ActivityFeedView.as_view(), name="my-activity"),
