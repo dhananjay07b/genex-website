@@ -21,7 +21,18 @@ class SavedItemViewSet(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return SavedItem.objects.filter(user=self.request.user).select_related("content_type")
+        # Each row's title/image/link needs the saved item itself: one query per kind, not per row.
+        return SavedItem.objects.filter(user=self.request.user).select_related("content_type").prefetch_related("content_object")
+
+    @action(detail=False, methods=["get"])
+    def keys(self, request):
+        """
+        Every item the user has saved, as "model:id" — all a Save button needs
+        to show its state. One small query; the page fetches it once for all
+        its Save buttons instead of each button loading the full list.
+        """
+        rows = SavedItem.objects.filter(user=request.user).values_list("content_type__model", "object_id")
+        return Response({"keys": [f"{model}:{object_id}" for model, object_id in rows]})
 
     def perform_create(self, serializer):
         try:

@@ -53,3 +53,38 @@ class NotificationListQueryTests(TestCase):
         few = count()
         self._notify(10)
         self.assertEqual(count(), few)
+
+
+class SavedItemKeysTests(TestCase):
+    """Save buttons read one tiny list of "model:id" keys — complete, not capped at a page."""
+
+    def setUp(self):
+        self.user = User.objects.create_user("saver", "saver@example.org", "Passw0rd!x")
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_keys_list_every_saved_item_in_one_query(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from .models import SavedItem
+        owner = User.objects.create_user("owner", "owner@example.org", "Passw0rd!x", account_type="professional", company_other="Acme")
+        course_type = ContentType.objects.get_for_model(Playlist)
+        ids = [Playlist.objects.create(owner=owner, title=f"C{i}", status="published").pk for i in range(205)]
+        SavedItem.objects.bulk_create([SavedItem(user=self.user, content_type=course_type, object_id=i) for i in ids])
+        with CaptureQueriesContext(connection) as ctx:
+            res = self.client.get("/api/engagement/saved-items/keys/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()["keys"]), 205)  # past the old 200 cap
+        self.assertIn(f"playlist:{ids[-1]}", res.json()["keys"])
+        self.assertLessEqual(len(ctx), 2)
+
+    def test_toggle_is_reflected(self):
+        owner = User.objects.create_user("owner2", "owner2@example.org", "Passw0rd!x", account_type="professional", company_other="Acme")
+        course = Playlist.objects.create(owner=owner, title="Grid", status="published")
+        self.client.post("/api/engagement/saved-items/toggle/", {"content_type": "playlist", "object_id": course.pk}, format="json")
+        self.assertEqual(self.client.get("/api/engagement/saved-items/keys/").json()["keys"], [f"playlist:{course.pk}"])
+        self.client.post("/api/engagement/saved-items/toggle/", {"content_type": "playlist", "object_id": course.pk}, format="json")
+        self.assertEqual(self.client.get("/api/engagement/saved-items/keys/").json()["keys"], [])
+
+    def test_visitors_are_refused(self):
+        self.assertIn(APIClient().get("/api/engagement/saved-items/keys/").status_code, (401, 403))

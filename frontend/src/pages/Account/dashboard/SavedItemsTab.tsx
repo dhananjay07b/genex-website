@@ -10,6 +10,7 @@ import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import { apiFetch } from '@/lib/api/client'
+import { savedKey, setSaved } from '@/lib/savedItems'
 import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { SavedItem } from '@/types/auth'
 import { EmptyState } from './EmptyState'
@@ -47,6 +48,8 @@ export function SavedItemsTab() {
   }, [])
 
   async function handleRemove(id: number) {
+    const removed = items?.find(i => i.id === id)
+    if (removed) setSaved(savedKey(removed.content_type, removed.object_id), false)  // Save buttons elsewhere stay in step
     setItems(prev => (prev ?? []).filter(i => i.id !== id))
     try {
       await apiFetch(`/api/engagement/saved-items/${id}/`, { method: 'DELETE' })

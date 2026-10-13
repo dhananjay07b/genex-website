@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BookmarkIcon from '@mui/icons-material/Bookmark'
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
 import { returnState } from '@/lib/authRedirect'
+import { isSaved, loadSavedKeys, savedKey, setSaved, subscribeSaved } from '@/lib/savedItems'
 
 interface SaveButtonProps {
   contentType: string
@@ -17,24 +18,14 @@ export function SaveButton({ contentType, objectId, className }: SaveButtonProps
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [saved, setSaved] = useState(false)
+  const key = savedKey(contentType, objectId)
+  // Shared with every other Save button on the page (lib/savedItems): one request, not one per button.
+  const saved = useSyncExternalStore(subscribeSaved, () => Boolean(user) && isSaved(key))
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    apiFetch<{ results: { content_type: string; object_id: number }[] }>(
-      `/api/engagement/saved-items/?limit=200`
-    )
-      .then(data => {
-        if (cancelled) return
-        setSaved(data.results.some(item => item.content_type === contentType && item.object_id === objectId))
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [user, contentType, objectId])
+    if (user) void loadSavedKeys(user.id)
+  }, [user])
 
   async function handleClick() {
     if (!user) {
@@ -43,15 +34,15 @@ export function SaveButton({ contentType, objectId, className }: SaveButtonProps
     }
     setLoading(true)
     const previousSaved = saved
-    setSaved(!previousSaved)
+    setSaved(key, !previousSaved)
     try {
       const result = await apiFetch<{ saved: boolean }>('/api/engagement/saved-items/toggle/', {
         method: 'POST',
         body: { content_type: contentType, object_id: objectId },
       })
-      setSaved(result.saved)
+      setSaved(key, result.saved)
     } catch {
-      setSaved(previousSaved)
+      setSaved(key, previousSaved)
     } finally {
       setLoading(false)
     }
