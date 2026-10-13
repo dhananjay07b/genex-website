@@ -222,13 +222,18 @@ class Playlist(AccessControlled):
         """
         if not user.is_authenticated:
             return None
-        if self.owner_id == user.pk or (
-            self.company_id and user.company_id == self.company_id and user.account_type == "company"
-        ):
-            return "owner"
-        if self.pk and self.instructors.filter(pk=user.pk).exists():
-            return "instructor"
-        return None
+        # A course page asks several times per request (reviews, review form, Enroll button): look up once.
+        cache = self.__dict__.setdefault("_relation_cache", {})
+        if user.pk not in cache:
+            if self.owner_id == user.pk or (
+                self.company_id and user.company_id == self.company_id and user.account_type == "company"
+            ):
+                cache[user.pk] = "owner"
+            elif self.pk and self.instructors.filter(pk=user.pk).exists():
+                cache[user.pk] = "instructor"
+            else:
+                cache[user.pk] = None
+        return cache[user.pk]
 
     def listed_instructors(self):
         """Instructors to show: only those still eligible (verification can lapse after they were chosen)."""

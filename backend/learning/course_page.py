@@ -104,18 +104,28 @@ def roles_payload(course):
     """
     Each career role the course is for, with its path: one course per level
     (this course at its own level, otherwise the role's most-enrolled live course).
+    All the roles' candidate courses load in one batch; the page used to run a
+    lookup per role and level, each with its own prefetches.
     """
+    roles = list(course.roles.all())
+    if not roles:
+        return []
+    candidates = list(published_courses().filter(
+        pk__in=Playlist.objects.filter(roles__in=roles).exclude(pk=course.pk).values("pk"),
+    ))
     rows = []
-    for role in course.roles.all():
-        role_courses = published_courses().filter(roles=role).exclude(pk=course.pk).distinct()
+    for role in roles:
+        role_courses = [c for c in candidates if any(r.pk == role.pk for r in c.roles.all())]
         path = []
         for level in LEVELS:
             if course.level == level:
-                path.append({"level": level, "is_current": True, "course": _course_ref(published_courses().get(pk=course.pk))})
+                # The page's own course already carries the stats a card needs.
+                path.append({"level": level, "is_current": True, "course": _course_ref(course)})
                 continue
-            other = role_courses.filter(level=level).order_by("-enrolled_count").first()
-            if other is not None:
-                path.append({"level": level, "is_current": False, "course": _course_ref(other)})
+            at_level = [c for c in role_courses if c.level == level]
+            if at_level:
+                best = max(at_level, key=lambda c: (c.enrolled_count or 0, -c.pk))
+                path.append({"level": level, "is_current": False, "course": _course_ref(best)})
         rows.append({"id": role.pk, "name": role.name, "slug": role.slug, "summary": role.summary, "path": path})
     return rows
 

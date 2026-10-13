@@ -1275,3 +1275,57 @@ class CertificateFilesTests(TestCase):
         self.assertEqual(len(api.get(url).json()), 1)  # the learner always sees their own
         self.assertEqual(api.patch("/api/accounts/me/", {"show_certificates": True}, format="json").status_code, 200)
         self.assertEqual([c["code"] for c in APIClient().get(url).json()], ["GL-ABCD-EFGH"])
+
+
+class CoursePageQueryTests(TestCase):
+    """The course page's career paths load in one batch, however many roles and courses there are."""
+
+    def setUp(self):
+        from .models import CareerRole
+        self.pro = User.objects.create_user("qpro", "qpro@example.org", "Passw0rd!x", account_type="professional", company_other="Acme")
+        self.course = Playlist.objects.create(owner=self.pro, title="Main", status="published", level="intermediate")
+        self.roles = [CareerRole.objects.create(name=f"Role {i}") for i in range(4)]
+        self.client = APIClient()
+
+    def _queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as ctx:
+            res = self.client.get(f"/api/learning/courses/{self.course.slug}/")
+        self.assertEqual(res.status_code, 200)
+        return len(ctx), res.json()
+
+    def _add_role_with_courses(self, role):
+        self.course.roles.add(role)
+        for level in ("beginner", "advanced"):
+            for n in range(2):
+                c = Playlist.objects.create(owner=self.pro, title=f"{role.name} {level} {n}", status="published", level=level)
+                c.roles.add(role)
+
+    def test_query_count_does_not_grow_with_roles(self):
+        self._add_role_with_courses(self.roles[0])
+        one, _ = self._queries()
+        for role in self.roles[1:]:
+            self._add_role_with_courses(role)
+        four, data = self._queries()
+        self.assertEqual(four, one)
+        self.assertEqual(len(data["roles"]), 4)
+        for row in data["roles"]:
+            self.assertEqual([p["level"] for p in row["path"]], ["beginner", "intermediate", "advanced"])
+            self.assertTrue(next(p for p in row["path"] if p["level"] == "intermediate")["is_current"])
+
+    def test_path_picks_the_most_enrolled_course_per_level(self):
+        role = self.roles[0]
+        self.course.roles.add(role)
+        quiet = Playlist.objects.create(owner=self.pro, title="Quiet", status="published", level="beginner")
+        popular = Playlist.objects.create(owner=self.pro, title="Popular", status="published", level="beginner")
+        draft = Playlist.objects.create(owner=self.pro, title="Draft", status="draft", level="beginner")
+        for c in (quiet, popular, draft):
+            c.roles.add(role)
+        for i in range(3):
+            learner = User.objects.create_user(f"l{i}", f"l{i}@example.org", "Passw0rd!x")
+            Enrollment.objects.create(user=learner, playlist=popular)
+            Enrollment.objects.create(user=learner, playlist=draft)
+        _, data = self._queries()
+        beginner = next(p for p in data["roles"][0]["path"] if p["level"] == "beginner")
+        self.assertEqual(beginner["course"]["slug"], popular.slug)  # drafts never appear
