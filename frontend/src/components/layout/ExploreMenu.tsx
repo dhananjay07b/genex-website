@@ -169,12 +169,16 @@ export function ExploreMenu() {
         aria-controls={`${baseId}-menu`}
         onClick={() => setOpen(!open)}
         className={cn(
-          'inline-flex items-center gap-0.5 rounded-lg border bg-white py-1.5 pr-2 pl-3.5 text-sm font-bold transition-colors',
+          // Phones drop the arrow so the header keeps its side margins at 320px.
+          'inline-flex items-center gap-0.5 rounded-lg border bg-white px-3.5 py-1.5 text-sm font-bold transition-colors sm:pr-2',
           open ? 'border-primary text-sky-700' : 'border-border text-text-primary hover:border-primary hover:text-sky-700',
         )}
       >
         Explore
-        <ExpandMoreIcon sx={{ fontSize: 20 }} className={cn('transition-transform', open && 'rotate-180')} />
+        {/* MUI's own icon styles override `hidden`, so the wrapper does the hiding. */}
+        <span className="hidden sm:inline-flex">
+          <ExpandMoreIcon sx={{ fontSize: 20 }} className={cn('transition-transform', open && 'rotate-180')} />
+        </span>
       </button>
 
       {open && (

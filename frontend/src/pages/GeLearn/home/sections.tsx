@@ -169,7 +169,7 @@ export function HeroSection({ value }: { value: HeroValue }) {
           <button type="button" className={arrow} onClick={() => go(page - 1)} aria-label="Previous slide">
             <ChevronLeftIcon sx={{ fontSize: 18 }} />
           </button>
-          <div className="flex gap-1.5">
+          <div className="flex">
             {Array.from({ length: pages }, (_, i) => (
               <button
                 key={i}
@@ -177,8 +177,11 @@ export function HeroSection({ value }: { value: HeroValue }) {
                 onClick={() => go(i)}
                 aria-label={`Go to slide ${i + 1}`}
                 aria-current={i === page}
-                className={cn('h-2 rounded-full transition-all', i === page ? 'w-6 bg-primary' : 'w-2 bg-slate-300')}
-              />
+                className="flex h-6 min-w-6 items-center justify-center px-1"
+              >
+                {/* The dot stays small; the button around it is a 24px tap target. */}
+                <span className={cn('h-2 rounded-full transition-all', i === page ? 'w-6 bg-primary' : 'w-2 bg-slate-300')} />
+              </button>
             ))}
           </div>
           <button type="button" className={arrow} onClick={() => go(page + 1)} aria-label="Next slide">

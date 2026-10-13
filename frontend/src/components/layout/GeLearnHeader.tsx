@@ -100,7 +100,7 @@ export function GeLearnHeader() {
           <SearchBox className="hidden flex-1 lg:flex" />
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 lg:ml-0">
-            <Link to="/search" aria-label="Search" className="flex size-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden">
+            <Link to="/search" aria-label="Search" className="flex size-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden">
               <SearchIcon sx={{ fontSize: 22 }} />
             </Link>
             {!isLoading && !user && (
@@ -121,7 +121,7 @@ export function GeLearnHeader() {
             )}
             {user && (
               <>
-                <Link to="/account?tab=saved" aria-label="Saved items" className="hidden size-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 sm:flex">
+                <Link to="/account?tab=saved" aria-label="Saved items" className="hidden size-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 sm:flex">
                   <BookmarkBorderIcon sx={{ fontSize: 22 }} />
                 </Link>
                 <NotificationBell />

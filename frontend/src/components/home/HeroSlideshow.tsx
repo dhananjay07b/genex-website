@@ -173,7 +173,7 @@ export function HeroSlideshow({ slides: apiSlides }: { slides?: HeroSlideApiValu
       {/* Bottom controls: dots + play/pause */}
       <div className="absolute bottom-5 left-0 right-0 z-10 flex items-center justify-center gap-3">
         {/* Slide dots */}
-        <div role="tablist" aria-label="Slideshow navigation" className="flex items-center gap-2.5">
+        <div role="tablist" aria-label="Slideshow navigation" className="flex items-center">
           {SLIDES.map((_, i) => (
             <button
               key={i}
@@ -181,11 +181,14 @@ export function HeroSlideshow({ slides: apiSlides }: { slides?: HeroSlideApiValu
               aria-selected={i === active}
               aria-label={`Go to slide ${i + 1}`}
               onClick={() => goToSlide(i)}
-              className={cn(
-                'h-1.5 rounded-full transition-all duration-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
-                i === active ? 'w-8 bg-white' : 'w-3 bg-white/35 hover:bg-white/60'
-              )}
-            />
+              // The bar stays small; the button around it is a 24px tap target.
+              className="group flex h-6 min-w-6 items-center justify-center px-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <span className={cn(
+                'h-1.5 rounded-full transition-all duration-400',
+                i === active ? 'w-8 bg-white' : 'w-3 bg-white/35 group-hover:bg-white/60'
+              )} />
+            </button>
           ))}
         </div>
 

@@ -119,11 +119,11 @@ export default function BlogPost() {
       />
 
       {/* ── BREADCRUMB ───────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#e2e8f0] py-4">
+      <div className="bg-white border-b border-[#e2e8f0] pt-20 pb-4">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#62748e]">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+          <Link to="/" className="inline-flex min-h-6 items-center hover:text-primary transition-colors">Home</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
-          <Link to="/blog" className="hover:text-primary transition-colors">Blog</Link>
+          <Link to="/blog" className="inline-flex min-h-6 items-center hover:text-primary transition-colors">Blog</Link>
           <ChevronRightIcon style={{ fontSize: 14 }} />
           <span className="text-[#1d293d] truncate max-w-xs">{post.title}</span>
         </div>

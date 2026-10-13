@@ -93,7 +93,7 @@ export default function Profile() {
               type="button"
               onClick={() => selectTab('settings')}
               aria-label="Settings"
-              className="inline-flex items-center justify-center size-9 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
+              className="inline-flex items-center justify-center size-10 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
             >
               <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
             </button>

@@ -126,7 +126,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="flex h-9 w-9 items-center justify-center rounded-md bg-surface text-text-muted hover:bg-surface-alt hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="flex size-10 items-center justify-center rounded-md bg-surface text-text-muted hover:bg-surface-alt hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <Icon sx={{ fontSize: 16 }} />
                 </a>
