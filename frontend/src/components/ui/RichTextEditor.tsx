@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -21,6 +22,8 @@ interface RichTextEditorProps {
   onChange: (html: string) => void
   error?: string
   label?: string
+  /** Screen-reader name for the editing area when there's no visible label. */
+  ariaLabel?: string
   /**
    * 'basic' offers only what the server keeps for Studio content (headings,
    * bold/italic, lists, quotes, rules, links) — no underline, strikethrough,
@@ -30,8 +33,9 @@ interface RichTextEditorProps {
   minHeightClassName?: string
 }
 
-export function RichTextEditor({ value, onChange, error, label, variant = 'full', minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, error, label, ariaLabel, variant = 'full', minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
   const basic = variant === 'basic'
+  const labelId = useId()
   // StarterKit includes Link and Underline (Tiptap v3); 'basic' switches off what the server would strip.
   const link = { openOnClick: false, autolink: true }
   const editor = useEditor({
@@ -45,6 +49,10 @@ export function RichTextEditor({ value, onChange, error, label, variant = 'full'
     editorProps: {
       attributes: {
         class: cn('rich-text px-6 py-5 outline-none text-sm text-text-primary', minHeightClassName),
+        role: 'textbox',
+        'aria-multiline': 'true',
+        // Named by the visible label when there is one.
+        ...(label ? { 'aria-labelledby': labelId } : { 'aria-label': ariaLabel ?? 'Content' }),
       },
     },
   })
@@ -53,7 +61,8 @@ export function RichTextEditor({ value, onChange, error, label, variant = 'full'
 
   return (
     <div>
-      {label && <label className="block text-sm font-semibold text-text-primary mb-1.5">{label}</label>}
+      {/* A <label> can't point at a contenteditable, so the editor references this by id. */}
+      {label && <p id={labelId} className="block text-sm font-semibold text-text-primary mb-1.5">{label}</p>}
       <div className={cn('border rounded-xl overflow-hidden bg-white', error ? 'border-red-500' : 'border-border')}>
         <Toolbar editor={editor} basic={basic} />
         <EditorContent editor={editor} />
@@ -67,7 +76,7 @@ interface ToolbarButtonProps {
   onClick: () => void
   active?: boolean
   label: string
-  children: React.ReactNode
+  children: ReactNode
 }
 
 function ToolbarButton({ onClick, active, label, children }: ToolbarButtonProps) {

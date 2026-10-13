@@ -152,6 +152,7 @@ export default function SubmitVideo() {
               </div>
 
               <input
+                aria-label="Video title"
                 placeholder="Video title"
                 className="w-full border-none outline-none text-2xl lg:text-3xl font-extrabold text-text-primary mb-1 p-0 placeholder:text-text-muted/50"
                 {...register('title')}

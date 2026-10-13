@@ -171,6 +171,7 @@ export default function SubmitPost() {
               </div>
 
               <input
+                aria-label="Post title"
                 placeholder="Post title"
                 className="w-full border-none outline-none text-2xl lg:text-3xl font-extrabold text-text-primary mb-1 p-0 placeholder:text-text-muted/50"
                 {...register('title')}
@@ -181,7 +182,7 @@ export default function SubmitPost() {
                 name="body"
                 control={control}
                 render={({ field }) => (
-                  <RichTextEditor value={field.value} onChange={field.onChange} error={errors.body?.message} />
+                  <RichTextEditor value={field.value} onChange={field.onChange} error={errors.body?.message} ariaLabel="Post body" />
                 )}
               />
 

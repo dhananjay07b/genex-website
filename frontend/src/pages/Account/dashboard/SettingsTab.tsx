@@ -336,8 +336,9 @@ export function SettingsTab() {
         <div className="flex flex-col gap-4">
           <Input label="Display Name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-text-primary">Bio</label>
+            <label htmlFor="settings-bio" className="text-sm font-semibold text-text-primary">Bio</label>
             <textarea
+              id="settings-bio"
               value={bio}
               onChange={e => setBio(e.target.value)}
               rows={3}
@@ -428,7 +429,9 @@ export function SettingsTab() {
           </div>
 
           <div id="career-goal" className="scroll-mt-28">
+            {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
             <Select
+              id="career-goal-select"
               label="Career goal"
               options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
               value={careerGoal}
