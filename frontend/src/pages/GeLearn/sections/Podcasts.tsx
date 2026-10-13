@@ -80,6 +80,7 @@ function EpisodeCard({ ep, index }: { ep: Episode; index: number }) {
       ) : (
         <Link
           to={`/podcasts/${ep.id}`}
+          aria-label={`Listen: ${ep.title}`}
           className="w-full h-36 rounded-2xl overflow-hidden mb-5 shrink-0 relative block"
           style={!ep.image_url ? { background: PLACEHOLDER_GRADIENT } : undefined}
         >

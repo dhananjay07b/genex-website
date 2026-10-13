@@ -4,7 +4,7 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import { Button } from '@/components/ui/Button'
+import { buttonVariants } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { UserVideoPost } from '@/types/auth'
@@ -40,11 +40,9 @@ export function VideosTab() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-extrabold text-text-primary">My Videos</h2>
-        <Link to="/submit-video">
-          <Button variant="primary" size="md">
-            <Add sx={{ fontSize: 18 }} />
-            Submit a Video
-          </Button>
+        <Link to="/submit-video" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+          <Add sx={{ fontSize: 18 }} />
+          Submit a Video
         </Link>
       </div>
 
@@ -54,11 +52,9 @@ export function VideosTab() {
           title="No videos yet"
           description="Field walkthroughs, demos, and training clips all belong here — submit your first one."
           action={
-            <Link to="/submit-video">
-              <Button variant="primary" size="md">
-                <Add sx={{ fontSize: 18 }} />
-                Submit a Video
-              </Button>
+            <Link to="/submit-video" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+              <Add sx={{ fontSize: 18 }} />
+              Submit a Video
             </Link>
           }
         />

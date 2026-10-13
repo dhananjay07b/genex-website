@@ -6,7 +6,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import Add from '@mui/icons-material/Add'
-import { Button } from '@/components/ui/Button'
+import { buttonVariants } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime, getMediaUrl } from '@/lib/utils'
 import type { UserBlogPost } from '@/types/auth'
@@ -41,11 +41,9 @@ export function BlogPostsTab() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-extrabold text-text-primary">My Blog Posts</h2>
-        <Link to="/submit-post">
-          <Button variant="primary" size="md">
-            <Add sx={{ fontSize: 18 }} />
-            Submit a Post
-          </Button>
+        <Link to="/submit-post" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+          <Add sx={{ fontSize: 18 }} />
+          Submit a Post
         </Link>
       </div>
 
@@ -55,11 +53,9 @@ export function BlogPostsTab() {
           title="No blog posts yet"
           description="Share what you know with the GeLearn community — your first post is a click away."
           action={
-            <Link to="/submit-post">
-              <Button variant="primary" size="md">
-                <Add sx={{ fontSize: 18 }} />
-                Submit a Post
-              </Button>
+            <Link to="/submit-post" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+              <Add sx={{ fontSize: 18 }} />
+              Submit a Post
             </Link>
           }
         />

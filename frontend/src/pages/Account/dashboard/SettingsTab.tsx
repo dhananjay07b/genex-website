@@ -10,10 +10,10 @@ import LinkOffIcon from '@mui/icons-material/LinkOff'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonVariants } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
-import { getMediaUrl, formatDisplayDate } from '@/lib/utils'
+import { cn, getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, domainList, useCompanies } from '@/hooks/useCompanies'
@@ -601,8 +601,8 @@ export function SettingsTab() {
           {bio && (
             <p className="text-xs text-text-muted leading-relaxed mt-1.5 line-clamp-3">{bio}</p>
           )}
-          <Link to={`/u/${user.username}`} className="block mt-4">
-            <Button variant="secondary" size="sm" className="w-full justify-center">View Full Public Profile</Button>
+          <Link to={`/u/${user.username}`} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'mt-4 flex w-full')}>
+            View Full Public Profile
           </Link>
         </div>
 

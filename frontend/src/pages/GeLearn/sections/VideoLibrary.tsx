@@ -69,6 +69,7 @@ function VideoCard({ video, index }: { video: Video; index: number }) {
       ) : (
         <Link
           to={`/videos/${video.id}`}
+          aria-label={`Watch video: ${video.title}`}
           className="mx-6 mt-6 rounded-2xl overflow-hidden aspect-video relative shrink-0 block"
           style={{ background: PLACEHOLDER_GRADIENT }}
         >

@@ -1,6 +1,6 @@
 import { SmartLink } from '@/components/ui/SmartLink'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/Button'
+import { buttonVariants } from '@/components/ui/Button'
 
 interface PageHeroProps {
   label: string
@@ -45,8 +45,8 @@ export function PageHero({ label, headline, subline, ctaText, ctaLink, backgroun
           )}
           {ctaText && ctaLink && (
             <div className="mt-8">
-              <SmartLink to={ctaLink}>
-                <Button variant="primary" size="lg">{ctaText}</Button>
+              <SmartLink to={ctaLink} className={buttonVariants({ variant: 'primary', size: 'lg' })}>
+                {ctaText}
               </SmartLink>
             </div>
           )}

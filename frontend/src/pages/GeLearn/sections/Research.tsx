@@ -130,6 +130,7 @@ export default function CaseStudies() {
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => goTo(page - 1)}
+                aria-label="Previous page"
                   className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
                 >
                   <ChevronLeftIcon style={{ fontSize: 18 }} className="text-[#111827]" />
@@ -155,6 +156,7 @@ export default function CaseStudies() {
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => goTo(page + 1)}
+                aria-label="Next page"
                   className="size-10 rounded-full bg-[#f3f4f6] flex items-center justify-center hover:bg-primary/10 transition-colors duration-200"
                 >
                   <ChevronRightIcon style={{ fontSize: 18 }} className="text-[#111827]" />

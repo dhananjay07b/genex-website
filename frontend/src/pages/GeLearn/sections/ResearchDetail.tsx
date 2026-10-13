@@ -70,6 +70,7 @@ function MiniCard({ cs }: { cs: CaseStudyItem }) {
             </div>
             <Link
               to={`/research/${cs.id}`}
+              aria-label={`Read research: ${cs.title}`}
               className="bg-secondary flex items-center justify-center rounded-full size-10 shadow-[0px_10px_15px_-3px_rgba(30,64,175,0.25),0px_4px_6px_-4px_rgba(30,64,175,0.25)] hover:opacity-85 transition-opacity"
             >
               <ArrowForwardIcon style={{ fontSize: 18, transform: 'rotate(-45deg)' }} className="text-white" />

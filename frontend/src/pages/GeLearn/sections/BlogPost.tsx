@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useParams, Link, Navigate, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -75,6 +75,7 @@ function shareUrl(kind: 'twitter' | 'linkedin' | 'facebook' | 'whatsapp', pageUr
 export default function BlogPost() {
   const { id } = useParams<{ id: string }>()
   useTrackView('blog', Number(id))
+  const navigate = useNavigate()
   const [post, setPost] = useState<BlogPostItem | null | undefined>(undefined)
   const [allPosts, setAllPosts] = useState<BlogPostItem[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
@@ -280,16 +281,27 @@ export default function BlogPost() {
           <aside className="hidden lg:flex flex-col gap-12 w-85 shrink-0 sticky top-24">
 
             {/* Search */}
-            <div className="flex items-center bg-[#fcfcfc] border border-[#e2e8f0] rounded-xl overflow-hidden">
+            <form
+              role="search"
+              onSubmit={e => {
+                e.preventDefault()
+                const q = String(new FormData(e.currentTarget).get('q') ?? '').trim()
+                navigate(q ? `/search?type=blog&q=${encodeURIComponent(q)}` : '/search?type=blog')
+              }}
+              className="flex items-center bg-[#fcfcfc] border border-[#e2e8f0] rounded-xl overflow-hidden focus-within:border-primary"
+            >
+              <label htmlFor="blog-sidebar-search" className="sr-only">Search blog posts</label>
               <input
-                type="text"
+                id="blog-sidebar-search"
+                name="q"
+                type="search"
                 placeholder="Search post..."
                 className="flex-1 px-4 py-3 text-sm text-[#1d293d] placeholder-[#90a1b9] bg-transparent outline-none"
               />
-              <button className="bg-[#c1c1c1] hover:bg-primary transition-colors px-5 py-3.5">
+              <button type="submit" aria-label="Search blog posts" className="bg-[#c1c1c1] hover:bg-primary transition-colors px-5 py-3.5">
                 <SearchIcon style={{ fontSize: 18 }} className="text-white" />
               </button>
-            </div>
+            </form>
 
             {/* Recent Posts */}
             <div className="bg-[#fcfcfc] border border-[#f1f5f9] rounded-2xl p-8">

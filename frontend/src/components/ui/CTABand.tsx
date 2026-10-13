@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/Button'
+import { buttonVariants } from '@/components/ui/Button'
 import { isExternalHref } from '@/lib/utils'
 import type { CTABandValue } from '@/types/api'
 
 // marketingPath()/gelearnPath() return absolute cross-shell URLs — routing
 // those through react-router's <Link to> silently breaks navigation, so
 // external hrefs get a real <a> instead.
-function CTALink({ to, children }: { to: string; children: ReactNode }) {
+function CTALink({ to, className, children }: { to: string; className: string; children: ReactNode }) {
   return isExternalHref(to)
-    ? <a href={to}>{children}</a>
-    : <Link to={to}>{children}</Link>
+    ? <a href={to} className={className}>{children}</a>
+    : <Link to={to} className={className}>{children}</Link>
 }
 
 interface CTABandProps {
@@ -68,12 +68,12 @@ export function CTABand({
             {resolvedDescription}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <CTALink to={resolvedPrimaryLink}>
-              <Button variant="primary" size="lg">{resolvedPrimaryText}</Button>
+            <CTALink to={resolvedPrimaryLink} className={buttonVariants({ variant: 'primary', size: 'lg' })}>
+              {resolvedPrimaryText}
             </CTALink>
             {resolvedSecondaryText && resolvedSecondaryLink && (
-              <CTALink to={resolvedSecondaryLink}>
-                <Button variant="secondary" size="lg">{resolvedSecondaryText}</Button>
+              <CTALink to={resolvedSecondaryLink} className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+                {resolvedSecondaryText}
               </CTALink>
             )}
           </div>

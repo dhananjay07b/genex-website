@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { PageHero } from '@/components/ui/PageHero'
 import { CTABand } from '@/components/ui/CTABand'
 import { PageMeta } from '@/components/seo/PageMeta'
-import { Button } from '@/components/ui/Button'
+import { buttonVariants } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
@@ -204,9 +205,10 @@ export default function Careers() {
                 </div>
                 <Link
                   to={`/contact?subject=${encodeURIComponent(`Application: ${role.title}`)}`}
-                  className="shrink-0"
+                  aria-label={`Apply for ${role.title}`}
+                  className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'shrink-0')}
                 >
-                  <Button variant="secondary" size="sm">Apply Now</Button>
+                  Apply Now
                 </Link>
               </motion.div>
             ))}
