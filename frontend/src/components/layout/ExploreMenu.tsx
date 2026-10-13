@@ -197,7 +197,7 @@ export function ExploreMenu() {
               className="scrollbar-hidden flex gap-1 overflow-x-auto border-b border-border py-3 md:w-56 md:shrink-0 md:flex-col md:gap-0 md:border-r md:border-b-0 md:py-5"
             >
               {cats.map((cat, i) => (
-                <li key={cat.name} role="presentation">
+                <li key={`${i}-${cat.name}`} role="presentation">
                   <button
                     ref={el => { catRefs.current[i] = el }}
                     type="button"
@@ -232,8 +232,8 @@ export function ExploreMenu() {
               <div id={`${baseId}-pane`} role="tabpanel" aria-labelledby={`${baseId}-cat-${active}`} className="flex min-h-72 min-w-0 flex-1 flex-col gap-5 py-5 md:py-6 md:pl-8">
                 <h3 className="text-xl font-extrabold text-text-primary">{current.title}</h3>
                 <div className="grid grid-cols-1 gap-x-7 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {current.groups.filter(g => g.links.length > 0).map(group => (
-                    <div key={group.heading}>
+                  {current.groups.filter(g => g.links.length > 0).map((group, j) => (
+                    <div key={`${j}-${group.heading}`}>
                       <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-text-muted">{group.heading}</h4>
                       <ul className="grid">
                         {group.links.map(link => (
@@ -248,8 +248,8 @@ export function ExploreMenu() {
                   ))}
                 </div>
                 <div className="mt-auto flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-3.5">
-                  {current.footer.map(link => (
-                    <Link key={link.href} to={link.href} className="inline-flex items-center gap-0.5 text-sm font-bold text-sky-700 hover:text-sky-800">
+                  {current.footer.map((link, j) => (
+                    <Link key={`${j}-${link.href}`} to={link.href} className="inline-flex items-center gap-0.5 text-sm font-bold text-sky-700 hover:text-sky-800">
                       {link.label} <ArrowForwardIcon sx={{ fontSize: 18 }} />
                     </Link>
                   ))}

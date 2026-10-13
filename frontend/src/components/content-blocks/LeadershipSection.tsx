@@ -36,9 +36,9 @@ export function LeadershipSection({ value }: { value: LeadershipCardApiValue[] }
           viewport={{ once: true }}
           className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {value.map((person) => (
+          {value.map((person, i) => (
             <motion.div
-              key={person.title}
+              key={`${i}-${person.title}`}
               variants={staggerChild}
               whileHover={{ y: -4, boxShadow: '0 12px 40px rgba(26,174,232,0.12)', borderColor: '#1AAEE8' }}
               transition={{ duration: 0.22 }}

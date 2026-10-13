@@ -509,8 +509,8 @@ export function StatsBannerSection({ value, data }: { value: StatsBannerValue; d
           )}
         </div>
         <dl className="flex flex-wrap gap-3 md:justify-end">
-          {stats.map(stat => (
-            <div key={stat.label} className="min-w-32 rounded-xl border border-border bg-white px-5 py-3.5">
+          {stats.map((stat, i) => (
+            <div key={`${i}-${stat.label}`} className="min-w-32 rounded-xl border border-border bg-white px-5 py-3.5">
               <dd className="gradient-brand-text text-3xl font-extrabold tabular-nums">{stat.value}</dd>
               <dt className="text-xs font-semibold text-text-muted">{stat.label}</dt>
             </div>

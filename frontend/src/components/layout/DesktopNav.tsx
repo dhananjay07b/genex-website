@@ -75,7 +75,7 @@ export function DesktopNav({ items, solidBg = true }: DesktopNavProps) {
 
         return (
           <li
-              key={item.label}
+              key={`${i}-${item.label}`}
               className="relative"
               role="none"
             >

@@ -100,13 +100,13 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
               {/* Nav items — scrollable */}
               <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <ul className="space-y-0.5">
-                  {config.items.map((item) => {
+                  {config.items.map((item, i) => {
                     const hasDropdown = !!item.dropdown
                     const isExpanded = openSection === item.label
                     const active = isActive(item)
 
                     return (
-                      <li key={item.label}>
+                      <li key={`${i}-${item.label}`}>
                         {hasDropdown ? (
                           <>
                             <button
@@ -141,8 +141,8 @@ export function MobileMenu({ config, solidBg = true }: MobileMenuProps) {
                                   className="overflow-hidden pl-3 mt-0.5 space-y-0.5"
                                 >
                                   {item.dropdown.sections.flatMap((s) =>
-                                    s.items.map((sub) => (
-                                      <li key={sub.href}>
+                                    s.items.map((sub, j) => (
+                                      <li key={`${j}-${sub.href}`}>
                                         <Link
                                           to={sub.href}
                                           className="flex flex-col px-3 py-2.5 rounded-lg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"

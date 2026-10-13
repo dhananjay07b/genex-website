@@ -26,7 +26,7 @@ export function AchievementsSection({ value }: { value: AchievementApiValue[] })
           const isOdd = i % 2 !== 0
           return (
             <div
-              key={ach.heading}
+              key={`${i}-${ach.heading}`}
               className={`grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center ${
                 i === 0 ? 'py-20 lg:py-28' : 'pb-20 lg:pb-28 pt-16 lg:pt-24 border-t border-border'
               }`}

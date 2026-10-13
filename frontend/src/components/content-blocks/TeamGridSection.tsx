@@ -71,8 +71,8 @@ export function TeamGridSection({ value }: { value: TeamSectionApiValue }) {
         </motion.div>
 
         <div className="flex flex-col gap-16">
-          {groups.map((group) => (
-            <div key={group.label}>
+          {groups.map((group, i) => (
+            <div key={`${i}-${group.label}`}>
               {groups.length > 1 && (
                 <motion.h3
                   initial={{ opacity: 0, y: 16 }}

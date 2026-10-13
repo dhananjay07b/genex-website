@@ -36,7 +36,7 @@ export function MegaMenu({ dropdown, isOpen }: MegaMenuProps) {
                   section.items.length > 4 ? 'grid-cols-2' : 'grid-cols-1'
                 )}
               >
-                {section.items.map((item) => {
+                {section.items.map((item, i) => {
                     const external = isExternalHref(item.href)
                     const active = !external && pathname === item.href
                     const linkClassName = "group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -56,7 +56,7 @@ export function MegaMenu({ dropdown, isOpen }: MegaMenuProps) {
                       </>
                     )
                     return (
-                      <li key={item.href} role="none">
+                      <li key={`${i}-${item.href}`} role="none">
                         {external ? (
                           <a href={item.href} role="menuitem" className={linkClassName}>
                             {content}

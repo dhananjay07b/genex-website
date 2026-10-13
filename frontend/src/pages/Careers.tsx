@@ -83,7 +83,7 @@ export default function Careers() {
               const Icon = getMuiIcon(item.icon)
               return (
                 <motion.div
-                  key={item.title}
+                  key={`${i}-${item.title}`}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -181,7 +181,7 @@ export default function Careers() {
           <div className="space-y-4">
             {openRoles.map((role, i) => (
               <motion.div
-                key={role.title}
+                key={`${i}-${role.title}`}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

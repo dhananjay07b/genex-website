@@ -15,8 +15,8 @@ export function CoursePromos() {
   ]
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {cards.map(card => (
-        <Link key={card.to} to={card.to} className={`group flex items-center justify-between gap-5 rounded-2xl p-6 ${card.tone}`}>
+      {cards.map((card, i) => (
+        <Link key={`${i}-${card.to}`} to={card.to} className={`group flex items-center justify-between gap-5 rounded-2xl p-6 ${card.tone}`}>
           <span className="flex flex-col gap-2 max-w-md">
             <span className={`text-xs font-extrabold uppercase tracking-widest ${card.ink}`}>{card.tag}</span>
             <span className="text-lg font-extrabold text-text-primary">{card.title}</span>
