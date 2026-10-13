@@ -51,7 +51,7 @@ export function CommentsTab() {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-text-primary mb-5">My Comments</h1>
+      <h2 className="text-xl font-extrabold text-text-primary mb-5">My Comments</h2>
 
       {comments.length === 0 ? (
         <EmptyState

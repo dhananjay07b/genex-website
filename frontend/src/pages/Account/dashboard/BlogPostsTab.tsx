@@ -40,7 +40,7 @@ export function BlogPostsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-extrabold text-text-primary">My Blog Posts</h1>
+        <h2 className="text-xl font-extrabold text-text-primary">My Blog Posts</h2>
         <Link to="/submit-post">
           <Button variant="primary" size="md">
             <Add sx={{ fontSize: 18 }} />

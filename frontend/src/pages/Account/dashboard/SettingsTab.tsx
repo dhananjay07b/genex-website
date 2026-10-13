@@ -255,7 +255,7 @@ export function SettingsTab() {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-text-primary mb-5">Edit Profile &amp; Settings</h1>
+      <h2 className="text-xl font-extrabold text-text-primary mb-5">Edit Profile &amp; Settings</h2>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
       <div className="flex flex-col gap-5 max-w-2xl flex-1 min-w-0">

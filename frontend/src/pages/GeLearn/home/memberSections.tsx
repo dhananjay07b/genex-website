@@ -33,7 +33,7 @@ export function WelcomeSection({ value, me, name }: { value: WelcomeValue; me: M
         <div className="grid gap-4 lg:grid-cols-4">
           <div className="grid gap-5 rounded-2xl border border-border bg-white p-5 shadow-sm sm:grid-cols-3 sm:items-center lg:col-span-3">
             <div className="flex flex-col gap-1 sm:col-span-2">
-              <h1 className="text-2xl font-extrabold text-text-primary">Welcome back, {name}</h1>
+              <h1 className="text-2xl font-extrabold text-text-primary">Welcome, {name}</h1>
               {current ? (
                 <>
                   <p className="mt-3 text-xs font-bold uppercase tracking-widest text-text-muted">Continue learning</p>

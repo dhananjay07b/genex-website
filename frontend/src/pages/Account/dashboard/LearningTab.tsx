@@ -54,7 +54,7 @@ export function LearningTab() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-5">
-        <h1 className="text-xl font-extrabold text-text-primary">My Learning</h1>
+        <h2 className="text-xl font-extrabold text-text-primary">My Learning</h2>
         <Link to="/courses" className="text-sm font-bold text-primary hover:underline">Browse courses</Link>
       </div>
 

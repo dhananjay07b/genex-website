@@ -39,7 +39,7 @@ export function VideosTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-extrabold text-text-primary">My Videos</h1>
+        <h2 className="text-xl font-extrabold text-text-primary">My Videos</h2>
         <Link to="/submit-video">
           <Button variant="primary" size="md">
             <Add sx={{ fontSize: 18 }} />

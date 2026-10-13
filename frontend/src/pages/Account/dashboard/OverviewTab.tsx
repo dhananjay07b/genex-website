@@ -91,7 +91,7 @@ export function OverviewTab({ onSelectTab, canPublish }: OverviewTabProps) {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-text-primary mb-5">Overview</h1>
+      <h2 className="text-xl font-extrabold text-text-primary mb-5">Overview</h2>
 
       {user?.account_type === 'learner' && !user.is_admin && (
         <a

@@ -85,7 +85,7 @@ export default function Profile() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-9 flex items-center justify-between gap-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1.5">GeLearn Account</p>
-            <h1 className="text-3xl font-extrabold text-text-primary">Welcome back, {user.display_name || user.username}</h1>
+            <h1 className="text-3xl font-extrabold text-text-primary">Welcome, {user.display_name || user.username}</h1>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">

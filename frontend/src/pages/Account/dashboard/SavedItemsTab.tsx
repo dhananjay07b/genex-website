@@ -59,7 +59,7 @@ export function SavedItemsTab() {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-text-primary mb-5">Saved Items</h1>
+      <h2 className="text-xl font-extrabold text-text-primary mb-5">Saved Items</h2>
 
       {items.length === 0 ? (
         <EmptyState

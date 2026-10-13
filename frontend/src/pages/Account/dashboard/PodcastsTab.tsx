@@ -18,7 +18,7 @@ export function PodcastsTab() {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-text-primary mb-5">My Podcasts</h1>
+      <h2 className="text-xl font-extrabold text-text-primary mb-5">My Podcasts</h2>
 
       {episodes.length === 0 ? (
         <EmptyState

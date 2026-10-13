@@ -87,7 +87,7 @@ export function CoursesTab({
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-5">
-        <h1 className="text-xl font-extrabold text-text-primary">{heading}</h1>
+        <h2 className="text-xl font-extrabold text-text-primary">{heading}</h2>
         <Link to={`${basePath}/new`}
           className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white text-sm font-bold px-4 py-2 hover:opacity-90 transition-opacity">
           <AddIcon sx={{ fontSize: 17 }} /> New course
