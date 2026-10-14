@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async'
+import { getMediaUrl, isExternalHref } from '@/lib/utils'
 
 const SITE_NAME = 'Genex Technocrats'
 // Resolved from the current origin so canonical/OG URLs are correct whether this
@@ -18,7 +19,11 @@ interface PageMetaProps {
 export function PageMeta({ title, description, canonical, noIndex = false, image }: PageMetaProps) {
   const fullTitle    = `${title} | ${SITE_NAME}`
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined
-  const ogImageUrl   = image ? (image.startsWith('http') ? image : `${SITE_URL}${image}`) : `${SITE_URL}${OG_IMAGE}`
+  // CMS uploads (/media/…) live on the API server; the site's own files (/images/…) here.
+  const ogImageUrl   = !image ? `${SITE_URL}${OG_IMAGE}`
+    : image.startsWith('/media/') ? getMediaUrl(image)
+    : isExternalHref(image) ? image
+    : `${SITE_URL}${image}`
 
   return (
     <Helmet>
