@@ -28,7 +28,7 @@ const DEFAULT_TABS: Tab[] = [
       'Multi-site aggregation for portfolio-level visibility',
     ],
     href: '/portfolio/solarlive',
-    image: '/images/what-we-build/solarlive real time analytics card.png',
+    image: '/images/what-we-build/solarlive.webp',
   },
   {
     id: 'ems-bess',
@@ -41,7 +41,7 @@ const DEFAULT_TABS: Tab[] = [
       'Grid-tied and off-grid BESS operation modes',
     ],
     href: '/portfolio/energy-storage',
-    image: '/images/what-we-build/ems-bess card.png',
+    image: '/images/what-we-build/ems-bess.webp',
   },
   {
     id: 'wind-network',
@@ -54,7 +54,7 @@ const DEFAULT_TABS: Tab[] = [
       'Alarm management and remote diagnostics for field teams',
     ],
     href: '/portfolio/wind-network',
-    image: '/images/what-we-build/wind network system card.png',
+    image: '/images/what-we-build/wind-network.webp',
   },
   {
     id: 'bms',
@@ -67,7 +67,7 @@ const DEFAULT_TABS: Tab[] = [
       'Communication via CAN, Modbus, and RS485',
     ],
     href: '/portfolio/bms',
-    image: '/images/what-we-build/bms - battery management system card.png',
+    image: '/images/what-we-build/bms.webp',
   },
   {
     id: 'rms-kusum',
@@ -80,7 +80,7 @@ const DEFAULT_TABS: Tab[] = [
       'Automated reporting for government compliance',
     ],
     href: '/portfolio/rms',
-    image: '/images/what-we-build/rms sytem card.png',
+    image: '/images/what-we-build/rms.webp',
   },
   {
     id: 'scada',
@@ -93,7 +93,7 @@ const DEFAULT_TABS: Tab[] = [
       'Historian, trend analysis, and control room dashboards',
     ],
     href: '/portfolio/scada',
-    image: '/images/what-we-build/scada card.png',
+    image: '/images/what-we-build/scada.webp',
   },
   {
     id: 'ev-software',
@@ -106,7 +106,7 @@ const DEFAULT_TABS: Tab[] = [
       'Fleet energy scheduling and load balancing',
     ],
     href: '/portfolio/ev-infrastructure',
-    image: '/images/what-we-build/ev software management card.png',
+    image: '/images/what-we-build/ev-software.webp',
   },
   {
     id: 'power-billing',
@@ -119,7 +119,7 @@ const DEFAULT_TABS: Tab[] = [
       'Bulk bill generation and consumer portal access',
     ],
     href: '/portfolio/power-billing',
-    image: '/images/what-we-build/power tool gnm and vnm.png',
+    image: '/images/what-we-build/power-tools-gnm-vnm.webp',
   },
   {
     id: 'zero-export',
@@ -132,7 +132,7 @@ const DEFAULT_TABS: Tab[] = [
       'Event logging and utility compliance reports',
     ],
     href: '/portfolio/zero-export',
-    image: '/images/what-we-build/zero export tools .png',
+    image: '/images/what-we-build/zero-export.webp',
   },
   {
     id: 'carbon-credit',
@@ -145,7 +145,7 @@ const DEFAULT_TABS: Tab[] = [
       'Audit-ready reports for BEE and UNFCCC submissions',
     ],
     href: '/portfolio/carbon-credit',
-    image: '/images/what-we-build/carbon credit tools .png',
+    image: '/images/what-we-build/carbon-credit.webp',
   },
   {
     id: 'data-loggers',
@@ -158,7 +158,7 @@ const DEFAULT_TABS: Tab[] = [
       'Plug-and-play integration with SolarLive™ and SCADA Platform',
     ],
     href: '/portfolio/iot-gateway',
-    image: '/images/what-we-build/data loggers.png',
+    image: '/images/what-we-build/data-loggers.webp',
   },
   {
     id: 'power-cloud',
@@ -171,7 +171,7 @@ const DEFAULT_TABS: Tab[] = [
       'API-first architecture for third-party integrations',
     ],
     href: '/portfolio/power-cloud',
-    image: '/images/what-we-build/power cloud system.png',
+    image: '/images/what-we-build/power-cloud.webp',
   },
   {
     id: 'rtc-power',
@@ -184,7 +184,7 @@ const DEFAULT_TABS: Tab[] = [
       'ISO 50001 energy management system reporting support',
     ],
     href: '/portfolio/rtc-power-tools',
-    image: '/images/what-we-build/rtc tools.png',
+    image: '/images/what-we-build/rtc.webp',
   },
 ]
 

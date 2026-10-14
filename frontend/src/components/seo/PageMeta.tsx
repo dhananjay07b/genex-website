@@ -4,7 +4,8 @@ const SITE_NAME = 'Genex Technocrats'
 // Resolved from the current origin so canonical/OG URLs are correct whether this
 // page is served from the marketing domain or the gelearn subdomain.
 const SITE_URL  = typeof window !== 'undefined' ? window.location.origin : 'https://genextechnocrats.com'
-const OG_IMAGE  = '/images/hero/slide2.png'
+// 1200×630 JPEG: the size and format every link-preview site accepts.
+const OG_IMAGE  = '/images/og-default.jpg'
 
 interface PageMetaProps {
   title: string

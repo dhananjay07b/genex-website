@@ -24,12 +24,12 @@ const DEFAULT_SLIDES: Slide[] = [
   {
     headline: 'Monitoring Every Watt. In Real Time.',
     subline: 'Real-time visibility across every solar, wind, and industrial asset.',
-    media: { type: 'image', src: '/images/hero/slide2.png' },
+    media: { type: 'image', src: '/images/hero/slide2.webp' },
   },
   {
     headline: 'Built by Engineers. For Engineers.',
     subline: 'Indian engineering at global scale — deployed across 8 states.',
-    media: { type: 'image', src: '/images/hero/slide4.png' },
+    media: { type: 'image', src: '/images/hero/slide4.webp' },
   },
 ]
 

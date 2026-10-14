@@ -21,7 +21,7 @@ const DEFAULT_PROJECTS: Project[] = [
     location: 'Rajasthan',
     metric: '50 MW',
     href: '/portfolio/solar-power-plants',
-    image: '/images/projects/solar-rajasthan.png',
+    image: '/images/projects/solar-rajasthan.webp',
   },
   {
     name: 'Industrial SCADA Deployment',
