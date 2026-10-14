@@ -31,7 +31,7 @@ class Follow(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["follower", "followed"], name="unique_follow_pair"),
-            models.CheckConstraint(check=~models.Q(follower=models.F("followed")), name="follow_not_self"),
+            models.CheckConstraint(condition=~models.Q(follower=models.F("followed")), name="follow_not_self"),
         ]
 
     def __str__(self):

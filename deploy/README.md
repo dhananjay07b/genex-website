@@ -16,6 +16,17 @@ the same files, and swapping `sitemap.xml`/`robots.txt` on the GeLearn vhost.
 
 ## One-time server setup
 
+System packages (Ubuntu 24.04 LTS, which ships Python 3.12). `python3-venv` isn't
+installed by default, and the Pango/HarfBuzz libraries are what WeasyPrint needs to
+draw certificate PDFs:
+```bash
+sudo apt update
+sudo apt install python3-venv python3-dev libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+    apache2 certbot python3-certbot-apache
+```
+To build the frontend on the server, install Node.js 22 LTS (e.g. from NodeSource):
+Ubuntu's own `nodejs` package is 18, too old for Vite (needs 20.19+ or 22.12+).
+
 ```bash
 sudo a2enmod rewrite proxy proxy_http headers ssl
 ```

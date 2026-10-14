@@ -1,4 +1,4 @@
-Django>=5.1,<5.2
+Django>=5.2,<5.3
 wagtail>=7.3,<8.0
 django-cors-headers>=4.0
 Pillow>=10.0
