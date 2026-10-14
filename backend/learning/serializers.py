@@ -10,6 +10,7 @@ from accounts.roles import display_publisher, is_company
 from commerce.access import has_access
 from pages.api import author_payload
 from pages.durations import parse_duration_seconds
+from pages.images import CONTENT, image_url
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
 from . import course_page
@@ -84,7 +85,7 @@ def target_card(target, kind):
         "kind": kind,
         "id": target.pk,
         "title": target.title,
-        "image_url": image.file.url if image else None,
+        "image_url": image_url(image, CONTENT),
         "meta": item_meta(target, kind),
         "minutes": lesson_minutes(target, kind),
         "path": ITEM_PATHS[kind].format(id=target.pk),
@@ -96,7 +97,7 @@ def target_card(target, kind):
 
 
 def cover_url(playlist):
-    return playlist.cover.file.url if playlist.cover_id else None
+    return image_url(playlist.cover, CONTENT)
 
 
 class AccessFieldsMixin(serializers.Serializer):
@@ -301,7 +302,7 @@ class CareerRoleSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "slug", "summary", "image_url"]
 
     def get_image_url(self, obj):
-        return obj.image.file.url if obj.image_id else None
+        return image_url(obj.image, CONTENT)
 
 
 # ── Owner (Professional) ────────────────────────────────────────────────────

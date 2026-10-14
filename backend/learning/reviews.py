@@ -6,6 +6,7 @@ from django.db.models import Count, IntegerField, OuterRef, Subquery
 from django.db.models.functions import Coalesce
 
 from accounts.roles import display_company
+from pages.images import AVATAR, image_url
 
 from .models import MIN_REVIEWS_FOR_RATING, CourseReview, Enrollment, ItemProgress, ReviewReply
 
@@ -52,7 +53,7 @@ def reply_payload(reply):
         "author": {
             "username": None if as_company else author.username,
             "display_name": author.company.name if as_company else (author.display_name or author.username),
-            "avatar_url": None if as_company else (author.avatar.file.url if author.avatar_id else None),
+            "avatar_url": None if as_company else image_url(author.avatar, AVATAR),
             "role_title": "" if as_company else author.role_title,
         },
     }
@@ -88,7 +89,7 @@ def review_payload(review, lesson_count, viewer=None, can_reply=False):
         "author": {
             "username": author.username,
             "display_name": author.display_name or author.username,
-            "avatar_url": author.avatar.file.url if author.avatar_id else None,
+            "avatar_url": image_url(author.avatar, AVATAR),
             "role_title": author.role_title,
             "company": display_company(author),
         },

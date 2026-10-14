@@ -54,6 +54,21 @@ class NotificationListQueryTests(TestCase):
         self._notify(10)
         self.assertEqual(count(), few)
 
+    def test_reply_notification_shows_the_replier(self):
+        from comments.models import Comment
+        from pages.models import BlogPost
+        post = BlogPost.objects.create(title="Grid notes", date="2026-10-01")
+        post_type = ContentType.objects.get_for_model(BlogPost)
+        mine = Comment.objects.create(content_type=post_type, object_id=post.pk, author=self.pro, body="First")
+        replier = User.objects.create_user("eng", "eng@example.org", "Passw0rd!x")
+        reply = Comment.objects.create(content_type=post_type, object_id=post.pk, author=replier, parent=mine, body="Agreed")
+        Notification.objects.create(recipient=self.pro, kind="comment_reply", text="eng replied to your comment.",
+                                    content_type=ContentType.objects.get_for_model(Comment), object_id=reply.pk)
+        entries = self.client.get("/api/accounts/me/activity/").json()
+        entry = next(e for e in entries if e["type"] == "comment_reply")
+        self.assertEqual(entry["link"], f"/blog/{post.pk}")
+        self.assertIsNone(entry["image_url"])  # the replier has no avatar
+
 
 class SavedItemKeysTests(TestCase):
     """Save buttons read one tiny list of "model:id" keys — complete, not capped at a page."""

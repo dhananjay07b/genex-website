@@ -1,4 +1,5 @@
 from accounts.serializers import PublicUserSerializer
+from pages.images import CONTENT, image_url
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
@@ -23,7 +24,7 @@ class SavedItemSerializer(serializers.ModelSerializer):
         # Not every saved content type carries an image (Tender/Whitepaper don't);
         # `image` is only present on BlogPost, PodcastEpisode, VideoItem, CaseStudy.
         image = getattr(obj.content_object, "image", None) or getattr(obj.content_object, "cover", None)
-        return image.file.url if image else None
+        return image_url(image, CONTENT)
 
     def get_path(self, obj):
         """GeLearn link for items addressed by slug (courses); other types build their link from object_id."""

@@ -21,6 +21,7 @@ from accounts.roles import IsProfessional, display_company, display_publisher, i
 from accounts.uploads import save_uploaded_image
 from commerce.access import has_access
 
+from .images import AVATAR, CONTENT, image_url
 from .models import (
     AccessControlled,
     SiteSettings,
@@ -69,7 +70,7 @@ class GenexPagination(LimitOffsetPagination):
 class ImageUrlSerializerMixin:
     """Exposes a ForeignKey(wagtailimages.Image) field named `image` as a plain `image_url` string."""
     def get_image_url(self, obj):
-        return obj.image.file.url if obj.image else None
+        return image_url(obj.image, CONTENT)
 
 
 class StreamFieldSerializerMixin:
@@ -172,7 +173,7 @@ def author_payload(user):
     return {
         "username": user.username,
         "display_name": user.display_name,
-        "avatar_url": user.avatar.file.url if user.avatar else None,
+        "avatar_url": image_url(user.avatar, AVATAR),
         "account_type": user.account_type,
         "company": display_company(user),
         "role_title": user.role_title,
@@ -302,7 +303,7 @@ class UserBlogPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer)
         read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_image_url(self, obj):
-        return obj.image.file.url if obj.image else None
+        return image_url(obj.image, CONTENT)
 
     def validate_topics(self, value):
         if len(value) > 3:
@@ -439,7 +440,7 @@ class UserVideoPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
 
     def get_thumbnail_url(self, obj):
-        return obj.thumbnail.file.url if obj.thumbnail else None
+        return image_url(obj.thumbnail, CONTENT)
 
     def validate_topics(self, value):
         if len(value) > 3:

@@ -14,6 +14,7 @@ from learning.models import CareerRole, Enrollment, ItemProgress, LiveSession, P
 from learning.queries import published_courses
 from learning.serializers import ITEM_SELECT, item_meta
 from organizations.models import Company
+from pages.images import AVATAR, CONTENT, image_url
 from pages.models import GeLearnIndexPage, Testimonial, Topic, TopicGroup
 
 from .cards import MODEL_TYPES, TYPE_MODELS, card_for, cards, person_card, queryset
@@ -106,7 +107,7 @@ def courses_by_role(per_role=4):
     return [
         {
             "id": role.id, "name": role.name, "slug": role.slug, "summary": role.summary,
-            "image_url": role.image.file.url if role.image_id else None,
+            "image_url": image_url(role.image, CONTENT),
             "course_count": role.course_count,
             "courses": cards("course", published_courses().filter(roles=role).order_by("-enrolled_count")[:per_role]),
         }
@@ -187,7 +188,7 @@ def live_session_card(session):
         "company": {"name": session.company.name, "slug": session.company.slug, "logo_url": session.company.logo_url,
                     "verified": True} if session.company_id else None,
         "registration_url": session.registration_url,
-        "image_url": session.image.file.url if session.image_id else None,
+        "image_url": image_url(session.image, CONTENT),
         "topics": [{"id": t.id, "name": t.name, "slug": t.slug} for t in session.topics.all()],
     }
 
@@ -209,7 +210,7 @@ def testimonials():
         return []
     return [
         {"id": t.pk, "quote": t.quote, "name": t.name, "role": t.role, "company_name": t.company_name,
-         "photo_url": t.photo.file.url if t.photo_id else None}
+         "photo_url": image_url(t.photo, AVATAR)}
         for t in rows
     ]
 

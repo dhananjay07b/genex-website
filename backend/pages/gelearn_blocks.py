@@ -15,6 +15,7 @@ from wagtail.images.blocks import ImageChooserBlock
 from wagtail.snippets.blocks import SnippetChooserBlock
 
 from .blocks import ImageApiStructBlock
+from .images import HERO
 from .links import LinkBlock
 
 
@@ -23,6 +24,7 @@ from .links import LinkBlock
 # ── Building blocks ──────────────────────────────────────────────────────────
 
 class HeroSlide(ImageApiStructBlock):
+    image_size = HERO  # banner slides span the full slider width
     variant = blocks.ChoiceBlock(
         choices=[("card", "Text and image (half width)"), ("banner", "Image only (full width)")], default="card",
         label="Slide type",

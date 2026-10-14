@@ -4,6 +4,7 @@ has published, and the verified experts who publish under its name.
 """
 from accounts.models import User
 from accounts.roles import display_company
+from pages.images import AVATAR, CONTENT, image_url
 
 from .models import Company
 
@@ -12,7 +13,7 @@ ITEMS_PER_SECTION = 6
 
 def _image(obj):
     image = getattr(obj, "image", None)
-    return image.file.url if image else None
+    return image_url(image, CONTENT)
 
 
 def _card(obj, path, meta=""):
@@ -77,7 +78,7 @@ def company_page(company: Company):
             {
                 "username": u.username,
                 "display_name": u.display_name,
-                "avatar_url": u.avatar.file.url if u.avatar else None,
+                "avatar_url": image_url(u.avatar, AVATAR),
                 "role_title": u.role_title,
                 "company": display_company(u),
             }
@@ -87,7 +88,7 @@ def company_page(company: Company):
             {
                 "slug": c.slug,
                 "title": c.title,
-                "cover_url": c.cover.file.url if c.cover_id else None,
+                "cover_url": image_url(c.cover, CONTENT),
                 "owner_name": c.owner.display_name or c.owner.username,
                 "access": c.access,
                 "price": str(c.price) if c.price is not None else None,

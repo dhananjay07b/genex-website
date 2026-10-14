@@ -8,6 +8,7 @@ from rest_framework import serializers
 
 from accounts.models import User
 from accounts.roles import display_company
+from pages.images import AVATAR, CONTENT, image_url
 from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Topic, Whitepaper
 from pages.richtext import rich_text_for_editing, sanitize_rich_text
 
@@ -53,7 +54,7 @@ class StudioBaseSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         image = getattr(obj, "image", None)
-        return image.file.url if image else None
+        return image_url(image, CONTENT)
 
     def get_owner(self, obj):
         return {"username": obj.owner.username, "display_name": obj.owner.display_name} if obj.owner_id else None
@@ -176,7 +177,7 @@ class CollaboratorField(serializers.SlugRelatedField):
         return {
             "username": value.username,
             "display_name": value.display_name,
-            "avatar_url": value.avatar.file.url if value.avatar else None,
+            "avatar_url": image_url(value.avatar, AVATAR),
             "company": display_company(value),
         }
 

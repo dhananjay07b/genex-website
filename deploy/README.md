@@ -47,6 +47,8 @@ cp deploy/gunicorn/genex-backend.env.example .env
 export DJANGO_SETTINGS_MODULE=genex.settings.production
 python manage.py migrate
 python manage.py collectstatic --noinput
+# Resized copies of uploaded images (what the API serves); re-run after restoring media
+python manage.py warm_image_renditions
 
 sudo cp deploy/gunicorn/genex-backend.service /etc/systemd/system/
 sudo systemctl daemon-reload

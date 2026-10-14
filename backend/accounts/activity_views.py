@@ -3,6 +3,7 @@ from comments.serializers import CommentSerializer
 from engagement.models import Notification
 from engagement.serializers import notification_path
 from pages.api import PodcastEpisodeSerializer
+from pages.images import AVATAR, CONTENT, image_url
 from pages.models import PodcastEpisode, UserBlogPost, UserVideoPost
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
@@ -36,7 +37,7 @@ class MyPodcastAppearancesView(ListAPIView):
 
 def _image_url(obj):
     image = getattr(obj, "image", None) or getattr(obj, "thumbnail", None)
-    return image.file.url if image else None
+    return image_url(image, CONTENT)
 
 
 def _notification_entry(notification):
@@ -46,27 +47,27 @@ def _notification_entry(notification):
     obj = notification.content_object
 
     if model_name == "blogpost" and obj:
-        image_url, link = _image_url(obj), f"/blog/{obj.id}"
+        image, link = _image_url(obj), f"/blog/{obj.id}"
     elif model_name == "videoitem" and obj:
-        image_url, link = _image_url(obj), f"/videos/{obj.id}"
+        image, link = _image_url(obj), f"/videos/{obj.id}"
     elif model_name == "comment" and obj:
         # comment_reply: image the replier's avatar, link to the content they replied on
         replier = obj.author
-        image_url = replier.avatar.file.url if replier and replier.avatar else None
+        image = image_url(replier.avatar, AVATAR) if replier else None
         parent_model = obj.content_type.model if obj.content_type else None
         link = f"/blog/{obj.object_id}" if parent_model == "blogpost" else f"/videos/{obj.object_id}" if parent_model == "videoitem" else "/account"
     elif model_name == "playlist" and obj:
-        image_url = obj.cover.file.url if obj.cover_id else None
+        image = image_url(obj.cover, CONTENT)
         link = notification_path(notification) or "/account"
     else:
-        image_url, link = None, "/account"
+        image, link = None, "/account"
 
     return {
         "id": f"notification-{notification.id}",
         "type": notification.kind,
         "title": notification.text,
         "description": None,
-        "image_url": image_url,
+        "image_url": image,
         "timestamp": notification.created_at.isoformat(),
         "link": link,
     }
@@ -119,7 +120,7 @@ class ActivityFeedView(APIView):
         video_subs = UserVideoPost.objects.filter(author=user).order_by("-created_at")[:10]
         entries += [_submission_entry(s, "video_submission", "/videos", s.published_video_id) for s in video_subs]
 
-        avatar_url = user.avatar.file.url if user.avatar else None
+        avatar_url = image_url(user.avatar, AVATAR)
         comments = Comment.objects.filter(author=user).select_related("content_type").order_by("-created_at")[:10]
         entries += [_comment_entry(c, avatar_url) for c in comments]
 

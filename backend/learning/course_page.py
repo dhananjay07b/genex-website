@@ -13,6 +13,7 @@ from django.db.models import Count, Q
 
 from accounts.models import User
 from accounts.roles import display_company, display_publisher
+from pages.images import AVATAR, image_url
 
 from .models import CourseReview, Enrollment, Playlist
 from .queries import published_courses
@@ -58,7 +59,7 @@ def _person(user):
     return {
         "username": user.username,
         "display_name": user.display_name or user.username,
-        "avatar_url": user.avatar.file.url if user.avatar_id else None,
+        "avatar_url": image_url(user.avatar, AVATAR),
         "role_title": user.role_title,
         "years_experience": user.years_experience,
         "bio": user.bio,

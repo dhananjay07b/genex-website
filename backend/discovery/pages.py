@@ -12,6 +12,7 @@ from accounts.models import User
 from learning.models import CareerRole, LiveSession, Playlist
 from learning.queries import published_courses
 from organizations.models import Company
+from pages.images import CONTENT, image_url
 from pages.models import CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
 from .cards import cards, person_card, queryset
@@ -25,7 +26,7 @@ def _topic_ref(topic):
 
 
 def _image_url(obj):
-    return obj.image.file.url if getattr(obj, "image_id", None) else None
+    return image_url(obj.image, CONTENT) if getattr(obj, "image_id", None) else None
 
 
 # ── Professionals ────────────────────────────────────────────────────────────

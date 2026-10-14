@@ -13,6 +13,7 @@ from django.utils import timezone
 from accounts.roles import display_company, display_publisher
 from learning.queries import published_courses
 from learning.reviews import card_rating
+from pages.images import AVATAR, CONTENT, image_url
 from pages.models import BlogPost, CaseStudy, PodcastEpisode, TechArticle, Tender, VideoItem, Whitepaper
 
 EXCERPT_LENGTH = 220
@@ -25,7 +26,7 @@ def _excerpt(text):
 
 def _image(obj, field="image"):
     image = getattr(obj, field, None)
-    return image.file.url if image else None
+    return image_url(image, CONTENT)
 
 
 def _topics(obj):
@@ -47,7 +48,7 @@ def person_card(user):
     return {
         "username": user.username,
         "display_name": user.display_name or user.username,
-        "avatar_url": user.avatar.file.url if user.avatar_id else None,
+        "avatar_url": image_url(user.avatar, AVATAR),
         "role_title": user.role_title,
         "company": display_company(user),
     }

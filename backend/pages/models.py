@@ -21,6 +21,7 @@ from wagtail import blocks
 
 from .durations import parse_duration_seconds
 from .gelearn_blocks import HOME_SECTIONS, LANDING_SECTIONS, MEMBER_SECTIONS
+from .images import CONTENT, image_url
 from .links import PAGE_SECTIONS, genex_page_path
 from .blocks import (
     AppDownloadBlock,
@@ -292,7 +293,7 @@ class ContentPage(BasePage):
 
     @property
     def icon_url(self):
-        return self.icon_image.file.url if self.icon_image else None
+        return image_url(self.icon_image, CONTENT)
 
     api_fields = BasePage.api_fields + [
         APIField("tags"),

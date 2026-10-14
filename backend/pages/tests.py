@@ -1,7 +1,10 @@
+import shutil
+import tempfile
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.admin.sites import AdminSite
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from rest_framework.test import APIClient
 
 from accounts.models import User
@@ -462,3 +465,82 @@ class NavApiTests(TestCase):
         with CaptureQueriesContext(connection) as after:
             client.get("/api/snippets/nav/")
         self.assertEqual(len(after), len(before))
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="genex-test-media-"))
+class ImageUrlTests(TestCase):
+    """The API serves resized WebP copies of uploads, never the multi-MB originals."""
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        from django.core.cache import caches
+        caches["renditions"].clear()
+
+    def _image(self, **kwargs):
+        from wagtail.images.models import Image
+        from wagtail.images.tests.utils import get_test_image_file
+        return Image.objects.create(title="Substation", file=get_test_image_file(**kwargs))
+
+    def test_large_photo_is_shrunk_to_webp(self):
+        from .images import CONTENT, image_payload
+        image = self._image(size=(3000, 2000))
+        data = image_payload(image, CONTENT)
+        self.assertTrue(data["url"].startswith("/media/images/"))
+        self.assertTrue(data["url"].endswith(".webp"))
+        self.assertEqual((data["width"], data["height"]), (1200, 800))
+        self.assertEqual(data["alt"], "Substation")
+
+    def test_small_photo_is_not_enlarged(self):
+        from .images import HERO, image_payload
+        data = image_payload(self._image(size=(640, 480)), HERO)
+        self.assertEqual((data["width"], data["height"]), (640, 480))
+
+    def test_avatar_is_a_square_crop(self):
+        from .images import AVATAR, image_url
+        image = self._image(size=(1600, 900))
+        url = image_url(image, AVATAR)
+        rendition = image.renditions.get()
+        self.assertEqual(url, rendition.url)
+        self.assertEqual((rendition.width, rendition.height), (256, 256))
+
+    def test_vectors_and_gifs_are_served_as_uploaded(self):
+        from wagtail.images.models import Image
+        from wagtail.images.tests.utils import get_test_image_file, get_test_image_file_svg
+        from .images import image_url
+        svg = Image.objects.create(title="Logo", file=get_test_image_file_svg())
+        gif = Image.objects.create(title="Animation", file=get_test_image_file(filename="spin.gif"))
+        self.assertEqual(image_url(svg), svg.file.url)
+        self.assertEqual(image_url(gif), gif.file.url)
+        self.assertFalse(svg.renditions.exists() or gif.renditions.exists())
+
+    def test_missing_file_falls_back_to_its_url(self):
+        from .images import image_url
+        image = self._image()
+        image.file.storage.delete(image.file.name)
+        with self.assertLogs("pages.images", "WARNING"):
+            self.assertEqual(image_url(image), image.file.url)
+
+    def test_no_image_is_none(self):
+        from .images import image_url
+        self.assertIsNone(image_url(None))
+
+    def test_repeat_requests_reuse_the_copy_without_queries(self):
+        from .images import image_url
+        image = self._image(size=(2000, 1000))
+        first = image_url(image)
+        with self.assertNumQueries(0):
+            self.assertEqual(image_url(image), first)
+
+    def test_blocks_use_their_size(self):
+        from .blocks import CredibilityLogoBlock, HeroSlideBlock
+        image = self._image(size=(3000, 1500))
+        hero = HeroSlideBlock()
+        hero_data = hero.get_api_representation(hero.to_python({"headline": "Grid", "background_image": image.pk}))
+        self.assertEqual(hero_data["background_image"]["width"], 2000)
+        logo = CredibilityLogoBlock()
+        logo_data = logo.get_api_representation(logo.to_python({"name": "Client", "logo": image.pk}))
+        self.assertEqual(logo_data["logo"]["width"], 480)

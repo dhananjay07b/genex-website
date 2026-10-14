@@ -5,6 +5,7 @@ from dj_rest_auth.serializers import PasswordResetSerializer
 from django.conf import settings
 from learning.models import CareerRole
 from pages.api import TopicSerializer
+from pages.images import AVATAR, HERO, image_url
 from pages.models import Topic
 from rest_framework import serializers
 
@@ -61,10 +62,10 @@ class UserSerializer(serializers.ModelSerializer):
         return bool(company and company["verified"])
 
     def get_avatar_url(self, obj):
-        return obj.avatar.file.url if obj.avatar else None
+        return image_url(obj.avatar, AVATAR)
 
     def get_cover_photo_url(self, obj):
-        return obj.cover_photo.file.url if obj.cover_photo else None
+        return image_url(obj.cover_photo, HERO)
 
     def validate_expertise(self, value):
         if len(value) > 3:
@@ -132,7 +133,7 @@ class PublicUserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "display_name", "bio", "avatar_url"]
 
     def get_avatar_url(self, obj):
-        return obj.avatar.file.url if obj.avatar else None
+        return image_url(obj.avatar, AVATAR)
 
 
 class PublicProfileSerializer(serializers.ModelSerializer):
@@ -163,10 +164,10 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_avatar_url(self, obj):
-        return obj.avatar.file.url if obj.avatar else None
+        return image_url(obj.avatar, AVATAR)
 
     def get_cover_photo_url(self, obj):
-        return obj.cover_photo.file.url if obj.cover_photo else None
+        return image_url(obj.cover_photo, HERO)
 
     def get_is_admin(self, obj):
         return is_admin(obj)

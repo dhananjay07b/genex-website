@@ -140,6 +140,19 @@ WAGTAILSEARCH_BACKENDS = {
 
 WAGTAILAPI_LIMIT_MAX = 200
 
+# The API serves resized copies of images (pages/images.py). Wagtail remembers
+# which copies exist in the "renditions" cache, so a page of 50 cards doesn't
+# cost 50 database lookups; its own cache keeps the default one free for other use.
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "renditions": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "renditions",
+        "TIMEOUT": 60 * 60 * 24 * 7,
+        "OPTIONS": {"MAX_ENTRIES": 10_000},
+    },
+}
+
 # Django's default (1000) is too low for the CMS: the GeLearn index page's two
 # section lists post a field per block child (every link picker alone is ~10),
 # so saving it raised TooManyFieldsSent. Wagtail's docs recommend 10000.

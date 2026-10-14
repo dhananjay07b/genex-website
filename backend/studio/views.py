@@ -11,6 +11,7 @@ from accounts.roles import IsCompanyUser, display_company, is_admin, is_company
 from accounts.uploads import save_uploaded_document, save_uploaded_image
 from organizations.serializers import CompanyDetailSerializer
 from pages.api import GenexPagination
+from pages.images import AVATAR, image_url
 from pages.models import CaseStudy, PodcastEpisode, TechArticle, Tender, Whitepaper
 
 from . import serializers as s
@@ -121,7 +122,7 @@ def _person(user):
     return {
         "username": user.username,
         "display_name": user.display_name,
-        "avatar_url": user.avatar.file.url if user.avatar else None,
+        "avatar_url": image_url(user.avatar, AVATAR),
         "role_title": user.role_title,
         "account_type": user.account_type,
         "company": company,

@@ -5,6 +5,7 @@ from wagtail.snippets.blocks import SnippetChooserBlock
 from wagtail.blocks import PageChooserBlock
 from wagtail.rich_text import expand_db_html
 
+from .images import CONTENT, HERO, LOGO, image_payload
 from .links import LinkBlock
 
 # ---------------------------------------------------------------------------
@@ -91,13 +92,16 @@ class ImageApiStructBlock(blocks.StructBlock):
 
     Used for any block with a media chooser field (images, or uploaded video/PDF documents)
     so the frontend gets a ready-to-use absolute-relative URL instead of a raw PK.
+    Images are served resized to `image_size` (pages/images.py); full-width and
+    logo blocks override it.
     """
+    image_size = CONTENT
+
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
         for field_name, field in self.child_blocks.items():
             if isinstance(field, ImageChooserBlock) and value.get(field_name):
-                img = value[field_name]
-                data[field_name] = {"url": img.file.url, "width": img.width, "height": img.height, "alt": img.title}
+                data[field_name] = image_payload(value[field_name], self.image_size)
             elif isinstance(field, DocumentChooserBlock) and value.get(field_name):
                 doc = value[field_name]
                 data[field_name] = {"url": doc.url, "title": doc.title}
@@ -144,6 +148,7 @@ class BulletPointBlock(blocks.StructBlock):
 
 class HeroSlideBlock(ImageApiStructBlock):
     """Maps to the Slide interface in HeroSlideshow.tsx"""
+    image_size = HERO
     headline         = blocks.CharBlock()
     subline          = blocks.TextBlock(required=False)
     media_type       = blocks.ChoiceBlock(
@@ -161,6 +166,7 @@ class HeroSlideBlock(ImageApiStructBlock):
 
 class CredibilityLogoBlock(ImageApiStructBlock):
     """Client logo shown in the homepage trust strip. Name is alt-text only, never rendered."""
+    image_size = LOGO
     name = blocks.CharBlock(help_text="Client name — used for accessible alt text only, not displayed")
     logo = ImageChooserBlock(help_text="Small logo, ideally transparent background")
 
@@ -228,6 +234,7 @@ class InnovationsTeaserItemBlock(blocks.StructBlock):
 
 class TechPartnerBlock(ImageApiStructBlock):
     """Maps to { name, abbr, href, logo } in TechPartners.tsx. Falls back to the abbr text pill when no logo is set."""
+    image_size = LOGO
     name = blocks.CharBlock(help_text="Full name e.g. 'Amazon Web Services'")
     abbr = blocks.CharBlock(help_text="Short display name e.g. 'AWS'")
     href = blocks.URLBlock(required=False)
@@ -400,6 +407,7 @@ class DeploymentStepsSectionBlock(blocks.StructBlock):
 
 class ProductVideoSectionBlock(ImageApiStructBlock):
     """Demo/commissioning video — either an uploaded mp4 or a hosted URL."""
+    image_size = HERO
     heading      = blocks.CharBlock(required=False)
     description  = blocks.TextBlock(required=False)
     video_file   = DocumentChooserBlock(required=False, help_text="Upload an mp4 file")
@@ -427,6 +435,7 @@ class ProductTestimonialSectionBlock(blocks.StructBlock):
 
 class HeroSectionBlock(ImageApiStructBlock):
     """Standard inner-page hero with optional CTA."""
+    image_size = HERO
     label            = blocks.CharBlock(required=False, help_text="Eyebrow label above headline")
     heading          = blocks.CharBlock()
     description      = blocks.TextBlock(required=False)

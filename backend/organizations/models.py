@@ -3,6 +3,8 @@ import re
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from pages.images import LOGO, image_url
+
 # Free/consumer mailbox providers. A company domain on this list would let
 # anyone "verify" as that company's employee, so they're rejected outright.
 PUBLIC_EMAIL_DOMAINS = frozenset({
@@ -51,7 +53,7 @@ class Company(models.Model):
 
     @property
     def logo_url(self):
-        return self.logo.file.url if self.logo_id else None
+        return image_url(self.logo, LOGO)
 
     def owns_email(self, email):
         """True if `email` sits on one of this company's domains (or a subdomain of one)."""
