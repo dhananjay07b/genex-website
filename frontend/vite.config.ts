@@ -17,7 +17,9 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('framer-motion'))                                           return 'vendor-motion'
             if (id.includes('@mui') || id.includes('@emotion'))                         return 'vendor-mui'
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) return 'vendor-react'
+            // Exact packages only: a loose "react" match also caught @tiptap/react and
+            // react-hook-form, putting the rich-text editor in every page's download.
+            if (/[\\/]node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/.test(id)) return 'vendor-react'
           }
         },
       },

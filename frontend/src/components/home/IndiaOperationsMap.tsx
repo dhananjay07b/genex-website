@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { WorldMapPaths } from './WorldMapPaths'
 import type { WorldMapApiValue } from '@/types/api'
 
 // ─── Coordinate mapping ────────────────────────────────────────────────────
@@ -229,22 +228,7 @@ export function WorldOperationsMap({ map }: { map?: WorldMapApiValue }) {
               className="w-full max-w-sm sm:max-w-md lg:max-w-none"
               aria-label="World map showing Genex global operations"
             >
-              <style>{`
-                #world-map-svg path {
-                  fill: url(#state-fill);
-                  stroke: rgba(255,255,255,0.75);
-                  stroke-width: 0.6;
-                  stroke-linejoin: round;
-                }
-              `}</style>
-
               <defs>
-                <linearGradient id="state-fill" x1="20%" y1="0%" x2="80%" y2="100%">
-                  <stop offset="0%"   stopColor="#D6EFFA" />
-                  <stop offset="55%"  stopColor="#B4DCF2" />
-                  <stop offset="100%" stopColor="#96CAEC" />
-                </linearGradient>
-
                 <linearGradient id="conn-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%"   stopColor="#1AAEE8" />
                   <stop offset="100%" stopColor="#00D97E" />
@@ -267,10 +251,14 @@ export function WorldOperationsMap({ map }: { map?: WorldMapApiValue }) {
                 </linearGradient>
               </defs>
 
-              {/* World country paths */}
-              <g id="world-map-svg" filter="url(#map-glow)">
-                <WorldMapPaths />
-              </g>
+              {/* World countries: a static file (fill and borders baked in) so the
+                  browser caches it instead of it shipping inside the page's JavaScript.
+                  Same 1009.67 × 665.96 canvas as the pins and arcs below. */}
+              <image
+                href="/images/world-map.svg"
+                x="0" y="0" width="1009.67" height="665.96"
+                filter="url(#map-glow)"
+              />
 
               {/* Glass sheen overlay */}
               <rect
