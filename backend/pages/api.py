@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from django.db.models import Q
 from django.urls import path
 from wagtail.rich_text import expand_db_html
 
@@ -538,4 +539,67 @@ class SiteSettingsView(APIView):
         })
 
 
-urlpatterns = router.urls + [path("site-settings/", SiteSettingsView.as_view(), name="site-settings")]
+# Page types the frontend routes only one fixed instance of (/careers, /contact):
+# a second one ticked "Show in menus" would link to a route that doesn't exist.
+SINGLETON_NAV_TYPES = {"pages.CareersPage", "pages.ContactPage"}
+GELEARN_INDEX_TYPE = "pages.GeLearnIndexPage"
+
+
+class NavView(APIView):
+    """
+    The marketing site's whole top menu in one response, built from the Wagtail
+    page tree: pages ticked "Show in menus" (Promote tab), in tree order; a page
+    with menu children becomes a dropdown. Replaces the browser walking the tree
+    level by level (7+ requests in a row before the menu appeared).
+
+    GeLearn's links are marked `site: "gelearn"` — they open the GeLearn site,
+    whose address the frontend knows (it differs in dev and production).
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from wagtail.models import Page
+        from .models import HomePage
+
+        home = HomePage.objects.live().first()
+        if home is None:
+            return Response({"items": []})
+        root = home.get_parent()
+        menu = Page.objects.live().public().in_menu().order_by("path")
+        top = list(menu.child_of(root))
+        # Every top page's menu children in one query, grouped by parent (a child's path starts with its parent's).
+        children = {}
+        if top:
+            under_top = Q()
+            for p in top:
+                under_top |= Q(path__startswith=p.path)
+            for child in menu.filter(under_top, depth=root.depth + 2):
+                children.setdefault(child.path[:-Page.steplen], []).append(child)
+
+        items, seen_singletons = [], set()
+        for page in top:
+            kind = page.specific_class._meta.label  # from the cached content type: no extra query
+            if kind in SINGLETON_NAV_TYPES:
+                if kind in seen_singletons:
+                    continue
+                seen_singletons.add(kind)
+            gelearn = kind == GELEARN_INDEX_TYPE
+            kids = children.get(page.path, [])
+            item = {"label": page.title}
+            if gelearn:
+                item["site"] = "gelearn"
+            if not kids:
+                item["href"] = "/" if gelearn else f"/{page.slug}"
+            else:
+                # GeLearn sections live at the GeLearn site's root (/geacademy), the rest under their section.
+                base = "" if gelearn else f"/{page.slug}"
+                item["children"] = [{"label": c.title, "href": f"{base}/{c.slug}"} for c in kids]
+            items.append(item)
+        return Response({"items": items})
+
+
+urlpatterns = router.urls + [
+    path("site-settings/", SiteSettingsView.as_view(), name="site-settings"),
+    path("nav/", NavView.as_view(), name="nav"),
+]

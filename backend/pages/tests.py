@@ -409,3 +409,56 @@ class SiteSettingsApiTests(TestCase):
         self.assertEqual(data["phone"], "+91 141 400 0000")
         self.assertEqual(data["whatsapp"], "https://wa.me/911414000000")
         self.assertEqual(data["social"]["linkedin"], "https://www.linkedin.com/company/genex")
+
+
+class NavApiTests(TestCase):
+    """GET /api/snippets/nav/: the marketing menu from the page tree, in one response."""
+
+    def setUp(self):
+        from wagtail.models import Page
+        from .models import CareersPage, ContactPage, GeLearnIndexPage, HomePage, SectionPage
+        # Only this test's pages next to the home page.
+        Page.objects.filter(depth=2).exclude(content_type__model="homepage").delete()
+        root = Page.objects.get(depth=1)  # fresh: its child count changed above
+        if not HomePage.objects.exists():
+            root.add_child(instance=HomePage(title="Home", slug="home-test"))
+            root = Page.objects.get(depth=1)
+
+        def add(parent, page, menu=True, live=True):
+            page.show_in_menus, page.live = menu, live
+            parent.add_child(instance=page)
+            return page
+
+        self.portfolio = add(root, SectionPage(title="Portfolio", slug="portfolio"))
+        add(self.portfolio, SectionPage(title="SolarLive", slug="solarlive"))
+        add(self.portfolio, SectionPage(title="Hidden", slug="hidden"), menu=False)
+        add(self.portfolio, SectionPage(title="Draft", slug="draft"), live=False)
+        gelearn = add(root, GeLearnIndexPage(title="GeLearn", slug="gelearn"))
+        add(gelearn, SectionPage(title="Research", slug="research"))
+        add(root, CareersPage(title="Careers", slug="careers"))
+        add(root, CareersPage(title="Careers again", slug="careers-2"))
+        add(root, ContactPage(title="Contact", slug="contact"))
+        add(root, SectionPage(title="Not in menu", slug="nope"), menu=False)
+
+    def test_menu_follows_the_tree(self):
+        items = APIClient().get("/api/snippets/nav/").json()["items"]
+        self.assertEqual([i["label"] for i in items], ["Portfolio", "GeLearn", "Careers", "Contact"])  # one Careers only
+        portfolio = items[0]
+        self.assertEqual(portfolio["children"], [{"label": "SolarLive", "href": "/portfolio/solarlive"}])  # no hidden/draft
+        self.assertEqual(items[1]["site"], "gelearn")
+        self.assertEqual(items[1]["children"], [{"label": "Research", "href": "/research"}])
+        self.assertEqual(items[2], {"label": "Careers", "href": "/careers"})
+
+    def test_query_count_does_not_grow_with_pages(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from .models import SectionPage
+        client = APIClient()
+        client.get("/api/snippets/nav/")  # warm the content-type cache
+        with CaptureQueriesContext(connection) as before:
+            client.get("/api/snippets/nav/")
+        for i in range(6):
+            self.portfolio.add_child(instance=SectionPage(title=f"Extra {i}", slug=f"extra-{i}", show_in_menus=True))
+        with CaptureQueriesContext(connection) as after:
+            client.get("/api/snippets/nav/")
+        self.assertEqual(len(after), len(before))
