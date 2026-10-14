@@ -5,8 +5,10 @@ import { GeLearnLayout } from '@/components/layout/GeLearnLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { RoleRoute } from '@/components/auth/RoleRoute'
 import { LegacyRedirect } from '@/components/utils/LegacyRedirect'
+import { RouteError } from '@/components/utils/RouteError'
+// Bundled with the app, not lazy: it must render even when code files can't be fetched.
+import NotFound from '@/pages/NotFound'
 
-const NotFound               = lazy(() => import('@/pages/NotFound'))
 const Home                  = lazy(() => import('@/pages/Home'))
 const Contact               = lazy(() => import('@/pages/Contact'))
 const Careers                = lazy(() => import('@/pages/Careers'))
@@ -64,45 +66,52 @@ const s = (el: React.ReactNode) => (
 export const marketingRouter = createBrowserRouter([
   {
     element: <Layout />,
-    errorElement: s(<NotFound />),
+    errorElement: <RouteError />,
     children: [
-      { path: '/',                         element: s(<Home />) },
       {
-        path: '/portfolio',
-        element: s(
-          <DynamicSectionPage
-            sectionSlug="portfolio"
-            fallbackTitle="Software Products for Power & Energy"
-            fallbackDescription="Production-grade software products for India's energy sector, engineered by Genex Technocrats."
-          />
-        ),
+        // A page that fails renders its error inside the header and footer;
+        // the outer errorElement only catches the layout itself failing.
+        errorElement: <RouteError />,
+        children: [
+          { path: '/',                         element: s(<Home />) },
+          {
+            path: '/portfolio',
+            element: s(
+              <DynamicSectionPage
+                sectionSlug="portfolio"
+                fallbackTitle="Software Products for Power & Energy"
+                fallbackDescription="Production-grade software products for India's energy sector, engineered by Genex Technocrats."
+              />
+            ),
+          },
+          { path: '/portfolio/*',              element: s(<DynamicContentPage sectionSlug="portfolio" fallbackPath="/portfolio" />) },
+          {
+            path: '/innovations',
+            element: s(
+              <DynamicSectionPage
+                sectionSlug="innovations"
+                fallbackTitle="Innovations — Genex Technocrats"
+                fallbackDescription="Innovation platforms built for India's power sector."
+              />
+            ),
+          },
+          { path: '/innovations/*',            element: s(<DynamicContentPage sectionSlug="innovations" fallbackPath="/innovations" />) },
+          {
+            path: '/about',
+            element: s(
+              <DynamicSectionPage
+                sectionSlug="about"
+                fallbackTitle="About Genex Technocrats — India's Energy Intelligence Platform"
+                fallbackDescription="Genex Technocrats builds the software and systems that run India's renewable energy infrastructure."
+              />
+            ),
+          },
+          { path: '/about/*',                  element: s(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
+          { path: '/contact',                  element: s(<Contact />) },
+          { path: '/careers',                  element: s(<Careers />) },
+          { path: '*',                         element: <NotFound /> },
+        ],
       },
-      { path: '/portfolio/*',              element: s(<DynamicContentPage sectionSlug="portfolio" fallbackPath="/portfolio" />) },
-      {
-        path: '/innovations',
-        element: s(
-          <DynamicSectionPage
-            sectionSlug="innovations"
-            fallbackTitle="Innovations — Genex Technocrats"
-            fallbackDescription="Innovation platforms built for India's power sector."
-          />
-        ),
-      },
-      { path: '/innovations/*',            element: s(<DynamicContentPage sectionSlug="innovations" fallbackPath="/innovations" />) },
-      {
-        path: '/about',
-        element: s(
-          <DynamicSectionPage
-            sectionSlug="about"
-            fallbackTitle="About Genex Technocrats — India's Energy Intelligence Platform"
-            fallbackDescription="Genex Technocrats builds the software and systems that run India's renewable energy infrastructure."
-          />
-        ),
-      },
-      { path: '/about/*',                  element: s(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
-      { path: '/contact',                  element: s(<Contact />) },
-      { path: '/careers',                  element: s(<Careers />) },
-      { path: '*',                         element: s(<NotFound />) },
     ],
   },
 ])
@@ -111,86 +120,93 @@ export const marketingRouter = createBrowserRouter([
 export const gelearnRouter = createBrowserRouter([
   {
     element: <GeLearnLayout />,
-    errorElement: s(<NotFound />),
+    errorElement: <RouteError />,
     children: [
-      { path: '/',                         element: s(<GeLearn />) },
-      { path: '/research',                 element: s(<Research />) },
-      { path: '/research/:id',             element: s(<ResearchDetail />) },
-      { path: '/geacademy',                element: s(<GeAcademy />) },
-      { path: '/geacademy/:id',            element: s(<GeAcademyDetail />) },
-      { path: '/blog',                     element: s(<Blog />) },
-      { path: '/blog/:id',                 element: s(<BlogPost />) },
-      { path: '/videos',                   element: s(<VideoLibrary />) },
-      { path: '/videos/:id',               element: s(<VideoDetail />) },
-      { path: '/policies-tenders',         element: s(<PoliciesTenders />) },
-      { path: '/whitepapers',              element: s(<Whitepapers />) },
-      { path: '/podcasts',                 element: s(<Podcasts />) },
-      { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
-      { path: '/courses',                  element: s(<Courses />) },
-      { path: '/courses/:slug',            element: s(<CourseDetail />) },
-      { path: '/certificates/:code',       element: s(<CertificatePage />) },
-      { path: '/c/:slug',                  element: s(<CompanyPage />) },
-      { path: '/search',                   element: s(<SearchPage />) },
-      { path: '/topics',                   element: s(<TopicsIndexPage />) },
-      { path: '/topics/:slug',             element: s(<TopicPage />) },
-      { path: '/roles',                    element: s(<RolesIndexPage />) },
-      { path: '/roles/:slug',              element: s(<RolePage />) },
-      { path: '/professionals',            element: s(<ProfessionalsPage />) },
-      { path: '/companies',                element: s(<CompaniesPage />) },
-      { path: '/live-sessions',            element: s(<LiveSessionsPage />) },
-      { path: '/for-professionals',        element: s(<LandingPage audience="professionals" />) },
-      { path: '/for-companies',            element: s(<LandingPage audience="companies" />) },
-      { path: '/login',                    element: s(<Login />) },
-      { path: '/register',                 element: s(<Register />) },
-      { path: '/forgot-password',          element: s(<ForgotPassword />) },
-      { path: '/reset-password/:uid/:token', element: s(<ResetPasswordConfirm />) },
-      { path: '/verify-email/:key',        element: s(<VerifyEmail />) },
-      { path: '/u/:username',              element: s(<PublicProfile />) },
       {
-        element: <ProtectedRoute />,
+        // A page that fails renders its error inside the header and footer;
+        // the outer errorElement only catches the layout itself failing.
+        errorElement: <RouteError />,
         children: [
-          { path: '/account',              element: s(<Profile />) },
-        ],
-      },
-      {
-        // Posting blogs and videos is a Professional feature.
-        element: <RoleRoute roles={['professional']} />,
-        children: [
-          { path: '/submit-post',          element: s(<SubmitPost />) },
-          { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
-          { path: '/submit-video',         element: s(<SubmitVideo />) },
-          { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
-          { path: '/account/courses/new',  element: s(<CourseBuilder />) },
-          { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
-        ],
-      },
-      {
-        // Company Studio — publishing for Company accounts (Admin uses the CMS).
-        element: <RoleRoute roles={['company']} />,
-        children: [
+          { path: '/',                         element: s(<GeLearn />) },
+          { path: '/research',                 element: s(<Research />) },
+          { path: '/research/:id',             element: s(<ResearchDetail />) },
+          { path: '/geacademy',                element: s(<GeAcademy />) },
+          { path: '/geacademy/:id',            element: s(<GeAcademyDetail />) },
+          { path: '/blog',                     element: s(<Blog />) },
+          { path: '/blog/:id',                 element: s(<BlogPost />) },
+          { path: '/videos',                   element: s(<VideoLibrary />) },
+          { path: '/videos/:id',               element: s(<VideoDetail />) },
+          { path: '/policies-tenders',         element: s(<PoliciesTenders />) },
+          { path: '/whitepapers',              element: s(<Whitepapers />) },
+          { path: '/podcasts',                 element: s(<Podcasts />) },
+          { path: '/podcasts/:id',             element: s(<PodcastDetail />) },
+          { path: '/courses',                  element: s(<Courses />) },
+          { path: '/courses/:slug',            element: s(<CourseDetail />) },
+          { path: '/certificates/:code',       element: s(<CertificatePage />) },
+          { path: '/c/:slug',                  element: s(<CompanyPage />) },
+          { path: '/search',                   element: s(<SearchPage />) },
+          { path: '/topics',                   element: s(<TopicsIndexPage />) },
+          { path: '/topics/:slug',             element: s(<TopicPage />) },
+          { path: '/roles',                    element: s(<RolesIndexPage />) },
+          { path: '/roles/:slug',              element: s(<RolePage />) },
+          { path: '/professionals',            element: s(<ProfessionalsPage />) },
+          { path: '/companies',                element: s(<CompaniesPage />) },
+          { path: '/live-sessions',            element: s(<LiveSessionsPage />) },
+          { path: '/for-professionals',        element: s(<LandingPage audience="professionals" />) },
+          { path: '/for-companies',            element: s(<LandingPage audience="companies" />) },
+          { path: '/login',                    element: s(<Login />) },
+          { path: '/register',                 element: s(<Register />) },
+          { path: '/forgot-password',          element: s(<ForgotPassword />) },
+          { path: '/reset-password/:uid/:token', element: s(<ResetPasswordConfirm />) },
+          { path: '/verify-email/:key',        element: s(<VerifyEmail />) },
+          { path: '/u/:username',              element: s(<PublicProfile />) },
           {
-            path: '/studio',
-            element: s(<StudioLayout />),
+            element: <ProtectedRoute />,
             children: [
-              { index: true,                element: s(<StudioHome />) },
-              { path: 'team',               element: s(<StudioTeam />) },
-              { path: 'courses',            element: s(<StudioCourses />) },
-              { path: 'courses/new',        element: s(<CourseBuilder />) },
-              { path: 'courses/:id/edit',   element: s(<CourseBuilder />) },
-              { path: ':type',              element: s(<StudioList />) },
-              { path: ':type/new',          element: s(<StudioEditor />) },
-              { path: ':type/:id/edit',     element: s(<StudioEditor />) },
+              { path: '/account',              element: s(<Profile />) },
             ],
           },
+          {
+            // Posting blogs and videos is a Professional feature.
+            element: <RoleRoute roles={['professional']} />,
+            children: [
+              { path: '/submit-post',          element: s(<SubmitPost />) },
+              { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
+              { path: '/submit-video',         element: s(<SubmitVideo />) },
+              { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
+              { path: '/account/courses/new',  element: s(<CourseBuilder />) },
+              { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
+            ],
+          },
+          {
+            // Company Studio — publishing for Company accounts (Admin uses the CMS).
+            element: <RoleRoute roles={['company']} />,
+            children: [
+              {
+                path: '/studio',
+                element: s(<StudioLayout />),
+                children: [
+                  { index: true,                element: s(<StudioHome />) },
+                  { path: 'team',               element: s(<StudioTeam />) },
+                  { path: 'courses',            element: s(<StudioCourses />) },
+                  { path: 'courses/new',        element: s(<CourseBuilder />) },
+                  { path: 'courses/:id/edit',   element: s(<CourseBuilder />) },
+                  { path: ':type',              element: s(<StudioList />) },
+                  { path: ':type/new',          element: s(<StudioEditor />) },
+                  { path: ':type/:id/edit',     element: s(<StudioEditor />) },
+                ],
+              },
+            ],
+          },
+          // Renamed sections — old URLs stay valid (Apache also 301s these in production).
+          { path: '/technology',               element: <LegacyRedirect to="/geacademy" /> },
+          { path: '/technology/:id',           element: <LegacyRedirect to="/geacademy" /> },
+          { path: '/case-studies',             element: <LegacyRedirect to="/research" /> },
+          { path: '/case-studies/:id',         element: <LegacyRedirect to="/research" /> },
+          { path: '/tenders',                  element: <LegacyRedirect to="/policies-tenders" /> },
+          { path: '*',                         element: <NotFound /> },
         ],
       },
-      // Renamed sections — old URLs stay valid (Apache also 301s these in production).
-      { path: '/technology',               element: <LegacyRedirect to="/geacademy" /> },
-      { path: '/technology/:id',           element: <LegacyRedirect to="/geacademy" /> },
-      { path: '/case-studies',             element: <LegacyRedirect to="/research" /> },
-      { path: '/case-studies/:id',         element: <LegacyRedirect to="/research" /> },
-      { path: '/tenders',                  element: <LegacyRedirect to="/policies-tenders" /> },
-      { path: '*',                         element: s(<NotFound />) },
     ],
   },
 ])

@@ -1,10 +1,7 @@
-import { Link, useRouteError } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { PageMeta } from '@/components/seo/PageMeta'
 
 export default function NotFound() {
-  const error = useRouteError()
-  if (import.meta.env.DEV && error) console.error('Route error:', error)
-
   return (
     <main className="min-h-[60vh] flex items-center justify-center px-6">
       <PageMeta title="Page Not Found" description="This page doesn't exist." noIndex />
