@@ -20,8 +20,9 @@ def prune_instructor(user):
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL, dispatch_uid="learning-prune-instructor-on-save")
-def _on_user_saved(sender, instance, created, **kwargs):
-    if not created:
+def _on_user_saved(sender, instance, created, raw=False, **kwargs):
+    # raw: loading a data dump (loaddata), where related rows may not be loaded yet.
+    if not created and not raw:
         prune_instructor(instance)
 
 

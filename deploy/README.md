@@ -22,7 +22,7 @@ draw certificate PDFs:
 ```bash
 sudo apt update
 sudo apt install python3-venv python3-dev libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
-    apache2 certbot python3-certbot-apache
+    postgresql apache2 certbot python3-certbot-apache
 ```
 To build the frontend on the server, install Node.js 22 LTS (e.g. from NodeSource):
 Ubuntu's own `nodejs` package is 18, too old for Vite (needs 20.19+ or 22.12+).
@@ -43,6 +43,53 @@ Copy the vhost files into place and enable them:
 sudo cp deploy/apache/*.conf /etc/apache2/sites-available/
 sudo a2ensite genextechnocrats.com gelearn.genextechnocrats.com cms.genextechnocrats.com
 sudo systemctl reload apache2
+```
+
+## Database (PostgreSQL 16)
+
+Ubuntu 24.04's `postgresql` package is version 16, the same as local development.
+It listens on localhost only, which is what we want: never open port 5432 in the
+EC2 security group.
+
+```bash
+sudo -u postgres psql -c "CREATE ROLE genex LOGIN PASSWORD '<a strong password>';"
+sudo -u postgres psql -c "CREATE DATABASE genex OWNER genex;"
+```
+Put the same name, user and password in `.env` (`POSTGRES_*`, see
+`deploy/gunicorn/genex-backend.env.example`).
+
+### Moving the local data to the server (once, at launch)
+
+Do this into the new, empty database **before** running `migrate` below. On the
+development machine:
+```bash
+pg_dump -h 127.0.0.1 -U genex -d genex -Fc > genex.dump   # asks for the genex password
+tar czf genex-media.tgz -C backend media      # uploaded images and documents
+scp genex.dump genex-media.tgz <user>@<server>:/tmp/
+```
+On the server:
+```bash
+pg_restore --no-owner --role=genex -h 127.0.0.1 -U genex -d genex /tmp/genex.dump
+sudo tar xzf /tmp/genex-media.tgz -C /var/www/genex/backend
+sudo chown -R www-data:www-data /var/www/genex/backend/media
+```
+
+### Backups
+
+A nightly dump, keeping the last 14 days:
+```bash
+sudo install -d -o postgres -g postgres -m 700 /var/backups/genex
+echo '30 2 * * * postgres pg_dump -Fc genex > /var/backups/genex/genex-$(date +\%F).dump && find /var/backups/genex -name "genex-*.dump" -mtime +14 -delete' \
+  | sudo tee /etc/cron.d/genex-db-backup
+```
+Copy these off the server too (e.g. to S3), along with `backend/media`: a backup
+on the same disk doesn't survive losing the instance.
+
+To restore one (stop the backend first):
+```bash
+sudo systemctl stop genex-backend
+sudo -u postgres pg_restore --clean --if-exists -d genex /var/backups/genex/genex-YYYY-MM-DD.dump
+sudo systemctl start genex-backend
 ```
 
 ## Backend

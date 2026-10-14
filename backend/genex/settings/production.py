@@ -14,6 +14,9 @@ if len(SECRET_KEY) < 50 or SECRET_KEY.startswith("django-insecure"):
         "python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
     )
 
+if DATABASES["default"]["ENGINE"] != "django.db.backends.postgresql":
+    raise ImproperlyConfigured("Set POSTGRES_DB, POSTGRES_USER and POSTGRES_PASSWORD: production runs on PostgreSQL, not SQLite.")
+
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").split(",") if host.strip()]
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("Set ALLOWED_HOSTS to the site's domains, comma-separated.")

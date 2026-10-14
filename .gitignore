@@ -6,6 +6,8 @@ backend/**/__pycache__/
 backend/**/*.pyc
 backend/db.sqlite3
 backend/db.sqlite3.bak-*
+# PostgreSQL dumps (pg_dump backups)
+backend/*.dump
 backend/.env
 backend/media/
 backend/staticfiles/
