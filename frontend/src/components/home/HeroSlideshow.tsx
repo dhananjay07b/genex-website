@@ -243,3 +243,8 @@ export function HeroSlideshow({ slides: apiSlides }: { slides?: HeroSlideApiValu
     </section>
   )
 }
+
+/** The hero's space while the CMS slides load: same size and dark background, no content. */
+export function HeroPlaceholder() {
+  return <section className="relative h-screen min-h-150 bg-dark-bg" aria-busy="true" aria-label="Hero slideshow" />
+}

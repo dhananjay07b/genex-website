@@ -117,9 +117,11 @@ export function WorldOperationsMap({ map }: { map?: WorldMapApiValue }) {
 
   const eyebrow       = map?.eyebrow || 'Global Presence'
   const heading       = map?.heading || 'Operating Worldwide.'
-  const description   = map?.description?.length ? map.description : DEFAULT_DESCRIPTION
-  const bulletPoints  = map?.bullet_points?.length ? map.bullet_points : DEFAULT_BULLET_POINTS
-  const STATS         = map?.stats?.length ? map.stats : DEFAULT_STATS
+  // Built-in text only when there's no CMS block at all (the CMS couldn't be reached);
+  // once a block exists, an empty list means "none", never the built-in claims.
+  const description   = map ? map.description ?? [] : DEFAULT_DESCRIPTION
+  const bulletPoints  = map ? map.bullet_points ?? [] : DEFAULT_BULLET_POINTS
+  const STATS         = map ? map.stats ?? [] : DEFAULT_STATS
   const pinData        = map?.pins?.length ? map.pins.map(p => ({ ...p, delay: p.delay ?? 0 })) : DEFAULT_PINS
 
   const PROJECT_PINS: Pin[] = useMemo(
@@ -192,22 +194,26 @@ export function WorldOperationsMap({ map }: { map?: WorldMapApiValue }) {
                 {paragraph}
               </p>
             ))}
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-10 max-w-sm">
-              {bulletPoints.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <div className="grid grid-cols-3 gap-4">
-              {STATS.map(({ value, suffix, label }) => (
-                <div key={label} className="border-l-2 border-primary/20 pl-3">
-                  <span className="text-4xl font-extrabold gradient-brand-text">{value}{suffix}</span>
-                  <p className="text-sm text-text-muted mt-0.5">{label}</p>
-                </div>
-              ))}
-            </div>
+            {bulletPoints.length > 0 && (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-10 max-w-sm">
+                {bulletPoints.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {STATS.length > 0 && (
+              <div className="grid grid-cols-3 gap-4">
+                {STATS.map(({ value, suffix, label }) => (
+                  <div key={label} className="border-l-2 border-primary/20 pl-3">
+                    <span className="text-4xl font-extrabold gradient-brand-text">{value}{suffix}</span>
+                    <p className="text-sm text-text-muted mt-0.5">{label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* ── Right: SVG map ── */}

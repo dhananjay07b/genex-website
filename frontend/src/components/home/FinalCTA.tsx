@@ -8,6 +8,11 @@ interface FinalCTAProps {
 }
 
 export function FinalCTA({ cta }: FinalCTAProps) {
+  // Built-in wording only when there's no CMS block (the CMS couldn't be reached);
+  // a block's empty description or button text means "leave it out".
+  const description = cta ? cta.description : 'Talk to our engineering team — no sales pitch.'
+  const buttonText  = cta ? cta.primary_cta_text : 'Request Demo'
+
   return (
     <section aria-labelledby="cta-heading">
       <motion.div
@@ -28,30 +33,34 @@ export function FinalCTA({ cta }: FinalCTAProps) {
           {cta?.heading || 'Ready to build smarter infrastructure?'}
         </motion.h2>
 
-        <motion.p
-          className="mt-5 text-white/80 text-lg max-w-md mx-auto"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          {cta?.description || 'Talk to our engineering team — no sales pitch.'}
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-10"
-        >
-          <SmartLink
-            to={cta?.primary_cta_link || '/contact#demo'}
-            className={buttonVariants({ variant: 'dark', size: 'lg' })}
+        {description && (
+          <motion.p
+            className="mt-5 text-white/80 text-lg max-w-md mx-auto"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {cta?.primary_cta_text || 'Request Demo'}
-          </SmartLink>
-        </motion.div>
+            {description}
+          </motion.p>
+        )}
+
+        {buttonText && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-10"
+          >
+            <SmartLink
+              to={cta?.primary_cta_link || '/contact#demo'}
+              className={buttonVariants({ variant: 'dark', size: 'lg' })}
+            >
+              {buttonText}
+            </SmartLink>
+          </motion.div>
+        )}
       </motion.div>
     </section>
   )
