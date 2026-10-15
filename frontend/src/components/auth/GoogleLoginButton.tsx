@@ -2,15 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
+import { cn } from '@/lib/utils'
 import { GoogleProfileDialog, type GoogleProfile, type GoogleProfilePrefill } from './GoogleProfileDialog'
 
+/** The part of Google Identity Services this button uses: the sign-in popup that returns a one-time code. */
+interface GoogleCodeResponse { code?: string; error?: string }
 declare global {
   interface Window {
     google?: {
       accounts: {
-        id: {
-          initialize: (config: { client_id: string; callback: (resp: { credential: string }) => void }) => void
-          renderButton: (parent: HTMLElement, options: { theme: string; size: string; width?: number; text?: string }) => void
+        oauth2: {
+          initCodeClient: (config: {
+            client_id: string
+            scope: string
+            ux_mode: 'popup'
+            callback: (response: GoogleCodeResponse) => void
+            error_callback?: (error: { type: string }) => void
+          }) => { requestCode: () => void }
         }
       }
     }
@@ -18,6 +26,21 @@ declare global {
 }
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined
+const GOOGLE_SCRIPT = 'https://accounts.google.com/gsi/client'
+
+// Google's script, loaded once per page however many buttons there are.
+let scriptLoad: Promise<void> | null = null
+function loadGoogleScript() {
+  scriptLoad ??= new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = GOOGLE_SCRIPT
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => { scriptLoad = null; reject(new Error('Google script failed to load')) }
+    document.head.appendChild(script)
+  })
+  return scriptLoad
+}
 
 /** POST /api/accounts/google/ (backend accounts.views.GoogleLoginView). */
 type GoogleResult =
@@ -29,20 +52,39 @@ interface GoogleLoginButtonProps {
   redirectTo?: string
   /** On the sign-up form: what's already chosen there, so the profile step starts from it. */
   prefill?: () => GoogleProfilePrefill
-  /** Google's button wording: "Sign in with Google" or "Sign up with Google". */
+  /** "Sign in with Google" or "Sign up with Google". */
   text?: 'signin_with' | 'signup_with'
 }
 
+const BUTTON_CLASS =
+  'h-11 w-full max-w-xs mx-auto rounded-md border border-border bg-white flex items-center justify-center gap-2 text-sm font-semibold text-text-primary select-none hover:border-primary hover:shadow-lg transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-wait disabled:opacity-70'
+
+/**
+ * Our own "Sign in with Google" button (Google's rendered button swaps itself for
+ * a personalised "Sign in as …" layout we can't turn off). Clicking opens Google's
+ * sign-in popup, which returns a one-time code; the backend exchanges it for the
+ * verified identity. A new person then finishes in GoogleProfileDialog.
+ */
 export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'signin_with' }: GoogleLoginButtonProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
   const { refetch } = useAuth()
   const navigate = useNavigate()
+  const [ready, setReady] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  // A new Google user: their verified token and details, while they finish the profile step.
-  // signupToken: the server's signed ticket for finishing the sign-up (Google's own token can only be checked once).
+  // A new Google user, while they finish the profile step. signupToken: the server's
+  // signed ticket for finishing the sign-up (Google's own token can only be checked once).
   const [pending, setPending] = useState<{ signupToken: string; email: string; name: string; prefill?: GoogleProfilePrefill } | null>(null)
 
-  async function send(body: { id_token: string } | ({ signup_token: string } & GoogleProfile)) {
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return
+    let cancelled = false
+    loadGoogleScript()
+      .then(() => { if (!cancelled) setReady(true) })
+      .catch(() => { if (!cancelled) setError("Couldn't reach Google. Check your connection and reload the page.") })
+    return () => { cancelled = true }
+  }, [])
+
+  async function send(body: { code: string } | ({ signup_token: string } & GoogleProfile)) {
     const result = await apiFetch<GoogleResult>('/api/accounts/google/', { method: 'POST', body })
     if (result.status === 'needs_profile') {
       setPending({ signupToken: result.signup_token, email: result.email, name: result.name, prefill: prefill?.() })
@@ -53,50 +95,44 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
     navigate(redirectTo, { replace: true })
   }
 
-  // Google calls back long after render; keep it pointed at the latest props.
-  const onCredential = useRef<(credential: string) => void>(() => {})
+  // Google answers long after the click; keep its callbacks pointed at the latest props.
+  const onCode = useRef<(response: GoogleCodeResponse) => void>(() => {})
   useEffect(() => {
-    onCredential.current = credential => {
-      setError('')
-      send({ id_token: credential }).catch(err => setError(err instanceof ApiError ? err.message : "Couldn't sign in with Google. Please try again."))
+    onCode.current = response => {
+      if (!response.code) {
+        if (response.error !== 'access_denied') setError("Google sign-in didn't complete. Please try again.")
+        return
+      }
+      setBusy(true)
+      send({ code: response.code })
+        .catch(err => setError(err instanceof ApiError ? err.message : "Couldn't sign in with Google. Please try again."))
+        .finally(() => setBusy(false))
     }
   })
 
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !containerRef.current) return
+  function start() {
+    if (!window.google) return
+    setError('')
+    // Opened straight from the click, so browsers don't block the popup.
+    window.google.accounts.oauth2.initCodeClient({
+      client_id: GOOGLE_CLIENT_ID!,
+      scope: 'openid email profile',
+      ux_mode: 'popup',
+      callback: response => onCode.current(response),
+      error_callback: err => {
+        if (err.type !== 'popup_closed') setError("Google's sign-in window couldn't open. Allow pop-ups for this site and try again.")
+      },
+    }).requestCode()
+  }
 
-    function render() {
-      if (!window.google || !containerRef.current) return
-      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID!, callback: resp => onCredential.current(resp.credential) })
-      window.google.accounts.id.renderButton(containerRef.current, { theme: 'outline', size: 'large', width: 320, text })
-    }
-
-    if (window.google) {
-      render()
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.onload = render
-    document.head.appendChild(script)
-    return () => {
-      document.head.removeChild(script)
-    }
-  }, [text])
+  const label = text === 'signup_with' ? 'Sign up with Google' : 'Sign in with Google'
 
   if (!GOOGLE_CLIENT_ID) {
-    // No VITE_GOOGLE_OAUTH_CLIENT_ID set — Google's script can't render a real
-    // button without one. Stay silent in production (a real deploy should
-    // always have this configured), but show a disabled placeholder in dev
-    // so it's obvious *why* the button is missing instead of just vanishing.
+    // No VITE_GOOGLE_OAUTH_CLIENT_ID set. Stay silent in production (a real deploy
+    // always has it), but show a disabled placeholder in dev so it's obvious *why*.
     if (!import.meta.env.DEV) return null
     return (
-      <div
-        title="Set VITE_GOOGLE_OAUTH_CLIENT_ID in frontend/.env to enable this"
-        className="h-11 w-full max-w-xs mx-auto rounded-md border border-border bg-white flex items-center justify-center gap-2 text-sm font-semibold text-text-primary cursor-pointer select-none hover:border-primary hover:shadow-lg transition-colors duration-300"
-      >
+      <div title="Set VITE_GOOGLE_OAUTH_CLIENT_ID in frontend/.env to enable this" className={cn(BUTTON_CLASS, 'cursor-not-allowed')}>
         <GoogleGlyph />
         Google Sign-In not configured
       </div>
@@ -105,7 +141,10 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
 
   return (
     <div>
-      <div ref={containerRef} className="flex justify-center" />
+      <button type="button" onClick={start} disabled={!ready || busy} className={BUTTON_CLASS}>
+        <GoogleGlyph />
+        {busy ? 'Signing in…' : label}
+      </button>
       {error && <p role="alert" className="mt-2 text-center text-sm text-red-600">{error}</p>}
       {pending && (
         <GoogleProfileDialog

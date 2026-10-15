@@ -14,6 +14,7 @@ from django.contrib.auth.models import update_last_login
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
 from django.middleware.csrf import get_token
+import requests
 from rest_framework import exceptions, serializers, status
 from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -134,6 +135,30 @@ GOOGLE_SIGNUP_SALT = "accounts.google-signup"
 GOOGLE_SIGNUP_MAX_AGE = 30 * 60  # seconds the profile step may take
 
 
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+
+def _exchange_google_code(provider, code):
+    """
+    The ID token for a one-time code from Google's sign-in popup (our own
+    "Continue with Google" button). The popup flow's redirect_uri is always
+    "postmessage"; the client secret proves the request comes from this site.
+    """
+    response = requests.post(GOOGLE_TOKEN_URL, data={
+        "code": code,
+        "client_id": provider.app.client_id,
+        "client_secret": provider.app.secret,
+        "redirect_uri": "postmessage",
+        "grant_type": "authorization_code",
+    }, timeout=10)
+    if response.status_code != 200:
+        raise ValueError(f"code exchange refused ({response.status_code}): {response.text[:200]}")
+    id_token = response.json().get("id_token")
+    if not id_token:
+        raise ValueError("code exchange returned no id_token")
+    return id_token
+
+
 def _verify_google_id_token(provider, id_token):
     """Google's identity claims from an ID token, after checking its signature, issuer, audience and expiry."""
     from allauth.socialaccount.providers.google import views as google_views
@@ -182,8 +207,10 @@ class GoogleLoginView(APIView):
                 )
             login = provider.sociallogin_from_response(request, identity)
         else:
-            id_token = request.data.get("id_token", "")
             try:
+                # Our "Continue with Google" button sends a one-time code; an ID token works too.
+                code = request.data.get("code")
+                id_token = _exchange_google_code(provider, code) if code else request.data.get("id_token", "")
                 identity = _verify_google_id_token(provider, id_token)
                 login = provider.sociallogin_from_response(request, identity)
             except Exception as exc:  # expired, forged, for another site's client ID, or verification broken

@@ -839,3 +839,32 @@ class GoogleTokenVerificationTests(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("expired", res.json()["detail"])
         self.assertFalse(User.objects.filter(email="ravi@gmail.com").exists())
+
+    def _google_token_endpoint(self, status=200, id_token=None):
+        """Stands in for https://oauth2.googleapis.com/token."""
+        from unittest import mock
+        reply = mock.Mock(status_code=status, text="{}")
+        reply.json.return_value = {"id_token": id_token} if id_token else {"error": "invalid_grant"}
+        return mock.patch("accounts.views.requests.post", return_value=reply)
+
+    def test_popup_code_is_exchanged_for_a_verified_identity(self):
+        with self._google_token_endpoint(id_token=self._token()) as post:
+            res = self._post({"code": "4/one-time-code"})
+        self.assertEqual(res.json()["status"], "needs_profile")
+        sent = post.call_args.kwargs["data"]
+        self.assertEqual((sent["code"], sent["redirect_uri"], sent["client_id"]), ("4/one-time-code", "postmessage", self.client_id))
+        done = self._post({"signup_token": res.json()["signup_token"], "account_type": "learner"})
+        self.assertEqual(done.json(), {"status": "signed_in", "created": True})
+
+    def test_a_refused_or_used_code_signs_nobody_in(self):
+        with self._google_token_endpoint(status=400):
+            self.assertEqual(self._post({"code": "4/stale"}).status_code, 400)
+        forged = None
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        import jwt
+        other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        forged = jwt.encode({"iss": "https://accounts.google.com", "aud": self.client_id, "sub": "x", "email": "x@gmail.com",
+                             "exp": self.now + 3600}, other, algorithm="RS256")
+        with self._google_token_endpoint(id_token=forged):
+            self.assertEqual(self._post({"code": "4/odd"}).status_code, 400)  # the returned token is still verified
+        self.assertFalse(User.objects.exists())
