@@ -16,6 +16,21 @@ class AccountAdapter(DefaultAccountAdapter):
     def get_email_confirmation_url(self, request, emailconfirmation):
         return f"{settings.GELEARN_FRONTEND_URL}/verify-email/{emailconfirmation.key}"
 
+    def send_mail(self, template_prefix, email, context):
+        """
+        GeLearn's own email templates (accounts/templates/account/email/) also get
+        the site address, and — when someone confirms a work email rather than
+        their sign-in email — the company it would verify them for.
+        """
+        context = {**context, "gelearn_url": settings.GELEARN_FRONTEND_URL.rstrip("/")}
+        user = context.get("user")
+        if template_prefix.startswith("account/email/email_confirmation") and user is not None:
+            if email.lower() != (user.email or "").lower():
+                from .work_email import company_for_email
+                company = company_for_email(email)
+                context["work_company"] = company.name if company else None
+        super().send_mail(template_prefix, email, context)
+
 
 def _generate_google_username(name):
     """First 4 letters of the Google account's display name (alphabetic

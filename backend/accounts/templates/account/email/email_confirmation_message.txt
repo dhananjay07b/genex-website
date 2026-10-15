@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}{% if work_company %}{{ user.display_name|default:user.username }} added this address as their work email on GeLearn, to show as a verified {{ work_company }} expert.
+
+To confirm it's yours, open this link:
+{{ activate_url }}
+
+If you don't know this person or didn't expect this, ignore this email. Nothing changes unless the link is opened.{% else %}Please confirm the email address for your GeLearn account by opening this link:
+{{ activate_url }}
+
+If you didn't create a GeLearn account, you can ignore this email.{% endif %}{% endautoescape %}{% endblock content %}

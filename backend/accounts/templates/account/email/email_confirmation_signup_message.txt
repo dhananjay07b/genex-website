@@ -1,0 +1,9 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Welcome to GeLearn, the knowledge platform for power and energy practitioners.
+
+Please confirm your email address by opening this link:
+{{ activate_url }}
+
+If you signed up with your company email, confirming it also shows you as a verified expert of your company.
+
+If you didn't create a GeLearn account, you can ignore this email.{% endautoescape %}{% endblock content %}

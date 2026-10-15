@@ -1,0 +1,7 @@
+{% extends "account/email/base_message.html" %}
+{% block content %}{% if work_company %}<p style="margin:0 0 16px;"><b>{{ user.display_name|default:user.username }}</b> added this address as their work email on GeLearn, to show as a verified <b>{{ work_company }}</b> expert.</p>
+<p style="margin:0 0 8px;">To confirm it's yours:</p>
+{% include "account/email/_button.html" with link=activate_url label="Confirm work email" %}
+<p style="margin:0 0 16px;color:#64748b;">If you don't know this person or didn't expect this, ignore this email. Nothing changes unless the link is opened.</p>{% else %}<p style="margin:0 0 8px;">Please confirm the email address for your GeLearn account:</p>
+{% include "account/email/_button.html" with link=activate_url label="Confirm email address" %}
+<p style="margin:0 0 16px;color:#64748b;">If you didn't create a GeLearn account, you can ignore this email.</p>{% endif %}{% endblock content %}

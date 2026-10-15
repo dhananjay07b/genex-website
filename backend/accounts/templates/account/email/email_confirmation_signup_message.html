@@ -1,0 +1,6 @@
+{% extends "account/email/base_message.html" %}
+{% block content %}<p style="margin:0 0 16px;">Welcome to GeLearn, the knowledge platform for power and energy practitioners.</p>
+<p style="margin:0 0 8px;">Please confirm your email address:</p>
+{% include "account/email/_button.html" with link=activate_url label="Confirm email address" %}
+<p style="margin:0 0 16px;">If you signed up with your company email, confirming it also shows you as a verified expert of your company.</p>
+<p style="margin:0 0 16px;color:#64748b;">If you didn't create a GeLearn account, you can ignore this email.</p>{% endblock content %}

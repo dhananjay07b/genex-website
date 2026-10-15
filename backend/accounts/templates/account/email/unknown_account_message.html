@@ -1,0 +1,5 @@
+{% extends "account/email/base_message.html" %}
+{% block content %}<p style="margin:0 0 16px;">Someone asked to reset a GeLearn password for <b>{{ email }}</b>, but there's no GeLearn account with this email.</p>
+<p style="margin:0 0 8px;">If it was you, you can create an account:</p>
+{% with register_url=gelearn_url|add:"/register" %}{% include "account/email/_button.html" with link=register_url label="Create a GeLearn account" %}{% endwith %}
+<p style="margin:0 0 16px;color:#64748b;">If it wasn't you, you can ignore this email.</p>{% endblock content %}

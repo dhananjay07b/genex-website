@@ -220,6 +220,8 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
 ACCOUNT_ADAPTER = "accounts.adapters.AccountAdapter"
+# Subjects are written in full in accounts/templates/account/email/ (no "[example.com]" prefix).
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 
 # Base URL of the GeLearn React app. Emailed links (password reset, email

@@ -1,0 +1,7 @@
+{% autoescape off %}Hello{% if user.display_name %} {{ user.display_name }}{% endif %},
+
+{% block content %}{% endblock content %}
+
+— The GeLearn team at Genex Technocrats
+{{ gelearn_url }}
+{% endautoescape %}

@@ -1,0 +1,7 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Someone asked to reset a GeLearn password for {{ email }}, but there's no GeLearn account with this email.
+
+If it was you, you can create an account here:
+{{ gelearn_url }}/register
+
+If it wasn't you, you can ignore this email.{% endautoescape %}{% endblock content %}
