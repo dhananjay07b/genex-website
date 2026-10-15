@@ -895,3 +895,80 @@ class VerificationStepTests(TestCase):
         self.assertIsNone(self._step(company_mail))  # verified: nothing to do
         self.assertIsNone(self._step(make_user("o", account_type="professional", company_other="Solar Co", role_title="Eng")))
         self.assertIsNone(self._step(make_user("l")))
+
+
+class AccountEmailTests(TestCase):
+    """GeLearn's own wording for account emails: no "example.com", real links in an HTML button, a text fallback."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=self.acme, domain="acme.com")
+
+    def _last_mail(self):
+        from django.core import mail
+        message = mail.outbox[-1]
+        html = next((body for body, kind in getattr(message, "alternatives", []) if kind == "text/html"), "")
+        return message, html
+
+    def _assert_branded(self, message, html, link_part):
+        for text in (message.subject, message.body, html):
+            self.assertNotIn("example.com", text)
+        self.assertIn(link_part, message.body)  # plain-text fallback carries the link
+        self.assertIn(f'href="', html)
+        self.assertIn(link_part, html)
+        self.assertIn("GeLearn", message.body)
+
+    def test_work_email_confirmation_names_the_company(self):
+        pro = make_user("meera", email="meera@gmail.com", account_type="professional", company=self.acme, role_title="Eng", display_name="Meera Iyer")
+        client = APIClient()
+        client.force_authenticate(pro)
+        client.post("/api/accounts/me/work-email/", {"email": "meera@acme.com"}, format="json")
+        message, html = self._last_mail()
+        self.assertEqual(message.subject, "Confirm your Acme Energy work email on GeLearn")
+        self.assertIn("Meera Iyer added this address as their work email", message.body)
+        self.assertIn("Confirm work email", html)
+        self._assert_branded(message, html, "/verify-email/")
+
+    def test_sign_up_confirmation(self):
+        APIClient().post("/api/auth/registration/", {"username": "newbie", "email": "newbie@example.org",
+                         "password1": "Str0ng!Passw0rd", "password2": "Str0ng!Passw0rd"}, format="json")
+        message, html = self._last_mail()
+        self.assertEqual(message.subject, "Welcome to GeLearn: confirm your email")
+        self._assert_branded(message, html, "/verify-email/")
+
+    def test_password_reset(self):
+        make_user("forgetful", email="forgetful@example.org")
+        APIClient().post("/api/auth/password/reset/", {"email": "forgetful@example.org"}, format="json")
+        message, html = self._last_mail()
+        self.assertEqual(message.subject, "Reset your GeLearn password")
+        self.assertIn("Choose a new password", html)
+        self._assert_branded(message, html, "/reset-password/")
+
+    def test_opening_a_confirmation_link_twice_says_already_confirmed(self):
+        import re
+        from django.core import mail
+        APIClient().post("/api/auth/registration/", {"username": "twice", "email": "twice@example.org",
+                         "password1": "Str0ng!Passw0rd", "password2": "Str0ng!Passw0rd"}, format="json")
+        key = re.search(r"/verify-email/([^\s/]+)", mail.outbox[-1].body).group(1)
+        first = APIClient().post("/api/auth/registration/verify-email/", {"key": key}, format="json").json()
+        self.assertEqual((first["already_confirmed"], first["email"], first["kind"], first["verified_company"]),
+                         (False, "twice@example.org", "sign_in", None))
+        again = APIClient().post("/api/auth/registration/verify-email/", {"key": key}, format="json")
+        self.assertEqual(again.status_code, 200)
+        self.assertTrue(again.json()["already_confirmed"])
+        self.assertEqual(APIClient().post("/api/auth/registration/verify-email/", {"key": "made-up"}, format="json").status_code, 404)
+
+
+    def test_confirming_a_work_email_reports_the_verified_company(self):
+        import re
+        from django.core import mail
+        pro = make_user("wk", email="wk@gmail.com", account_type="professional", company=self.acme, role_title="Eng", display_name="Wren K")
+        client = APIClient()
+        client.force_authenticate(pro)
+        client.post("/api/accounts/me/work-email/", {"email": "wk@acme.com"}, format="json")
+        key = re.search(r"/verify-email/([^\s/]+)", mail.outbox[-1].body).group(1)
+        result = APIClient().post("/api/auth/registration/verify-email/", {"key": key}, format="json").json()
+        self.assertEqual(result, {"detail": "ok", "already_confirmed": False, "email": "wk@acme.com", "kind": "work",
+                                  "account": {"username": "wk", "display_name": "Wren K"}, "verified_company": "Acme Energy"})

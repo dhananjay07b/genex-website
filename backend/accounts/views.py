@@ -1,9 +1,10 @@
 import logging
 
+from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.models import SocialAccount
-from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView
+from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, VerifyEmailView
 from dj_rest_auth.jwt_auth import JWTCookieAuthentication, set_jwt_cookies
 from dj_rest_auth.utils import jwt_encode
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
@@ -12,6 +13,7 @@ from django.core import signing
 from django.contrib.auth import get_user, logout as django_logout
 from django.contrib.auth.models import update_last_login
 from django.core.exceptions import ImproperlyConfigured
+from django.http import Http404
 from django.db import IntegrityError, transaction
 from django.middleware.csrf import get_token
 import requests
@@ -24,6 +26,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
+from .roles import display_company
 from .serializers import UserSerializer, validate_account_type_choice
 from .verification import refresh_company_verification, resolve_professional_company
 from .throttles import (
@@ -365,6 +368,58 @@ class GenexLogoutView(LogoutView):
         response = super().logout(request)
         django_logout(request._request)
         return response
+
+
+class GenexVerifyEmailView(VerifyEmailView):
+    """
+    Confirms an email from its link and says exactly what happened, so the page
+    can tell the person: which address, whether it's the account's sign-in email
+    or a work email (often opened by a colleague, not the account holder), and
+    whether that made the account a verified company expert.
+
+    Opening a link whose address is already confirmed (a second click, a
+    forwarded link) answers "already confirmed" instead of the "invalid link"
+    error allauth gives once the address is verified. Tampered or expired links
+    still fail (404).
+    """
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        key = serializer.validated_data["key"]
+        self.kwargs["key"] = key
+        try:
+            confirmation = self.get_object()
+        except Http404:
+            address = self._already_confirmed_address(key)
+            if address is None:
+                raise
+            return Response(self._result(address, already_confirmed=True))
+        confirmation.confirm(self.request)
+        return Response(self._result(confirmation.email_address, already_confirmed=False))
+
+    @staticmethod
+    def _already_confirmed_address(key):
+        """The address behind a genuine, unexpired key when it's already confirmed; else None."""
+        max_age = 60 * 60 * 24 * allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS
+        try:
+            pk = signing.loads(key, salt=allauth_account_settings.SALT, max_age=max_age)
+        except signing.BadSignature:  # includes expired
+            return None
+        return EmailAddress.objects.filter(pk=pk, verified=True).select_related("user").first()
+
+    @staticmethod
+    def _result(address, *, already_confirmed):
+        user = User.objects.select_related("company").get(pk=address.user_id)  # fresh: confirming may have verified them
+        company = display_company(user)
+        return {
+            "detail": "ok",
+            "already_confirmed": already_confirmed,
+            "email": address.email,
+            "kind": "sign_in" if address.email.lower() == (user.email or "").lower() else "work",
+            "account": {"username": user.username, "display_name": user.display_name or user.username},
+            # Set when the account now shows as a verified expert of a company.
+            "verified_company": company["name"] if company and company["verified"] and user.account_type == User.ACCOUNT_PROFESSIONAL else None,
+        }
 
 
 class GenexResendEmailView(ResendEmailVerificationView):

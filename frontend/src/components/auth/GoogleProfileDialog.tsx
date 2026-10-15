@@ -142,7 +142,7 @@ export function GoogleProfileDialog({ email, name, prefill, onSubmit, onCancel }
           <h2 id="google-profile-title" className="text-xl font-extrabold text-text-primary">Finish creating your account</h2>
           <p className="mt-1.5 flex items-start gap-1.5 text-sm text-text-muted">
             <span className="mt-0.5 shrink-0"><GoogleGlyph /></span>
-            <span className="min-w-0">Signing up with <b className="font-semibold break-words text-text-primary">{email}</b></span>
+            <span className="min-w-0">Signing up with <b className="font-semibold wrap-break-word text-text-primary">{email}</b></span>
           </p>
 
           <div className="mt-5 flex flex-col gap-4">

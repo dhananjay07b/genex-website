@@ -7,9 +7,13 @@ import { ScrollToTop } from '@/components/utils/ScrollToTop'
 import { DevShellUrlSync } from '@/components/utils/DevShellUrlSync'
 import { useAuth } from '@/context/useAuth'
 
-// Full-bleed auth pages: no site header/footer, no page scroll — the page
-// itself is the whole viewport (see AuthLayout.tsx).
-const FULL_BLEED_PATHS = ['/login', '/register']
+// Full-bleed account pages: no site header/footer — the page itself is the whole
+// viewport (AuthLayout.tsx, or the email confirmation screen).
+const FULL_BLEED_PATHS = ['/login', '/register', '/forgot-password', '/reset-password/', '/verify-email/']
+
+function isFullBleedPath(pathname: string): boolean {
+  return FULL_BLEED_PATHS.some(path => (path.endsWith('/') ? pathname.startsWith(path) : pathname === path))
+}
 
 // Dashboard + its editor pages: the full site footer is swapped for a
 // minimal fixed copyright strip instead — a "Need help?" block lives in the
@@ -35,7 +39,7 @@ export function GeLearnLayout() {
   const { pathname } = useLocation()
   const { session } = useAuth()
 
-  if (FULL_BLEED_PATHS.includes(pathname)) {
+  if (isFullBleedPath(pathname)) {
     return (
       <>
         <ScrollToTop />
