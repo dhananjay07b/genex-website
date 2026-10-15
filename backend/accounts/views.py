@@ -1,3 +1,5 @@
+import logging
+
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.models import SocialAccount
@@ -6,6 +8,7 @@ from dj_rest_auth.jwt_auth import JWTCookieAuthentication, set_jwt_cookies
 from dj_rest_auth.utils import jwt_encode
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.conf import settings
+from django.core import signing
 from django.contrib.auth import get_user, logout as django_logout
 from django.contrib.auth.models import update_last_login
 from django.core.exceptions import ImproperlyConfigured
@@ -29,6 +32,8 @@ from .throttles import (
     PasswordResetConfirmThrottle,
     PasswordResetThrottle,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SessionView(APIView):
@@ -125,6 +130,18 @@ class GoogleProfileSerializer(serializers.Serializer):
         return data
 
 
+GOOGLE_SIGNUP_SALT = "accounts.google-signup"
+GOOGLE_SIGNUP_MAX_AGE = 30 * 60  # seconds the profile step may take
+
+
+def _verify_google_id_token(provider, id_token):
+    """Google's identity claims from an ID token, after checking its signature, issuer, audience and expiry."""
+    from allauth.socialaccount.providers.google import views as google_views
+    if not id_token:
+        raise ValueError("no id_token sent")
+    return google_views._verify_and_decode(app=provider.app, credential=id_token)
+
+
 class GoogleLoginView(APIView):
     """
     Sign in with Google. The frontend sends the ID token from Google Identity
@@ -149,11 +166,29 @@ class GoogleLoginView(APIView):
     def post(self, request):
         try:
             provider = get_social_adapter(request).get_provider(request, "google")
-            login = provider.verify_token(request, {"id_token": request.data.get("id_token", "")})
         except ImproperlyConfigured:
             return Response({"detail": "Google sign-in isn't set up yet."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception:  # expired, forged or for another site's client ID
-            return Response({"detail": "Google couldn't confirm your sign-in. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        signup_token = request.data.get("signup_token")
+        if signup_token:
+            # Second step of a new sign-up: Google's token was verified in the first request,
+            # and can't be checked again (allauth refuses a token it has already seen).
+            try:
+                identity = signing.loads(signup_token, salt=GOOGLE_SIGNUP_SALT, max_age=GOOGLE_SIGNUP_MAX_AGE)
+            except signing.BadSignature:  # tampered with, or older than half an hour
+                return Response(
+                    {"detail": "Your Google sign-in has expired. Please continue with Google again."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            login = provider.sociallogin_from_response(request, identity)
+        else:
+            id_token = request.data.get("id_token", "")
+            try:
+                identity = _verify_google_id_token(provider, id_token)
+                login = provider.sociallogin_from_response(request, identity)
+            except Exception as exc:  # expired, forged, for another site's client ID, or verification broken
+                logger.warning("Google sign-in token refused: %s: %s", type(exc).__name__, exc.__cause__ or exc)
+                return Response({"detail": "Google couldn't confirm your sign-in. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
         login.lookup()
         if login.is_existing:
@@ -178,7 +213,12 @@ class GoogleLoginView(APIView):
         # Google's full name, whichever way it arrived (given/family names, or just "name").
         google_name = login.user.display_name or login.account.extra_data.get("name", "")
         if not request.data.get("account_type"):
-            return Response({"status": "needs_profile", "email": email, "name": google_name})
+            # Nothing is created yet. The signed ticket lets the profile step finish the
+            # sign-up within half an hour without Google's token being checked twice.
+            return Response({
+                "status": "needs_profile", "email": email, "name": google_name,
+                "signup_token": signing.dumps(identity, salt=GOOGLE_SIGNUP_SALT),
+            })
 
         profile = GoogleProfileSerializer(data=request.data, context={"email": email})
         profile.is_valid(raise_exception=True)

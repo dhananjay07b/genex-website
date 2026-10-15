@@ -22,7 +22,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string |
 /** POST /api/accounts/google/ (backend accounts.views.GoogleLoginView). */
 type GoogleResult =
   | { status: 'signed_in'; created: boolean }
-  | { status: 'needs_profile'; email: string; name: string }
+  | { status: 'needs_profile'; email: string; name: string; signup_token: string }
 
 interface GoogleLoginButtonProps {
   /** Where to land once signed in (the page that sent the visitor to log in). */
@@ -39,12 +39,13 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
   const navigate = useNavigate()
   const [error, setError] = useState('')
   // A new Google user: their verified token and details, while they finish the profile step.
-  const [pending, setPending] = useState<{ credential: string; email: string; name: string; prefill?: GoogleProfilePrefill } | null>(null)
+  // signupToken: the server's signed ticket for finishing the sign-up (Google's own token can only be checked once).
+  const [pending, setPending] = useState<{ signupToken: string; email: string; name: string; prefill?: GoogleProfilePrefill } | null>(null)
 
-  async function send(credential: string, profile?: GoogleProfile) {
-    const result = await apiFetch<GoogleResult>('/api/accounts/google/', { method: 'POST', body: { id_token: credential, ...profile } })
+  async function send(body: { id_token: string } | ({ signup_token: string } & GoogleProfile)) {
+    const result = await apiFetch<GoogleResult>('/api/accounts/google/', { method: 'POST', body })
     if (result.status === 'needs_profile') {
-      setPending({ credential, email: result.email, name: result.name, prefill: prefill?.() })
+      setPending({ signupToken: result.signup_token, email: result.email, name: result.name, prefill: prefill?.() })
       return
     }
     setPending(null)
@@ -57,7 +58,7 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
   useEffect(() => {
     onCredential.current = credential => {
       setError('')
-      send(credential).catch(err => setError(err instanceof ApiError ? err.message : "Couldn't sign in with Google. Please try again."))
+      send({ id_token: credential }).catch(err => setError(err instanceof ApiError ? err.message : "Couldn't sign in with Google. Please try again."))
     }
   })
 
@@ -111,7 +112,7 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
           email={pending.email}
           name={pending.name}
           prefill={pending.prefill}
-          onSubmit={profile => send(pending.credential, profile)}
+          onSubmit={profile => send({ signup_token: pending.signupToken, ...profile })}
           onCancel={() => setPending(null)}
         />
       )}

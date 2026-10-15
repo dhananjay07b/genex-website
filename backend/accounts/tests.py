@@ -609,7 +609,9 @@ class GoogleSignInTests(TestCase):
     def test_new_person_is_asked_for_a_profile_and_nothing_is_created(self):
         res = self._google()
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json(), {"status": "needs_profile", "email": "new@gmail.com", "name": "Asha Rao"})
+        data = res.json()
+        self.assertEqual({k: data[k] for k in ("status", "email", "name")}, {"status": "needs_profile", "email": "new@gmail.com", "name": "Asha Rao"})
+        self.assertTrue(data["signup_token"])
         self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
         self.assertNotIn("genex-auth", res.cookies)
 
@@ -766,3 +768,74 @@ class DeactivatedCompanyTests(TestCase):
         staff.refresh_from_db()
         client.force_authenticate(staff)
         self.assertEqual(client.get("/api/studio/team/").status_code, 403)
+
+
+class GoogleTokenVerificationTests(TestCase):
+    """
+    The real verification path, with tokens signed by a test RS256 key in place of
+    Google's: signature, audience, expiry, and allauth's one-use rule. (Mocking the
+    whole check once hid a missing `cryptography` package and the reuse problem.)
+    """
+
+    def setUp(self):
+        import time
+        from unittest import mock
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from django.conf import settings
+        from django.core.cache import cache
+        cache.clear()
+        self.key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        self.client_id = "test-client.apps.googleusercontent.com"
+        self.now = int(time.time())
+        patches = [
+            mock.patch.dict(settings.SOCIALACCOUNT_PROVIDERS["google"]["APP"], {"client_id": self.client_id}),
+            # Google's public key, normally fetched from googleapis.com.
+            mock.patch("allauth.socialaccount.internal.jwtkit.fetch_key", return_value=("RS256", self.key.public_key())),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.client = APIClient()
+
+    def _token(self, **claims):
+        import jwt
+        payload = {"iss": "https://accounts.google.com", "aud": self.client_id, "sub": "g-42", "email": "ravi@gmail.com",
+                   "email_verified": True, "name": "Ravi Kumar", "iat": self.now, "exp": self.now + 3600, "jti": f"jti-{self.now}"}
+        payload.update(claims)
+        return jwt.encode(payload, self.key, algorithm="RS256")
+
+    def _post(self, body):
+        return self.client.post("/api/accounts/google/", body, format="json")
+
+    def test_two_step_sign_up_with_a_real_signed_token(self):
+        token = self._token()
+        first = self._post({"id_token": token})
+        self.assertEqual(first.status_code, 200, first.content)
+        self.assertEqual(first.json()["status"], "needs_profile")
+        # Google's token can't be used again...
+        self.assertEqual(self._post({"id_token": token, "account_type": "learner"}).status_code, 400)
+        # ...the signed ticket finishes the sign-up instead.
+        second = self._post({"signup_token": first.json()["signup_token"], "account_type": "learner"})
+        self.assertEqual(second.json(), {"status": "signed_in", "created": True})
+        self.assertTrue(User.objects.filter(email="ravi@gmail.com", account_type="learner").exists())
+
+    def test_wrong_audience_or_expired_or_forged_tokens_are_refused(self):
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        import jwt
+        self.assertEqual(self._post({"id_token": self._token(aud="someone-else", jti="a")}).status_code, 400)
+        self.assertEqual(self._post({"id_token": self._token(exp=self.now - 10, jti="b")}).status_code, 400)
+        other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        forged = jwt.encode({"iss": "https://accounts.google.com", "aud": self.client_id, "sub": "x", "email": "x@gmail.com",
+                             "exp": self.now + 3600}, other_key, algorithm="RS256")
+        self.assertEqual(self._post({"id_token": forged}).status_code, 400)
+        self.assertFalse(User.objects.exists())
+
+    def test_tampered_or_expired_ticket_is_refused(self):
+        from unittest import mock
+        ticket = self._post({"id_token": self._token()}).json()["signup_token"]
+        self.assertEqual(self._post({"signup_token": ticket + "x", "account_type": "learner"}).status_code, 400)
+        with mock.patch("accounts.views.GOOGLE_SIGNUP_MAX_AGE", -1):
+            res = self._post({"signup_token": ticket, "account_type": "learner"})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("expired", res.json()["detail"])
+        self.assertFalse(User.objects.filter(email="ravi@gmail.com").exists())

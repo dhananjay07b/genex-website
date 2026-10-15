@@ -7,6 +7,8 @@ psycopg[binary]>=3.2,<4
 django-allauth>=65
 dj-rest-auth>=6
 djangorestframework-simplejwt>=5.3
+# Verifies Google sign-in tokens (RS256 signatures); PyJWT can't check them without it
+cryptography>=44
 gunicorn>=23.0
 python-dotenv>=1.0
 # Certificates: PDF (needs Pango on the server), PNG preview from the PDF, QR codes
