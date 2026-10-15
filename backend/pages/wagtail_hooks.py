@@ -1,4 +1,5 @@
 from django import forms
+from django.http import HttpResponsePermanentRedirect
 from django.contrib import messages
 from django.db.models import Count
 from django.templatetags.static import static
@@ -11,7 +12,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.permissions import get_permission_name
 from wagtail.snippets.views.snippets import SnippetViewSet
 
-from .links import company_chooser_viewset, course_chooser_viewset
+from .links import company_chooser_viewset, course_chooser_viewset, frontend_url
 from .models import Topic, TopicGroup
 from .topics import merge_topics, with_usage
 
@@ -120,3 +121,14 @@ def register_link_choosers():
 @hooks.register("insert_editor_js")
 def link_block_js():
     return format_html('<script src="{}"></script>', static("pages/js/link_block.js"))
+
+
+@hooks.register("before_serve_page")
+def redirect_to_frontend(page, request, serve_args, serve_kwargs):
+    """
+    Pages are shown by the React frontends, not by Django (there are no page
+    templates), so a page address on the CMS host (a crawler, an old link, the
+    admin's "View live") goes to the page on its site instead of failing.
+    """
+    return HttpResponsePermanentRedirect(frontend_url(page))
+

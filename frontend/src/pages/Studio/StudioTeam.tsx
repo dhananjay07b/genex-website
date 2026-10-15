@@ -45,7 +45,7 @@ export default function StudioTeam() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageMeta title="Team — Company Studio" description="People publishing on GeLearn for your company." canonical="/studio/team" />
+      <PageMeta title="Team — Company Studio" description="People publishing on GeLearn for your company." canonical="/studio/team" noIndex />
 
       <section>
         <h2 className="text-xl font-extrabold text-text-primary">Staff logins</h2>

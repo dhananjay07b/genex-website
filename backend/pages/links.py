@@ -240,6 +240,21 @@ def genex_page_path(page):
     return page.url_path.rstrip("/") or "/"
 
 
+def frontend_url(page):
+    """
+    Where a CMS page is actually shown: its full address on the marketing site, or on
+    GeLearn for the GeLearn section (its pages live under /gelearn/ in the CMS tree but
+    at the site's root: /gelearn/research/ is GeLearn's /research).
+    """
+    name = page.specific_class.__name__ if page.specific_class else ""
+    if name == "GeLearnIndexPage":
+        return settings.GELEARN_FRONTEND_URL.rstrip("/") + "/"
+    if name == "GeLearnSectionPage":
+        return settings.GELEARN_FRONTEND_URL.rstrip("/") + "/" + page.slug
+    path = "/" if page.depth <= 1 else genex_page_path(page)
+    return settings.MARKETING_FRONTEND_URL.rstrip("/") + path
+
+
 class LinkBlock(blocks.StructBlock):
     """
     Pick what to link to; the address is built for you. In the editor only the

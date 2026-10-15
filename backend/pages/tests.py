@@ -581,3 +581,42 @@ class LegalPageApiTests(TestCase):
     def test_not_in_the_menu(self):
         nav = APIClient().get("/api/snippets/nav/").json()
         self.assertNotIn("Privacy Policy", str(nav))
+
+
+@override_settings(MARKETING_FRONTEND_URL="https://site.example", GELEARN_FRONTEND_URL="https://learn.example")
+class CmsHostSearchTests(TestCase):
+    """The CMS host sends people and crawlers to the frontends and stays out of search results."""
+
+    def setUp(self):
+        from wagtail.models import Page, Site
+        from .models import GeLearnIndexPage, GeLearnSectionPage, SectionPage
+        root = Page.get_first_root_node()
+        Site.objects.filter(is_default_site=True).update(root_page=root)
+        self.portfolio = root.add_child(instance=SectionPage(title="Portfolio", slug="portfolio"))
+        gelearn = root.add_child(instance=GeLearnIndexPage(title="GeLearn", slug="gelearn"))
+        self.research = gelearn.add_child(instance=GeLearnSectionPage(title="Research", slug="research"))
+
+    def test_page_addresses_redirect_to_the_frontend(self):
+        for path, target in [
+            ("/portfolio/", "https://site.example/portfolio"),
+            ("/gelearn/", "https://learn.example/"),
+            ("/gelearn/research/", "https://learn.example/research"),
+            ("/", "https://site.example/"),
+        ]:
+            res = self.client.get(path)
+            self.assertEqual((res.status_code, res["Location"]), (301, target), path)
+
+    def test_robots_txt_blocks_only_the_admin_areas(self):
+        res = self.client.get("/robots.txt")
+        self.assertEqual(res["Content-Type"], "text/plain")
+        body = res.content.decode()
+        self.assertIn("Disallow: /cms/", body)
+        self.assertIn("Disallow: /admin/", body)
+        # The frontends' pages are rendered from these; blocking them would blank pages for Google.
+        self.assertNotIn("/api", body)
+        self.assertNotIn("/media", body)
+
+    def test_responses_are_noindex_except_documents(self):
+        self.assertEqual(self.client.get("/api/snippets/nav/")["X-Robots-Tag"], "noindex")
+        self.assertEqual(self.client.get("/admin/login/")["X-Robots-Tag"], "noindex")
+        self.assertNotIn("X-Robots-Tag", self.client.get("/documents/999/missing.pdf"))

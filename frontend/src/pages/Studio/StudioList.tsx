@@ -56,7 +56,7 @@ export default function StudioList() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageMeta title={`${config.label} — Company Studio`} description={config.description} canonical={`/studio/${config.key}`} />
+      <PageMeta title={`${config.label} — Company Studio`} description={config.description} canonical={`/studio/${config.key}`} noIndex />
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>

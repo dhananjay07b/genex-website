@@ -155,7 +155,7 @@ export default function CertificatePage() {
   if (certificate === null) {
     return shell(
       <div className="mx-auto max-w-lg rounded-2xl border border-border bg-white p-8 text-center">
-        <PageMeta title="Certificate not found — GeLearn" description="No GeLearn certificate has this ID." canonical={`/certificates/${code}`} />
+        <PageMeta title="Certificate not found — GeLearn" description="No GeLearn certificate has this ID." canonical={`/certificates/${code}`} noIndex />
         <h1 className="text-xl font-extrabold text-text-primary">Certificate not found</h1>
         <p className="mt-2 text-sm text-text-muted">No GeLearn certificate has the ID <b className="text-text-primary">{code.toUpperCase()}</b>. Check the link or the ID printed on the certificate.</p>
       </div>,
@@ -165,7 +165,7 @@ export default function CertificatePage() {
   if (certificate.status === 'revoked') {
     return shell(
       <div className="mx-auto max-w-2xl">
-        <PageMeta title="Revoked certificate — GeLearn" description="This GeLearn certificate has been revoked." canonical={`/certificates/${certificate.code}`} />
+        <PageMeta title="Revoked certificate — GeLearn" description="This GeLearn certificate has been revoked." canonical={`/certificates/${certificate.code}`} noIndex />
         <div role="status" className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-5 text-red-900">
           <BlockIcon sx={{ fontSize: 26 }} className="shrink-0 text-red-700" />
           <div>
@@ -202,6 +202,7 @@ export default function CertificatePage() {
         title={`${valid.learner_name}: ${valid.course.title} certificate — GeLearn`}
         description={`GeLearn certificate of completion for ${valid.course.title}, issued ${longDate(valid.issued_at)}.`}
         canonical={`/certificates/${valid.code}`}
+        noIndex
       />
       {mine
         ? <Crumbs items={[{ label: 'My Learning', to: '/account?tab=learning' }, { label: 'Certificates', to: '/account?tab=learning' }, { label: valid.course.title }]} />

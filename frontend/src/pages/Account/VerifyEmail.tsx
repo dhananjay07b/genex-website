@@ -30,7 +30,7 @@ export default function VerifyEmail() {
 
   return (
     <>
-      <PageMeta title="Verify Email — Genex GeLearn" description="Confirm your Genex GeLearn account email address." canonical="/verify-email" />
+      <PageMeta title="Verify Email — Genex GeLearn" description="Confirm your Genex GeLearn account email address." canonical="/verify-email" noIndex />
 
       <AuthLayout
         eyebrow="Email Confirmation"

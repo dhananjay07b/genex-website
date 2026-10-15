@@ -72,6 +72,7 @@ MIDDLEWARE = [
     "accounts.middleware.BackofficeGuardMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "genex.seo.noindex_middleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]

@@ -254,7 +254,7 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
 
   return (
     <div className="flex flex-col lg:flex-row gap-7 items-start">
-      <PageMeta title={`${heading} — Company Studio`} description={config.description} canonical={`/studio/${config.key}`} />
+      <PageMeta title={`${heading} — Company Studio`} description={config.description} canonical={`/studio/${config.key}`} noIndex />
 
       {/* Writing column */}
       <div className="flex-1 min-w-0 w-full bg-white border border-border rounded-3xl shadow-sm p-6 lg:p-8 flex flex-col gap-6">

@@ -60,7 +60,7 @@ export default function ResetPasswordConfirm() {
 
   return (
     <>
-      <PageMeta title="Reset Password — Genex GeLearn" description="Set a new password for your Genex GeLearn account." canonical="/reset-password" />
+      <PageMeta title="Reset Password — Genex GeLearn" description="Set a new password for your Genex GeLearn account." canonical="/reset-password" noIndex />
 
       <AuthLayout
         eyebrow="Account Recovery"

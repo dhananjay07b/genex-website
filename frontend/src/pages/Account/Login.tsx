@@ -51,7 +51,7 @@ export default function Login() {
 
   return (
     <>
-      <PageMeta title="Log In — Genex GeLearn" description="Log in to your Genex account." canonical="/login" />
+      <PageMeta title="Log In — Genex GeLearn" description="Log in to your Genex account." canonical="/login" noIndex />
 
       <AuthLayout
         eyebrow="Genex Technocrats"

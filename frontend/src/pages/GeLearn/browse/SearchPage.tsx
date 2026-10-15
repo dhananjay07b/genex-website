@@ -86,6 +86,7 @@ export default function SearchPage() {
         title={q ? `${q}: GeLearn search` : 'Browse the catalogue: GeLearn'}
         description="Search courses, GeAcademy articles, research, whitepapers, videos and podcasts on power, energy and automation."
         canonical="/search"
+        noIndex
       />
       <div className="mx-auto max-w-330 px-4 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3 pt-6 pb-3">
