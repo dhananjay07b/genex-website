@@ -198,7 +198,7 @@ export const gelearnRouter = createBrowserRouter([
               },
             ],
           },
-          // Renamed sections — old URLs stay valid (Apache also 301s these in production).
+          // Renamed sections — old URLs stay valid (Nginx also 301s these in production).
           { path: '/technology',               element: <LegacyRedirect to="/geacademy" /> },
           { path: '/technology/:id',           element: <LegacyRedirect to="/geacademy" /> },
           { path: '/case-studies',             element: <LegacyRedirect to="/research" /> },

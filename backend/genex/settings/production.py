@@ -21,10 +21,10 @@ ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "").sp
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("Set ALLOWED_HOSTS to the site's domains, comma-separated.")
 
-# Reverse proxies in front of Django (nginx, Apache, Caddy, IIS, a host's load
-# balancer — any of them). Each must send X-Forwarded-For and X-Forwarded-Proto.
-# 1 is the usual setup; 2 for a cloud load balancer plus a proxy on the server;
-# 0 if Django faces the internet directly. Visitor IPs for rate limits come from this.
+# Reverse proxies in front of Django. Each must send X-Forwarded-For and
+# X-Forwarded-Proto (deploy/nginx/sites-available/cms.genextechnocrats.com.conf does).
+# 1 is our setup (Nginx on the server); 2 if an AWS load balancer is added in front
+# of it; 0 if Django faces the internet directly. Visitor IPs for rate limits come from this.
 NUM_PROXIES = int(os.environ.get("NUM_PROXIES", "1"))
 REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": NUM_PROXIES}
 

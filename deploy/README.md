@@ -1,18 +1,23 @@
-# Deploying to the in-house Apache server
+# Deploying to the EC2 server (Ubuntu 24.04, Nginx)
 
-Three hostnames, one server:
+Three hostnames, one server, served by Nginx:
 
-| Hostname | Serves | Config |
+| Hostname | Serves | Config (`deploy/nginx/sites-available/`) |
 |---|---|---|
-| `genextechnocrats.com` | Marketing site (built frontend) | `apache/genextechnocrats.com.conf` |
-| `gelearn.genextechnocrats.com` | GeLearn (same built frontend, different shell at runtime) | `apache/gelearn.genextechnocrats.com.conf` |
-| `cms.genextechnocrats.com` | Django/Wagtail backend | `apache/cms.genextechnocrats.com.conf` |
+| `genextechnocrats.com` (`www.` redirects here) | Marketing site (built frontend) | `genextechnocrats.com.conf` |
+| `gelearn.genextechnocrats.com` | GeLearn (same built frontend, different shell at runtime) | `gelearn.genextechnocrats.com.conf` |
+| `cms.genextechnocrats.com` | Django/Wagtail backend: API, CMS, admin | `cms.genextechnocrats.com.conf` |
 
-The two frontend vhosts point at the **same** `frontend/dist` directory — this
-is one build, not two. The app picks which shell to render (marketing vs
-GeLearn) purely from `window.location.hostname` at runtime (see
-`frontend/src/lib/host.ts`); Apache's only job is routing both hostnames to
-the same files, and swapping `sitemap.xml`/`robots.txt` on the GeLearn vhost.
+The two frontend sites serve the **same** `frontend/dist` directory: one build,
+not two. The app picks which shell to render (marketing or GeLearn) from the
+hostname at runtime (`frontend/src/lib/host.ts`). The GeLearn site only swaps in
+its own `sitemap.xml`/`robots.txt` and redirects a few renamed sections.
+
+Shared settings live in `deploy/nginx/snippets/`:
+- `genex-common.conf`: TLS settings and compression, for every site.
+- `genex-frontend-files.conf`: how the frontend files are served and cached.
+- `genex-frontend-headers.conf`: security headers for the two frontend sites,
+  including the Content-Security-Policy (see "Security policy" below).
 
 ## One-time server setup
 
@@ -22,28 +27,34 @@ draw certificate PDFs:
 ```bash
 sudo apt update
 sudo apt install python3-venv python3-dev libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
-    postgresql apache2 certbot python3-certbot-apache
+    postgresql nginx certbot python3-certbot-nginx
 ```
 To build the frontend on the server, install Node.js 22 LTS (e.g. from NodeSource):
 Ubuntu's own `nodejs` package is 18, too old for Vite (needs 20.19+ or 22.12+).
 
+In the EC2 security group, open ports 80 and 443 only (plus SSH).
+
+Get HTTPS certificates once DNS points all four names at this server. `certonly`
+fetches the certificates without editing any Nginx files (ours already point at
+them), and the deploy hook reloads Nginx after each automatic renewal:
 ```bash
-sudo a2enmod rewrite proxy proxy_http headers ssl
+sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" \
+    -d genextechnocrats.com -d www.genextechnocrats.com
+sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" -d gelearn.genextechnocrats.com
+sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" -d cms.genextechnocrats.com
 ```
 
-Get certificates for all three hostnames (e.g. via certbot):
+Install the Genex sites and replace Nginx's default one:
 ```bash
-sudo certbot --apache -d genextechnocrats.com -d www.genextechnocrats.com
-sudo certbot --apache -d gelearn.genextechnocrats.com
-sudo certbot --apache -d cms.genextechnocrats.com
+sudo cp deploy/nginx/snippets/*.conf /etc/nginx/snippets/
+sudo cp deploy/nginx/sites-available/*.conf /etc/nginx/sites-available/
+for site in genextechnocrats.com gelearn.genextechnocrats.com cms.genextechnocrats.com; do
+    sudo ln -sf /etc/nginx/sites-available/$site.conf /etc/nginx/sites-enabled/$site.conf
+done
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
 ```
-
-Copy the vhost files into place and enable them:
-```bash
-sudo cp deploy/apache/*.conf /etc/apache2/sites-available/
-sudo a2ensite genextechnocrats.com gelearn.genextechnocrats.com cms.genextechnocrats.com
-sudo systemctl reload apache2
-```
+After changing any file in `deploy/nginx/`, copy it again and run the last line.
 
 ## Database (PostgreSQL 16)
 
@@ -123,8 +134,9 @@ VITE_GELEARN_URL=https://gelearn.genextechnocrats.com \
 VITE_MARKETING_URL=https://genextechnocrats.com \
 npm run build
 ```
-Copy the resulting `dist/` to `/var/www/genex/frontend/dist` (the path both
-frontend Apache vhosts point at).
+Copy the resulting `dist/` to `/var/www/genex/frontend/dist` (the folder both
+frontend sites serve, set in `snippets/genex-frontend-files.conf`). No Nginx
+reload is needed: open tabs pick up the new build by themselves.
 
 ## After DNS is live
 
@@ -137,3 +149,37 @@ origins.
 While the temporary pre-launch frontend is still on Vercel, this server's
 backend needs `https://genextechnocrats.vercel.app` included in
 `CORS_ALLOWED_ORIGINS` too — drop it once the real domains take over.
+
+## Checking it works
+
+From any machine, after deploying. Each command should print what its comment says:
+```bash
+# Redirects: http and www end up on https://genextechnocrats.com
+curl -sI http://www.genextechnocrats.com/ | grep -i '^location'            # https://genextechnocrats.com/
+# Pages: HTTP/2, never cached, security headers present
+curl -sI https://genextechnocrats.com/ | grep -iE '^HTTP|cache-control|strict-transport|x-frame'
+# Built JS: cached for a year and compressed
+JS=$(curl -s https://genextechnocrats.com/ | grep -o '/assets/index-[^"]*\.js' | head -1)
+curl -sI -H 'Accept-Encoding: gzip' https://genextechnocrats.com$JS | grep -iE 'cache-control|content-encoding'
+# A missing file is a real 404, not the app
+curl -s -o /dev/null -w '%{http_code}\n' https://genextechnocrats.com/assets/missing.js   # 404
+# GeLearn has its own sitemap; old section URLs redirect
+curl -s https://gelearn.genextechnocrats.com/robots.txt | grep -i sitemap                # gelearn…/sitemap.xml
+curl -sI https://gelearn.genextechnocrats.com/technology | grep -i '^location'          # …/geacademy
+# The API answers through Nginx
+curl -s -o /dev/null -w '%{http_code}\n' https://cms.genextechnocrats.com/api/snippets/nav/   # 200
+```
+
+## Security policy (Content-Security-Policy)
+
+`snippets/genex-frontend-headers.conf` lists where the frontend may load scripts,
+fonts, images, video and API data from. It ships as
+`Content-Security-Policy-Report-Only`: browsers report what it would block in the
+DevTools console but block nothing. Before launch it was checked in Chrome against
+the marketing home page, GeLearn home and a course page with no reports.
+
+After a few weeks with no unexpected reports (open the site with DevTools'
+console showing; reports start with "[Report Only]"), enforce it: rename the header
+to `Content-Security-Policy` in that file, copy it to `/etc/nginx/snippets/` and
+reload Nginx. If a new outside service is added later (another video host, a chat
+widget), add its address to the matching line there first.
