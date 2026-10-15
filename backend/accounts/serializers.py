@@ -38,6 +38,10 @@ class UserSerializer(serializers.ModelSerializer):
     company = serializers.SerializerMethodField()
     # Effective status, as shown on the site (Company staff are always verified).
     company_verified = serializers.SerializerMethodField()
+    # What an unverified Professional linked to a company does next (null when nothing to do):
+    #   "confirm_sign_in_email" — their sign-in email is on the company's domain: click its confirmation link;
+    #   "work_email" — it isn't (e.g. Gmail through Google): add and confirm a work email in Settings.
+    verification_step = serializers.SerializerMethodField()
     # Write: pick a registered company (null to clear). Read: `company` above.
     company_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -46,10 +50,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
             "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
-            "role_title", "years_experience", "linkedin_url", "expertise", "career_goal", "show_certificates",
+            "verification_step", "role_title", "years_experience", "linkedin_url", "expertise", "career_goal", "show_certificates",
         ]
         # account_type is fixed at registration — only Admin can change it (Django admin).
-        read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified"]
+        read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified", "verification_step"]
 
     def get_is_admin(self, obj):
         return is_admin(obj)
@@ -60,6 +64,13 @@ class UserSerializer(serializers.ModelSerializer):
     def get_company_verified(self, obj):
         company = display_company(obj)
         return bool(company and company["verified"])
+
+    def get_verification_step(self, obj):
+        if obj.account_type != User.ACCOUNT_PROFESSIONAL or not obj.company_id or obj.company_verified:
+            return None
+        if not obj.company.is_active:
+            return None
+        return "confirm_sign_in_email" if obj.company.owns_email(obj.email) else "work_email"
 
     def get_avatar_url(self, obj):
         return image_url(obj.avatar, AVATAR)

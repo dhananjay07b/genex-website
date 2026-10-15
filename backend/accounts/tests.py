@@ -868,3 +868,30 @@ class GoogleTokenVerificationTests(TestCase):
         with self._google_token_endpoint(id_token=forged):
             self.assertEqual(self._post({"code": "4/odd"}).status_code, 400)  # the returned token is still verified
         self.assertFalse(User.objects.exists())
+
+
+class VerificationStepTests(TestCase):
+    """`verification_step` tells the dashboard which nudge (if any) an unverified Professional needs."""
+
+    def setUp(self):
+        self.acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=self.acme, domain="acme.com")
+
+    def _step(self, user):
+        client = APIClient()
+        client.force_authenticate(user)
+        return client.get("/api/accounts/me/").json()["verification_step"]
+
+    def test_each_case(self):
+        from allauth.account.models import EmailAddress
+        company_mail = make_user("c", email="c@acme.com", account_type="professional", company=self.acme, role_title="Eng")
+        self.assertEqual(self._step(company_mail), "confirm_sign_in_email")  # one click away
+        gmail = make_user("g", email="g@gmail.com", account_type="professional", company=self.acme, role_title="Eng")
+        self.assertEqual(self._step(gmail), "work_email")  # confirming Gmail would prove nothing
+        EmailAddress.objects.create(user=company_mail, email=company_mail.email, verified=True, primary=True)
+        from .verification import refresh_company_verification
+        refresh_company_verification(company_mail)
+        company_mail.refresh_from_db()
+        self.assertIsNone(self._step(company_mail))  # verified: nothing to do
+        self.assertIsNone(self._step(make_user("o", account_type="professional", company_other="Solar Co", role_title="Eng")))
+        self.assertIsNone(self._step(make_user("l")))

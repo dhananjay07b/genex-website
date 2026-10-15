@@ -46,6 +46,11 @@ export interface User {
   company: CompanyDisplay | null
   company_other: string
   company_verified: boolean
+  /**
+   * An unverified Professional's next step (backend UserSerializer): click the link sent to their
+   * company-domain sign-in email, or add a work email in Settings. null: nothing to do.
+   */
+  verification_step: 'confirm_sign_in_email' | 'work_email' | null
   role_title: string
   years_experience: number | null
   linkedin_url: string

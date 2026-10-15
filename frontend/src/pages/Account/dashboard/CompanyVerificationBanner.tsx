@@ -5,15 +5,15 @@ import { useAuth } from '@/context/useAuth'
 import { apiFetch } from '@/lib/api/client'
 
 /**
- * Shown to a Professional linked to a registered company who hasn't proven it
- * yet — verification completes when they click the confirmation link sent to
- * their company-domain email.
+ * Shown to a Professional whose sign-in email is on their company's domain but
+ * not yet confirmed — clicking its confirmation link verifies them. Someone on a
+ * personal email (e.g. Gmail through Google) gets the Work email card in Settings instead.
  */
 export function CompanyVerificationBanner() {
   const { user } = useAuth()
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
-  if (!user || user.account_type !== 'professional' || !user.company?.slug || user.company_verified) return null
+  if (!user?.company || user.verification_step !== 'confirm_sign_in_email') return null
 
   async function resend() {
     if (!user) return
