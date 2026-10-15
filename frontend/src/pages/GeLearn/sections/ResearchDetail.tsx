@@ -106,7 +106,7 @@ export default function CaseStudyDetail() {
   return (
     <main>
       <PageMeta
-        title={`${cs.title} — Genex Research`}
+        title={cs.title}
         description={cs.excerpt}
         canonical={`/research/${cs.id}`}
       />

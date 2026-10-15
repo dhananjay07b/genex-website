@@ -134,7 +134,7 @@ export default function Register() {
 
   return (
     <>
-      <PageMeta title="Create an Account — Genex GeLearn" description="Register for a Genex account to comment, submit articles, and unlock member content." canonical="/register" noIndex />
+      <PageMeta title="Create an Account" description="Register for a Genex account to comment, submit articles, and unlock member content." canonical="/register" noIndex />
 
       <AuthLayout
         eyebrow="Join GeLearn"

@@ -261,7 +261,7 @@ export default function ComingSoon() {
   return (
     <>
       <PageMeta
-        title="Coming Soon — Genex Technocrats"
+        title="Coming Soon"
         description="Genex Technocrats is launching a new era in India's energy intelligence. Register for our upcoming webinar."
         canonical="/"
         noIndex

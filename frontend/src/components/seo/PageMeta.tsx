@@ -1,7 +1,10 @@
 import { Helmet } from 'react-helmet-async'
+import { isGeLearnHost } from '@/lib/host'
 import { getMediaUrl, isExternalHref } from '@/lib/utils'
 
-const SITE_NAME = 'Genex Technocrats'
+// Added to every title once, here: pages pass only their own name ("Log In",
+// "SCADA Fundamentals"), never a brand, so titles never double up.
+const SITE_NAME = typeof window !== 'undefined' && isGeLearnHost() ? 'GeLearn by Genex' : 'Genex Technocrats'
 // Resolved from the current origin so canonical/OG URLs are correct whether this
 // page is served from the marketing domain or the gelearn subdomain.
 const SITE_URL  = typeof window !== 'undefined' ? window.location.origin : 'https://genextechnocrats.com'
@@ -9,6 +12,7 @@ const SITE_URL  = typeof window !== 'undefined' ? window.location.origin : 'http
 const OG_IMAGE  = '/images/og-default.jpg'
 
 interface PageMetaProps {
+  /** The page's own name only; the site's brand is added after it. */
   title: string
   description: string
   canonical?: string

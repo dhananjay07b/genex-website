@@ -191,7 +191,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   return (
     // In Company Studio the layout already supplies the page shell, so only the builder itself renders.
     <Shell className={isCompany ? undefined : 'min-h-screen pb-10 bg-brand-tint bg-brand-tint-static'}>
-      <PageMeta title={`${heading} — Genex GeLearn`} description="Build a course from published content." canonical={`${editBase}/new`} noIndex />
+      <PageMeta title={heading} description="Build a course from published content." canonical={`${editBase}/new`} noIndex />
 
       <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16')}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">

@@ -105,7 +105,7 @@ export default function Blog() {
   return (
     <main>
       <PageMeta
-        title="Blog & Insights — Genex Technocrats"
+        title="Blog & Insights"
         description="Engineering perspectives on solar monitoring, SCADA, smart grid, and energy management from the Genex Technocrats team."
         canonical="/blog"
       />

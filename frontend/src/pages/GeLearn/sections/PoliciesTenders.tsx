@@ -119,7 +119,7 @@ export default function PoliciesTenders() {
   return (
     <main>
       <PageMeta
-        title="Policies & Tenders — Genex GeLearn"
+        title="Policies & Tenders"
         description="Energy-sector policies, active tenders and partnership opportunities in solar monitoring, SCADA, and energy management."
         canonical="/policies-tenders"
       />

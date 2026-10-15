@@ -121,7 +121,7 @@ export default function GeAcademyDetail() {
   return (
     <main>
       <PageMeta
-        title={`${article.title} — GeAcademy`}
+        title={article.title}
         description={article.excerpt}
         canonical={`/geacademy/${article.id}`}
       />

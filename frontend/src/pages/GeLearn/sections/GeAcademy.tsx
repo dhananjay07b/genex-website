@@ -135,7 +135,7 @@ export default function GeAcademy() {
   return (
     <main>
       <PageMeta
-        title="GeAcademy — Genex GeLearn"
+        title="GeAcademy"
         description="IEC 61850, OPC-UA, MQTT, Modbus, AI/ML for energy — technical articles from Genex engineers on the protocols and architectures powering the energy transition."
         canonical="/geacademy"
       />

@@ -127,7 +127,7 @@ export default function PublicProfile() {
   if (profile === null) {
     return (
       <main>
-        <PageMeta title="Profile Not Found — Genex GeLearn" description="This GeLearn profile could not be found." noIndex />
+        <PageMeta title="Profile Not Found" description="This GeLearn profile could not be found." noIndex />
         <div className="max-w-2xl mx-auto px-6 py-24">
           <EmptyState
             icon={<PersonAddOutlinedIcon sx={{ fontSize: 22 }} />}
@@ -156,7 +156,7 @@ export default function PublicProfile() {
   return (
     <main className="pb-10 bg-white">
       <PageMeta
-        title={`${profile.display_name || profile.username} — Genex GeLearn`}
+        title={profile.display_name || profile.username}
         description={profile.bio || `${profile.display_name || profile.username}'s GeLearn profile.`}
         canonical={`/u/${profile.username}`}
         image={profile.avatar_url}

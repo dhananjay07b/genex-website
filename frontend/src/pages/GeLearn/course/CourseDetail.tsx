@@ -113,7 +113,7 @@ export default function CourseDetail() {
   return (
     <div className="bg-white pt-16">
       <PageMeta
-        title={`${course.title}: GeLearn course`}
+        title={course.title}
         description={course.summary || course.description.slice(0, 160) || `A course on GeLearn.`}
         canonical={`/courses/${course.slug}`}
         image={course.cover_url ? getMediaUrl(course.cover_url) : undefined}

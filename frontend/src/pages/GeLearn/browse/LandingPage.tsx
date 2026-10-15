@@ -109,7 +109,7 @@ export default function LandingPage({ audience }: { audience: keyof typeof PAGES
 
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title={`${heading ?? page.crumb}: GeLearn`} description={page.meta} canonical={page.path} />
+      <PageMeta title={heading ?? page.crumb} description={page.meta} canonical={page.path} />
       {data
         ? data.layout.map(section => (
             <LandingSection key={section.id} section={section} data={data} crumb={page.crumb} viewer={user?.account_type ?? 'visitor'} />

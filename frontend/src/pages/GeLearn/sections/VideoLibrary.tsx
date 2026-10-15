@@ -145,7 +145,7 @@ export default function VideoLibrary() {
   return (
     <main>
       <PageMeta
-        title="Video Library — Genex GeLearn"
+        title="Video Library"
         description="Product walkthroughs, installation guides, live system demos, and event coverage from the Genex Technocrats engineering team."
         canonical="/videos"
       />

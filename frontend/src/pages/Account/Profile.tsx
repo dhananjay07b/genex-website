@@ -78,7 +78,7 @@ export default function Profile() {
 
   return (
     <main className="flex flex-col min-h-screen pb-10">
-      <PageMeta title="My Account — Genex GeLearn" description="Manage your Genex GeLearn account." canonical="/account" noIndex />
+      <PageMeta title="My Account" description="Manage your Genex GeLearn account." canonical="/account" noIndex />
 
       {/* Header */}
       <div ref={heroRef} className="bg-brand-tint border-b border-border pt-16">

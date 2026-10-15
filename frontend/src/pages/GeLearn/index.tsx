@@ -61,7 +61,7 @@ export default function GeLearn() {
   return (
     <div className="bg-white pt-16 pb-6">
       <PageMeta
-        title="GeLearn: Power & Energy Learning by Genex"
+        title="Power & Energy Learning"
         description="Courses, research, policy and tender summaries, videos and podcasts from verified engineers at Genex and partner companies, covering solar, storage, SCADA and the grid."
         canonical="/"
       />

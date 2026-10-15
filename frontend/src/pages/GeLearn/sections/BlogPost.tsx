@@ -115,7 +115,7 @@ export default function BlogPost() {
   return (
     <main>
       <PageMeta
-        title={`${post.title} — Genex Blog`}
+        title={post.title}
         description={post.excerpt}
         canonical={`/blog/${post.id}`}
       />

@@ -62,7 +62,7 @@ export default function Courses() {
   return (
     <main>
       <PageMeta
-        title="Courses — Genex GeLearn"
+        title="Courses"
         description="Structured courses from energy-sector professionals: SCADA, grid operations, renewables and more, built from field-tested videos and articles."
         canonical="/courses"
       />

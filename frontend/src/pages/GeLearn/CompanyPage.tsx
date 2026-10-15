@@ -39,7 +39,7 @@ export default function CompanyPage() {
   return (
     <main>
       <PageMeta
-        title={`${company.name} on GeLearn`}
+        title={company.name}
         description={company.description || `Research, articles, podcasts and courses from ${company.name} and its verified experts.`}
         canonical={`/c/${company.slug}`}
       />

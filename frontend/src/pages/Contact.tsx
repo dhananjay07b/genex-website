@@ -127,7 +127,7 @@ export default function Contact() {
   return (
     <main>
       <PageMeta
-        title="Contact Genex — Request a Demo or Project Discussion"
+        title="Contact — Request a Demo or Project Discussion"
         description="Get in touch with Genex Technocrats. Request a product demo, discuss a project, or explore partnership opportunities with India's energy technology team."
         canonical="/contact"
       />

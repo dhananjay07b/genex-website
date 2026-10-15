@@ -142,7 +142,7 @@ export default function SubmitPost() {
 
   return (
     <main className="min-h-screen pb-10 bg-brand-tint bg-brand-tint-static">
-      <PageMeta title={`${isEditing ? 'Edit' : 'Submit'} a Post — Genex GeLearn`} description="Share your expertise with the Genex GeLearn community." canonical="/submit-post" noIndex />
+      <PageMeta title={`${isEditing ? 'Edit' : 'Submit'} a Post`} description="Share your expertise with the Genex GeLearn community." canonical="/submit-post" noIndex />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16">
         {status === 'success' ? (

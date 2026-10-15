@@ -17,7 +17,7 @@ export default function StudioHome() {
 
   return (
     <div className="flex flex-col gap-7">
-      <PageMeta title="Company Studio — Genex GeLearn" description="Publish your company's content on GeLearn." canonical="/studio" noIndex />
+      <PageMeta title="Company Studio" description="Publish your company's content on GeLearn." canonical="/studio" noIndex />
 
       <div>
         <h2 className="text-xl font-extrabold text-text-primary">What would you like to publish?</h2>

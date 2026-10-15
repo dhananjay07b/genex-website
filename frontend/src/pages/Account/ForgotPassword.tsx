@@ -43,7 +43,7 @@ export default function ForgotPassword() {
 
   return (
     <>
-      <PageMeta title="Forgot Password — Genex GeLearn" description="Reset your Genex GeLearn account password." canonical="/forgot-password" noIndex />
+      <PageMeta title="Forgot Password" description="Reset your Genex GeLearn account password." canonical="/forgot-password" noIndex />
 
       <AuthLayout
         eyebrow="Account Recovery"

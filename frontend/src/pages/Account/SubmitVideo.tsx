@@ -123,7 +123,7 @@ export default function SubmitVideo() {
 
   return (
     <main className="min-h-screen pb-10 bg-brand-tint bg-brand-tint-static">
-      <PageMeta title={`${isEditing ? 'Edit' : 'Submit'} a Video — Genex GeLearn`} description="Share a video with the Genex GeLearn community." canonical="/submit-video" noIndex />
+      <PageMeta title={`${isEditing ? 'Edit' : 'Submit'} a Video`} description="Share a video with the Genex GeLearn community." canonical="/submit-video" noIndex />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16">
         {status === 'success' ? (

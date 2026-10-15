@@ -52,7 +52,7 @@ export default function Careers() {
   return (
     <main>
       <PageMeta
-        title="Careers at Genex Technocrats — Join India's Energy Tech Team"
+        title="Careers — Join India's Energy Tech Team"
         description="Work on software that powers India's energy grid. Explore open roles in engineering, AI, and energy systems at Genex Technocrats, Jaipur."
         canonical="/careers"
       />

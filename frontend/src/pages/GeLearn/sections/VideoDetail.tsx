@@ -52,7 +52,7 @@ export default function VideoDetail() {
   return (
     <main>
       <PageMeta
-        title={`${video.title} — Genex GeLearn`}
+        title={video.title}
         description={video.excerpt}
         canonical={`/videos/${video.id}`}
       />

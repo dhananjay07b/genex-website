@@ -49,7 +49,7 @@ export default function PodcastDetail() {
   return (
     <main>
       <PageMeta
-        title={`${episode.title} — Genex GeLearn`}
+        title={episode.title}
         description={episode.description}
         canonical={`/podcasts/${episode.id}`}
       />

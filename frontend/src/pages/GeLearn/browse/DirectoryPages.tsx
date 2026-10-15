@@ -44,7 +44,7 @@ export function ProfessionalsPage() {
 
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title="Leading Professionals: GeLearn" description="Verified engineers publishing courses, videos and field notes on GeLearn." canonical="/professionals" />
+      <PageMeta title="Leading Professionals" description="Verified engineers publishing courses, videos and field notes on GeLearn." canonical="/professionals" />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Leading Professionals' }]}
         kicker="Our Leading Professionals"
@@ -86,7 +86,7 @@ export function CompaniesPage() {
   const { data } = useApi<CompanyCardData[]>('/api/discovery/companies/')
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title="Companies on GeLearn" description="Verified companies publishing courses, research and whitepapers on GeLearn." canonical="/companies" />
+      <PageMeta title="Companies" description="Verified companies publishing courses, research and whitepapers on GeLearn." canonical="/companies" />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Companies' }]}
         kicker="Verified companies"
@@ -136,7 +136,7 @@ export function LiveSessionsPage() {
 
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title="Live sessions: GeLearn" description="Upcoming webinars and live demos with engineers from Genex and partner companies." canonical="/live-sessions" />
+      <PageMeta title="Live Sessions" description="Upcoming webinars and live demos with engineers from Genex and partner companies." canonical="/live-sessions" />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Live sessions' }]}
         kicker="Live sessions"

@@ -134,7 +134,7 @@ export default function Podcasts() {
   return (
     <main>
       <PageMeta
-        title="Podcasts & Interviews — Genex GeLearn"
+        title="Podcasts & Interviews"
         description="Conversations on India's energy transition, renewable infrastructure, and technology from the Genex Technocrats team."
         canonical="/podcasts"
       />

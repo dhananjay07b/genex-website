@@ -83,7 +83,7 @@ export default function SearchPage() {
   return (
     <div className="bg-white pt-16">
       <PageMeta
-        title={q ? `${q}: GeLearn search` : 'Browse the catalogue: GeLearn'}
+        title={q ? `Search: ${q}` : 'Browse the Catalogue'}
         description="Search courses, GeAcademy articles, research, whitepapers, videos and podcasts on power, energy and automation."
         canonical="/search"
         noIndex

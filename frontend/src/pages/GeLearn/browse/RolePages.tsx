@@ -29,7 +29,7 @@ export function RolesIndexPage() {
   const { data } = useApi<RoleCardData[]>('/api/discovery/roles/')
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title="Career roles: GeLearn" description="Courses for the jobs that run solar, storage, SCADA and grid assets." canonical="/roles" />
+      <PageMeta title="Career Roles" description="Courses for the jobs that run solar, storage, SCADA and grid assets." canonical="/roles" />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Career roles' }]}
         kicker="Explore careers in power & energy"
@@ -90,7 +90,7 @@ export function RolePage() {
 
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title={`${role.name}: GeLearn`} description={role.summary || `Courses to become a ${role.name}.`} canonical={`/roles/${role.slug}`} />
+      <PageMeta title={role.name} description={role.summary || `Courses to become a ${role.name}.`} canonical={`/roles/${role.slug}`} />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Career roles', to: '/roles' }, { label: role.name }]}
         kicker="Career role"

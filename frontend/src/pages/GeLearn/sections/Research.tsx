@@ -89,7 +89,7 @@ export default function CaseStudies() {
   return (
     <main>
       <PageMeta
-        title="Research — Genex GeLearn"
+        title="Research"
         description="Real deployments. Real outcomes. Engineering research from projects across solar, wind, grid, BESS, EV, and industrial energy sectors."
         canonical="/research"
       />

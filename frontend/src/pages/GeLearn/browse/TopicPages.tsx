@@ -22,7 +22,7 @@ export function TopicsIndexPage() {
   const { data } = useApi<{ groups: TopicGroupRef[] }>('/api/discovery/topics/')
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title="All topics: GeLearn" description="Browse GeLearn by topic: solar, storage, grid, SCADA, automation, safety and policy." canonical="/topics" />
+      <PageMeta title="All Topics" description="Browse GeLearn by topic: solar, storage, grid, SCADA, automation, safety and policy." canonical="/topics" />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Topics' }]}
         kicker="Explore"
@@ -66,7 +66,7 @@ export function TopicPage() {
 
   return (
     <div className="bg-white pt-16 pb-8">
-      <PageMeta title={`${topic.name}: GeLearn`} description={topic.description || `Learn ${topic.name} on GeLearn.`} canonical={`/topics/${topic.slug}`} />
+      <PageMeta title={topic.name} description={topic.description || `Learn ${topic.name} on GeLearn.`} canonical={`/topics/${topic.slug}`} />
       <BrowseHero
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Topics', to: '/topics' }, { label: topic.name }]}
         kicker={topic.group}
