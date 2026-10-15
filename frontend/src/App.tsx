@@ -3,8 +3,10 @@ import { RouterProvider } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { marketingRouter, gelearnRouter } from '@/router'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { ConsentBanner } from '@/components/consent/ConsentBanner'
 import { AuthProvider } from '@/context/AuthContext'
 import { isGeLearnHost } from '@/lib/host'
+import { applyStoredConsent } from '@/lib/consent'
 
 export default function App() {
   const [loading, setLoading] = useState(true)
@@ -14,6 +16,9 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Analytics runs only for visitors who allowed it (lib/consent.ts).
+  useEffect(() => applyStoredConsent(), [])
+
   const onGeLearn = isGeLearnHost()
 
   const routerProvider = <RouterProvider router={onGeLearn ? gelearnRouter : marketingRouter} />
@@ -22,6 +27,7 @@ export default function App() {
     <>
       <AnimatePresence>{loading && <LoadingScreen />}</AnimatePresence>
       {onGeLearn ? <AuthProvider>{routerProvider}</AuthProvider> : routerProvider}
+      <ConsentBanner />
     </>
   )
 }

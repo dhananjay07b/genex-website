@@ -14,6 +14,7 @@ from wagtail.api import APIField
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images.models import Image
 from wagtail.models import Orderable, Page
+from wagtail.rich_text import expand_db_html
 from wagtail.search import index
 from wagtail.snippets.models import register_snippet
 from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
@@ -470,6 +471,31 @@ class ContactPage(BasePage):
 
     class Meta:
         verbose_name = "Contact Page"
+
+
+class LegalPage(BasePage):
+    """
+    Privacy Policy, Terms of Use and similar: a title, a date and text. Shown on
+    both sites at /<slug> (the frontend routes /privacy-policy and /terms). Kept out
+    of menus; the footers link to them.
+    """
+    last_updated = models.DateField(null=True, blank=True, help_text="Shown under the title as “Last updated”.")
+    body = RichTextField(features=["h2", "h3", "bold", "italic", "ol", "ul", "link", "document-link", "hr"])
+
+    content_panels = Page.content_panels + [FieldPanel("last_updated"), FieldPanel("body")]
+
+    @property
+    def body_html(self):
+        # Real <a href>s for links to pages and documents (the stored HTML only has their ids).
+        return expand_db_html(self.body)
+
+    api_fields = BasePage.api_fields + [APIField("last_updated"), APIField("body_html")]
+
+    parent_page_types = ["wagtailcore.Page"]
+    subpage_types = []
+
+    class Meta:
+        verbose_name = "Legal Page"
 
 
 # ===========================================================================

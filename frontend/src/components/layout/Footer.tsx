@@ -10,6 +10,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import { isExternalHref } from '@/lib/utils'
 import { gelearnPath } from '@/lib/host'
 import { telHref, useSiteSettings } from '@/hooks/useSiteSettings'
+import { reopenConsent } from '@/lib/consent'
 
 const footerSections = [
   {
@@ -183,6 +184,9 @@ export function Footer() {
             <Link to="/terms" className="text-xs text-text-muted hover:text-text-primary transition-colors">
               Terms of Use
             </Link>
+            <button type="button" onClick={reopenConsent} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+              Cookie settings
+            </button>
           </div>
         </div>
       </div>

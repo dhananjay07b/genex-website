@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { marketingPath } from '@/lib/host'
 import { useExploreMenu } from '@/hooks/useExploreMenu'
+import { reopenConsent } from '@/lib/consent'
 
 interface FooterLink {
   label: string
@@ -83,6 +84,9 @@ export function GeLearnFooter() {
         <div className="mx-auto flex max-w-330 flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-text-muted md:px-6">
           <span>© {new Date().getFullYear()} Genex Technocrats Pvt. Ltd. All rights reserved.</span>
           <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link to="/privacy-policy" className="hover:text-text-primary">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-text-primary">Terms of Use</Link>
+            <button type="button" onClick={reopenConsent} className="hover:text-text-primary">Cookie settings</button>
             <a href="mailto:info@genextechnocrats.com" className="hover:text-text-primary">info@genextechnocrats.com</a>
             <a href={marketingPath()} className="inline-flex items-center gap-1 hover:text-text-primary">
               genextechnocrats.com <OpenInNewIcon sx={{ fontSize: 12 }} />

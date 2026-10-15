@@ -14,6 +14,7 @@ const Contact               = lazy(() => import('@/pages/Contact'))
 const Careers                = lazy(() => import('@/pages/Careers'))
 const DynamicSectionPage    = lazy(() => import('@/pages/DynamicSectionPage'))
 const DynamicContentPage    = lazy(() => import('@/pages/DynamicContentPage'))
+const LegalPage             = lazy(() => import('@/pages/LegalPage'))
 
 const GeLearn               = lazy(() => import('@/pages/GeLearn'))
 const SearchPage            = lazy(() => import('@/pages/GeLearn/browse/SearchPage'))
@@ -109,6 +110,9 @@ export const marketingRouter = createBrowserRouter([
           { path: '/about/*',                  element: s(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
           { path: '/contact',                  element: s(<Contact />) },
           { path: '/careers',                  element: s(<Careers />) },
+          // CMS "Legal Page"s, on both sites; the footers link here.
+          { path: '/privacy-policy',           element: s(<LegalPage slug="privacy-policy" />) },
+          { path: '/terms',                    element: s(<LegalPage slug="terms" />) },
           { path: '*',                         element: <NotFound /> },
         ],
       },
@@ -204,6 +208,9 @@ export const gelearnRouter = createBrowserRouter([
           { path: '/case-studies',             element: <LegacyRedirect to="/research" /> },
           { path: '/case-studies/:id',         element: <LegacyRedirect to="/research" /> },
           { path: '/tenders',                  element: <LegacyRedirect to="/policies-tenders" /> },
+          // CMS "Legal Page"s, on both sites; the footers link here.
+          { path: '/privacy-policy',           element: s(<LegalPage slug="privacy-policy" />) },
+          { path: '/terms',                    element: s(<LegalPage slug="terms" />) },
           { path: '*',                         element: <NotFound /> },
         ],
       },

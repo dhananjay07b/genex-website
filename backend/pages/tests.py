@@ -544,3 +544,40 @@ class ImageUrlTests(TestCase):
         logo = CredibilityLogoBlock()
         logo_data = logo.get_api_representation(logo.to_python({"name": "Client", "logo": image.pk}))
         self.assertEqual(logo_data["logo"]["width"], 480)
+
+
+class LegalPageApiTests(TestCase):
+    """Privacy Policy / Terms: CMS pages the frontend reads by slug, kept out of menus."""
+
+    def setUp(self):
+        from wagtail.models import Page, Site
+        from .models import LegalPage
+        self.root = Page.get_first_root_node()
+        # As on the real site: the Wagtail site is rooted at the tree's top, where the
+        # top-level pages (Home, Portfolio, Contact, these) live. The API serves only
+        # pages inside the site.
+        Site.objects.filter(is_default_site=True).update(root_page=self.root)
+        self.other = self.root.add_child(instance=LegalPage(title="Terms of Use", slug="terms", body="<p>Terms.</p>"))
+        self.page = self.root.add_child(instance=LegalPage(
+            title="Privacy Policy", slug="privacy-policy", last_updated="2026-10-15",
+            body=f'<h2>Cookies</h2><p>See the <a linktype="page" id="{self.other.pk}">terms</a>.</p>',
+        ))
+
+    def _get(self, slug):
+        url = f"/api/v2/pages/?type=pages.LegalPage&slug={slug}&fields=last_updated,body_html"
+        return APIClient().get(url).json()["items"]
+
+    def test_published_page_has_real_links(self):
+        [item] = self._get("privacy-policy")
+        self.assertEqual(item["last_updated"], "2026-10-15")
+        self.assertIn('<h2>Cookies</h2>', item["body_html"])
+        self.assertIn('href="/terms/"', item["body_html"])  # was <a linktype="page" id="…">
+        self.assertNotIn("linktype", item["body_html"])
+
+    def test_draft_is_not_served(self):
+        self.page.unpublish()
+        self.assertEqual(self._get("privacy-policy"), [])
+
+    def test_not_in_the_menu(self):
+        nav = APIClient().get("/api/snippets/nav/").json()
+        self.assertNotIn("Privacy Policy", str(nav))
