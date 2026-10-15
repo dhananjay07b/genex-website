@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
-import { apiFetch } from '@/lib/api/client'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
+import { GoogleProfileDialog, type GoogleProfile, type GoogleProfilePrefill } from './GoogleProfileDialog'
 
 declare global {
   interface Window {
@@ -8,7 +10,7 @@ declare global {
       accounts: {
         id: {
           initialize: (config: { client_id: string; callback: (resp: { credential: string }) => void }) => void
-          renderButton: (parent: HTMLElement, options: { theme: string; size: string; width?: number }) => void
+          renderButton: (parent: HTMLElement, options: { theme: string; size: string; width?: number; text?: string }) => void
         }
       }
     }
@@ -17,24 +19,55 @@ declare global {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined
 
-/** `redirectTo`: where to land once signed in (the page that sent the visitor to log in). */
-export function GoogleLoginButton({ redirectTo = '/account' }: { redirectTo?: string }) {
+/** POST /api/accounts/google/ (backend accounts.views.GoogleLoginView). */
+type GoogleResult =
+  | { status: 'signed_in'; created: boolean }
+  | { status: 'needs_profile'; email: string; name: string }
+
+interface GoogleLoginButtonProps {
+  /** Where to land once signed in (the page that sent the visitor to log in). */
+  redirectTo?: string
+  /** On the sign-up form: what's already chosen there, so the profile step starts from it. */
+  prefill?: () => GoogleProfilePrefill
+  /** Google's button wording: "Sign in with Google" or "Sign up with Google". */
+  text?: 'signin_with' | 'signup_with'
+}
+
+export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'signin_with' }: GoogleLoginButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { refetch } = useAuth()
+  const navigate = useNavigate()
+  const [error, setError] = useState('')
+  // A new Google user: their verified token and details, while they finish the profile step.
+  const [pending, setPending] = useState<{ credential: string; email: string; name: string; prefill?: GoogleProfilePrefill } | null>(null)
+
+  async function send(credential: string, profile?: GoogleProfile) {
+    const result = await apiFetch<GoogleResult>('/api/accounts/google/', { method: 'POST', body: { id_token: credential, ...profile } })
+    if (result.status === 'needs_profile') {
+      setPending({ credential, email: result.email, name: result.name, prefill: prefill?.() })
+      return
+    }
+    setPending(null)
+    await refetch()
+    navigate(redirectTo, { replace: true })
+  }
+
+  // Google calls back long after render; keep it pointed at the latest props.
+  const onCredential = useRef<(credential: string) => void>(() => {})
+  useEffect(() => {
+    onCredential.current = credential => {
+      setError('')
+      send(credential).catch(err => setError(err instanceof ApiError ? err.message : "Couldn't sign in with Google. Please try again."))
+    }
+  })
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID || !containerRef.current) return
 
-    async function handleCredential(response: { credential: string }) {
-      await apiFetch('/api/accounts/google/', { method: 'POST', body: { id_token: response.credential } })
-      await refetch()
-      window.location.href = redirectTo
-    }
-
     function render() {
       if (!window.google || !containerRef.current) return
-      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID!, callback: handleCredential })
-      window.google.accounts.id.renderButton(containerRef.current, { theme: 'outline', size: 'large', width: 320 })
+      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID!, callback: resp => onCredential.current(resp.credential) })
+      window.google.accounts.id.renderButton(containerRef.current, { theme: 'outline', size: 'large', width: 320, text })
     }
 
     if (window.google) {
@@ -50,8 +83,7 @@ export function GoogleLoginButton({ redirectTo = '/account' }: { redirectTo?: st
     return () => {
       document.head.removeChild(script)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [text])
 
   if (!GOOGLE_CLIENT_ID) {
     // No VITE_GOOGLE_OAUTH_CLIENT_ID set — Google's script can't render a real
@@ -70,7 +102,21 @@ export function GoogleLoginButton({ redirectTo = '/account' }: { redirectTo?: st
     )
   }
 
-  return <div ref={containerRef} className="flex justify-center" />
+  return (
+    <div>
+      <div ref={containerRef} className="flex justify-center" />
+      {error && <p role="alert" className="mt-2 text-center text-sm text-red-600">{error}</p>}
+      {pending && (
+        <GoogleProfileDialog
+          email={pending.email}
+          name={pending.name}
+          prefill={pending.prefill}
+          onSubmit={profile => send(pending.credential, profile)}
+          onCancel={() => setPending(null)}
+        />
+      )}
+    </div>
+  )
 }
 
 export function GoogleGlyph() {

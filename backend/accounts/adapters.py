@@ -42,7 +42,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def populate_user(self, request, sociallogin, data):
         user = super().populate_user(request, sociallogin, data)
-        name = data.get("name") or f"{user.first_name} {user.last_name}".strip()
+        name = (
+            data.get("name")
+            or f"{user.first_name} {user.last_name}".strip()
+            or sociallogin.account.extra_data.get("name", "")  # Google's full-name claim
+        )
         user.display_name = name
         user.username = _generate_google_username(name)
         return user

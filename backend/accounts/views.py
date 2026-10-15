@@ -1,10 +1,15 @@
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.models import SocialAccount
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, SocialLoginView
-from dj_rest_auth.jwt_auth import JWTCookieAuthentication
+from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView
+from dj_rest_auth.jwt_auth import JWTCookieAuthentication, set_jwt_cookies
+from dj_rest_auth.utils import jwt_encode
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.conf import settings
 from django.contrib.auth import get_user, logout as django_logout
+from django.contrib.auth.models import update_last_login
+from django.core.exceptions import ImproperlyConfigured
+from django.db import IntegrityError, transaction
 from django.middleware.csrf import get_token
 from rest_framework import exceptions, serializers, status
 from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateAPIView
@@ -14,7 +19,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserSerializer
+from .models import User
+from .serializers import UserSerializer, validate_account_type_choice
+from .verification import refresh_company_verification, resolve_professional_company
 from .throttles import (
     LoginIPThrottle,
     LoginThrottle,
@@ -96,14 +103,118 @@ class MeView(RetrieveUpdateAPIView):
         return response
 
 
-class GoogleLoginView(SocialLoginView):
+class GoogleProfileSerializer(serializers.Serializer):
+    """What a new Google user adds in the "Finish creating your account" step."""
+    account_type = serializers.CharField()
+    display_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    company_id = serializers.IntegerField(required=False, allow_null=True)
+    company_other = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    role_title = serializers.CharField(max_length=150, required=False, allow_blank=True)
+
+    def validate_account_type(self, value):
+        return validate_account_type_choice(value)
+
+    def validate(self, data):
+        if data["account_type"] == User.ACCOUNT_PROFESSIONAL:
+            # The email is Google's, so a mismatch is reported against the company choice.
+            data["company"], data["company_other"] = resolve_professional_company(
+                self.context["email"], data.get("company_id"), data.get("company_other", ""), email_field="company_id",
+            )
+            if not (data.get("role_title") or "").strip():
+                raise serializers.ValidationError({"role_title": "Role is required for a Professional profile."})
+        else:
+            data["company"], data["company_other"], data["role_title"] = None, "", ""
+        return data
+
+
+class GoogleLoginView(APIView):
     """
-    Frontend sends the Google ID token it received from Google Identity
-    Services (`{"id_token": "..."}`); this exchanges it for a session using
-    the same JWT-cookie flow as email/password login.
+    Sign in with Google. The frontend sends the ID token from Google Identity
+    Services (`{"id_token": ...}`); it's verified against Google's keys and this
+    site's client ID. Then:
+
+    - Google account already linked → signed in.
+    - Same email as an existing account → linked and signed in, but only when
+      Google says it has verified the email (otherwise: use your password).
+    - New person → nothing is created yet: the reply asks for a profile
+      (`status: "needs_profile"`), the frontend shows the "Finish creating your
+      account" step, and sends the token again with `account_type` (plus company
+      and role for a Professional). Account types can't change later, so they
+      are always chosen, never defaulted to Learner.
+
+    Signs in with the same JWT cookies as the email/password login.
     """
-    adapter_class = GoogleOAuth2Adapter
+    authentication_classes = []
+    permission_classes = [AllowAny]
     throttle_classes = [LoginIPThrottle]
+
+    def post(self, request):
+        try:
+            provider = get_social_adapter(request).get_provider(request, "google")
+            login = provider.verify_token(request, {"id_token": request.data.get("id_token", "")})
+        except ImproperlyConfigured:
+            return Response({"detail": "Google sign-in isn't set up yet."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception:  # expired, forged or for another site's client ID
+            return Response({"detail": "Google couldn't confirm your sign-in. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        login.lookup()
+        if login.is_existing:
+            return self._signed_in(login.user, created=False)
+
+        email = login.user.email
+        if not email:
+            return Response({"detail": "Your Google account has no email address to sign in with."}, status=status.HTTP_400_BAD_REQUEST)
+        google_verified = any(a.verified for a in login.email_addresses if a.email.lower() == email.lower())
+
+        existing = User.objects.filter(email__iexact=email).first()
+        if existing is not None:
+            if not google_verified:
+                return Response(
+                    {"detail": "An account already uses this email. Log in with your password, then connect Google in Settings."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            login.connect(request, existing)
+            self._confirm_email(existing, email)
+            return self._signed_in(existing, created=False)
+
+        # Google's full name, whichever way it arrived (given/family names, or just "name").
+        google_name = login.user.display_name or login.account.extra_data.get("name", "")
+        if not request.data.get("account_type"):
+            return Response({"status": "needs_profile", "email": email, "name": google_name})
+
+        profile = GoogleProfileSerializer(data=request.data, context={"email": email})
+        profile.is_valid(raise_exception=True)
+        user = login.user
+        data = profile.validated_data
+        user.account_type = data["account_type"]
+        user.display_name = data.get("display_name", "").strip() or google_name
+        user.company, user.company_other, user.role_title = data["company"], data["company_other"], data["role_title"]
+        try:
+            with transaction.atomic():
+                login.save(request)  # the user, the Google link and the email address (verified when Google says so)
+        except IntegrityError:  # the same email signed up a moment ago
+            return Response({"detail": "An account already uses this email. Please log in."}, status=status.HTTP_400_BAD_REQUEST)
+        refresh_company_verification(user)  # a Professional on their company's domain is verified straight away
+        return self._signed_in(user, created=True)
+
+    @staticmethod
+    def _confirm_email(user, email):
+        """Google has verified this address: record it, so company verification can use it."""
+        address, _ = EmailAddress.objects.get_or_create(user=user, email__iexact=email, defaults={"email": email, "primary": True})
+        if not address.verified:
+            address.verified = True
+            address.save(update_fields=["verified"])
+        refresh_company_verification(user)
+
+    @staticmethod
+    def _signed_in(user, created):
+        if not user.is_active:
+            return Response({"detail": "This account has been deactivated."}, status=status.HTTP_403_FORBIDDEN)
+        update_last_login(None, user)
+        access, refresh = jwt_encode(user)
+        response = Response({"status": "signed_in", "created": created})
+        set_jwt_cookies(response, access, refresh)
+        return response
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):

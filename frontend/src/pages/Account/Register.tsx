@@ -86,6 +86,7 @@ export default function Register() {
     register,
     handleSubmit,
     watch,
+    getValues,
     setError,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { accountType: 'learner', companyChoice: '' } })
@@ -164,7 +165,15 @@ export default function Register() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
-          <GoogleLoginButton redirectTo={returnTo} />
+          {/* A new Google user finishes in a short profile step that starts from what's chosen below. */}
+          <GoogleLoginButton
+            redirectTo={returnTo}
+            text="signup_with"
+            prefill={() => {
+              const v = getValues()
+              return { accountType: v.accountType, companyChoice: v.companyChoice, companyOther: v.companyOther, roleTitle: v.roleTitle }
+            }}
+          />
         </motion.div>
 
         <motion.div

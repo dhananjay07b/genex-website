@@ -574,3 +574,90 @@ class SessionEndpointTests(TestCase):
     def test_django_session_sign_in_counts(self):
         self.client.force_login(self.user)
         self.assertEqual(self.client.get("/api/accounts/session/").json()["user"]["username"], "sess")
+
+
+class GoogleSignInTests(TestCase):
+    """Sign in with Google: new people choose their account type; existing accounts link only on a verified email."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+        self.acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=self.acme, domain="acme.com")
+
+    def _google(self, email="new@gmail.com", sub="g-1", verified=True, name="Asha Rao", **body):
+        from unittest import mock
+        identity = {"sub": sub, "email": email, "email_verified": verified, "name": name, "given_name": "Asha", "family_name": "Rao"}
+        with mock.patch("allauth.socialaccount.providers.google.views._verify_and_decode", return_value=identity):
+            return self.client.post("/api/accounts/google/", {"id_token": "tok", **body}, format="json")
+
+    def test_new_person_is_asked_for_a_profile_and_nothing_is_created(self):
+        res = self._google()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"status": "needs_profile", "email": "new@gmail.com", "name": "Asha Rao"})
+        self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
+        self.assertNotIn("genex-auth", res.cookies)
+
+    def test_new_learner(self):
+        from allauth.account.models import EmailAddress
+        from allauth.socialaccount.models import SocialAccount
+        res = self._google(account_type="learner")
+        self.assertEqual(res.json(), {"status": "signed_in", "created": True})
+        self.assertIn("genex-auth", res.cookies)
+        user = User.objects.get(email="new@gmail.com")
+        self.assertEqual((user.account_type, user.display_name), ("learner", "Asha Rao"))
+        self.assertTrue(SocialAccount.objects.filter(user=user, provider="google", uid="g-1").exists())
+        self.assertTrue(EmailAddress.objects.get(user=user).verified)
+
+    def test_new_professional_on_their_company_domain_is_verified(self):
+        res = self._google(email="asha@acme.com", account_type="professional", company_id=self.acme.pk, role_title="Grid Engineer")
+        self.assertEqual(res.status_code, 200)
+        user = User.objects.get(email="asha@acme.com")
+        self.assertEqual((user.account_type, user.company, user.role_title), ("professional", self.acme, "Grid Engineer"))
+        self.assertTrue(user.company_verified)
+
+    def test_professional_company_must_match_the_google_email(self):
+        res = self._google(account_type="professional", company_id=self.acme.pk, role_title="Grid Engineer")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("company_id", res.json())
+        self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
+
+    def test_professional_needs_a_role_and_can_use_other(self):
+        self.assertIn("role_title", self._google(account_type="professional", company_other="Solar Co").json())
+        res = self._google(account_type="professional", company_other="Solar Co", role_title="Analyst")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(User.objects.get(email="new@gmail.com").company_other, "Solar Co")
+
+    def test_company_accounts_cannot_be_self_created(self):
+        self.assertEqual(self._google(account_type="company").status_code, 400)
+
+    def test_existing_account_links_on_a_verified_google_email(self):
+        from allauth.socialaccount.models import SocialAccount
+        pro = make_user("existing", email="Asha@Acme.com", account_type="professional", company=self.acme, role_title="Lead")
+        res = self._google(email="asha@acme.com")
+        self.assertEqual(res.json(), {"status": "signed_in", "created": False})
+        self.assertTrue(SocialAccount.objects.filter(user=pro, provider="google").exists())
+        pro.refresh_from_db()
+        self.assertEqual(pro.account_type, "professional")  # never changed by Google
+        self.assertTrue(pro.company_verified)  # Google confirmed the company email
+
+    def test_unverified_google_email_does_not_take_over_an_account(self):
+        from allauth.socialaccount.models import SocialAccount
+        make_user("victim", email="new@gmail.com")
+        res = self._google(verified=False)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("password", res.json()["detail"])
+        self.assertFalse(SocialAccount.objects.exists())
+
+    def test_returning_google_user_signs_straight_in(self):
+        self._google(account_type="learner")
+        self.client.cookies.clear()
+        res = self._google()  # no profile needed the second time
+        self.assertEqual(res.json(), {"status": "signed_in", "created": False})
+        self.assertEqual(User.objects.filter(email="new@gmail.com").count(), 1)
+
+    def test_bad_token_is_refused(self):
+        res = self.client.post("/api/accounts/google/", {"id_token": "forged"}, format="json")
+        self.assertIn(res.status_code, (400, 503))
+        self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
