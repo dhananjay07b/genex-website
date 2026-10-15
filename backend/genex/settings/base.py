@@ -193,6 +193,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "registration": "5/hour",
         "resend-email": "3/hour",
+        "work-email": "5/hour",
         # None (not removed) — dj-rest-auth's views all hardcode
         # throttle_scope="dj_rest_auth", so the scope must stay registered; our
         # overrides in accounts/views.py set real limits (accounts/throttles.py).

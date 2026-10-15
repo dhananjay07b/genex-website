@@ -661,3 +661,75 @@ class GoogleSignInTests(TestCase):
         res = self.client.post("/api/accounts/google/", {"id_token": "forged"}, format="json")
         self.assertIn(res.status_code, (400, 503))
         self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
+
+
+class WorkEmailTests(TestCase):
+    """A Professional on a personal email gets verified by confirming a work email on their company's domain."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=self.acme, domain="acme.com")
+        self.pro = make_user("gmailpro", email="meera@gmail.com", account_type="professional",
+                             company_other="Acme-ish", role_title="Engineer")
+        self.client = APIClient()
+        self.client.force_authenticate(self.pro)
+
+    def _confirm_last_link(self):
+        import re
+        from django.core import mail
+        key = re.search(r"/verify-email/([^\s/]+)", mail.outbox[-1].body).group(1)
+        return APIClient().post("/api/auth/registration/verify-email/", {"key": key}, format="json")
+
+    def test_confirming_a_work_email_links_the_company_and_verifies(self):
+        from django.core import mail
+        res = self.client.post("/api/accounts/me/work-email/", {"email": "Meera@Acme.com"}, format="json")
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json(), {"email": "meera@acme.com", "verified": False, "company": {"name": "Acme Energy", "slug": "acme"}})
+        self.assertEqual(mail.outbox[-1].to, ["meera@acme.com"])
+        self.pro.refresh_from_db()
+        self.assertFalse(self.pro.company_verified)  # not until the link is clicked
+
+        self.assertEqual(self._confirm_last_link().status_code, 200)
+        self.pro.refresh_from_db()
+        self.assertEqual((self.pro.company, self.pro.company_other, self.pro.company_verified), (self.acme, "", True))
+        self.assertEqual(self.pro.email, "meera@gmail.com")  # sign-in email unchanged
+        self.assertTrue(self.client.get("/api/accounts/me/work-email/").json()["verified"])
+
+    def test_removing_it_removes_verification(self):
+        self.client.post("/api/accounts/me/work-email/", {"email": "meera@acme.com"}, format="json")
+        self._confirm_last_link()
+        self.assertEqual(self.client.delete("/api/accounts/me/work-email/").status_code, 204)
+        self.pro.refresh_from_db()
+        self.assertFalse(self.pro.company_verified)
+        self.assertEqual(self.client.get("/api/accounts/me/work-email/").json()["email"], None)
+
+    def test_only_registered_company_domains(self):
+        res = self.client.post("/api/accounts/me/work-email/", {"email": "meera@unknown-co.com"}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("registered", res.json()["email"][0])
+
+    def test_cannot_claim_another_accounts_email(self):
+        make_user("boss", email="boss@acme.com")
+        res = self.client.post("/api/accounts/me/work-email/", {"email": "boss@acme.com"}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Another account", res.json()["email"][0])
+
+    def test_pending_work_email_lets_them_pick_the_company_but_not_be_verified(self):
+        self.client.post("/api/accounts/me/work-email/", {"email": "meera@acme.com"}, format="json")
+        res = self.client.patch("/api/accounts/me/", {"company_id": self.acme.pk, "role_title": "Engineer"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.pro.refresh_from_db()
+        self.assertEqual((self.pro.company, self.pro.company_verified), (self.acme, False))
+
+    def test_professionals_only(self):
+        learner = make_user("learnerx")
+        client = APIClient()
+        client.force_authenticate(learner)
+        self.assertEqual(client.post("/api/accounts/me/work-email/", {"email": "l@acme.com"}, format="json").status_code, 403)
+
+    def test_sending_links_is_rate_limited(self):
+        for i in range(5):
+            self.client.post("/api/accounts/me/work-email/", {"email": f"m{i}@acme.com"}, format="json")
+        self.assertEqual(self.client.post("/api/accounts/me/work-email/", {"email": "m9@acme.com"}, format="json").status_code, 429)

@@ -3,8 +3,12 @@ Company verification for Professionals, in one place.
 
 A Professional is verified for their linked Company only when ALL hold:
   1. the Company is active,
-  2. their account email sits on one of the Company's domains,
-  3. they've confirmed that email (allauth EmailAddress.verified).
+  2. one of their email addresses sits on one of the Company's domains,
+  3. they've confirmed that address (allauth EmailAddress.verified).
+
+The address is usually the sign-in email; a Professional who signed up with a
+personal one (e.g. Gmail through Google) can add a confirmed work email
+instead (accounts.work_email). The sign-in email never changes.
 
 `refresh_company_verification` recomputes this from scratch and is called
 wherever any input can change: registration, profile updates, email
@@ -25,10 +29,9 @@ from .models import User
 company_verification_changed = Signal()
 
 
-def email_is_confirmed(user):
-    return bool(user.email) and EmailAddress.objects.filter(
-        user=user, email__iexact=user.email, verified=True,
-    ).exists()
+def confirmed_addresses(user):
+    """Every address the user has proved they own: the sign-in email and a work email, once confirmed."""
+    return list(EmailAddress.objects.filter(user=user, verified=True).values_list("email", flat=True))
 
 
 def qualifies_for_verification(user):
@@ -37,8 +40,7 @@ def qualifies_for_verification(user):
         user.account_type == User.ACCOUNT_PROFESSIONAL
         and company is not None
         and company.is_active
-        and company.owns_email(user.email)
-        and email_is_confirmed(user)
+        and any(company.owns_email(address) for address in confirmed_addresses(user))
     )
 
 
@@ -65,10 +67,13 @@ def _domain_list(company):
     return ", ".join(f"@{d}" for d in company.domains.values_list("domain", flat=True))
 
 
-def resolve_professional_company(email, company_id, company_other, *, email_field="email"):
+def resolve_professional_company(email, company_id, company_other, *, email_field="email", other_emails=()):
     """
     Validate a Professional's company choice. Exactly one of a registered
     `company_id` or a free-text `company_other` is required.
+
+    `other_emails`: more addresses the user owns (a work email) that may
+    satisfy a registered company's domain instead of `email`.
 
     Returns (company_or_None, company_other). Raises a field-keyed
     ValidationError the frontend can show inline.
@@ -81,7 +86,7 @@ def resolve_professional_company(email, company_id, company_other, *, email_fiel
             raise serializers.ValidationError(
                 {"company_id": "That company isn't available on GeLearn. Pick another, or choose 'Other'."}
             )
-        if not company.owns_email(email):
+        if not any(company.owns_email(address) for address in (email, *other_emails)):
             raise serializers.ValidationError({
                 email_field: (
                     f"Use your official {_domain_list(company)} email to get verified as a {company.name} expert, "

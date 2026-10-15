@@ -25,10 +25,11 @@ class AccountsConfig(AppConfig):
 
         from allauth.account.signals import email_confirmed
 
-        from .verification import refresh_company_verification
+        from .work_email import on_address_confirmed
 
         def on_email_confirmed(request, email_address, **kwargs):
-            refresh_company_verification(email_address.user)
+            # Sign-in email or work email: link a work email's company, then re-check verification.
+            on_address_confirmed(email_address)
 
         email_confirmed.connect(on_email_confirmed, dispatch_uid="accounts.company_verification")
 

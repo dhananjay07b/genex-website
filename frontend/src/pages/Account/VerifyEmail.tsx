@@ -33,8 +33,8 @@ export default function VerifyEmail() {
       <PageMeta title="Verify Email — Genex GeLearn" description="Confirm your Genex GeLearn account email address." canonical="/verify-email" />
 
       <AuthLayout
-        eyebrow="Account Setup"
-        headline="One last step to join GeLearn."
+        eyebrow="Email Confirmation"
+        headline="Confirming your email address."
         description="Confirming your email keeps your account secure and unlocks commenting, saving, and contributing."
         panelExtra={
           <div className="bg-white/6 border border-white/10 rounded-2xl px-4 py-4 flex items-start gap-3">

@@ -1,4 +1,5 @@
 from allauth.account.adapter import get_adapter
+from allauth.account.models import EmailAddress
 from allauth.account.utils import setup_user_email, user_pk_to_url_str
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer
@@ -100,8 +101,10 @@ class UserSerializer(serializers.ModelSerializer):
                 # Unchanged link — don't re-run the domain check against it.
                 company, company_other = instance.company, ""
             else:
+                # A work email (even before it's confirmed) may cover the company's domain.
+                work = EmailAddress.objects.filter(user=instance).exclude(email__iexact=instance.email).values_list("email", flat=True)
                 company, company_other = resolve_professional_company(
-                    instance.email, company_id, company_other, email_field="company_id",
+                    instance.email, company_id, company_other, email_field="company_id", other_emails=list(work),
                 )
             attrs["_company"] = company
             attrs["company_other"] = company_other

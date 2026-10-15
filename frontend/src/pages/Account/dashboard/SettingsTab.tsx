@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/Select'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { WorkEmailCard } from './WorkEmailCard'
 import { cn, getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
@@ -380,7 +381,7 @@ export function SettingsTab() {
                     <p className="text-xs text-text-muted leading-relaxed">
                       {selectedCompany.slug === linkedCompany?.slug && user.company_verified
                         ? `Verified ${selectedCompany.name} expert.`
-                        : `Verification needs a confirmed ${domainList(selectedCompany)} account email.`}
+                        : `Verification needs a confirmed ${domainList(selectedCompany)} email: your sign-in email, or a work email below.`}
                     </p>
                   )}
                 </div>
@@ -388,6 +389,8 @@ export function SettingsTab() {
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
             </div>
           )}
+          {/* Signed up with a personal email? A confirmed work email gets them verified (hidden once verified by sign-in email). */}
+          {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} companyVerified={Boolean(user.company_verified)} />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Years of Experience"

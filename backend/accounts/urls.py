@@ -8,6 +8,7 @@ from .public_views import (
     PublicUserPodcastAppearancesView,
     PublicUserVideosView,
 )
+from .work_email import WorkEmailView
 from .views import GoogleLoginView, MeView, SessionView, SocialAccountDisconnectView, SocialAccountListView
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
     path("me/comments/", MyCommentsView.as_view(), name="my-comments"),
     path("me/activity/", ActivityFeedView.as_view(), name="my-activity"),
     path("me/podcast-appearances/", MyPodcastAppearancesView.as_view(), name="my-podcast-appearances"),
+    path("me/work-email/", WorkEmailView.as_view(), name="my-work-email"),
     path("me/avatar/", AvatarUploadView.as_view(), name="my-avatar"),
     path("me/cover-photo/", CoverPhotoUploadView.as_view(), name="my-cover-photo"),
     path("me/social-accounts/", SocialAccountListView.as_view(), name="my-social-accounts"),
