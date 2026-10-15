@@ -246,11 +246,14 @@ class CompanyVerificationFlowTests(TestCase):
         res = self._register("expert@in.google.com", company_id=self.google.id)
         self.assertIn(res.status_code, (200, 201), res.content)
 
-    def test_mismatched_domain_rejected_on_email_field(self):
+    def test_personal_email_links_the_company_but_stays_unverified(self):
         res = self._register("expert@gmail.com", company_id=self.google.id)
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("@google.com", res.json()["email"][0])
-        self.assertFalse(User.objects.filter(username="expert").exists())
+        self.assertIn(res.status_code, (200, 201), res.content)
+        self._confirm_latest_email()  # confirming a Gmail address proves nothing about Google-the-company
+        user = User.objects.get(username="expert")
+        self.assertEqual(user.company, self.google)
+        self.assertFalse(user.company_verified)
+        self.assertFalse(display_company(user)["verified"])
 
     def test_inactive_or_unknown_company_rejected(self):
         self.google.is_active = False
@@ -281,12 +284,23 @@ class CompanyVerificationFlowTests(TestCase):
         self.assertTrue(res.json()["company_verified"])
         self.assertEqual(res.json()["company"]["slug"], "google")
 
-    def test_me_company_mismatch_reported_on_company_field(self):
+    def test_me_can_link_a_company_without_its_email_unverified(self):
         user = make_user("pro", email="pro@acme.io", account_type="professional", company_other="Acme", role_title="Eng")
         self.api.force_authenticate(user)
         res = self.api.patch("/api/accounts/me/", {"company_id": self.google.id}, format="json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("company_id", res.json())
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()["company"]["slug"], "google")
+        self.assertFalse(res.json()["company_verified"])
+
+    def test_unchanged_other_name_still_saves_after_that_company_is_registered(self):
+        user = make_user("early", email="early@gmail.com", account_type="professional", company_other="Solar Co", role_title="Eng")
+        Company.objects.create(name="Solar Co", slug="solar-co")
+        self.api.force_authenticate(user)
+        res = self.api.patch("/api/accounts/me/", {"bio": "Hi", "company_id": None, "company_other": "Solar Co", "role_title": "Eng"}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        # Typing a registered company's name afresh is still refused: pick it from the list instead.
+        res = self.api.patch("/api/accounts/me/", {"company_id": None, "company_other": "Google", "role_title": "Eng"}, format="json")
+        self.assertIn("company_other", res.json())
 
     def test_switching_to_other_drops_link_and_badge(self):
         from allauth.account.models import EmailAddress
@@ -617,11 +631,14 @@ class GoogleSignInTests(TestCase):
         self.assertEqual((user.account_type, user.company, user.role_title), ("professional", self.acme, "Grid Engineer"))
         self.assertTrue(user.company_verified)
 
-    def test_professional_company_must_match_the_google_email(self):
+    def test_personal_google_email_links_the_company_unverified_and_not_an_instructor(self):
+        from learning.models import eligible_instructors
         res = self._google(account_type="professional", company_id=self.acme.pk, role_title="Grid Engineer")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("company_id", res.json())
-        self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
+        self.assertEqual(res.json(), {"status": "signed_in", "created": True})
+        user = User.objects.get(email="new@gmail.com")
+        self.assertEqual(user.company, self.acme)
+        self.assertFalse(user.company_verified)  # Google confirmed a Gmail address, not an Acme one
+        self.assertNotIn(user, eligible_instructors(self.acme))
 
     def test_professional_needs_a_role_and_can_use_other(self):
         self.assertIn("role_title", self._google(account_type="professional", company_other="Solar Co").json())
@@ -733,3 +750,19 @@ class WorkEmailTests(TestCase):
         for i in range(5):
             self.client.post("/api/accounts/me/work-email/", {"email": f"m{i}@acme.com"}, format="json")
         self.assertEqual(self.client.post("/api/accounts/me/work-email/", {"email": "m9@acme.com"}, format="json").status_code, 429)
+
+
+class DeactivatedCompanyTests(TestCase):
+    """A deactivated company's own login loses Studio until Genex reactivates the company."""
+
+    def test_studio_closes_for_a_deactivated_company(self):
+        acme = Company.objects.create(name="Acme Energy", slug="acme")
+        staff = make_user("acme_staff", account_type="company", company=acme)
+        client = APIClient()
+        client.force_authenticate(staff)
+        self.assertEqual(client.get("/api/studio/team/").status_code, 200)
+        acme.is_active = False
+        acme.save()
+        staff.refresh_from_db()
+        client.force_authenticate(staff)
+        self.assertEqual(client.get("/api/studio/team/").status_code, 403)

@@ -116,10 +116,8 @@ class GoogleProfileSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["account_type"] == User.ACCOUNT_PROFESSIONAL:
-            # The email is Google's, so a mismatch is reported against the company choice.
-            data["company"], data["company_other"] = resolve_professional_company(
-                self.context["email"], data.get("company_id"), data.get("company_other", ""), email_field="company_id",
-            )
+            # Any registered company may be linked; the badge needs a confirmed company email (verification.py).
+            data["company"], data["company_other"] = resolve_professional_company(data.get("company_id"), data.get("company_other", ""))
             if not (data.get("role_title") or "").strip():
                 raise serializers.ValidationError({"role_title": "Role is required for a Professional profile."})
         else:

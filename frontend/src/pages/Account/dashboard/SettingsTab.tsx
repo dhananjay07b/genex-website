@@ -14,10 +14,11 @@ import { Button, buttonVariants } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { WorkEmailCard } from './WorkEmailCard'
+import { UnverifiedCompanyNote } from '@/components/auth/UnverifiedCompanyNote'
 import { cn, getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { useAuth } from '@/context/useAuth'
-import { OTHER_COMPANY, companyOptions, domainList, useCompanies } from '@/hooks/useCompanies'
+import { OTHER_COMPANY, companyOptions, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
 import { CertificatePrivacy } from './CertificatePrivacy'
 import type { CareerRole, Topic } from '@/types/api'
@@ -377,13 +378,11 @@ export function SettingsTab() {
                   {companyChoice === OTHER_COMPANY && (
                     <Input placeholder="Company name, e.g. Acme Energy" aria-label="Company name" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
                   )}
-                  {selectedCompany && (
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      {selectedCompany.slug === linkedCompany?.slug && user.company_verified
-                        ? `Verified ${selectedCompany.name} expert.`
-                        : `Verification needs a confirmed ${domainList(selectedCompany)} email: your sign-in email, or a work email below.`}
-                    </p>
-                  )}
+                  {selectedCompany && (selectedCompany.slug === linkedCompany?.slug && user.company_verified ? (
+                    <p className="text-xs text-text-muted leading-relaxed">Verified {selectedCompany.name} expert.</p>
+                  ) : (
+                    <UnverifiedCompanyNote company={selectedCompany} where="settings" />
+                  ))}
                 </div>
               )}
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />

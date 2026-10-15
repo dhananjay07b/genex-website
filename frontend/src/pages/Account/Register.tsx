@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/Select'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
+import { UnverifiedCompanyNote } from '@/components/auth/UnverifiedCompanyNote'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, domainList, emailMatchesCompany, useCompanies } from '@/hooks/useCompanies'
 import { ApiError } from '@/lib/api/client'
@@ -94,17 +95,11 @@ export default function Register() {
   const accountType = watch('accountType')
   const companyChoice = watch('companyChoice')
   const selectedCompany = companies.find(c => String(c.id) === companyChoice)
+  const typedEmail = watch('email') ?? ''
 
   async function onSubmit(data: FormData) {
     const isProfessional = data.accountType === 'professional'
     const company = isProfessional ? companies.find(c => String(c.id) === data.companyChoice) : undefined
-    if (company && !emailMatchesCompany(data.email, company)) {
-      setError('email', {
-        message: `Use your official ${domainList(company)} email to get verified as a ${company.name} expert, or choose 'Other'.`,
-      })
-      return
-    }
-
     setStatus('loading')
     try {
       await registerUser({
@@ -240,12 +235,16 @@ export default function Register() {
                       {...register('companyOther')}
                     />
                   )}
-                  {selectedCompany && (
+                  {selectedCompany && (!typedEmail || emailMatchesCompany(typedEmail, selectedCompany)) && (
                     <p className="flex items-start gap-1.5 text-xs text-text-muted leading-relaxed">
                       <VerifiedOutlinedIcon sx={{ fontSize: 14 }} className="text-primary shrink-0 mt-px" />
                       Sign up with your {domainList(selectedCompany)} email. We&apos;ll send a link to confirm it, then
                       your content shows as verified {selectedCompany.name}.
                     </p>
+                  )}
+                  {/* A personal email: linking is allowed, the badge needs a confirmed work email. */}
+                  {selectedCompany && typedEmail.includes('@') && !emailMatchesCompany(typedEmail, selectedCompany) && (
+                    <UnverifiedCompanyNote company={selectedCompany} where="signup" />
                   )}
                   {companyChoice === OTHER_COMPANY && (
                     <p className="text-xs text-text-muted leading-relaxed">

@@ -17,7 +17,11 @@ def is_admin(user):
 
 
 def is_company(user):
-    return _authed(user) and user.account_type == User.ACCOUNT_COMPANY and user.company_id is not None
+    # A deactivated company's login loses Studio and publishing until Genex reactivates it.
+    return (
+        _authed(user) and user.account_type == User.ACCOUNT_COMPANY
+        and user.company_id is not None and user.company.is_active
+    )
 
 
 def is_professional(user):

@@ -1,5 +1,4 @@
 from allauth.account.adapter import get_adapter
-from allauth.account.models import EmailAddress
 from allauth.account.utils import setup_user_email, user_pk_to_url_str
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer
@@ -101,10 +100,8 @@ class UserSerializer(serializers.ModelSerializer):
                 # Unchanged link — don't re-run the domain check against it.
                 company, company_other = instance.company, ""
             else:
-                # A work email (even before it's confirmed) may cover the company's domain.
-                work = EmailAddress.objects.filter(user=instance).exclude(email__iexact=instance.email).values_list("email", flat=True)
                 company, company_other = resolve_professional_company(
-                    instance.email, company_id, company_other, email_field="company_id", other_emails=list(work),
+                    company_id, company_other, current_other=instance.company_other,
                 )
             attrs["_company"] = company
             attrs["company_other"] = company_other
@@ -233,9 +230,7 @@ class GenexRegisterSerializer(RegisterSerializer):
     def validate(self, data):
         data = super().validate(data)
         if data.get("account_type") == User.ACCOUNT_PROFESSIONAL:
-            data["_company"], data["company_other"] = resolve_professional_company(
-                data.get("email", ""), data.get("company_id"), data.get("company_other", ""),
-            )
+            data["_company"], data["company_other"] = resolve_professional_company(data.get("company_id"), data.get("company_other", ""))
             if not (data.get("role_title") or "").strip():
                 raise serializers.ValidationError({"role_title": "Role is required for a Professional profile."})
         else:

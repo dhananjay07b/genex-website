@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { ApiError } from '@/lib/api/client'
-import { OTHER_COMPANY, companyOptions, domainList, emailMatchesCompany, useCompanies } from '@/hooks/useCompanies'
+import { OTHER_COMPANY, companyOptions, emailMatchesCompany, useCompanies } from '@/hooks/useCompanies'
 import { GoogleGlyph } from './GoogleLoginButton'
+import { UnverifiedCompanyNote } from './UnverifiedCompanyNote'
 
 export type AccountChoice = 'learner' | 'professional'
 
@@ -107,10 +108,6 @@ export function GoogleProfileDialog({ email, name, prefill, onSubmit, onCancel }
   async function submit(data: FormData) {
     setFormError('')
     const isProfessional = data.accountType === 'professional'
-    if (isProfessional && selectedCompany && !emailMatchesCompany(email, selectedCompany)) {
-      setError('companyChoice', { message: `${email} isn't a ${domainList(selectedCompany)} address. Choose 'Other', or use Google with your company email.` })
-      return
-    }
     try {
       await onSubmit({
         account_type: data.accountType,
@@ -192,11 +189,8 @@ export function GoogleProfileDialog({ email, name, prefill, onSubmit, onCancel }
                     Google has confirmed this email, so your content shows as verified {selectedCompany.name} straight away.
                   </p>
                 )}
-                {companyMismatch && !errors.companyChoice && (
-                  <p className="text-xs leading-relaxed text-amber-700">
-                    {email} isn&apos;t a {domainList(selectedCompany)} address. Choose &apos;Other&apos;, or use Google with your company email.
-                  </p>
-                )}
+                {/* Not their company email: linking is allowed, the badge needs a confirmed work email. */}
+                {companyMismatch && !errors.companyChoice && <UnverifiedCompanyNote company={selectedCompany} where="signup" />}
                 {companyChoice === OTHER_COMPANY && (
                   <p className="text-xs leading-relaxed text-text-muted">Unlisted companies are shown by name only, without a verified badge.</p>
                 )}

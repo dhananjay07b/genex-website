@@ -63,17 +63,18 @@ def refresh_company_members(company):
         refresh_company_verification(user)
 
 
-def _domain_list(company):
-    return ", ".join(f"@{d}" for d in company.domains.values_list("domain", flat=True))
-
-
-def resolve_professional_company(email, company_id, company_other, *, email_field="email", other_emails=()):
+def resolve_professional_company(company_id, company_other, *, current_other=""):
     """
     Validate a Professional's company choice. Exactly one of a registered
     `company_id` or a free-text `company_other` is required.
 
-    `other_emails`: more addresses the user owns (a work email) that may
-    satisfy a registered company's domain instead of `email`.
+    Anyone may link a registered company, whatever their email: linking only
+    says where they work. The verified badge (and being an instructor) still
+    needs proof — a confirmed email on the company's domain (qualifies_for_verification);
+    false claims are for Genex to act on (Admin can deactivate the account).
+
+    `current_other`: the name already saved. An unchanged name stays valid even
+    if a company by that name has since been registered, so the profile still saves.
 
     Returns (company_or_None, company_other). Raises a field-keyed
     ValidationError the frontend can show inline.
@@ -86,20 +87,14 @@ def resolve_professional_company(email, company_id, company_other, *, email_fiel
             raise serializers.ValidationError(
                 {"company_id": "That company isn't available on GeLearn. Pick another, or choose 'Other'."}
             )
-        if not any(company.owns_email(address) for address in (email, *other_emails)):
-            raise serializers.ValidationError({
-                email_field: (
-                    f"Use your official {_domain_list(company)} email to get verified as a {company.name} expert, "
-                    f"or choose 'Other' to continue without verification."
-                ),
-            })
         return company, ""
 
     if company_other:
-        listed = Company.objects.filter(name__iexact=company_other, is_active=True).first()
+        unchanged = company_other.lower() == (current_other or "").strip().lower()
+        listed = None if unchanged else Company.objects.filter(name__iexact=company_other, is_active=True).first()
         if listed is not None:
             raise serializers.ValidationError({
-                "company_other": f"{listed.name} is registered on GeLearn — select it from the list to get verified.",
+                "company_other": f"{listed.name} is registered on GeLearn — select it from the list.",
             })
         return None, company_other
 
