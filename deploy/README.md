@@ -1,185 +1,259 @@
-# Deploying to the EC2 server (Ubuntu 24.04, Nginx)
+# Deploying to the server (Docker)
 
-Three hostnames, one server, served by Nginx:
+The whole server runs from [`docker-compose.yml`](../docker-compose.yml) at the repo
+root. Local development is unchanged: `npm run dev` + `manage.py runserver`, with
+`?shell=gelearn` / `?shell=marketing` to switch sites (see `frontend/src/lib/host.ts`).
 
-| Hostname | Serves | Config (`deploy/nginx/sites-available/`) |
+## What runs where
+
+| Hostname (test, now) | Hostname (live, later) | Serves |
 |---|---|---|
-| `genextechnocrats.com` (`www.` redirects here) | Marketing site (built frontend) | `genextechnocrats.com.conf` |
-| `gelearn.genextechnocrats.com` | GeLearn (same built frontend, different shell at runtime) | `gelearn.genextechnocrats.com.conf` |
-| `cms.genextechnocrats.com` | Django/Wagtail backend: API, CMS, admin | `cms.genextechnocrats.com.conf` |
+| `test.genextechnocrats.com` | `genextechnocrats.com` (`www.` redirects) | Marketing site |
+| `test-gelearn.genextechnocrats.com` | `gelearn.genextechnocrats.com` | GeLearn |
+| `cms.genextechnocrats.com` | same | API, Wagtail CMS, Django admin |
 
-The two frontend sites serve the **same** `frontend/dist` directory: one build,
-not two. The app picks which shell to render (marketing or GeLearn) from the
-hostname at runtime (`frontend/src/lib/host.ts`). The GeLearn site only swaps in
-its own `sitemap.xml`/`robots.txt` and redirects a few renamed sections.
+The main addresses on the CMS host:
+- **`https://cms.genextechnocrats.com/admin/`:** the Wagtail CMS. Superusers only.
+- **`https://cms.genextechnocrats.com/dj-admin/`:** the Django admin, for users, companies and enquiries. Superusers only.
+- **`https://cms.genextechnocrats.com/api/…`:** the REST API used by both sites.
 
-Shared settings live in `deploy/nginx/snippets/`:
-- `genex-common.conf`: TLS settings and compression, for every site.
-- `genex-frontend-files.conf`: how the frontend files are served and cached.
-- `genex-frontend-headers.conf`: security headers for the two frontend sites,
-  including the Content-Security-Policy (see "Security policy" below).
+Locally those admins stay at `localhost:8000/cms/` and `localhost:8000/admin/`. The
+paths come from `WAGTAIL_ADMIN_PATH` and `DJANGO_ADMIN_PATH` in `backend/genex/settings/`.
 
-## One-time server setup
+Three containers:
 
-System packages (Ubuntu 24.04 LTS, which ships Python 3.12). `python3-venv` isn't
-installed by default, and the Pango/HarfBuzz libraries are what WeasyPrint needs to
-draw certificate PDFs:
+| Service | What it is | Data |
+|---|---|---|
+| `nginx` | Built frontend + Nginx. Takes ports 80/443, serves both frontend hostnames and proxies the CMS hostname to the backend | none (certificates mounted read-only from the host) |
+| `backend` | Django/Wagtail on gunicorn | `media` volume (uploads), `static` volume (CMS CSS/JS) |
+| `db` | PostgreSQL 16, reachable only by the backend | `pgdata` volume |
+
+**One frontend build serves both sites.** The app picks marketing or GeLearn from the
+hostname, comparing it with the GeLearn address it was built with.
+
+Configuration lives in two files on the server, both outside git:
+
+| File | Template | Holds |
+|---|---|---|
+| `.env` (next to `docker-compose.yml`) | [`compose.env.example`](compose.env.example) | hostnames, `SEO_MODE`, database password, Google client ID, restart policy |
+| `backend/.env.production` | [`backend.env.example`](backend.env.example) | secrets only: Django key, SMTP, Google client secret |
+
+Everything that follows from the hostnames is derived in `docker-compose.yml`:
+allowed hosts, CORS, email links, the frontend's API address and the cookie domain.
+
+## 1. One-time server setup (Ubuntu 24.04 on EC2)
+
+1. **Install Docker.** Install Docker Engine and the Compose plugin from Docker's own
+   apt repository (https://docs.docker.com/engine/install/ubuntu/), then allow your
+   user to run it:
+   ```bash
+   sudo usermod -aG docker $USER   # log out and back in
+   ```
+2. **Install certbot:**
+   ```bash
+   sudo apt install certbot
+   ```
+3. **Security group.** Open ports 22, 80 and 443 only. The database has no published
+   port; never open 5432.
+4. **Memory.** The frontend build needs about 2 GB of RAM. On a small instance, add swap first:
+   ```bash
+   sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+5. **Get the code:**
+   ```bash
+   sudo mkdir -p /srv/genex && sudo chown $USER /srv/genex
+   git clone <repo url> /srv/genex && cd /srv/genex
+   ```
+
+## 2. DNS
+
+Point A records for `test.genextechnocrats.com`, `test-gelearn.genextechnocrats.com`
+and `cms.genextechnocrats.com` at the server's Elastic IP. Wait until they resolve
+(`dig +short test.genextechnocrats.com`) before getting the certificate.
+
+## 3. Configuration
+
 ```bash
-sudo apt update
-sudo apt install python3-venv python3-dev libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
-    postgresql nginx certbot python3-certbot-nginx
+cd /srv/genex
+cp deploy/compose.env.example .env
+cp deploy/backend.env.example backend/.env.production
+chmod 600 .env backend/.env.production
 ```
-To build the frontend on the server, install Node.js 22 LTS (e.g. from NodeSource):
-Ubuntu's own `nodejs` package is 18, too old for Vite (needs 20.19+ or 22.12+).
-
-In the EC2 security group, open ports 80 and 443 only (plus SSH).
-
-Get HTTPS certificates once DNS points all four names at this server. `certonly`
-fetches the certificates without editing any Nginx files (ours already point at
-them), and the deploy hook reloads Nginx after each automatic renewal:
+Fill both in: see the comments in each file. Generate the secrets with:
 ```bash
-sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" \
-    -d genextechnocrats.com -d www.genextechnocrats.com
-sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" -d gelearn.genextechnocrats.com
-sudo certbot certonly --nginx --deploy-hook "systemctl reload nginx" -d cms.genextechnocrats.com
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
+Use one for `DJANGO_SECRET_KEY` and a second one for `POSTGRES_PASSWORD`.
 
-Install the Genex sites and replace Nginx's default one:
+## 4. HTTPS certificate
+
+Get one certificate for all three hostnames. Certbot briefly runs its own web server
+on port 80, so Nginx is stopped around each renewal. That's about 10 seconds of
+downtime every two months. Certbot saves the hooks and its timer renews automatically.
 ```bash
-sudo cp deploy/nginx/snippets/*.conf /etc/nginx/snippets/
-sudo cp deploy/nginx/sites-available/*.conf /etc/nginx/sites-available/
-for site in genextechnocrats.com gelearn.genextechnocrats.com cms.genextechnocrats.com; do
-    sudo ln -sf /etc/nginx/sites-available/$site.conf /etc/nginx/sites-enabled/$site.conf
-done
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+sudo certbot certonly --standalone --cert-name genex \
+    -d test.genextechnocrats.com -d test-gelearn.genextechnocrats.com -d cms.genextechnocrats.com \
+    --pre-hook "docker compose -f /srv/genex/docker-compose.yml stop nginx" \
+    --post-hook "docker compose -f /srv/genex/docker-compose.yml start nginx"
+sudo certbot renew --dry-run   # checks that renewal will work
 ```
-After changing any file in `deploy/nginx/`, copy it again and run the last line.
 
-## Database (PostgreSQL 16)
+## 5. First start, with the local data
 
-Ubuntu 24.04's `postgresql` package is version 16, the same as local development.
-It listens on localhost only, which is what we want: never open port 5432 in the
-EC2 security group.
-
+Start the database on its own:
 ```bash
-sudo -u postgres psql -c "CREATE ROLE genex LOGIN PASSWORD '<a strong password>';"
-sudo -u postgres psql -c "CREATE DATABASE genex OWNER genex;"
+cd /srv/genex
+docker compose build          # first build takes a few minutes
+docker compose up -d --wait db   # waits until the database is ready
 ```
-Put the same name, user and password in `.env` (`POSTGRES_*`, see
-`deploy/gunicorn/genex-backend.env.example`).
 
-### Moving the local data to the server (once, at launch)
-
-Do this into the new, empty database **before** running `migrate` below. On the
-development machine:
+**Copy the local data in** (once, at launch). Do this before `migrate`, into the new
+empty database. On the development machine:
 ```bash
 pg_dump -h 127.0.0.1 -U genex -d genex -Fc > genex.dump   # asks for the genex password
-tar czf genex-media.tgz -C backend media      # uploaded images and documents
+tar czf genex-media.tgz -C backend media                  # uploaded images and documents
 scp genex.dump genex-media.tgz <user>@<server>:/tmp/
 ```
 On the server:
 ```bash
-pg_restore --no-owner --role=genex -h 127.0.0.1 -U genex -d genex /tmp/genex.dump
-sudo tar xzf /tmp/genex-media.tgz -C /var/www/genex/backend
-sudo chown -R www-data:www-data /var/www/genex/backend/media
+cd /srv/genex
+docker compose exec -T db pg_restore --no-owner -U genex -d genex < /tmp/genex.dump
+docker compose run --rm -T --no-deps --entrypoint tar backend xzf - -C /app < /tmp/genex-media.tgz
 ```
 
-### Backups
-
-A nightly dump, keeping the last 14 days:
+Then bring everything up:
 ```bash
-sudo install -d -o postgres -g postgres -m 700 /var/backups/genex
-echo '30 2 * * * postgres pg_dump -Fc genex > /var/backups/genex/genex-$(date +\%F).dump && find /var/backups/genex -name "genex-*.dump" -mtime +14 -delete' \
-  | sudo tee /etc/cron.d/genex-db-backup
-```
-Copy these off the server too (e.g. to S3), along with `backend/media`: a backup
-on the same disk doesn't survive losing the instance.
-
-To restore one (stop the backend first):
-```bash
-sudo systemctl stop genex-backend
-sudo -u postgres pg_restore --clean --if-exists -d genex /var/backups/genex/genex-YYYY-MM-DD.dump
-sudo systemctl start genex-backend
-```
-
-## Backend
-
-```bash
-cd /var/www/genex/backend
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-
-cp deploy/gunicorn/genex-backend.env.example .env
-# fill in real values in .env — see that file for what's required
-
-export DJANGO_SETTINGS_MODULE=genex.settings.production
-python manage.py migrate
-python manage.py collectstatic --noinput
+docker compose run --rm backend python manage.py migrate
+docker compose up -d
 # Resized copies of uploaded images (what the API serves); re-run after restoring media
-python manage.py warm_image_renditions
-
-sudo cp deploy/gunicorn/genex-backend.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now genex-backend
+docker compose exec backend python manage.py warm_image_renditions
+docker compose ps             # all three "Up", backend and db "(healthy)"
 ```
 
-## Frontend
-
-Build with the production API/subdomain URLs baked in:
+If you're starting with an empty database instead, run `migrate` as above, then:
 ```bash
-cd frontend
-VITE_API_BASE_URL=https://cms.genextechnocrats.com \
-VITE_GELEARN_URL=https://gelearn.genextechnocrats.com \
-VITE_MARKETING_URL=https://genextechnocrats.com \
-npm run build
+docker compose exec backend python manage.py createsuperuser
 ```
-Copy the resulting `dist/` to `/var/www/genex/frontend/dist` (the folder both
-frontend sites serve, set in `snippets/genex-frontend-files.conf`). No Nginx
-reload is needed: open tabs pick up the new build by themselves.
 
-## After DNS is live
+### Settings outside the server (once)
+- **Wagtail:** in the CMS at `https://cms.genextechnocrats.com/admin/`, go to Settings → Sites
+  and set the hostname to `cms.genextechnocrats.com`, port 443.
+- **Google Cloud Console:** on the OAuth client, under Authorized JavaScript origins,
+  add `https://test-gelearn.genextechnocrats.com` and `https://test.genextechnocrats.com`.
+- **Email (Hostinger DNS):** check that SPF, DKIM and DMARC are set for
+  `genextechnocrats.com`, then send a test:
+  ```bash
+  docker compose exec backend python manage.py send_test_email you@example.com
+  ```
 
-Once `gelearn.genextechnocrats.com` and `cms.genextechnocrats.com` actually
-resolve to this server, everything works with no further code changes — the
-same build already handles both hostnames, and the backend's
-`CORS_ALLOWED_ORIGINS` (set in `.env` above) already expects both frontend
-origins.
+## 6. Deploying an update
 
-While the temporary pre-launch frontend is still on Vercel, this server's
-backend needs `https://genextechnocrats.vercel.app` included in
-`CORS_ALLOWED_ORIGINS` too — drop it once the real domains take over.
-
-## Checking it works
-
-From any machine, after deploying. Each command should print what its comment says:
 ```bash
-# Redirects: http and www end up on https://genextechnocrats.com
-curl -sI http://www.genextechnocrats.com/ | grep -i '^location'            # https://genextechnocrats.com/
-# Pages: HTTP/2, never cached, security headers present
-curl -sI https://genextechnocrats.com/ | grep -iE '^HTTP|cache-control|strict-transport|x-frame'
+cd /srv/genex
+git pull
+docker compose build
+docker compose run --rm backend python manage.py migrate
+docker compose up -d          # recreates only the containers whose image changed
+```
+- **A frontend change** rebuilds the `nginx` image. Open tabs pick up the new build by themselves.
+- **A backend change** rebuilds `backend`, and its start refreshes the CMS static files.
+- **Clearing out old images now and then:** `docker image prune -f`.
+
+## 7. Day-to-day
+
+```bash
+docker compose ps                         # what's running
+docker compose logs -f --tail 100 backend # or nginx, db
+docker compose restart backend
+docker compose exec backend python manage.py <command>
+```
+With `RESTART_POLICY=unless-stopped` in `.env`, the containers come back by themselves
+after a crash or a reboot.
+
+## 8. Backups
+
+A nightly database dump and media archive, keeping 14 days:
+```bash
+sudo install -d -m 700 /var/backups/genex
+sudo tee /etc/cron.d/genex-backup > /dev/null <<'EOF'
+30 2 * * * root cd /srv/genex && docker compose exec -T db pg_dump -U genex -Fc genex > /var/backups/genex/genex-$(date +\%F).dump && docker compose exec -T backend tar czf - -C /app media > /var/backups/genex/media-$(date +\%F).tgz && find /var/backups/genex -type f -mtime +14 -delete
+EOF
+```
+**Also copy these off the server**, for example to S3. A backup on the same disk
+doesn't survive losing the instance.
+
+To restore a database dump:
+```bash
+docker compose stop backend
+docker compose exec -T db pg_restore --clean --if-exists --no-owner -U genex -d genex < /var/backups/genex/genex-YYYY-MM-DD.dump
+docker compose start backend
+```
+To restore media, run the `tar xzf` command from section 5 with the media archive.
+
+## 9. Checking it works
+
+From any machine. Each command should print what its comment says:
+```bash
+# Redirects: http ends up on https
+curl -sI http://test.genextechnocrats.com/ | grep -i '^location'                 # https://test.genextechnocrats.com/
+# Pages: HTTP/2, security headers, and (test sites) noindex
+curl -sI https://test.genextechnocrats.com/ | grep -iE '^HTTP|strict-transport|x-robots'
+# Test sites are hidden from search engines
+curl -s https://test-gelearn.genextechnocrats.com/robots.txt                      # Disallow: /
 # Built JS: cached for a year and compressed
-JS=$(curl -s https://genextechnocrats.com/ | grep -o '/assets/index-[^"]*\.js' | head -1)
-curl -sI -H 'Accept-Encoding: gzip' https://genextechnocrats.com$JS | grep -iE 'cache-control|content-encoding'
+JS=$(curl -s https://test.genextechnocrats.com/ | grep -o '/assets/index-[^"]*\.js' | head -1)
+curl -sI -H 'Accept-Encoding: gzip' https://test.genextechnocrats.com$JS | grep -iE 'cache-control|content-encoding'
 # A missing file is a real 404, not the app
-curl -s -o /dev/null -w '%{http_code}\n' https://genextechnocrats.com/assets/missing.js   # 404
-# GeLearn has its own sitemap; old section URLs redirect
-curl -s https://gelearn.genextechnocrats.com/robots.txt | grep -i sitemap                # gelearn…/sitemap.xml
-curl -sI https://gelearn.genextechnocrats.com/technology | grep -i '^location'          # …/geacademy
-# The API answers through Nginx
+curl -s -o /dev/null -w '%{http_code}\n' https://test.genextechnocrats.com/assets/missing.js     # 404
+# Old GeLearn section URLs redirect
+curl -sI https://test-gelearn.genextechnocrats.com/technology | grep -i '^location'   # …/geacademy
+# The API and the admins answer
 curl -s -o /dev/null -w '%{http_code}\n' https://cms.genextechnocrats.com/api/snippets/nav/   # 200
+curl -sI https://cms.genextechnocrats.com/admin/ | grep -i '^location'              # …/admin/login/…
+curl -sI https://cms.genextechnocrats.com/dj-admin/ | grep -i '^location'           # …/dj-admin/login/…
 ```
+In a browser:
+- `test-gelearn.` shows GeLearn and `test.` shows the marketing site.
+- Signing in on GeLearn works.
+- A verification email's link goes to `test-gelearn.`.
+
+## 10. Going live
+
+This is the same stack and the same database, with new hostnames. No code changes.
+
+1. **DNS:** point `genextechnocrats.com`, `www.genextechnocrats.com` and
+   `gelearn.genextechnocrats.com` at the server.
+2. **Certificate:** add the new names. `--expand` keeps the test names. Drop them later
+   by re-running with only the names you want.
+   ```bash
+   sudo certbot certonly --standalone --cert-name genex --expand \
+       -d test.genextechnocrats.com -d test-gelearn.genextechnocrats.com -d cms.genextechnocrats.com \
+       -d genextechnocrats.com -d www.genextechnocrats.com -d gelearn.genextechnocrats.com
+   ```
+3. **`.env`:** set `MARKETING_HOST=genextechnocrats.com`,
+   `GELEARN_HOST=gelearn.genextechnocrats.com` and `SEO_MODE=indexable`.
+4. **Rebuild and restart:** the hostnames are built into the frontend.
+   ```bash
+   docker compose build && docker compose up -d
+   ```
+5. **Google Cloud Console:** add the live origins.
+6. **Optional:** to keep old test links working, add a small Nginx server block that
+   redirects the test hostnames to the live ones.
 
 ## Security policy (Content-Security-Policy)
 
-`snippets/genex-frontend-headers.conf` lists where the frontend may load scripts,
-fonts, images, video and API data from. It ships as
-`Content-Security-Policy-Report-Only`: browsers report what it would block in the
-DevTools console but block nothing. Before launch it was checked in Chrome against
-the marketing home page, GeLearn home and a course page with no reports.
+The template [`docker/nginx/templates/snippets/genex-frontend-headers.snippet.template`](../docker/nginx/templates/snippets/genex-frontend-headers.snippet.template)
+lists where the frontend may load scripts, fonts, images, video and API data from.
 
-After a few weeks with no unexpected reports (open the site with DevTools'
-console showing; reports start with "[Report Only]"), enforce it: rename the header
-to `Content-Security-Policy` in that file, copy it to `/etc/nginx/snippets/` and
-reload Nginx. If a new outside service is added later (another video host, a chat
-widget), add its address to the matching line there first.
+It ships as `Content-Security-Policy-Report-Only`: browsers report what it would block
+in the DevTools console but block nothing. Before launch it was checked in Chrome
+against the marketing home page, GeLearn home and a course page, with no reports.
+
+**When to enforce it:** after a few weeks with no unexpected reports. To check, open the
+site with DevTools' console showing; reports start with "[Report Only]". Then rename the
+header to `Content-Security-Policy` in that file and run
+`docker compose build nginx && docker compose up -d`.
+
+**Adding an outside service later** (another video host, a chat widget): add its address
+to the matching line there first.

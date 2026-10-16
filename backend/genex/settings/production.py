@@ -22,7 +22,7 @@ if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("Set ALLOWED_HOSTS to the site's domains, comma-separated.")
 
 # Reverse proxies in front of Django. Each must send X-Forwarded-For and
-# X-Forwarded-Proto (deploy/nginx/sites-available/cms.genextechnocrats.com.conf does).
+# X-Forwarded-Proto (docker/nginx/templates/cms.conf.template does).
 # 1 is our setup (Nginx on the server); 2 if an AWS load balancer is added in front
 # of it; 0 if Django faces the internet directly. Visitor IPs for rate limits come from this.
 NUM_PROXIES = int(os.environ.get("NUM_PROXIES", "1"))
