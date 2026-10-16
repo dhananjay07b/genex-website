@@ -1,0 +1,12 @@
+# Kept out of the frontend image: secrets, dependencies (installed fresh in the
+# image) and build output.
+node_modules/
+dist/
+dist-ssr/
+.env
+.env.*
+*.local
+.husky/_/
+Dockerfile
+.dockerignore
+**/.DS_Store

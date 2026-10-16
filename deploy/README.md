@@ -24,8 +24,8 @@ Three containers:
 
 | Service | What it is | Data |
 |---|---|---|
-| `nginx` | Built frontend + Nginx. Takes ports 80/443, serves both frontend hostnames and proxies the CMS hostname to the backend | none (certificates mounted read-only from the host) |
-| `backend` | Django/Wagtail on gunicorn | `media` volume (uploads), `static` volume (CMS CSS/JS) |
+| `frontend` | The built React app on Nginx (`frontend/Dockerfile`). Takes ports 80/443, serves both frontend hostnames and proxies the CMS hostname to the backend | none (certificates mounted read-only from the host) |
+| `backend` | Django/Wagtail on gunicorn (`backend/Dockerfile`) | `media` volume (uploads), `static` volume (CMS CSS/JS) |
 | `db` | PostgreSQL 16, reachable only by the backend | `pgdata` volume |
 
 **One frontend build serves both sites.** The app picks marketing or GeLearn from the
@@ -94,8 +94,8 @@ downtime every two months. Certbot saves the hooks and its timer renews automati
 ```bash
 sudo certbot certonly --standalone --cert-name genex \
     -d test.genextechnocrats.com -d test-gelearn.genextechnocrats.com -d cms.genextechnocrats.com \
-    --pre-hook "docker compose -f /srv/genex/docker-compose.yml stop nginx" \
-    --post-hook "docker compose -f /srv/genex/docker-compose.yml start nginx"
+    --pre-hook "docker compose -f /srv/genex/docker-compose.yml stop frontend" \
+    --post-hook "docker compose -f /srv/genex/docker-compose.yml start frontend"
 sudo certbot renew --dry-run   # checks that renewal will work
 ```
 
@@ -156,7 +156,7 @@ docker compose build
 docker compose run --rm backend python manage.py migrate
 docker compose up -d          # recreates only the containers whose image changed
 ```
-- **A frontend change** rebuilds the `nginx` image. Open tabs pick up the new build by themselves.
+- **A frontend change** rebuilds the `frontend` image. Open tabs pick up the new build by themselves.
 - **A backend change** rebuilds `backend`, and its start refreshes the CMS static files.
 - **Clearing out old images now and then:** `docker image prune -f`.
 
@@ -164,7 +164,7 @@ docker compose up -d          # recreates only the containers whose image change
 
 ```bash
 docker compose ps                         # what's running
-docker compose logs -f --tail 100 backend # or nginx, db
+docker compose logs -f --tail 100 backend # or frontend, db
 docker compose restart backend
 docker compose exec backend python manage.py <command>
 ```
@@ -243,7 +243,7 @@ This is the same stack and the same database, with new hostnames. No code change
 
 ## Security policy (Content-Security-Policy)
 
-The template [`docker/nginx/templates/snippets/genex-frontend-headers.snippet.template`](../docker/nginx/templates/snippets/genex-frontend-headers.snippet.template)
+The template [`frontend/nginx/templates/snippets/genex-frontend-headers.snippet.template`](../frontend/nginx/templates/snippets/genex-frontend-headers.snippet.template)
 lists where the frontend may load scripts, fonts, images, video and API data from.
 
 It ships as `Content-Security-Policy-Report-Only`: browsers report what it would block
@@ -253,7 +253,7 @@ against the marketing home page, GeLearn home and a course page, with no reports
 **When to enforce it:** after a few weeks with no unexpected reports. To check, open the
 site with DevTools' console showing; reports start with "[Report Only]". Then rename the
 header to `Content-Security-Policy` in that file and run
-`docker compose build nginx && docker compose up -d`.
+`docker compose build frontend && docker compose up -d`.
 
 **Adding an outside service later** (another video host, a chat widget): add its address
 to the matching line there first.

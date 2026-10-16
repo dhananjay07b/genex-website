@@ -1,19 +1,20 @@
 # syntax=docker/dockerfile:1
-# The public face of the server: builds the frontend once and serves it to both
+# The frontend image: builds the React app, then serves it with Nginx to both
 # frontend hostnames (the app picks marketing or GeLearn from the hostname, see
-# frontend/src/lib/host.ts), and proxies the CMS hostname to the backend.
-# Build context is the repo root (docker-compose.yml); see the root .dockerignore.
+# src/lib/host.ts). The same Nginx is the server's front door: HTTPS for every
+# hostname, and the CMS hostname proxied to the backend (nginx/templates/).
+# Build context is this folder (docker-compose.yml); see .dockerignore.
 
 # --- 1. Build the frontend -------------------------------------------------------
-FROM node:22-alpine AS frontend
+FROM node:22-alpine AS build
 WORKDIR /src
 
 # Husky's git hooks are for developers' machines; there's no .git here.
 ENV HUSKY=0
-COPY frontend/package.json frontend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY frontend/ ./
+COPY . ./
 
 # Baked into the JavaScript at build time, so changing a hostname means rebuilding
 # this image. An empty value would break the app, hence the check.
@@ -36,7 +37,7 @@ ENV NGINX_ENVSUBST_FILTER="^(MARKETING_HOST|GELEARN_HOST|CMS_HOST|SEO_MODE|CERT_
     CERT_NAME=genex
 
 RUN rm /etc/nginx/conf.d/default.conf && rm -rf /usr/share/nginx/html/*
-COPY docker/nginx/conf.d/ /etc/nginx/conf.d/
-COPY docker/nginx/snippets/ /etc/nginx/snippets/
-COPY docker/nginx/templates/ /etc/nginx/templates/
-COPY --from=frontend /src/dist /usr/share/nginx/html
+COPY nginx/conf.d/ /etc/nginx/conf.d/
+COPY nginx/snippets/ /etc/nginx/snippets/
+COPY nginx/templates/ /etc/nginx/templates/
+COPY --from=build /src/dist /usr/share/nginx/html

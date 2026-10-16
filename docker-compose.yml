@@ -1,5 +1,5 @@
-# The whole Genex server: PostgreSQL, the Django/Wagtail backend, and Nginx (which
-# also carries the built frontend). Server only: local development stays
+# The whole Genex server: PostgreSQL, the Django/Wagtail backend (backend/Dockerfile)
+# and the frontend served by Nginx (frontend/Dockerfile). Server only: local development stays
 # `npm run dev` + `manage.py runserver` (see frontend/src/lib/host.ts for ?shell=).
 #
 # Configuration lives in two files next to this one, both outside git:
@@ -48,7 +48,7 @@ services:
       GELEARN_FRONTEND_URL: https://${GELEARN_HOST}
       MARKETING_FRONTEND_URL: https://${MARKETING_HOST}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.genextechnocrats.com}
-      # One proxy in front of Django: the nginx service.
+      # One proxy in front of Django: the frontend service's Nginx.
       NUM_PROXIES: "1"
       # The client ID is public (it's in the frontend too), so it lives in .env with
       # the build settings; the secret stays in backend/.env.production.
@@ -66,16 +66,17 @@ services:
       start_period: 30s
       retries: 6
 
-  nginx:
+  # The built React app on Nginx, which also takes ports 80/443 for every hostname
+  # and proxies the CMS hostname to the backend.
+  frontend:
     build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
+      context: ./frontend
       args:
         VITE_API_BASE_URL: https://${CMS_HOST}
         VITE_GELEARN_URL: https://${GELEARN_HOST}
         VITE_MARKETING_URL: https://${MARKETING_HOST}
         VITE_GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
-    image: genex-nginx
+    image: genex-frontend
     restart: ${RESTART_POLICY:-no}
     environment:
       MARKETING_HOST: ${MARKETING_HOST}
