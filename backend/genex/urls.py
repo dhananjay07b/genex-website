@@ -27,8 +27,9 @@ api_router.register_endpoint("images", ImagesAPIViewSet)
 
 urlpatterns = [
     path("robots.txt", robots_txt),
-    path("admin/", admin.site.urls),
-    path("cms/", include(wagtailadmin_urls)),
+    # /admin/ and /cms/ locally, /dj-admin/ and /admin/ in production (settings).
+    path(settings.DJANGO_ADMIN_PATH, admin.site.urls),
+    path(settings.WAGTAIL_ADMIN_PATH, include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
     path("api/v2/", api_router.urls),
     path("api/snippets/", include("pages.api")),

@@ -10,7 +10,6 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import { useAuth } from '@/context/useAuth'
 import { useRole } from '@/hooks/useRole'
-import { API_BASE } from '@/lib/api/client'
 import { isPrivatePath, returnState } from '@/lib/authRedirect'
 import { getMediaUrl } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/Button'
@@ -79,9 +78,9 @@ export function AccountMenu() {
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className="absolute top-12 right-0 w-56 bg-white border border-border rounded-2xl shadow-lg p-2 z-20 origin-top-right"
           >
-            {isAdmin && (
+            {isAdmin && user.cms_url && (
               <a
-                href={`${API_BASE}/cms/`}
+                href={user.cms_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMenuOpen(false)}

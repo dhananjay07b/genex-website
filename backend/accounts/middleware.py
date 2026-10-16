@@ -4,7 +4,8 @@ from django.http import Http404
 
 class BackofficeGuardMiddleware:
     """
-    /admin and /cms belong to the superuser alone. A signed-in user who isn't
+    The Wagtail and Django admins (settings.WAGTAIL_ADMIN_PATH / DJANGO_ADMIN_PATH)
+    belong to the superuser alone. A signed-in user who isn't
     one gets a 404 (not 403) so the back-office doesn't advertise itself.
     Anonymous requests pass through so the superuser can still reach the
     login pages — and those login forms reject everyone else (see
@@ -13,7 +14,7 @@ class BackofficeGuardMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self.prefixes = tuple(getattr(settings, "BACKOFFICE_PATH_PREFIXES", ("/admin/", "/cms/")))
+        self.prefixes = ("/" + settings.WAGTAIL_ADMIN_PATH, "/" + settings.DJANGO_ADMIN_PATH)
 
     def __call__(self, request):
         if request.path.startswith(self.prefixes):

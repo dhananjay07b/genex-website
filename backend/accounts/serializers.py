@@ -35,6 +35,8 @@ class UserSerializer(serializers.ModelSerializer):
     expertise = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
     career_goal = serializers.PrimaryKeyRelatedField(queryset=CareerRole.objects.all(), required=False, allow_null=True)
     is_admin = serializers.SerializerMethodField()
+    # The Wagtail admin's address for the "Admin & CMS" link (Admins only; null otherwise).
+    cms_url = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
     # Effective status, as shown on the site (Company staff are always verified).
     company_verified = serializers.SerializerMethodField()
@@ -49,7 +51,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
-            "account_type", "is_admin", "company", "company_id", "company_other", "company_verified",
+            "account_type", "is_admin", "cms_url", "company", "company_id", "company_other", "company_verified",
             "verification_step", "role_title", "years_experience", "linkedin_url", "expertise", "career_goal", "show_certificates",
         ]
         # account_type is fixed at registration — only Admin can change it (Django admin).
@@ -57,6 +59,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_is_admin(self, obj):
         return is_admin(obj)
+
+    def get_cms_url(self, obj):
+        if not is_admin(obj):
+            return None
+        return f"{settings.WAGTAILADMIN_BASE_URL.rstrip('/')}/{settings.WAGTAIL_ADMIN_PATH}"
 
     def get_company(self, obj):
         return display_company(obj)

@@ -43,6 +43,8 @@ export interface User {
   cover_photo_url: string | null
   account_type: AccountType
   is_admin: boolean
+  /** The Wagtail admin's address (Admins only): /cms/ locally, /admin/ in production. */
+  cms_url: string | null
   company: CompanyDisplay | null
   company_other: string
   company_verified: boolean

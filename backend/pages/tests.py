@@ -185,7 +185,8 @@ class TopicHousekeepingTests(TestCase):
         from .models import Topic
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         self.client.force_login(admin)
-        url = f"/cms/bulk/pages/topic/merge_topics/?next=/cms/&id={self.a.pk}&id={self.b.pk}"
+        cms = "/" + settings.WAGTAIL_ADMIN_PATH
+        url = f"{cms}bulk/pages/topic/merge_topics/?next={cms}&id={self.a.pk}&id={self.b.pk}"
         page = self.client.get(url)
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "used by 2 items")
@@ -197,7 +198,7 @@ class TopicHousekeepingTests(TestCase):
     def test_topics_list_shows_usage_column(self):
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         self.client.force_login(admin)
-        page = self.client.get("/cms/snippets/pages/topic/")
+        page = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}snippets/pages/topic/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Used by")
 
@@ -270,11 +271,11 @@ class LinkPickerTests(TestCase):
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         Company.objects.create(name="Dormant Co", slug="dormant", is_active=False)
         self.client.force_login(admin)
-        page = self.client.get("/cms/choose/company/")
+        page = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}choose/company/")
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Genex Technocrats")
         self.assertNotContains(page, "Dormant Co")
-        found = self.client.get("/cms/choose/course/results/?q=scada")
+        found = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}choose/course/results/?q=scada")
         self.assertContains(found, "SCADA Fundamentals")
 
     def test_cms_editor_loads_link_picker_script(self):
@@ -286,7 +287,7 @@ class LinkPickerTests(TestCase):
             title="GeLearn", slug="gelearn-links-test",
             home_sections=[("promo_pair", {"promos": [{"heading": "H", "link_url": {"link_type": "page", "page": "courses"}}]})],
         ))
-        res = self.client.get(f"/cms/pages/{page.pk}/edit/")
+        res = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}pages/{page.pk}/edit/")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "pages/js/link_block.js")
 
@@ -610,13 +611,13 @@ class CmsHostSearchTests(TestCase):
         res = self.client.get("/robots.txt")
         self.assertEqual(res["Content-Type"], "text/plain")
         body = res.content.decode()
-        self.assertIn("Disallow: /cms/", body)
-        self.assertIn("Disallow: /admin/", body)
+        self.assertIn(f"Disallow: /{settings.WAGTAIL_ADMIN_PATH}\n", body)
+        self.assertIn(f"Disallow: /{settings.DJANGO_ADMIN_PATH}\n", body)
         # The frontends' pages are rendered from these; blocking them would blank pages for Google.
         self.assertNotIn("/api", body)
         self.assertNotIn("/media", body)
 
     def test_responses_are_noindex_except_documents(self):
         self.assertEqual(self.client.get("/api/snippets/nav/")["X-Robots-Tag"], "noindex")
-        self.assertEqual(self.client.get("/admin/login/")["X-Robots-Tag"], "noindex")
+        self.assertEqual(self.client.get(f"/{settings.DJANGO_ADMIN_PATH}login/")["X-Robots-Tag"], "noindex")
         self.assertNotIn("X-Robots-Tag", self.client.get("/documents/999/missing.pdf"))

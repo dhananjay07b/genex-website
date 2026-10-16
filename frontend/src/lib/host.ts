@@ -71,8 +71,14 @@ function readDevShellOverride(): 'gelearn' | 'marketing' | null {
   return stored === 'gelearn' || stored === 'marketing' ? stored : null
 }
 
+/**
+ * Outside the dev override, GeLearn is whichever hostname VITE_GELEARN_URL was
+ * built with (e.g. test-gelearn.genextechnocrats.com on the test server), so a
+ * new hostname needs a rebuild, not a code change. Any `gelearn.` host also counts.
+ */
 export function isGeLearnHost(): boolean {
   const devOverride = readDevShellOverride()
   if (devOverride) return devOverride === 'gelearn'
-  return window.location.hostname.startsWith('gelearn.')
+  const hostname = window.location.hostname
+  return hostname === new URL(PROD_GELEARN_BASE).hostname || hostname.startsWith('gelearn.')
 }

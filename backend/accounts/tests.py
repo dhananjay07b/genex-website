@@ -1,5 +1,11 @@
+import importlib
+import sys
+from contextlib import contextmanager
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import Client, TestCase, override_settings
+from django.urls import clear_url_caches
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -7,6 +13,12 @@ from organizations.models import Company, CompanyDomain
 
 from .models import User
 from .roles import display_company, is_admin, is_company, is_contributor, is_learner, is_professional
+
+
+# The back-office paths follow settings: /cms/ and /admin/ locally (base.py),
+# /admin/ and /dj-admin/ in production (production.py).
+WAGTAIL_ADMIN = "/" + settings.WAGTAIL_ADMIN_PATH
+DJANGO_ADMIN = "/" + settings.DJANGO_ADMIN_PATH
 
 
 def make_user(username, **kwargs):
@@ -88,20 +100,20 @@ class UserModelRuleTests(TestCase):
 
 
 class BackofficeAccessTests(TestCase):
-    """/admin and /cms are superuser-only."""
+    """The Wagtail and Django admins are superuser-only."""
 
     def setUp(self):
         self.google = Company.objects.create(name="Google", slug="google")
 
     def _assert_blocked(self, user):
         self.client.force_login(user)
-        self.assertEqual(self.client.get("/cms/").status_code, 404)
-        self.assertEqual(self.client.get("/admin/").status_code, 404)
+        self.assertEqual(self.client.get(WAGTAIL_ADMIN).status_code, 404)
+        self.assertEqual(self.client.get(DJANGO_ADMIN).status_code, 404)
 
     def test_superuser_allowed(self):
         self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
-        self.assertEqual(self.client.get("/admin/").status_code, 200)
-        self.assertEqual(self.client.get("/cms/").status_code, 200)
+        self.assertEqual(self.client.get(DJANGO_ADMIN).status_code, 200)
+        self.assertEqual(self.client.get(WAGTAIL_ADMIN).status_code, 200)
 
     def test_staff_non_superuser_blocked(self):
         self._assert_blocked(make_user("staffer", is_staff=True))
@@ -115,13 +127,58 @@ class BackofficeAccessTests(TestCase):
 
     def test_staff_non_superuser_cannot_log_in_to_admin(self):
         make_user("staffer", is_staff=True)
-        res = self.client.post("/admin/login/", {"username": "staffer", "password": "Passw0rd!x"})
+        res = self.client.post(DJANGO_ADMIN + "login/", {"username": "staffer", "password": "Passw0rd!x"})
         self.assertEqual(res.status_code, 200)  # form re-rendered with an error, no redirect
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_anonymous_sees_login_pages(self):
-        self.assertEqual(self.client.get("/admin/login/").status_code, 200)
-        self.assertEqual(self.client.get("/cms/login/").status_code, 200)
+        self.assertEqual(self.client.get(DJANGO_ADMIN + "login/").status_code, 200)
+        self.assertEqual(self.client.get(WAGTAIL_ADMIN + "login/").status_code, 200)
+
+    def test_cms_url_only_for_admins(self):
+        api = APIClient()
+        api.force_authenticate(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+        self.assertEqual(api.get("/api/accounts/me/").json()["cms_url"], settings.WAGTAILADMIN_BASE_URL + WAGTAIL_ADMIN)
+        api.force_authenticate(make_user("learner"))
+        self.assertIsNone(api.get("/api/accounts/me/").json()["cms_url"])
+
+
+def _reload_urlconf():
+    clear_url_caches()
+    importlib.reload(sys.modules[settings.ROOT_URLCONF])
+
+
+@contextmanager
+def production_admin_paths():
+    """Production's layout (Wagtail at /admin/, Django admin at /dj-admin/), with the
+    URLconf rebuilt for it and restored afterwards."""
+    try:
+        with override_settings(WAGTAIL_ADMIN_PATH="admin/", DJANGO_ADMIN_PATH="dj-admin/"):
+            _reload_urlconf()
+            yield
+    finally:
+        _reload_urlconf()
+
+
+class ProductionAdminPathTests(TestCase):
+    def test_admins_move_and_stay_superuser_only(self):
+        with production_admin_paths():
+            client = Client()
+            client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+            self.assertContains(client.get("/admin/"), "wagtail")
+            self.assertContains(client.get("/dj-admin/"), "Django")
+            self.assertEqual(client.get("/cms/").status_code, 404)
+
+            client.force_login(make_user("learner"))
+            self.assertEqual(client.get("/admin/").status_code, 404)
+            self.assertEqual(client.get("/dj-admin/").status_code, 404)
+
+    def test_robots_txt_follows(self):
+        with production_admin_paths():
+            body = Client().get("/robots.txt").content.decode()
+        self.assertIn("Disallow: /admin/", body)
+        self.assertIn("Disallow: /dj-admin/", body)
+        self.assertNotIn("/cms/", body)
 
 
 class AccountTypeApiTests(TestCase):

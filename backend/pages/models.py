@@ -1112,11 +1112,11 @@ class JobApplication(models.Model):
 
 class UserBlogPost(AccessControlled):
     # Deliberately NOT @register_snippet — that gave it a second, unprotected
-    # edit form in the Wagtail admin (/cms/snippets/...) where a staffer
+    # edit form in the Wagtail admin (its snippets section) where a staffer
     # could edit topics/title/body/etc. directly, silently diverging an
     # already-published submission from its live BlogPost without ever
     # going through approve_and_publish's sync (or Django admin's
-    # readonly_fields, which only apply to /admin/, not this one).
+    # readonly_fields, which only apply to the Django admin, not this one).
     # Reviewers use the Django admin below; authors use the DRF API.
     STATUS_CHOICES = [
         ("draft", "Draft"),

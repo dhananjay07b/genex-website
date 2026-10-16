@@ -59,18 +59,24 @@ if not EMAIL_HOST:
     raise ImproperlyConfigured("Set EMAIL_HOST (and EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) to your email provider's SMTP details.")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-# Lock CORS to the marketing site and the GeLearn subdomain (the only origin that
-# calls the auth/comments/blog-submission endpoints). The .vercel.app entry is
-# the temporary pre-launch deployment — drop it once the real domains are live
-# on the in-house server, by overriding CORS_ALLOWED_ORIGINS via env var.
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS",
-    "https://genextechnocrats.vercel.app,https://genextechnocrats.com,https://gelearn.genextechnocrats.com",
-).split(",")
+# Lock CORS to the two frontend sites. No default: the hostnames differ between
+# the test sites (test., test-gelearn.) and the live ones, and a wrong guess only
+# shows up later as confusing CORS errors in the browser.
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+if not CORS_ALLOWED_ORIGINS:
+    raise ImproperlyConfigured(
+        "Set CORS_ALLOWED_ORIGINS to the marketing and GeLearn site addresses, comma-separated "
+        "(e.g. https://test.genextechnocrats.com,https://test-gelearn.genextechnocrats.com)."
+    )
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 
 WAGTAILADMIN_BASE_URL = os.environ.get("WAGTAILADMIN_BASE_URL", "https://cms.genextechnocrats.com")
 
+# Back-office paths on cms.genextechnocrats.com (local dev keeps /cms/ and /admin/, see base.py).
+WAGTAIL_ADMIN_PATH = os.environ.get("WAGTAIL_ADMIN_PATH", "admin/")
+DJANGO_ADMIN_PATH = os.environ.get("DJANGO_ADMIN_PATH", "dj-admin/")
+
+# Where emailed links point. MARKETING_FRONTEND_URL comes from env in base.py.
 GELEARN_FRONTEND_URL = os.environ.get("GELEARN_FRONTEND_URL", "https://gelearn.genextechnocrats.com")

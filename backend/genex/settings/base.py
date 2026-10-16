@@ -151,6 +151,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 WAGTAIL_SITE_NAME = "Genex Technocrats"
 WAGTAILADMIN_BASE_URL = "http://localhost:8000"
 
+# Where the two back-offices live (no leading slash, trailing slash). Local dev keeps
+# Wagtail at /cms/ and Django admin at /admin/; production.py moves them. urls.py,
+# the superuser guard (accounts.middleware), robots.txt and the "Admin & CMS" link
+# all follow these, so changing them is the whole job.
+WAGTAIL_ADMIN_PATH = os.environ.get("WAGTAIL_ADMIN_PATH", "cms/")
+DJANGO_ADMIN_PATH = os.environ.get("DJANGO_ADMIN_PATH", "admin/")
+
 WAGTAILIMAGES_IMAGE_MODEL = "wagtailimages.Image"
 # SVG allowed so company logos (e.g. Genex's own mark) can be uploaded as vectors.
 WAGTAILIMAGES_EXTENSIONS = ["avif", "gif", "jpg", "jpeg", "png", "webp", "svg"]

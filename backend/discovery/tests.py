@@ -1,6 +1,7 @@
 import datetime
 from decimal import Decimal
 
+from django.conf import settings
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -286,7 +287,7 @@ class HomeLayoutTests(DiscoveryTestBase):
     def test_cms_editor_opens(self):
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         self.client.force_login(admin)
-        res = self.client.get(f"/cms/pages/{self.page.pk}/edit/")
+        res = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}pages/{self.page.pk}/edit/")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "Home page for visitors")
 
