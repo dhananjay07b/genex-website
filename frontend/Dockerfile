@@ -26,18 +26,18 @@ RUN test -n "$VITE_API_BASE_URL" && test -n "$VITE_GELEARN_URL" && test -n "$VIT
     || { echo "VITE_API_BASE_URL, VITE_GELEARN_URL and VITE_MARKETING_URL are required" >&2; exit 1; }
 RUN npm run build
 
-# --- 2. Serve it -------------------------------------------------------------------
-FROM nginx:1.27-alpine
+# # --- 2. Serve it -------------------------------------------------------------------
+# FROM nginx:1.27-alpine
 
-# The official image fills in ${...} in /etc/nginx/templates/*.template at startup,
-# writing the result to /etc/nginx/conf.d/. Only these variables are filled in, so
-# Nginx's own $host, $uri… are left alone.
-ENV NGINX_ENVSUBST_FILTER="^(MARKETING_HOST|GELEARN_HOST|CMS_HOST|SEO_MODE|CERT_NAME)$" \
-    SEO_MODE=hidden \
-    CERT_NAME=genex
+# # The official image fills in ${...} in /etc/nginx/templates/*.template at startup,
+# # writing the result to /etc/nginx/conf.d/. Only these variables are filled in, so
+# # Nginx's own $host, $uri… are left alone.
+# ENV NGINX_ENVSUBST_FILTER="^(MARKETING_HOST|GELEARN_HOST|CMS_HOST|SEO_MODE|CERT_NAME)$" \
+#     SEO_MODE=hidden \
+#     CERT_NAME=genex
 
-RUN rm /etc/nginx/conf.d/default.conf && rm -rf /usr/share/nginx/html/*
-COPY nginx/conf.d/ /etc/nginx/conf.d/
-COPY nginx/snippets/ /etc/nginx/snippets/
-COPY nginx/templates/ /etc/nginx/templates/
-COPY --from=build /src/dist /usr/share/nginx/html
+# RUN rm /etc/nginx/conf.d/default.conf && rm -rf /usr/share/nginx/html/*
+# COPY nginx/conf.d/ /etc/nginx/conf.d/
+# COPY nginx/snippets/ /etc/nginx/snippets/
+# COPY nginx/templates/ /etc/nginx/templates/
+# COPY --from=build /src/dist /usr/share/nginx/html
