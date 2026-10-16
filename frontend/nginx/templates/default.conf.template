@@ -1,0 +1,69 @@
+# Redirect HTTP to HTTPS.
+server {
+    listen 80;
+    server_name ${MARKETING_HOST} ${GELEARN_HOST} ${CMS_HOST};
+
+    return 301 https://$host$request_uri;
+}
+
+# Marketing website.
+server {
+    listen 443 ssl;
+    server_name ${MARKETING_HOST};
+
+    ssl_certificate /etc/letsencrypt/live/${CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CERT_NAME}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# GeLearn website.
+server {
+    listen 443 ssl;
+    server_name ${GELEARN_HOST};
+
+    ssl_certificate /etc/letsencrypt/live/${CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CERT_NAME}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Django, Wagtail CMS, and API.
+server {
+    listen 443 ssl;
+    server_name ${CMS_HOST};
+
+    ssl_certificate /etc/letsencrypt/live/${CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CERT_NAME}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 20m;
+
+    location /static/ {
+        alias /srv/static/;
+    }
+
+    location /media/ {
+        alias /srv/media/;
+    }
+
+    location / {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
