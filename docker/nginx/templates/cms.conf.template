@@ -1,0 +1,61 @@
+# Backend: ${CMS_HOST} (the API, the Wagtail CMS and the Django admin).
+# Proxies to the backend container's gunicorn. Static and media files are served
+# straight from the shared volumes, without going through Django.
+
+server {
+    listen 80;
+    server_name ${CMS_HOST};
+    return 301 https://${CMS_HOST}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${CMS_HOST};
+
+    ssl_certificate     /etc/letsencrypt/live/${CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CERT_NAME}/privkey.pem;
+    include snippets/genex-common.conf;
+
+    # Uploads: documents are capped at 25 MB by the app; a little headroom here.
+    client_max_body_size 30m;
+
+    # `collectstatic` output (the static volume): the CMS and admin's own CSS/JS.
+    # Their names don't change between versions, so a day's cache.
+    location /static/ {
+        alias /srv/static/;
+        expires 1d;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Uploaded images, resized copies and documents (the media volume). A changed
+    # upload gets a new file name, so these can be cached for a month. nosniff: a
+    # browser must never treat an uploaded file as anything but its declared type.
+    location /media/ {
+        alias /srv/media/;
+        expires 30d;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Everything else is Django. It sets its own security headers (HSTS, nosniff,
+    # frame and referrer rules) on these responses, so none are added here.
+    location / {
+        # Looked up through Docker's DNS on each request (not once at startup), so
+        # Nginx starts even if the backend isn't up yet and follows it across restarts.
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $backend http://backend:8000;
+        proxy_pass $backend;
+
+        proxy_set_header Host $host;
+        # Django reads the visitor's IP from the last entry (NUM_PROXIES=1) and HTTPS
+        # from X-Forwarded-Proto (SECURE_PROXY_SSL_HEADER in production.py).
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_redirect off;
+        # Certificate PDFs and images are drawn on request; allow time for a slow one.
+        proxy_read_timeout 60s;
+    }
+}

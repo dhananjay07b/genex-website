@@ -1,0 +1,13 @@
+# Kept out of the backend image: secrets, local data and backups, build leftovers.
+.env
+.env.*
+venv/
+**/__pycache__/
+**/*.pyc
+db.sqlite3
+db.sqlite3.*
+*.dump
+media/
+staticfiles/
+Dockerfile
+.dockerignore

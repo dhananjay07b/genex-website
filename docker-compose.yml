@@ -1,0 +1,100 @@
+# The whole Genex server: PostgreSQL, the Django/Wagtail backend, and Nginx (which
+# also carries the built frontend). Server only: local development stays
+# `npm run dev` + `manage.py runserver` (see frontend/src/lib/host.ts for ?shell=).
+#
+# Configuration lives in two files next to this one, both outside git:
+#   .env                      hostnames, database password, build settings
+#                             (template: deploy/compose.env.example)
+#   backend/.env.production   the backend's secrets: Django key, email, Google secret
+#                             (template: deploy/backend.env.example)
+# Everything that follows from the hostnames (allowed hosts, CORS, email links, the
+# frontend's API address) is derived below, so changing hosts means editing .env only.
+# Steps: deploy/README.md.
+
+name: genex
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-genex}
+      POSTGRES_USER: ${POSTGRES_USER:-genex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No published port: only the backend, on the compose network, can reach it.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    image: genex-backend
+    restart: ${RESTART_POLICY:-no}
+    env_file: ${BACKEND_ENV_FILE:-backend/.env.production}
+    environment:
+      DJANGO_SETTINGS_MODULE: genex.settings.production
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-genex}
+      POSTGRES_USER: ${POSTGRES_USER:-genex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      ALLOWED_HOSTS: ${CMS_HOST:?Set CMS_HOST in .env}
+      CORS_ALLOWED_ORIGINS: https://${MARKETING_HOST:?Set MARKETING_HOST in .env},https://${GELEARN_HOST:?Set GELEARN_HOST in .env}
+      WAGTAILADMIN_BASE_URL: https://${CMS_HOST}
+      GELEARN_FRONTEND_URL: https://${GELEARN_HOST}
+      MARKETING_FRONTEND_URL: https://${MARKETING_HOST}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.genextechnocrats.com}
+      # One proxy in front of Django: the nginx service.
+      NUM_PROXIES: "1"
+      # The client ID is public (it's in the frontend too), so it lives in .env with
+      # the build settings; the secret stays in backend/.env.production.
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 2)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+      args:
+        VITE_API_BASE_URL: https://${CMS_HOST}
+        VITE_GELEARN_URL: https://${GELEARN_HOST}
+        VITE_MARKETING_URL: https://${MARKETING_HOST}
+        VITE_GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+    image: genex-nginx
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      MARKETING_HOST: ${MARKETING_HOST}
+      GELEARN_HOST: ${GELEARN_HOST}
+      CMS_HOST: ${CMS_HOST}
+      SEO_MODE: ${SEO_MODE:-hidden}
+      CERT_NAME: ${CERT_NAME:-genex}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - media:/srv/media:ro
+      - static:/srv/static:ro
+      - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  media:
+  static:

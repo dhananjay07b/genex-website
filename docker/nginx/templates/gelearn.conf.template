@@ -1,0 +1,30 @@
+# GeLearn: ${GELEARN_HOST}.
+# The SAME built frontend as the marketing site; the app shows the GeLearn shell
+# because this is the hostname VITE_GELEARN_URL was built with (frontend/src/lib/host.ts).
+# This site only differs in its SEO files and a few renamed-section redirects.
+
+server {
+    listen 80;
+    server_name ${GELEARN_HOST};
+    return 301 https://${GELEARN_HOST}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${GELEARN_HOST};
+
+    ssl_certificate     /etc/letsencrypt/live/${CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CERT_NAME}/privkey.pem;
+    include snippets/genex-common.conf;
+    include conf.d/snippets/genex-frontend-headers.snippet;
+    include snippets/seo-gelearn-${SEO_MODE}.conf;
+
+    # Renamed sections (2026-09-29): permanent redirects keep old links and search
+    # rankings. The app's router redirects these too, as a fallback.
+    location ~ ^/technology(/.*)?$   { return 301 /geacademy$1$is_args$args; }
+    location ~ ^/case-studies(/.*)?$ { return 301 /research$1$is_args$args; }
+    location ~ ^/tenders/?$          { return 301 /policies-tenders$is_args$args; }
+
+    include snippets/genex-frontend-files.conf;
+}
