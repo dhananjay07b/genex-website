@@ -17,7 +17,7 @@ export function ConsentBanner() {
       className="fixed inset-x-4 bottom-4 z-60 rounded-xl border border-border bg-white p-5 shadow-lg sm:inset-x-auto sm:left-6 sm:max-w-md"
     >
       <h2 id="consent-heading" className="text-sm font-bold text-text-primary">
-        Analytics cookies
+        Analytics cookies Test
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-text-muted">
         We&rsquo;d like to use Google Analytics cookies to see how visitors use this site, so we can improve it.
