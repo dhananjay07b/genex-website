@@ -243,17 +243,17 @@ This is the same stack and the same database, with new hostnames. No code change
 
 ## Security policy (Content-Security-Policy)
 
-The template [`frontend/nginx/templates/snippets/genex-frontend-headers.snippet.template`](../frontend/nginx/templates/snippets/genex-frontend-headers.snippet.template)
-lists where the frontend may load scripts, fonts, images, video and API data from.
+The Nginx config is maintained by DevOps in
+[`frontend/nginx/templates/default.conf.template`](../frontend/nginx/templates/default.conf.template).
+It doesn't send security headers or a Content-Security-Policy yet. The policy written
+for the site (checked in Chrome against the marketing home page, GeLearn home and a
+course page, with no reports) is in git history:
+`git show 49d9728:frontend/nginx/templates/snippets/genex-frontend-headers.snippet.template`.
 
-It ships as `Content-Security-Policy-Report-Only`: browsers report what it would block
-in the DevTools console but block nothing. Before launch it was checked in Chrome
-against the marketing home page, GeLearn home and a course page, with no reports.
-
-**When to enforce it:** after a few weeks with no unexpected reports. To check, open the
-site with DevTools' console showing; reports start with "[Report Only]". Then rename the
-header to `Content-Security-Policy` in that file and run
-`docker compose build frontend && docker compose up -d`.
+It's written as `Content-Security-Policy-Report-Only`: browsers report what it would
+block in the DevTools console but block nothing. **When to enforce it:** after a few
+weeks with no unexpected reports (they start with "[Report Only]"), rename the header to
+`Content-Security-Policy`, then `docker compose build frontend && docker compose up -d`.
 
 **Adding an outside service later** (another video host, a chat widget): add its address
-to the matching line there first.
+to the matching line of the policy first.

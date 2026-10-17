@@ -1,17 +1,67 @@
-Django>=5.2,<5.3
-wagtail>=7.3,<8.0
-django-cors-headers>=4.0
-Pillow>=10.0
+# Exact versions: the server's Docker image and every laptop install the same
+# ones (pinned 2026-10-17 to what the server ran). To upgrade, change a version
+# here, run `pip install -r requirements.txt` + `manage.py migrate` + the tests
+# locally, then commit; the server picks it up on its next build.
+Django==5.2.18
+wagtail==7.4.3
+django-cors-headers==4.9.0
+Pillow==12.3.0
 # PostgreSQL driver (binary wheels include libpq, so no system package is needed)
-psycopg[binary]>=3.2,<4
-django-allauth>=65
-dj-rest-auth>=6
-djangorestframework-simplejwt>=5.3
+psycopg[binary]==3.3.6
+django-allauth==65.20.0
+dj-rest-auth==7.2.0
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
 # Verifies Google sign-in tokens (RS256 signatures); PyJWT can't check them without it
-cryptography>=44
-gunicorn>=23.0
-python-dotenv>=1.0
+cryptography==50.0.2
+gunicorn==26.2.0
+python-dotenv==1.2.4
 # Certificates: PDF (needs Pango on the server), PNG preview from the PDF, QR codes
-weasyprint>=62
-pymupdf>=1.24
-segno>=1.6
+weasyprint==70.0
+pymupdf==1.28.2
+segno==1.6.6
+
+# --- What the packages above depend on, pinned too, so a rebuild can't pull in
+# different versions underneath them. Update together with the packages above:
+# `pip install -r requirements.txt` then `pip freeze` shows the new versions.
+anyascii==0.3.3
+asgiref==3.12.1
+beautifulsoup4==4.15.0
+brotli==1.2.0
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.2
+cssselect2==0.10.1
+defusedxml==0.7.1
+django-filter==26.2
+django-modelcluster==6.5
+django-permissionedforms==0.1
+django-stubs-ext==6.1.2
+django-taggit==6.1.0
+django-tasks==0.12.0
+django-treebeard==5.3.1
+draftjs_exporter==5.2.0
+et_xmlfile==2.0.0
+filetype==1.2.0
+fonttools==4.67.0
+idna==3.20
+laces==0.1.2
+modelsearch==1.3.2
+openpyxl==3.1.5
+pillow_heif==1.8.1
+psycopg-binary==3.3.6
+pycparser==3.11
+pydyf==0.13.0
+PyJWT==2.15.1
+pyphen==0.18.1
+requests==2.34.2
+soupsieve==3.0.3
+sqlparse==0.6.0
+telepath==0.3.1
+tinycss2==1.5.1
+tinyhtml5==2.1.0
+typing_extensions==4.16.0
+urllib3==2.8.0
+webencodings==0.6.1
+Willow==1.12.0
+zopfli==0.4.3
