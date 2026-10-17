@@ -216,7 +216,7 @@ export function WhatWeBuild({ tabs: apiTabs }: { tabs?: WhatWeBuildTabApiValue[]
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          What We Build Test
+          What We Build
         </motion.h2>
 
         {/* Tab bar — horizontally scrollable on mobile */}
