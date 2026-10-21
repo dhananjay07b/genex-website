@@ -15,7 +15,7 @@ export function InnovationsSection({ value, isPageHeading = false }: { value: In
         <section className="bg-white pt-16 lg:pt-20">
           <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
             {value.heading && (
-              <Heading className="text-3xl lg:text-4xl font-bold text-[#162456] leading-tight mb-4 capitalize">{value.heading}</Heading>
+              <Heading className="text-3xl lg:text-4xl font-bold text-[#162456] leading-tight mb-4 last:mb-0 capitalize">{value.heading}</Heading>
             )}
             {value.description && (
               <p className="text-lg text-[#45556c] leading-relaxed">{value.description}</p>

@@ -24,7 +24,7 @@ export function StatsGridSection({ heading, stats }: StatsGridSectionProps) {
               className="flex flex-col items-center text-center gap-2 rounded-2xl bg-surface px-6 py-10"
             >
               <span className="gradient-brand-text text-5xl lg:text-6xl font-extrabold leading-none tracking-tight">
-                {value}{suffix ?? ''}
+                {value}{suffix && /^[a-z]/i.test(suffix) ? ' ' : ''}{suffix ?? ''}
               </span>
               <span className="text-sm font-semibold text-[#6b7280]">{label}</span>
             </motion.div>
