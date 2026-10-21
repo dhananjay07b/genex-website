@@ -1,7 +1,7 @@
 """
 Portfolio product pages for the seed_portfolio_content command.
 
-PRODUCTS lists every Portfolio page so pages can be found on any server
+PAGES lists every Portfolio page so pages can be found on any server
 (by slug first, then by title) and linked to each other. Pages with content
 here are in CONTENT; the rest were written by hand in the CMS and are never
 touched by the command.
@@ -12,7 +12,7 @@ from . import (
 )
 
 # key: (possible slugs, possible titles). The first slug is used when a page is created.
-PRODUCTS = {
+PAGES = {
     "solarlive":       (["solarlive"], ["SolarLive™", "SolarLive"]),
     "ems-bess":        (["energy-storage", "ems-bess", "ems-bess-storage"], ["EMS - BESS Storage"]),
     "wind-network":    (["wind-network", "wind-network-system"], ["Wind Network System"]),
