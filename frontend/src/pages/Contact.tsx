@@ -18,6 +18,7 @@ import { SmartLink } from '@/components/ui/SmartLink'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 
 const schema = z.object({
   name:        z.string().min(2, 'Name is required'),
@@ -122,7 +123,7 @@ export default function Contact() {
     }
   }
 
-  if (page === undefined) return null
+  if (page === undefined) return <PageSkeleton />
 
   return (
     <main>

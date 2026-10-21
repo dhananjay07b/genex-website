@@ -6,6 +6,7 @@ import { blockRegistry, pageHeadingBlockId } from '@/lib/streamfield/blockRegist
 import { PageHero } from '@/components/ui/PageHero'
 import { resolveContentPage } from '@/lib/streamfield/resolveContentPage'
 import type { ContentPageData } from '@/types/api'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 
 interface DynamicContentPageProps {
   /** The SectionPage's own slug — e.g. "portfolio", "innovations", "about". */
@@ -35,7 +36,7 @@ export default function DynamicContentPage({ sectionSlug, fallbackPath }: Dynami
 
   const page = loaded?.path === location.pathname ? loaded.page : undefined
   if (innerSegments.length === 0 || page === null) return <Navigate to={fallbackPath} replace />
-  if (page === undefined) return null
+  if (page === undefined) return <PageSkeleton />
 
   const body = page.hide_footer_cta ? page.body.filter(b => b.type !== 'cta') : page.body
   const headingBlock = pageHeadingBlockId(body)

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
 import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 
 interface WhyGenexCardApiValue {
   icon: string
@@ -40,7 +41,7 @@ export default function Careers() {
       .catch(() => setPage(null))
   }, [])
 
-  if (page === undefined) return null
+  if (page === undefined) return <PageSkeleton />
 
   const body = page?.body ?? []
   const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
