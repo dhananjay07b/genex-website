@@ -51,7 +51,6 @@ from .blocks import (
     LeadershipCardBlock,
     MapEmbedBlock,
     MilestoneBlock,
-    OpenRoleBlock,
     OverviewSectionBlock,
     PortfolioSectionBlock,
     PressItemBlock,
@@ -397,7 +396,6 @@ class CareersPage(BasePage):
     body = StreamField([
         ("hero", HeroSectionBlock()),
         ("why_genex", blocks.ListBlock(WhyGenexCardBlock(), label="Why Genex Cards")),
-        ("open_roles", blocks.ListBlock(OpenRoleBlock(), label="Open Roles")),
         ("perks", blocks.ListBlock(blocks.CharBlock(), label="Perks")),
         ("cta", CTABandBlock()),
     ], blank=True, use_json_field=True)
@@ -413,16 +411,25 @@ class CareersPage(BasePage):
 
 
 class JobPage(BasePage):
-    department  = models.CharField(max_length=100, blank=True)
-    location    = models.CharField(max_length=100, blank=True)
+    """One opening, added with "+" under the Careers page. Open, published jobs are
+    listed on /careers; each has its own page at /careers/<slug>."""
+    department  = models.CharField(max_length=100, blank=True, help_text="e.g. Engineering")
+    location    = models.CharField(max_length=100, blank=True, help_text="e.g. Jaipur (On-site)")
     job_type    = models.CharField(max_length=50, blank=True, help_text="e.g. Full-time")
-    description = models.TextField(blank=True)
-    is_open     = models.BooleanField(default=True)
+    description = models.TextField(
+        blank=True,
+        help_text="Two or three lines. Shown on the Careers listing and at the top of the job page.",
+    )
+    is_open     = models.BooleanField(
+        default=True,
+        help_text="Untick when the role is filled: it leaves the Careers listing and its page says the role is closed.",
+    )
 
     body = StreamField([
         ("intro", IntroductionSectionBlock()),
         ("cta", CTABandBlock()),
-    ], blank=True, use_json_field=True)
+    ], blank=True, use_json_field=True,
+        help_text="The full job details. Add one Intro block per section, e.g. Responsibilities, Requirements, What we offer.")
 
     content_panels = Page.content_panels + [
         MultiFieldPanel([

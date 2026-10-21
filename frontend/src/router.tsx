@@ -13,6 +13,7 @@ import NotFound from '@/pages/NotFound'
 const Home                  = lazy(() => import('@/pages/Home'))
 const Contact               = lazy(() => import('@/pages/Contact'))
 const Careers                = lazy(() => import('@/pages/Careers'))
+const JobDetail             = lazy(() => import('@/pages/JobDetail'))
 const DynamicSectionPage    = lazy(() => import('@/pages/DynamicSectionPage'))
 const DynamicContentPage    = lazy(() => import('@/pages/DynamicContentPage'))
 const LegalPage             = lazy(() => import('@/pages/LegalPage'))
@@ -115,6 +116,7 @@ export const marketingRouter = createBrowserRouter([
           { path: '/about/*',                  element: m(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
           { path: '/contact',                  element: m(<Contact />) },
           { path: '/careers',                  element: m(<Careers />) },
+          { path: '/careers/:slug',            element: m(<JobDetail />) },
           // CMS "Legal Page"s, on both sites; the footers link here.
           { path: '/privacy-policy',           element: m(<LegalPage slug="privacy-policy" />) },
           { path: '/terms',                    element: m(<LegalPage slug="terms" />) },

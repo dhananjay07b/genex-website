@@ -269,7 +269,7 @@ class LinkBlock(blocks.StructBlock):
     search = SearchFiltersBlock()
     genex_page = blocks.PageChooserBlock(
         required=False, label="Genex website page",
-        page_type=["pages.HomePage", "pages.SectionPage", "pages.ContentPage", "pages.CareersPage", "pages.ContactPage"],
+        page_type=["pages.HomePage", "pages.SectionPage", "pages.ContentPage", "pages.CareersPage", "pages.JobPage", "pages.ContactPage"],
     )
     section = blocks.ChoiceBlock(
         choices=PAGE_SECTIONS, required=False, label="Jump to (optional)",
