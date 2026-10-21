@@ -1,5 +1,5 @@
 from ..builders import (
-    cards, contact, cta, faq, hero, highlights, intro, product, related, side,
+    cards, contact, cta, faq, hero, highlights, intro, related, side,
     stats, steps,
 )
 

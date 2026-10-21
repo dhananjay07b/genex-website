@@ -1,6 +1,6 @@
 from ..builders import (
     capabilities, cards, contact, cta, faq, hero, highlights, overview,
-    product, related, side, stats, steps,
+    related, side, stats, steps,
 )
 
 PAGE = {

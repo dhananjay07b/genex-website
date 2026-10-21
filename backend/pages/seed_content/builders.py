@@ -7,7 +7,7 @@ Images and documents are always left empty: editors upload them in the CMS.
 Each image slot carries an `image_hint` that the seed command prints as a
 checklist; hints are stripped before anything is saved.
 
-Links to other pages are written as placeholders (contact(), product()) and
+Links to other pages are written as placeholders (contact(), product(), innovation()) and
 resolved to real page IDs by the seed command, so the content files never
 hard-code database IDs.
 """
@@ -31,8 +31,13 @@ def contact(section="demo"):
 
 
 def product(key):
-    """Another Portfolio product page, by its key in seed_content.portfolio.PAGES."""
-    return {LINK_KEY: ("product", key)}
+    """A Portfolio page, by its key in seed_content.portfolio.PAGES."""
+    return {LINK_KEY: ("page", ("portfolio", key))}
+
+
+def innovation(key):
+    """An Innovations page, by its key in seed_content.innovations.PAGES."""
+    return {LINK_KEY: ("page", ("innovations", key))}
 
 
 def _rich(paragraphs):
@@ -162,8 +167,32 @@ def related(heading, keys, description=""):
     return _block("portfolio_section", {
         "heading": heading,
         "description": description,
-        "items": [{"page": {PAGE_KEY: k}} for k in keys],
+        "items": [{"page": {PAGE_KEY: ("portfolio", k)}} for k in keys],
     })
+
+
+def related_innovations(heading, items, description):
+    """Innovation cards for other Innovations pages. items: (key, icon)."""
+    return _block("innovations_section", {
+        "heading": heading,
+        "description": description,
+        "items": [{"page": {PAGE_KEY: ("innovations", k)}, "icon": i} for k, i in items],
+    })
+
+
+def gallery(items):
+    """Image mosaic with a fixed "Gallery" heading. items: (alt, image_hint).
+    Use exactly 4: the mosaic is built in blocks of four."""
+    return _block("gallery", [{"image": None, "alt": a, HINT_KEY: h} for a, h in items])
+
+
+def milestones(items):
+    """Roadmap / timeline. items: (year, label, title, description, is_current).
+    `year` is free text up to 10 characters, e.g. 'Live', 'Next', '2027'."""
+    return _block("milestones", [
+        {"year": y, "label": l, "title": t, "description": d, "is_current": c}
+        for y, l, t, d, c in items
+    ])
 
 
 def cta(heading, description, primary_text, primary_link, secondary_text="", secondary_link=None):
