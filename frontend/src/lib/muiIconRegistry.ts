@@ -50,6 +50,34 @@ import WorkIcon from '@mui/icons-material/Work'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
+import AgricultureIcon from '@mui/icons-material/Agriculture'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import CalculateIcon from '@mui/icons-material/Calculate'
+import CellTowerIcon from '@mui/icons-material/CellTower'
+import Co2Icon from '@mui/icons-material/Co2'
+import EnergySavingsLeafIcon from '@mui/icons-material/EnergySavingsLeaf'
+import HistoryIcon from '@mui/icons-material/History'
+import HubIcon from '@mui/icons-material/Hub'
+import InsightsIcon from '@mui/icons-material/Insights'
+import LanIcon from '@mui/icons-material/Lan'
+import LayersIcon from '@mui/icons-material/Layers'
+import LockIcon from '@mui/icons-material/Lock'
+import MapIcon from '@mui/icons-material/Map'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
+import PowerIcon from '@mui/icons-material/Power'
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import RouterIcon from '@mui/icons-material/Router'
+import ScheduleIcon from '@mui/icons-material/Schedule'
+import SensorsIcon from '@mui/icons-material/Sensors'
+import SmartphoneIcon from '@mui/icons-material/Smartphone'
+import SpeedIcon from '@mui/icons-material/Speed'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import SyncIcon from '@mui/icons-material/Sync'
+import ThermostatIcon from '@mui/icons-material/Thermostat'
+import TuneIcon from '@mui/icons-material/Tune'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import WaterDropIcon from '@mui/icons-material/WaterDrop'
 
 export type MuiIconComponent = ComponentType<SvgIconProps>
 
@@ -104,6 +132,34 @@ export const MUI_ICON_REGISTRY: Record<string, MuiIconComponent> = {
   WorkspacePremiumOutlined: WorkspacePremiumOutlinedIcon,
   EmojiEventsOutlined: EmojiEventsOutlinedIcon,
   LinkedIn: LinkedInIcon,
+  Agriculture: AgricultureIcon,
+  Assessment: AssessmentIcon,
+  Calculate: CalculateIcon,
+  CellTower: CellTowerIcon,
+  Co2: Co2Icon,
+  EnergySavingsLeaf: EnergySavingsLeafIcon,
+  History: HistoryIcon,
+  Hub: HubIcon,
+  Insights: InsightsIcon,
+  Lan: LanIcon,
+  Layers: LayersIcon,
+  Lock: LockIcon,
+  Map: MapIcon,
+  NotificationsActive: NotificationsActiveIcon,
+  Power: PowerIcon,
+  PrecisionManufacturing: PrecisionManufacturingIcon,
+  ReceiptLong: ReceiptLongIcon,
+  Router: RouterIcon,
+  Schedule: ScheduleIcon,
+  Sensors: SensorsIcon,
+  Smartphone: SmartphoneIcon,
+  Speed: SpeedIcon,
+  SwapHoriz: SwapHorizIcon,
+  Sync: SyncIcon,
+  Thermostat: ThermostatIcon,
+  Tune: TuneIcon,
+  WarningAmber: WarningAmberIcon,
+  WaterDrop: WaterDropIcon,
 }
 
 /** Looks up a `ChoiceBlock(choices=ICON_CHOICES)` icon name, falling back to a default icon. */
