@@ -8,20 +8,13 @@ import { buttonVariants } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api/client'
 import { getMuiIcon } from '@/lib/muiIconRegistry'
-import type { CTABandValue, HeroSectionApiValue, WagtailListResponse } from '@/types/api'
+import type { CTABandValue, HeroSectionApiValue, JobListItem, WagtailListResponse } from '@/types/api'
 import { PageSkeleton } from '@/components/ui/PageSkeleton'
+import { JobTags } from '@/components/careers/JobTags'
 
 interface WhyGenexCardApiValue {
   icon: string
   title: string
-  description: string
-}
-
-interface OpenRoleApiValue {
-  title: string
-  department: string
-  location: string
-  type: string
   description: string
 }
 
@@ -34,11 +27,18 @@ interface CareersPageData {
 export default function Careers() {
   const subject = encodeURIComponent('Open Application — Genex Technocrats')
   const [page, setPage] = useState<CareersPageData | null | undefined>(undefined)
+  const [jobs, setJobs] = useState<JobListItem[]>([])
 
   useEffect(() => {
     apiFetch<WagtailListResponse<CareersPageData>>('/api/v2/pages/?type=pages.CareersPage&fields=body&limit=1')
       .then(res => setPage(res.items[0] ?? null))
       .catch(() => setPage(null))
+    // Openings are the Job Pages under Careers, in their CMS order; filled roles (is_open off) are left out.
+    apiFetch<WagtailListResponse<JobListItem>>(
+      '/api/v2/pages/?type=pages.JobPage&is_open=true&fields=department,location,job_type,description&limit=100'
+    )
+      .then(res => setJobs(res.items))
+      .catch(() => setJobs([]))
   }, [])
 
   if (page === undefined) return <PageSkeleton />
@@ -46,7 +46,6 @@ export default function Careers() {
   const body = page?.body ?? []
   const hero = body.find(b => b.type === 'hero')?.value as HeroSectionApiValue | undefined
   const whyGenex = (body.find(b => b.type === 'why_genex')?.value as WhyGenexCardApiValue[] | undefined) ?? []
-  const openRoles = (body.find(b => b.type === 'open_roles')?.value as OpenRoleApiValue[] | undefined) ?? []
   const perks = (body.find(b => b.type === 'perks')?.value as string[] | undefined) ?? []
   const cta = body.find(b => b.type === 'cta')?.value as CTABandValue | undefined
 
@@ -180,39 +179,42 @@ export default function Careers() {
           </motion.div>
 
           <div className="space-y-4">
-            {openRoles.map((role, i) => (
-              <motion.div
-                key={`${i}-${role.title}`}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.07 }}
-                className="bg-white border border-border rounded-2xl px-6 py-6 lg:px-8 lg:py-7 flex flex-col lg:flex-row lg:items-center gap-5 hover:shadow-md transition-shadow duration-200"
-              >
-                <div className="flex-1">
-                  <h3 className="text-base font-extrabold text-text-primary mb-2">{role.title}</h3>
-                  <p className="text-sm text-text-muted leading-relaxed mb-3">{role.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-surface border border-border text-text-muted">
-                      {role.department}
-                    </span>
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-surface border border-border text-text-muted">
-                      {role.location}
-                    </span>
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary">
-                      {role.type}
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  to={`/contact?subject=${encodeURIComponent(`Application: ${role.title}`)}`}
-                  aria-label={`Apply for ${role.title}`}
-                  className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'shrink-0')}
+            {jobs.map((job, i) => {
+              const href = `/careers/${job.meta.slug}`
+              return (
+                <motion.div
+                  key={job.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.07 }}
+                  className="bg-white border border-border rounded-2xl px-6 py-6 lg:px-8 lg:py-7 flex flex-col lg:flex-row lg:items-center gap-5 hover:shadow-md transition-shadow duration-200"
                 >
-                  Apply Now
-                </Link>
-              </motion.div>
-            ))}
+                  <div className="flex-1">
+                    <h3 className="text-base font-extrabold text-text-primary mb-2">
+                      <Link to={href} className="hover:text-primary transition-colors duration-200">{job.title}</Link>
+                    </h3>
+                    {job.description && <p className="text-sm text-text-muted leading-relaxed mb-3">{job.description}</p>}
+                    <JobTags job={job} />
+                  </div>
+                  <Link
+                    to={href}
+                    aria-label={`View role: ${job.title}`}
+                    className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'shrink-0')}
+                  >
+                    View Role
+                  </Link>
+                </motion.div>
+              )
+            })}
+            {jobs.length === 0 && (
+              <div className="bg-white border border-border rounded-2xl px-6 py-8 lg:px-8 text-center">
+                <p className="text-base font-extrabold text-text-primary mb-2">No open positions right now.</p>
+                <p className="text-sm text-text-muted leading-relaxed">
+                  We still want to hear from strong engineers. Send us your profile below.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>

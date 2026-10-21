@@ -30,6 +30,27 @@ export interface WagtailListResponse<T> {
   items: T[]
 }
 
+// ── Careers: Job Pages (added with "+" under the Careers page) ────────────────
+
+/** The fields the /careers listing asks for. */
+export interface JobListItem {
+  id: number
+  title: string
+  meta: { slug: string }
+  department: string
+  location: string
+  job_type: string
+  description: string
+}
+
+/** A full Job Page, for /careers/:slug. */
+export interface JobPageData extends JobListItem {
+  is_open: boolean
+  seo_title: string
+  search_description: string
+  body: StreamBlock[]
+}
+
 // ── Product / Innovation API shapes ───────────────────────────────────────────
 
 export interface ProductStat {

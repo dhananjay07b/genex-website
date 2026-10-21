@@ -621,3 +621,33 @@ class CmsHostSearchTests(TestCase):
         self.assertEqual(self.client.get("/api/snippets/nav/")["X-Robots-Tag"], "noindex")
         self.assertEqual(self.client.get(f"/{settings.DJANGO_ADMIN_PATH}login/")["X-Robots-Tag"], "noindex")
         self.assertNotIn("X-Robots-Tag", self.client.get("/documents/999/missing.pdf"))
+
+
+class CareersJobPagesTests(TestCase):
+    """/careers lists the Job Pages under Careers; each opens at /careers/<slug>."""
+
+    LISTING = "/api/v2/pages/?type=pages.JobPage&is_open=true&fields=department,location,job_type,description&limit=100"
+
+    def setUp(self):
+        from wagtail.models import Page, Site
+        from .models import CareersPage, JobPage
+        root = Page.get_first_root_node()
+        Site.objects.filter(is_default_site=True).update(root_page=root)  # the API lists the current site's pages
+        careers = root.add_child(instance=CareersPage(title="Careers", slug="careers"))
+        self.first = careers.add_child(instance=JobPage(title="SCADA Engineer", slug="scada-engineer", department="Engineering"))
+        careers.add_child(instance=JobPage(title="Filled Role", slug="filled-role", is_open=False))
+        careers.add_child(instance=JobPage(title="Draft Role", slug="draft-role", live=False))
+        self.last = careers.add_child(instance=JobPage(title="Data Analyst", slug="data-analyst"))
+
+    def test_listing_shows_open_published_jobs_in_cms_order(self):
+        items = self.client.get(self.LISTING).json()["items"]
+        self.assertEqual([i["meta"]["slug"] for i in items], ["scada-engineer", "data-analyst"])
+        self.assertEqual(items[0]["department"], "Engineering")
+
+    def test_job_page_opens_on_the_careers_route(self):
+        from .links import frontend_url
+        self.assertTrue(frontend_url(self.first).endswith("/careers/scada-engineer"))
+
+    def test_careers_page_no_longer_has_open_roles_block(self):
+        from .models import CareersPage
+        self.assertNotIn("open_roles", CareersPage.body.field.stream_block.child_blocks)

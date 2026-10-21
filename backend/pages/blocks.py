@@ -628,18 +628,6 @@ class WhyGenexCardBlock(blocks.StructBlock):
         icon = "snippet"
 
 
-class OpenRoleBlock(blocks.StructBlock):
-    """Careers open job listing."""
-    title       = blocks.CharBlock()
-    department  = blocks.CharBlock()
-    location    = blocks.CharBlock()
-    type        = blocks.CharBlock(help_text="e.g. 'Full-time'")
-    description = blocks.TextBlock()
-
-    class Meta:
-        icon = "doc-full"
-
-
 class ContactDetailBlock(blocks.StructBlock):
     """Maps to CONTACT_DETAILS in Contact.tsx."""
     icon  = blocks.ChoiceBlock(choices=ICON_CHOICES)
