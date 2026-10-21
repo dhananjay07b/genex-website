@@ -6,6 +6,7 @@ import { blockRegistry, pageHeadingBlockId } from '@/lib/streamfield/blockRegist
 import { PageHero } from '@/components/ui/PageHero'
 import NotFound from './NotFound'
 import type { SectionPageData, WagtailListResponse } from '@/types/api'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 
 interface DynamicSectionPageProps {
   /** The SectionPage's own slug — e.g. "portfolio", "innovations", "about". */
@@ -28,7 +29,7 @@ export default function DynamicSectionPage({ sectionSlug, fallbackTitle, fallbac
 
   const page = loaded?.slug === sectionSlug ? loaded.page : undefined
 
-  if (page === undefined) return null
+  if (page === undefined) return <PageSkeleton />
   // Not created (or not published) in the CMS yet: say so instead of a blank page.
   if (page === null) return <NotFound />
 

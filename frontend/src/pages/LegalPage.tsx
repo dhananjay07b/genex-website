@@ -4,6 +4,7 @@ import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
 import NotFound from '@/pages/NotFound'
 import type { WagtailListResponse } from '@/types/api'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 
 interface LegalPageData {
   id: number
@@ -31,7 +32,7 @@ export default function LegalPage({ slug }: { slug: string }) {
       .catch(() => setPage(null))
   }, [slug])
 
-  if (page === undefined) return <main className="min-h-[60vh]" aria-busy="true" />
+  if (page === undefined) return <PageSkeleton />
   if (page === null) return <NotFound />
 
   const updated = page.last_updated

@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { RoleRoute } from '@/components/auth/RoleRoute'
 import { LegacyRedirect } from '@/components/utils/LegacyRedirect'
 import { RouteError } from '@/components/utils/RouteError'
+import { PageSkeleton } from '@/components/ui/PageSkeleton'
 // Bundled with the app, not lazy: it must render even when code files can't be fetched.
 import NotFound from '@/pages/NotFound'
 
@@ -62,6 +63,10 @@ const StudioTeam            = lazy(() => import('@/pages/Studio/StudioTeam'))
 const s = (el: React.ReactNode) => (
   <Suspense fallback={<div className="min-h-screen" />}>{el}</Suspense>
 )
+// Marketing pages show a page-shaped skeleton while their code loads, never a blank screen.
+const m = (el: React.ReactNode) => (
+  <Suspense fallback={<PageSkeleton />}>{el}</Suspense>
+)
 
 // Marketing site — genextechnocrats.com. No GeLearn content, no accounts/auth.
 export const marketingRouter = createBrowserRouter([
@@ -74,10 +79,10 @@ export const marketingRouter = createBrowserRouter([
         // the outer errorElement only catches the layout itself failing.
         errorElement: <RouteError />,
         children: [
-          { path: '/',                         element: s(<Home />) },
+          { path: '/',                         element: m(<Home />) },
           {
             path: '/portfolio',
-            element: s(
+            element: m(
               <DynamicSectionPage
                 sectionSlug="portfolio"
                 fallbackTitle="Software Products for Power & Energy"
@@ -85,10 +90,10 @@ export const marketingRouter = createBrowserRouter([
               />
             ),
           },
-          { path: '/portfolio/*',              element: s(<DynamicContentPage sectionSlug="portfolio" fallbackPath="/portfolio" />) },
+          { path: '/portfolio/*',              element: m(<DynamicContentPage sectionSlug="portfolio" fallbackPath="/portfolio" />) },
           {
             path: '/innovations',
-            element: s(
+            element: m(
               <DynamicSectionPage
                 sectionSlug="innovations"
                 fallbackTitle="Innovations — Genex Technocrats"
@@ -96,10 +101,10 @@ export const marketingRouter = createBrowserRouter([
               />
             ),
           },
-          { path: '/innovations/*',            element: s(<DynamicContentPage sectionSlug="innovations" fallbackPath="/innovations" />) },
+          { path: '/innovations/*',            element: m(<DynamicContentPage sectionSlug="innovations" fallbackPath="/innovations" />) },
           {
             path: '/about',
-            element: s(
+            element: m(
               <DynamicSectionPage
                 sectionSlug="about"
                 fallbackTitle="About Genex Technocrats — India's Energy Intelligence Platform"
@@ -107,12 +112,12 @@ export const marketingRouter = createBrowserRouter([
               />
             ),
           },
-          { path: '/about/*',                  element: s(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
-          { path: '/contact',                  element: s(<Contact />) },
-          { path: '/careers',                  element: s(<Careers />) },
+          { path: '/about/*',                  element: m(<DynamicContentPage sectionSlug="about" fallbackPath="/about" />) },
+          { path: '/contact',                  element: m(<Contact />) },
+          { path: '/careers',                  element: m(<Careers />) },
           // CMS "Legal Page"s, on both sites; the footers link here.
-          { path: '/privacy-policy',           element: s(<LegalPage slug="privacy-policy" />) },
-          { path: '/terms',                    element: s(<LegalPage slug="terms" />) },
+          { path: '/privacy-policy',           element: m(<LegalPage slug="privacy-policy" />) },
+          { path: '/terms',                    element: m(<LegalPage slug="terms" />) },
           { path: '*',                         element: <NotFound /> },
         ],
       },
