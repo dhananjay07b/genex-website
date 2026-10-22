@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Confirmation for UserAdmin's "Delete user and all their GeLearn content" action
+(accounts/purge.py). Lists, per user, everything that will be removed.
+{% endcomment %}
+
+{% block bodyclass %}{{ block.super }} app-accounts model-user delete-confirmation delete-selected-confirmation{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:accounts_user_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; Delete with GeLearn content
+</div>
+{% endblock %}
+
+{% block content %}
+<p>This permanently deletes the account{{ plans|length|pluralize }} below and everything listed under each. It can't be undone; take a database backup first if in doubt.</p>
+
+{% for plan in plans %}
+  <h2>{{ plan.user.display_name|default:plan.user.username }} &middot; {{ plan.user.email }}</h2>
+  <ul>
+    <li>The account, with its sign-in emails, Google link, follows and notifications</li>
+    {% for label, count in plan.summary %}<li>{{ label }}: {{ count }}</li>{% endfor %}
+    {% for course in plan.courses %}{% if forloop.first %}<li>Courses: {% endif %}&ldquo;{{ course.title }}&rdquo;{% if not forloop.last %}, {% else %}</li>{% endif %}{% endfor %}
+  </ul>
+{% endfor %}
+
+<p><strong>Kept:</strong> content published for a company (GeAcademy, Research, Policies &amp; Tenders, Whitepapers, Podcasts, live sessions) stays with the company, and certificates other learners earned stay valid.</p>
+
+<form method="post">{% csrf_token %}
+  <div>
+    {% for plan in plans %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ plan.user.pk }}">{% endfor %}
+    <input type="hidden" name="action" value="delete_with_gelearn_content">
+    <input type="hidden" name="confirm" value="yes">
+    <input type="submit" value="Yes, delete everything">
+    <a href="{% url 'admin:accounts_user_changelist' %}" class="button cancel-link">No, take me back</a>
+  </div>
+</form>
+{% endblock %}

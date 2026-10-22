@@ -1061,3 +1061,106 @@ class AccountEmailTests(TestCase):
         result = APIClient().post("/api/auth/registration/verify-email/", {"key": key}, format="json").json()
         self.assertEqual(result, {"detail": "ok", "already_confirmed": False, "email": "wk@acme.com", "kind": "work",
                                   "account": {"username": "wk", "display_name": "Wren K"}, "verified_company": "Acme Energy"})
+
+
+class PurgeUserTests(TestCase):
+    """Admin's "Delete user and all their GeLearn content" (accounts/purge.py)."""
+
+    def setUp(self):
+        import datetime
+        from django.contrib.contenttypes.models import ContentType
+        from wagtail.images.models import Image
+        from wagtail.images.tests.utils import get_test_image_file
+        from comments.models import Comment
+        from engagement.models import SavedItem
+        from learning.models import Certificate, Enrollment, Playlist
+        from pages.models import BlogPost, TechArticle, UserBlogPost
+
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme")
+        self.other = make_user("other")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        cert = lambda user, course, code: Certificate.objects.create(
+            code=code, user=user, playlist=course, learner_name=user.username, issued_at=timezone.now(), snapshot={})
+
+        # The Professional's own course, with another learner enrolled and certified in it.
+        self.course = Playlist.objects.create(owner=self.pro, title="SCADA basics", status="published")
+        Enrollment.objects.create(user=self.other, playlist=self.course)
+        self.others_cert = cert(self.other, self.course, "GL-OTHR-0001")
+        # The Professional's certificate in someone else's course.
+        self.staff_course = Playlist.objects.create(owner=self.staff, title="Grid", status="published", company=self.genex)
+        cert(self.pro, self.staff_course, "GL-PROO-0001")
+        # An approved blog post, with another person's comment and saved item on it.
+        self.post = BlogPost.objects.create(title="My post", date=datetime.date(2026, 10, 1), excerpt="e")
+        UserBlogPost.objects.create(author=self.pro, title="My post", excerpt="e", body="b", status="published", published_post=self.post)
+        post_type = ContentType.objects.get_for_model(BlogPost)
+        Comment.objects.create(content_type=post_type, object_id=self.post.pk, author=self.other, body="Nice")
+        SavedItem.objects.create(user=self.other, content_type=ContentType.objects.get_for_model(Playlist), object_id=self.course.pk)
+        # Images: an avatar only they use, and one they uploaded that a kept item also uses.
+        self.avatar = Image.objects.create(title="Avatar", file=get_test_image_file(), uploaded_by_user=self.pro)
+        self.shared = Image.objects.create(title="Shared", file=get_test_image_file(), uploaded_by_user=self.pro)
+        self.pro.avatar = self.avatar
+        self.pro.save()
+        self.kept_article = TechArticle.objects.create(
+            title="Staff's article", difficulty="Beginner", read_time="4 min", date=datetime.date(2026, 10, 1),
+            excerpt="e", company=self.genex, owner=self.staff, image=self.shared)
+
+    def test_removes_the_user_and_everything_they_made(self):
+        from wagtail.images.models import Image
+        from comments.models import Comment
+        from engagement.models import SavedItem
+        from learning.models import Certificate, Enrollment, Playlist
+        from pages.models import BlogPost, UserBlogPost
+        from .purge import purge_user
+
+        purge_user(self.pro)
+        self.assertFalse(User.objects.filter(username="pro").exists())
+        self.assertFalse(Playlist.objects.filter(pk=self.course.pk).exists())
+        self.assertFalse(Enrollment.objects.filter(user=self.other).exists())
+        self.assertFalse(BlogPost.objects.filter(pk=self.post.pk).exists())
+        self.assertFalse(UserBlogPost.objects.exists())
+        self.assertFalse(Comment.objects.exists())     # others' comments on the deleted post too
+        self.assertFalse(SavedItem.objects.exists())   # nothing left pointing at deleted content
+        self.assertFalse(Certificate.objects.filter(code="GL-PROO-0001").exists())
+        self.assertFalse(Image.objects.filter(pk=self.avatar.pk).exists())
+        # Kept: another learner's certificate, someone else's course, company content and its image.
+        self.others_cert.refresh_from_db()
+        self.assertIsNone(self.others_cert.playlist)
+        self.assertTrue(Playlist.objects.filter(pk=self.staff_course.pk).exists())
+        self.assertTrue(Image.objects.filter(pk=self.shared.pk).exists())
+
+    def test_company_content_stays_with_the_company(self):
+        from .purge import purge_user
+
+        purge_user(self.staff)
+        self.kept_article.refresh_from_db()
+        self.assertEqual((self.kept_article.company, self.kept_article.owner), (self.genex, None))
+
+    def test_superusers_are_refused(self):
+        from .purge import purge_user
+
+        root = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        with self.assertRaises(ValueError):
+            purge_user(root)
+        self.assertTrue(User.objects.filter(pk=root.pk).exists())
+
+    def test_admin_action_previews_then_deletes(self):
+        root = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(root)
+        url = DJANGO_ADMIN + "accounts/user/"
+        data = {"action": "delete_with_gelearn_content", "_selected_action": [self.pro.pk]}
+        preview = self.client.post(url, data)
+        self.assertContains(preview, "SCADA basics")
+        self.assertContains(preview, "Published blog posts: 1")
+        self.assertTrue(User.objects.filter(pk=self.pro.pk).exists())  # nothing deleted yet
+        done = self.client.post(url, {**data, "confirm": "yes"}, follow=True)
+        self.assertContains(done, "Deleted 1 user(s)")
+        self.assertFalse(User.objects.filter(pk=self.pro.pk).exists())
+
+    def test_admin_action_refuses_superusers(self):
+        root = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(root)
+        res = self.client.post(DJANGO_ADMIN + "accounts/user/",
+                               {"action": "delete_with_gelearn_content", "_selected_action": [root.pk], "confirm": "yes"}, follow=True)
+        self.assertContains(res, "Superusers can")
+        self.assertTrue(User.objects.filter(pk=root.pk).exists())
