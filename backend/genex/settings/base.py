@@ -268,7 +268,7 @@ SOCIALACCOUNT_PROVIDERS = {
 # --- Contact form ----------------------------------------------------------
 # Website enquiries (Contact page, Careers applications) are saved in Django
 # admin and a copy is emailed here.
-ENQUIRY_EMAIL = os.environ.get("ENQUIRY_EMAIL", "info@genextechnocrats.com")
+ENQUIRY_EMAIL = os.environ.get("ENQUIRY_EMAIL", "connect@genextechnocrats.com")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "GeLearn by Genex <no-reply@genextechnocrats.com>")
 
 # --- Email delivery (SMTP) ---------------------------------------------------

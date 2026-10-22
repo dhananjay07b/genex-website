@@ -403,7 +403,7 @@ class SiteSettingsApiTests(TestCase):
         client = APIClient()
         data = client.get("/api/snippets/site-settings/").json()
         self.assertEqual(data["phone"], "")  # not set: the site hides it
-        self.assertEqual(data["email"], "info@genextechnocrats.com")  # not set: the default address
+        self.assertEqual(data["email"], "connect@genextechnocrats.com")  # not set: the default address
         self.assertEqual(data["cta"], {"label": "Request Demo", "href": "/contact#demo"})
 
         row = SiteSettings.for_site(Site.objects.get(is_default_site=True))

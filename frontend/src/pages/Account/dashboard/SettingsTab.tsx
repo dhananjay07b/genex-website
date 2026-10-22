@@ -560,11 +560,11 @@ export function SettingsTab() {
         </p>
         <div className="flex flex-col gap-1.5">
           <a
-            href="mailto:info@genextechnocrats.com"
+            href="mailto:connect@genextechnocrats.com"
             className="flex items-center gap-2 text-xs font-semibold text-text-primary hover:text-primary transition-colors"
           >
             <MailOutlinedIcon sx={{ fontSize: 14 }} className="shrink-0 text-text-muted" />
-            info@genextechnocrats.com
+            connect@genextechnocrats.com
           </a>
           <a
             href={marketingPath('/contact')}

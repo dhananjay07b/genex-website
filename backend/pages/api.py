@@ -533,7 +533,7 @@ class SiteSettingsView(APIView):
         return Response({
             "phone": s.phone,
             "whatsapp": s.whatsapp,
-            "email": s.email or "info@genextechnocrats.com",
+            "email": s.email or "connect@genextechnocrats.com",
             "office_hours": s.office_hours,
             "social": {"linkedin": s.linkedin, "twitter": s.twitter, "youtube": s.youtube},
             "cta": {"label": s.cta_label, "href": s.cta_href},

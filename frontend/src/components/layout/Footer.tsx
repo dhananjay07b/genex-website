@@ -61,7 +61,7 @@ const footerSections = [
 
 export function Footer() {
   const site = useSiteSettings()
-  const email = site?.email ?? 'info@genextechnocrats.com'
+  const email = site?.email ?? 'connect@genextechnocrats.com'
   // Only the profiles filled in under Site Settings → Social links.
   const socialLinks = [
     { icon: LinkedInIcon, label: 'LinkedIn', href: site?.social.linkedin },
