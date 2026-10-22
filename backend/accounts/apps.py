@@ -33,6 +33,13 @@ class AccountsConfig(AppConfig):
 
         email_confirmed.connect(on_email_confirmed, dispatch_uid="accounts.company_verification")
 
+        # A sign-in through the CMS or admin login is a back-office session, which GeLearn ignores.
+        from django.contrib.auth.signals import user_logged_in
+
+        from .backoffice import mark_backoffice_login
+
+        user_logged_in.connect(mark_backoffice_login, dispatch_uid="accounts.backoffice_login")
+
         # Django admin normally admits any is_staff user; only the superuser may enter.
         admin.site.has_permission = superuser_only_admin
         admin.site.login_form = SuperuserAuthenticationForm

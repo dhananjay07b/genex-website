@@ -190,7 +190,8 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        # Sign-up/Google sessions only; a CMS/admin session isn't a GeLearn sign-in.
+        "accounts.backoffice.FrontendSessionAuthentication",
     ],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "EXCEPTION_HANDLER": "genex.exceptions.api_exception_handler",
