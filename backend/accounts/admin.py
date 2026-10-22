@@ -1,8 +1,10 @@
 from allauth.account.models import EmailAddress
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.template.response import TemplateResponse
 
 from .models import User
+from .purge import build_plan, purge_user
 from .roles import display_company
 from .verification import refresh_company_verification
 
@@ -43,6 +45,28 @@ class UserAdmin(DjangoUserAdmin):
     list_filter = ("account_type", "company", "company_verified", "is_featured", "is_superuser", "is_active")
     search_fields = ("username", "email", "display_name", "company__name", "company_other")
     autocomplete_fields = ("company",)
+    actions = ["delete_with_gelearn_content"]
+
+    @admin.action(description="Delete user and all their GeLearn content")
+    def delete_with_gelearn_content(self, request, queryset):
+        """Shows everything that will go (accounts/purge.py), then deletes on confirm."""
+        if any(u.is_superuser for u in queryset):
+            self.message_user(request, "Superusers can't be removed this way. Untick them and try again.", messages.ERROR)
+            return None
+        if request.POST.get("confirm") == "yes":
+            users = list(queryset)
+            for user in users:
+                purge_user(user)
+            self.message_user(request, f"Deleted {len(users)} user(s) and their GeLearn content.", messages.SUCCESS)
+            return None
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Delete users and all their GeLearn content?",
+            "opts": self.model._meta,
+            "plans": [build_plan(user) for user in queryset],
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+        }
+        return TemplateResponse(request, "admin/accounts/user/purge_confirmation.html", context)
 
     @admin.display(description="Verification")
     def verification_status(self, obj):
