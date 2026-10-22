@@ -503,6 +503,38 @@ class LogoutTests(TestCase):
         self.assertEqual(self.client.post("/api/auth/logout/").status_code, 200)
 
 
+class BackofficeSessionTests(TestCase):
+    """
+    The CMS/admin sign-in and GeLearn's are separate. Both use the API host, so its
+    requests carry the superuser's CMS session cookie: signing out of GeLearn must
+    not end the CMS session, and a CMS session must not sign them in on GeLearn.
+    """
+
+    def setUp(self):
+        User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client = APIClient()
+        res = self.client.post(WAGTAIL_ADMIN + "login/", {"username": "root", "password": "Passw0rd!x"})
+        self.assertEqual(res.status_code, 302)  # signed in to the CMS through its own login page
+        self.assertTrue(self.client.session.get("genex_backoffice"))
+
+    def assert_cms_signed_in(self):
+        self.assertEqual(self.client.get(WAGTAIL_ADMIN).status_code, 200)  # signed out: 302 to the login page
+
+    def test_cms_sign_in_is_not_a_gelearn_sign_in(self):
+        self.assertIsNone(self.client.get("/api/accounts/session/").json()["user"])
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 401)
+
+    def test_gelearn_sign_out_keeps_the_cms_sign_in(self):
+        # Signed in on GeLearn too (its own JWT cookies), then signs out of GeLearn.
+        self.client.post("/api/auth/login/", {"email": "root@example.org", "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 200)
+        self.assertEqual(self.client.post("/api/auth/logout/").status_code, 200)
+        for name in [name for name, cookie in self.client.cookies.items() if not cookie.value]:
+            del self.client.cookies[name]
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 401)  # out of GeLearn
+        self.assert_cms_signed_in()                                              # still in the CMS
+
+
 class AuthRateLimitTests(TestCase):
     """Login and password endpoints allow 10 attempts per 15 minutes, then a plain-language 429."""
 

@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .backoffice import is_backoffice_session
 from .models import User
 from .roles import display_company
 from .serializers import UserSerializer, validate_account_type_choice
@@ -65,8 +66,9 @@ class SessionView(APIView):
             # A Django session (registration, email confirmation and Google sign-in start one).
             # Read it directly: with no authentication classes DRF has already set request.user
             # to anonymous. A GET needs no CSRF check.
+            # A CMS/admin session doesn't count: that's the back-office sign-in (accounts/backoffice.py).
             session_user = get_user(request._request)
-            if session_user.is_authenticated and session_user.is_active:
+            if session_user.is_authenticated and session_user.is_active and not is_backoffice_session(request._request):
                 user = session_user
 
         can_refresh = False
@@ -366,7 +368,10 @@ class GenexLogoutView(LogoutView):
 
     def logout(self, request):
         response = super().logout(request)
-        django_logout(request._request)
+        # The superuser's CMS/admin session comes along on this request (same API host):
+        # signing out of GeLearn must not sign them out of the CMS.
+        if not is_backoffice_session(request._request):
+            django_logout(request._request)
         return response
 
 
