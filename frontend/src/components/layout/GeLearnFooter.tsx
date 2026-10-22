@@ -87,7 +87,7 @@ export function GeLearnFooter() {
             <Link to="/privacy-policy" className="hover:text-text-primary">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-text-primary">Terms of Use</Link>
             <button type="button" onClick={reopenConsent} className="hover:text-text-primary">Cookie settings</button>
-            <a href="mailto:info@genextechnocrats.com" className="hover:text-text-primary">info@genextechnocrats.com</a>
+            <a href="mailto:connect@genextechnocrats.com" className="hover:text-text-primary">connect@genextechnocrats.com</a>
             <a href={marketingPath()} className="inline-flex items-center gap-1 hover:text-text-primary">
               genextechnocrats.com <OpenInNewIcon sx={{ fontSize: 12 }} />
             </a>

@@ -130,7 +130,7 @@ export default function VerifyEmail() {
         </motion.section>
 
         <p className="mt-6 text-xs text-text-muted">
-          Questions? <a href="mailto:info@genextechnocrats.com" className="font-semibold text-sky-700 hover:text-sky-800">info@genextechnocrats.com</a>
+          Questions? <a href="mailto:connect@genextechnocrats.com" className="font-semibold text-sky-700 hover:text-sky-800">connect@genextechnocrats.com</a>
         </p>
       </main>
     </>

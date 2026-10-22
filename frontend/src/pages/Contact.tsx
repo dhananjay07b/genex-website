@@ -235,8 +235,8 @@ export default function Contact() {
                     {status === 'error' && (
                       <p className="text-sm text-red-500">
                         {errorMessage}{' '}
-                        <a href="mailto:info@genextechnocrats.com" className="underline">
-                          info@genextechnocrats.com
+                        <a href="mailto:connect@genextechnocrats.com" className="underline">
+                          connect@genextechnocrats.com
                         </a>
                       </p>
                     )}

@@ -105,7 +105,7 @@ class BasePage(Page):
 class SiteSettings(BaseSiteSetting):
     phone      = models.CharField(max_length=30, blank=True, help_text="Shown as written, e.g. +91 141 400 0000. Left empty, it's hidden.")
     whatsapp   = models.URLField(blank=True, help_text="A wa.me link, e.g. https://wa.me/911414000000. Left empty, it's hidden.")
-    email      = models.EmailField(blank=True, help_text="Left empty, info@genextechnocrats.com is shown.")
+    email      = models.EmailField(blank=True, help_text="Left empty, connect@genextechnocrats.com is shown.")
     office_hours = models.CharField(max_length=100, blank=True, default="Mon – Sat: 9:00 am – 6:00 pm")
     linkedin   = models.URLField(blank=True, verbose_name="LinkedIn")
     twitter    = models.URLField(blank=True, verbose_name="X (Twitter)")

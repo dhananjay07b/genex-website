@@ -204,7 +204,7 @@ export default function PodcastDetail() {
               <div className="space-y-6 mb-8">
                 {[
                   { Icon: PhoneOutlinedIcon, label: 'Call Us', value: site?.phone ?? '' },
-                  { Icon: MailOutlinedIcon, label: 'Email Us', value: site?.email ?? 'info@genextechnocrats.com' },
+                  { Icon: MailOutlinedIcon, label: 'Email Us', value: site?.email ?? 'connect@genextechnocrats.com' },
                   { Icon: AccessTimeOutlinedIcon, label: 'Office Hours', value: site?.office_hours ?? '' },
                 ].filter(row => row.value).map(({ Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-4">

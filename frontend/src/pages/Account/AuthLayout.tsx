@@ -62,11 +62,11 @@ export function AuthLayout({ eyebrow, headline, description, panelExtra, footerI
                 <span className="text-xs font-bold text-white">Can&apos;t sign in?</span>
               </div>
               <a
-                href="mailto:info@genextechnocrats.com"
+                href="mailto:connect@genextechnocrats.com"
                 className="flex items-center gap-2 text-xs font-semibold text-white/65 hover:text-white transition-colors mb-1.5"
               >
                 <MailOutlinedIcon sx={{ fontSize: 14 }} className="shrink-0" />
-                info@genextechnocrats.com
+                connect@genextechnocrats.com
               </a>
               <a
                 href={marketingPath('/contact')}
