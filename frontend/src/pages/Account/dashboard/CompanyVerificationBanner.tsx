@@ -10,8 +10,8 @@ import { apiFetch } from '@/lib/api/client'
  * personal email (e.g. Gmail through Google) gets the Work email card in Settings instead.
  */
 export function CompanyVerificationBanner() {
-  const { user } = useAuth()
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const { user, refetch } = useAuth()
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'confirmed' | 'error'>('idle')
 
   if (!user?.company || user.verification_step !== 'confirm_sign_in_email') return null
 
@@ -19,8 +19,14 @@ export function CompanyVerificationBanner() {
     if (!user) return
     setStatus('sending')
     try {
-      await apiFetch('/api/auth/registration/resend-email/', { method: 'POST', body: { email: user.email } })
-      setStatus('sent')
+      const res = await apiFetch<{ detail: string }>('/api/auth/registration/resend-email/', { method: 'POST', body: { email: user.email } })
+      if (res.detail === 'already_confirmed') {
+        // Nothing to send: the address is confirmed. Reload the account so the badge shows.
+        setStatus('confirmed')
+        await refetch()
+      } else {
+        setStatus('sent')
+      }
     } catch {
       setStatus('error')
     }
@@ -38,9 +44,10 @@ export function CompanyVerificationBanner() {
           confirmed, your content shows without the {user.company.name} logo and verified badge.
         </p>
         {status === 'sent' && <p className="text-xs font-semibold text-secondary mt-1.5">New link sent. Check your inbox.</p>}
+        {status === 'confirmed' && <p className="text-xs font-semibold text-secondary mt-1.5">This email is already confirmed. Updating your status…</p>}
         {status === 'error' && <p className="text-xs font-semibold text-red-600 mt-1.5">Couldn&apos;t send the email. Try again in a few minutes.</p>}
       </div>
-      <Button variant="secondary" size="sm" onClick={resend} disabled={status === 'sending' || status === 'sent'} className="shrink-0">
+      <Button variant="secondary" size="sm" onClick={resend} disabled={status !== 'idle' && status !== 'error'} className="shrink-0">
         {status === 'sending' ? 'Sending…' : 'Resend link'}
       </Button>
     </div>

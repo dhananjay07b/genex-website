@@ -94,7 +94,11 @@ class MeView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return self.request.user
+        user = self.request.user
+        if self.request.method == "GET" and user.account_type == User.ACCOUNT_PROFESSIONAL:
+            # Loaded on every page: a badge that fell out of step corrects itself here.
+            refresh_company_verification(user)
+        return user
 
     def finalize_response(self, request, response, *args, **kwargs):
         # This is the endpoint the frontend calls on every page load to decide
@@ -428,4 +432,18 @@ class GenexVerifyEmailView(VerifyEmailView):
 
 
 class GenexResendEmailView(ResendEmailVerificationView):
+    """
+    dj-rest-auth answers "ok" whether or not it sent anything. A signed-in user
+    asking for their own already-confirmed address is told so instead (and their
+    verification re-checked); anyone else still gets "ok", so the endpoint
+    doesn't reveal which addresses exist.
+    """
     throttle_scope = "resend-email"
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        email = str(request.data.get("email", "")).strip()
+        if user.is_authenticated and email and EmailAddress.objects.filter(user=user, email__iexact=email, verified=True).exists():
+            refresh_company_verification(user)
+            return Response({"detail": "already_confirmed"})
+        return super().create(request, *args, **kwargs)

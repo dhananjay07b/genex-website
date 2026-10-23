@@ -60,6 +60,11 @@ def on_address_confirmed(address):
     refresh_company_verification(user)
 
 
+def on_email_confirmed(request, email_address, **kwargs):
+    """allauth's email_confirmed signal: sign-in email or work email."""
+    on_address_confirmed(email_address)
+
+
 def _payload(user):
     address = work_address(user)
     if address is None:
