@@ -331,6 +331,57 @@ class CompanyVerificationFlowTests(TestCase):
         self.assertIsNone(user.company)
         self.assertFalse(user.company_verified)
 
+    def test_confirmation_receiver_is_held_strongly(self):
+        import gc
+        import weakref
+
+        from allauth.account.signals import email_confirmed
+
+        from .work_email import on_email_confirmed
+        gc.collect()
+        held = [entry[1] for entry in email_confirmed.receivers if entry[0][0] == "accounts.company_verification"]
+        self.assertEqual(held, [on_email_confirmed])  # the function itself, not a weakref that can die
+        self.assertNotIsInstance(held[0], weakref.ReferenceType)
+
+    def test_profile_load_heals_a_stale_badge(self):
+        from allauth.account.models import EmailAddress
+        self._register("expert@google.com", company_id=self.google.id)
+        user = User.objects.get(username="expert")
+        EmailAddress.objects.filter(user=user).update(verified=True)  # confirmed without the recheck running
+        self.assertFalse(User.objects.get(pk=user.pk).company_verified)
+
+        self.api.force_authenticate(user)
+        body = self.api.get("/api/accounts/me/").json()
+        self.assertTrue(body["company_verified"])
+        self.assertIsNone(body["verification_step"])
+        self.assertTrue(User.objects.get(pk=user.pk).company_verified)
+
+    def test_resend_for_own_confirmed_email_says_so(self):
+        from allauth.account.models import EmailAddress
+        from django.core import mail
+        self._register("expert@google.com", company_id=self.google.id)
+        user = User.objects.get(username="expert")
+        EmailAddress.objects.filter(user=user).update(verified=True)
+        sent = len(mail.outbox)
+
+        anonymous = APIClient().post("/api/auth/registration/resend-email/", {"email": "expert@google.com"}, format="json")
+        self.assertEqual(anonymous.json()["detail"], "ok")  # doesn't reveal the address's state to strangers
+
+        self.api.force_authenticate(user)
+        res = self.api.post("/api/auth/registration/resend-email/", {"email": "expert@google.com"}, format="json")
+        self.assertEqual(res.json()["detail"], "already_confirmed")
+        self.assertEqual(len(mail.outbox), sent)
+        self.assertTrue(User.objects.get(pk=user.pk).company_verified)
+
+    def test_resend_for_unconfirmed_email_still_sends(self):
+        from django.core import mail
+        self._register("expert@google.com", company_id=self.google.id)
+        sent = len(mail.outbox)
+        self.api.force_authenticate(User.objects.get(username="expert"))
+        res = self.api.post("/api/auth/registration/resend-email/", {"email": "expert@google.com"}, format="json")
+        self.assertEqual(res.json()["detail"], "ok")
+        self.assertEqual(len(mail.outbox), sent + 1)
+
     def test_linking_a_company_with_confirmed_email_verifies_immediately(self):
         from allauth.account.models import EmailAddress
         user = make_user("pro", email="pro@google.com", account_type="professional", company_other="Acme", role_title="SRE")

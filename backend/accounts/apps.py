@@ -25,13 +25,11 @@ class AccountsConfig(AppConfig):
 
         from allauth.account.signals import email_confirmed
 
-        from .work_email import on_address_confirmed
+        from .work_email import on_email_confirmed
 
-        def on_email_confirmed(request, email_address, **kwargs):
-            # Sign-in email or work email: link a work email's company, then re-check verification.
-            on_address_confirmed(email_address)
-
-        email_confirmed.connect(on_email_confirmed, dispatch_uid="accounts.company_verification")
+        # weak=False: Django holds receivers weakly by default, and a weakly-held
+        # receiver can be garbage-collected and silently stop running.
+        email_confirmed.connect(on_email_confirmed, weak=False, dispatch_uid="accounts.company_verification")
 
         # A sign-in through the CMS or admin login is a back-office session, which GeLearn ignores.
         from django.contrib.auth.signals import user_logged_in
