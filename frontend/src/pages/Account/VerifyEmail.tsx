@@ -63,6 +63,8 @@ export default function VerifyEmail() {
   }, [key, refetch])
 
   const mine = Boolean(user && result && user.username === result.account.username)
+  // Professionals and Company accounts confirm to get verified, not to start a course.
+  const isLearner = user?.account_type === 'learner'
 
   return (
     <>
@@ -113,8 +115,8 @@ export default function VerifyEmail() {
                 {result.already_confirmed && ' This link has been used, so there’s nothing more to do.'}
               </p>
               {result.verified_company && (
-                <p className="flex items-center justify-center gap-1.5 rounded-lg bg-brand-tint px-3 py-2.5 text-text-primary">
-                  <VerifiedIcon sx={{ fontSize: 18 }} className="text-primary" />
+                <p className="flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-text-primary">
+                  <VerifiedIcon sx={{ fontSize: 18 }} className="shrink-0 text-primary" />
                   <span>
                     {mine ? 'You' : 'They'} {result.already_confirmed ? '' : 'now '}show as a verified{' '}
                     <b className="font-semibold">{result.verified_company}</b> expert.
@@ -122,8 +124,8 @@ export default function VerifyEmail() {
                 </p>
               )}
               <Button variant="primary" size="lg" className="mt-2 w-full justify-center"
-                onClick={() => navigate(user ? '/' : result.kind === 'sign_in' ? '/login' : '/', { replace: true })}>
-                {user ? 'Start Learning' : result.kind === 'sign_in' ? 'Log in' : 'Visit GeLearn'}
+                onClick={() => navigate(user ? (isLearner ? '/' : '/account') : result.kind === 'sign_in' ? '/login' : '/', { replace: true })}>
+                {user ? (isLearner ? 'Start Learning' : 'Go to Dashboard') : result.kind === 'sign_in' ? 'Log in' : 'Visit GeLearn'}
               </Button>
             </Outcome>
           )}
