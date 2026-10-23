@@ -114,3 +114,12 @@ class UserAdmin(DjangoUserAdmin):
             EmailAddress.objects.filter(user=obj).update(primary=False)
             EmailAddress.objects.create(user=obj, email=obj.email.lower(), verified=False, primary=True)
         refresh_company_verification(obj)
+
+
+# Google's client ID/secret come from settings (SOCIALACCOUNT_PROVIDERS, read from .env) and
+# tokens aren't stored, so these two stay empty. Hidden so nobody adds a Google app here:
+# a second Google config breaks sign-in. Import first: "accounts" loads before allauth.
+from allauth.socialaccount import admin as _socialaccount_admin  # noqa: E402,F401
+from allauth.socialaccount.models import SocialApp, SocialToken  # noqa: E402
+
+admin.site.unregister((SocialApp, SocialToken))
