@@ -85,7 +85,6 @@ export function SectionsField({ label, value, onChange, maxItems = 30, error }: 
                 onChange={e => update(index, { heading: e.target.value })}
               />
               <RichTextEditor
-                variant="basic"
                 minHeightClassName="min-h-40"
                 ariaLabel={`Section ${index + 1} text`}
                 value={section.body}
