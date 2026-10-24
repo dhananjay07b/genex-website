@@ -55,6 +55,8 @@ services:
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
     volumes:
       - media:/app/media
+      # Job applicants' CVs: backend only (Nginx never sees it), read via Django admin.
+      - private:/app/private
       - static:/app/staticfiles
     depends_on:
       db:
@@ -98,4 +100,5 @@ services:
 volumes:
   pgdata:
   media:
+  private:
   static:

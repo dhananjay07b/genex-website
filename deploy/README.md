@@ -173,11 +173,11 @@ after a crash or a reboot.
 
 ## 8. Backups
 
-A nightly database dump and media archive, keeping 14 days:
+A nightly database dump and an archive of uploads and applicants' CVs (`media` and `private`), keeping 14 days:
 ```bash
 sudo install -d -m 700 /var/backups/genex
 sudo tee /etc/cron.d/genex-backup > /dev/null <<'EOF'
-30 2 * * * root cd /srv/genex && docker compose exec -T db pg_dump -U genex -Fc genex > /var/backups/genex/genex-$(date +\%F).dump && docker compose exec -T backend tar czf - -C /app media > /var/backups/genex/media-$(date +\%F).tgz && find /var/backups/genex -type f -mtime +14 -delete
+30 2 * * * root cd /srv/genex && docker compose exec -T db pg_dump -U genex -Fc genex > /var/backups/genex/genex-$(date +\%F).dump && docker compose exec -T backend tar czf - -C /app media private > /var/backups/genex/media-$(date +\%F).tgz && find /var/backups/genex -type f -mtime +14 -delete
 EOF
 ```
 **Also copy these off the server**, for example to S3. A backup on the same disk

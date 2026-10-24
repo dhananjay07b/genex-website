@@ -1,12 +1,14 @@
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
-from django.urls import reverse
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.text import slugify
 from engagement.models import Notification
 
-from .models import BlogPost, Topic, UserBlogPost, UserVideoPost, VideoItem
+from .models import BlogPost, JobApplication, Topic, UserBlogPost, UserVideoPost, VideoItem
 from .richtext import sanitize_rich_text
 
 
@@ -159,3 +161,59 @@ class UserVideoPostAdmin(admin.ModelAdmin):
             submission.reviewed_by = request.user
             submission.save(update_fields=["status", "reviewed_at", "reviewed_by"])
             _notify_status(submission, "video_status", f'Your video "{submission.title}" was sent back with feedback.', submission)
+
+
+@admin.register(JobApplication)
+class JobApplicationAdmin(admin.ModelAdmin):
+    """
+    Applications from the job pages' Apply form. Applicants' details are read-only;
+    only the status is changed here. The CV is in private storage and is
+    downloaded through this admin (superuser-only), never from /media/.
+    """
+    list_display = ("created_at", "name", "job", "status", "email_sent")
+    list_filter = ("status", "job")
+    search_fields = ("name", "email", "job__title")
+    date_hierarchy = "created_at"
+    readonly_fields = ("job", "name", "email", "phone", "linkedin", "portfolio", "experience", "message",
+                       "cv_download", "consent_at", "email_sent", "created_at")
+    fields = ("status", "job", "name", "email", "phone", "linkedin", "portfolio", "experience", "message",
+              "cv_download", "consent_at", "email_sent", "created_at")
+    actions = ["mark_reviewed", "mark_shortlisted", "mark_rejected"]
+
+    def has_add_permission(self, request):
+        return False  # applications come from the website's form only
+
+    def get_urls(self):
+        return [
+            path("<int:pk>/cv/", self.admin_site.admin_view(self.download_cv), name="pages_jobapplication_cv"),
+            *super().get_urls(),
+        ]
+
+    def download_cv(self, request, pk):
+        application = get_object_or_404(JobApplication, pk=pk)
+        if not application.cv:
+            raise Http404("No CV on this application.")
+        filename = f"CV - {application.name}.pdf".replace('"', "")
+        return FileResponse(application.cv.open("rb"), as_attachment=True, filename=filename, content_type="application/pdf")
+
+    @admin.display(description="CV")
+    def cv_download(self, obj):
+        if not obj.cv:
+            return "—"
+        return format_html('<a href="{}">Download CV (PDF)</a>', reverse("admin:pages_jobapplication_cv", args=[obj.pk]))
+
+    def _set_status(self, request, queryset, status):
+        count = queryset.update(status=status)
+        self.message_user(request, f"{count} application(s) updated.")
+
+    @admin.action(description="Mark as reviewed")
+    def mark_reviewed(self, request, queryset):
+        self._set_status(request, queryset, "reviewed")
+
+    @admin.action(description="Mark as shortlisted")
+    def mark_shortlisted(self, request, queryset):
+        self._set_status(request, queryset, "shortlisted")
+
+    @admin.action(description="Mark as not taken forward")
+    def mark_rejected(self, request, queryset):
+        self._set_status(request, queryset, "rejected")

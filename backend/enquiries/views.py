@@ -3,11 +3,12 @@ import logging
 from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework import permissions, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .serializers import EnquirySerializer
+from .serializers import EnquirySerializer, JobApplicationSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -50,4 +51,44 @@ class EnquiryCreateView(APIView):
             enquiry.save(update_fields=["email_sent"])
         except Exception:  # email trouble must never lose the enquiry or fail the visitor
             logger.exception("Enquiry %s saved but the email copy failed", enquiry.pk)
+        return Response({"received": True}, status=status.HTTP_201_CREATED)
+
+
+class JobApplicationCreateView(APIView):
+    """
+    POST (multipart) from a job page's Apply form. Saved first, CV in private
+    storage; then the Genex inbox gets a note with a link to the application in
+    Django admin (never the CV itself, which stays behind the admin login).
+    """
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # a public form: no session or CSRF involved
+    parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "job-application"
+
+    def post(self, request):
+        serializer = JobApplicationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data.pop("website", ""):
+            return Response({"received": True}, status=status.HTTP_201_CREATED)  # a bot: pretend it worked, keep nothing
+        application = serializer.save()
+        admin_url = (f"{settings.WAGTAILADMIN_BASE_URL.rstrip('/')}/{settings.DJANGO_ADMIN_PATH}"
+                     f"pages/jobapplication/{application.pk}/change/")
+        job = application.job.title if application.job else "a role"
+        try:
+            send_mail(
+                subject=f"Job application: {job} ({application.name})",
+                message=(
+                    f"{application.name} <{application.email}> applied for {job}.\n"
+                    f"Phone: {application.phone}\n\n"
+                    f"Read the application and download the CV in Django admin:\n{admin_url}"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.ENQUIRY_EMAIL],
+                fail_silently=False,
+            )
+            application.email_sent = True
+            application.save(update_fields=["email_sent"])
+        except Exception:  # email trouble must never lose the application or fail the applicant
+            logger.exception("Job application %s saved but the email notification failed", application.pk)
         return Response({"received": True}, status=status.HTTP_201_CREATED)

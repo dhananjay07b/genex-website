@@ -1,10 +1,12 @@
 import json
+import uuid
 from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -20,6 +22,7 @@ from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
 from .durations import parse_duration_seconds
+from .private_files import private_storage
 from .editor_features import GELEARN_RICH_TEXT_FEATURES
 from .gelearn_blocks import HOME_SECTIONS, LANDING_SECTIONS, MEMBER_SECTIONS
 from .images import CONTENT, image_url
@@ -1039,40 +1042,45 @@ class Testimonial(models.Model):
 # Contact & Job snippets (form submissions / applications)
 # ---------------------------------------------------------------------------
 
+def cv_upload_path(instance, filename):
+    """A random name under the month: an applicant's own file name can carry personal details."""
+    return f"applications/{timezone.now():%Y/%m}/{uuid.uuid4().hex}.pdf"
+
+
 class JobApplication(models.Model):
+    """
+    An application sent from a job page's Apply form (pages/JobDetail.tsx).
+    Reviewed in Django admin → Job applications; the CV is kept in private
+    storage (pages/private_files.py) and downloaded only from there.
+    """
+    STATUS_NEW = "new"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "New"),
+        ("reviewed", "Reviewed"),
+        ("shortlisted", "Shortlisted"),
+        ("rejected", "Not taken forward"),
+    ]
+
     job         = models.ForeignKey(JobPage, null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     name        = models.CharField(max_length=200)
     email       = models.EmailField()
-    phone       = models.CharField(max_length=30, blank=True)
-    linkedin    = models.URLField(blank=True)
+    phone       = models.CharField(max_length=40)
+    linkedin    = models.URLField(blank=True, verbose_name="LinkedIn")
     portfolio   = models.URLField(blank=True)
-    experience  = models.CharField(max_length=100, blank=True)
-    message     = models.TextField(blank=True)
-    resume      = models.ForeignKey(
-        "wagtaildocs.Document", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
-    )
+    experience  = models.CharField(max_length=100, blank=True, help_text="As the applicant wrote it, e.g. '6 years'.")
+    message     = models.TextField(max_length=5000, blank=True)
+    cv          = models.FileField(upload_to=cv_upload_path, storage=private_storage, verbose_name="CV")
+    status      = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
+    email_sent  = models.BooleanField(default=False, help_text="Whether the notification to the Genex inbox was sent.")
+    consent_at  = models.DateTimeField(help_text="When the applicant agreed to the Privacy Policy.")
     created_at  = models.DateTimeField(auto_now_add=True)
 
-    panels = [
-        FieldPanel("job"),
-        FieldPanel("name"),
-        FieldPanel("email"),
-        FieldPanel("phone"),
-        FieldPanel("linkedin"),
-        FieldPanel("portfolio"),
-        FieldPanel("experience"),
-        FieldPanel("message"),
-        FieldPanel("resume"),
-    ]
-
     def __str__(self):
-        return f"{self.name} — {self.job or 'General'} ({self.created_at:%Y-%m-%d})"
+        return f"{self.name} — {self.job.title if self.job else 'Job no longer listed'} ({self.created_at:%Y-%m-%d})"
 
     class Meta:
-        verbose_name = "Job Application"
+        verbose_name = "Job application"
         ordering = ["-created_at"]
-
 
 # ---------------------------------------------------------------------------
 # User-submitted blog posts (UGC) — reviewed by an admin before being copied

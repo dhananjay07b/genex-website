@@ -22,7 +22,7 @@ from learning.models import CareerRole, LiveSession
 
 from .links import company_chooser_viewset, course_chooser_viewset, frontend_url
 from .models import (
-    BlogPost, CaseStudy, JobApplication, PodcastEpisode, TeamCategory, TechArticle, Tender, Testimonial,
+    BlogPost, CaseStudy, PodcastEpisode, TeamCategory, TechArticle, Tender, Testimonial,
     Topic, TopicGroup, VideoItem, Whitepaper,
 )
 from .submission_sync import sync_blog_post_to_submission, sync_video_to_submission
@@ -90,7 +90,8 @@ class TopicGroupViewSet(SnippetViewSet):
 
 # ── Snippet menus: what lives here, grouped by what it's for ────────────────
 # Wagtail holds content that's published on the sites and edited as rich text;
-# people, review queues and records live in Django admin (linked below).
+# people, review queues and records (job applications included) live in
+# Django admin (linked below).
 
 class BlogPostViewSet(SnippetViewSet):
     model = BlogPost
@@ -201,17 +202,11 @@ class TeamCategoryViewSet(SnippetViewSet):
     menu_label = "Team categories"
 
 
-class JobApplicationViewSet(SnippetViewSet):
-    model = JobApplication
-    icon = "mail"
-    menu_label = "Job applications"
-
-
 class WebsiteGroup(SnippetViewSetGroup):
     menu_label = "Website"
     menu_icon = "site"
     menu_order = 220
-    items = (TeamCategoryViewSet, JobApplicationViewSet)
+    items = (TeamCategoryViewSet,)
 
 
 register_snippet(GeLearnContentGroup)

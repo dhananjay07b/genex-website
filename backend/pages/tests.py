@@ -784,7 +784,7 @@ class BackOfficeLayoutTests(TestCase):
     def test_every_grouped_listing_opens(self):
         for path in ("pages/blogpost", "pages/videoitem", "pages/techarticle", "pages/casestudy", "pages/tender",
                      "pages/whitepaper", "pages/podcastepisode", "pages/topic", "pages/topicgroup", "learning/careerrole",
-                     "learning/livesession", "pages/testimonial", "pages/teamcategory", "pages/jobapplication"):
+                     "learning/livesession", "pages/testimonial", "pages/teamcategory"):
             self.assertEqual(self.client.get(f"{self.cms}snippets/{path}/").status_code, 200, path)
 
     def test_submission_links_to_its_live_post_in_cms(self):
