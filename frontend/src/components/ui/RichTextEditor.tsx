@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -15,7 +15,31 @@ import LinkIcon from '@mui/icons-material/Link'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import UndoIcon from '@mui/icons-material/Undo'
 import RedoIcon from '@mui/icons-material/Redo'
-import { cn } from '@/lib/utils'
+import { cn, getMediaUrl } from '@/lib/utils'
+import { RichTextImageDialog, type UploadedImage } from './RichTextImageDialog'
+
+/**
+ * Images are uploaded Wagtail images. Besides src/alt they carry Wagtail's
+ * editor attributes (data-embedtype/data-id/data-format/data-alt), which the
+ * server turns into an image reference the CMS editor understands. src is
+ * shown via getMediaUrl, since the backend hands back /media/… paths.
+ */
+const WagtailImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      src: {
+        default: null,
+        parseHTML: element => element.getAttribute('src'),
+        renderHTML: attributes => (attributes.src ? { src: getMediaUrl(attributes.src as string) } : {}),
+      },
+      'data-embedtype': { default: null },
+      'data-id': { default: null },
+      'data-format': { default: null },
+      'data-alt': { default: null },
+    }
+  },
+})
 
 interface RichTextEditorProps {
   value: string
@@ -24,24 +48,20 @@ interface RichTextEditorProps {
   label?: string
   /** Screen-reader name for the editing area when there's no visible label. */
   ariaLabel?: string
-  /**
-   * 'basic' offers only what the server keeps for Studio content (headings,
-   * bold/italic, lists, quotes, rules, links) — no underline, strikethrough,
-   * code or inline images, which would be stripped on save.
-   */
-  variant?: 'full' | 'basic'
   minHeightClassName?: string
 }
 
-export function RichTextEditor({ value, onChange, error, label, ariaLabel, variant = 'full', minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
-  const basic = variant === 'basic'
+/**
+ * The GeLearn rich-text editor: blog posts and the Company Studio. Its tools
+ * are exactly what the server keeps and the Wagtail editor offers for the same
+ * content (backend pages/editor_features.py), so nothing is lost either way.
+ */
+export function RichTextEditor({ value, onChange, error, label, ariaLabel, minHeightClassName = 'min-h-96' }: RichTextEditorProps) {
   const labelId = useId()
-  // StarterKit includes Link and Underline (Tiptap v3); 'basic' switches off what the server would strip.
+  // StarterKit includes Link and Underline (Tiptap v3). No inline code: Wagtail's editor here has code blocks only.
   const link = { openOnClick: false, autolink: true }
   const editor = useEditor({
-    extensions: basic
-      ? [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link, code: false, codeBlock: false, strike: false, underline: false })]
-      : [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link }), Image],
+    extensions: [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link, code: false }), WagtailImage],
     // Re-render on every change so the toolbar's active states (bold, lists…) follow the cursor.
     shouldRerenderOnTransaction: true,
     content: value,
@@ -64,7 +84,7 @@ export function RichTextEditor({ value, onChange, error, label, ariaLabel, varia
       {/* A <label> can't point at a contenteditable, so the editor references this by id. */}
       {label && <p id={labelId} className="block text-sm font-semibold text-text-primary mb-1.5">{label}</p>}
       <div className={cn('border rounded-xl overflow-hidden bg-white', error ? 'border-red-500' : 'border-border')}>
-        <Toolbar editor={editor} basic={basic} />
+        <Toolbar editor={editor} />
         <EditorContent editor={editor} />
       </div>
       {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
@@ -88,7 +108,7 @@ function ToolbarButton({ onClick, active, label, children }: ToolbarButtonProps)
       aria-label={label}
       title={label}
       className={cn(
-        'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
+        'w-7 h-8 shrink-0 rounded-md flex items-center justify-center transition-colors',
         active ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-surface hover:text-text-primary'
       )}
     >
@@ -97,39 +117,40 @@ function ToolbarButton({ onClick, active, label, children }: ToolbarButtonProps)
   )
 }
 
-function Toolbar({ editor, basic }: { editor: Editor; basic: boolean }) {
+function Toolbar({ editor }: { editor: Editor }) {
+  const [imageDialog, setImageDialog] = useState(false)
+
   function addLink() {
     const url = window.prompt('Link URL')
     if (!url) return
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
   }
 
-  function addImage() {
-    const url = window.prompt('Image URL')
-    if (!url) return
-    editor.chain().focus().setImage({ src: url }).run()
+  function insertImage(image: UploadedImage, alt: string) {
+    setImageDialog(false)
+    editor.chain().focus().insertContent({
+      type: 'image',
+      attrs: { src: image.url, alt, 'data-embedtype': 'image', 'data-id': String(image.id), 'data-format': 'fullwidth', 'data-alt': alt },
+    }).run()
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-surface">
+    // One row: compact enough for the Studio's narrow columns; scrolls sideways on a phone rather than wrapping.
+    <div className="flex items-center overflow-x-auto px-1.5 py-1.5 border-b border-border bg-surface">
       <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <FormatBoldIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
       <ToolbarButton label="Italic" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
         <FormatItalicIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      {!basic && (
-        <>
-          <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
-            <FormatUnderlinedIcon sx={{ fontSize: 17 }} />
-          </ToolbarButton>
-          <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
-            <StrikethroughSIcon sx={{ fontSize: 17 }} />
-          </ToolbarButton>
-        </>
-      )}
+      <ToolbarButton label="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <FormatUnderlinedIcon sx={{ fontSize: 17 }} />
+      </ToolbarButton>
+      <ToolbarButton label="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <StrikethroughSIcon sx={{ fontSize: 17 }} />
+      </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Heading 2" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
         <span className="text-xs font-extrabold">H2</span>
@@ -141,7 +162,7 @@ function Toolbar({ editor, basic }: { editor: Editor; basic: boolean }) {
         <span className="text-xs font-extrabold">H4</span>
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
         <FormatListBulletedIcon sx={{ fontSize: 17 }} />
@@ -152,27 +173,23 @@ function Toolbar({ editor, basic }: { editor: Editor; basic: boolean }) {
       <ToolbarButton label="Quote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <FormatQuoteIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      {!basic && (
-        <ToolbarButton label="Code block" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-          <CodeIcon sx={{ fontSize: 17 }} />
-        </ToolbarButton>
-      )}
+      <ToolbarButton label="Code block" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        <CodeIcon sx={{ fontSize: 17 }} />
+      </ToolbarButton>
       <ToolbarButton label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <HorizontalRuleIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Insert link" active={editor.isActive('link')} onClick={addLink}>
         <LinkIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
-      {!basic && (
-        <ToolbarButton label="Insert image" onClick={addImage}>
-          <ImageOutlinedIcon sx={{ fontSize: 17 }} />
-        </ToolbarButton>
-      )}
+      <ToolbarButton label="Insert image" onClick={() => setImageDialog(true)}>
+        <ImageOutlinedIcon sx={{ fontSize: 17 }} />
+      </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Undo" onClick={() => editor.chain().focus().undo().run()}>
         <UndoIcon sx={{ fontSize: 17 }} />
@@ -180,6 +197,8 @@ function Toolbar({ editor, basic }: { editor: Editor; basic: boolean }) {
       <ToolbarButton label="Redo" onClick={() => editor.chain().focus().redo().run()}>
         <RedoIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
+
+      {imageDialog && <RichTextImageDialog onInsert={insertImage} onClose={() => setImageDialog(false)} />}
     </div>
   )
 }

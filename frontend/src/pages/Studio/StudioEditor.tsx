@@ -219,7 +219,7 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
         return <Select key={field.name} label={field.label} options={field.options ?? []} value={asString(value)} error={error} onChange={e => set(field.name, e.target.value)} />
       case 'richtext':
         return (
-          <RichTextEditor key={field.name} label={field.label} variant="basic" minHeightClassName="min-h-48"
+          <RichTextEditor key={field.name} label={field.label} minHeightClassName="min-h-48"
             value={asString(value)} error={error} onChange={html => set(field.name, html)} />
         )
       case 'sections':

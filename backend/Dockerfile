@@ -23,11 +23,11 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# Runs as an unprivileged user. media/ and staticfiles/ are created here so the
-# named volumes mounted over them start out owned by this user.
+# Runs as an unprivileged user. media/, private/ (CVs) and staticfiles/ are created
+# here so the named volumes mounted over them start out owned by this user.
 RUN useradd --uid 10001 --no-create-home --home-dir /app --shell /usr/sbin/nologin genex \
-    && mkdir -p media staticfiles \
-    && chown -R genex:genex media staticfiles \
+    && mkdir -p media private staticfiles \
+    && chown -R genex:genex media private staticfiles \
     && chmod +x docker-entrypoint.sh
 USER genex
 

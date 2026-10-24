@@ -145,6 +145,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Files nothing serves publicly (job applicants' CVs): read only through views
+# that check access. Outside MEDIA_ROOT, which Nginx serves at /media/.
+PRIVATE_MEDIA_ROOT = Path(os.environ.get("PRIVATE_MEDIA_ROOT", BASE_DIR / "private"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -218,6 +221,8 @@ REST_FRAMEWORK = {
         "view-track": "120/hour",
         "search": "60/minute",
         "enquiry": "10/hour",
+        "editor-image": "60/hour",
+        "job-application": "5/hour",
     },
 }
 

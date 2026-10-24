@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 from wagtail.documents import get_document_model
 from wagtail.images import get_image_model
+from willow.image import UnrecognisedImageFormatError
 
 from .roles import is_admin
 
@@ -33,11 +34,15 @@ def save_uploaded_image(request):
     if _is_svg(upload) and not is_admin(request.user):
         return Response({"detail": "SVG images aren't accepted. Upload a PNG, JPG or WebP instead."}, status=400)
 
-    image = get_image_model()(title=upload.name, file=upload, uploaded_by_user=request.user)
     try:
+        # Building the model already reads the file's dimensions, so a file that
+        # isn't an image fails here, before full_clean.
+        image = get_image_model()(title=upload.name, file=upload, uploaded_by_user=request.user)
         image.full_clean()
     except ValidationError as exc:
         return Response({"detail": exc.messages}, status=400)
+    except UnrecognisedImageFormatError:
+        return Response({"detail": "That file isn't an image we can read. Upload a PNG, JPG or WebP."}, status=400)
     image.save()
     return image
 

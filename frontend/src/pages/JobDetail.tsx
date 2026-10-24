@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHero } from '@/components/ui/PageHero'
@@ -8,6 +8,7 @@ import { PageSkeleton } from '@/components/ui/PageSkeleton'
 import { RichText } from '@/components/ui/RichText'
 import { buttonVariants } from '@/components/ui/Button'
 import { CTABandBlockSection } from '@/components/content-blocks/CTABandBlockSection'
+import { JobApplicationForm } from '@/components/careers/JobApplicationForm'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import NotFound from '@/pages/NotFound'
@@ -16,11 +17,13 @@ import type { CTABandValue, IntroductionSectionValue, JobPageData, WagtailListRe
 /**
  * One opening at /careers/:slug, from a Job Page added with "+" under Careers in
  * the CMS. Intro blocks become the sections of the job description; CTA blocks
- * follow it as bands. Closed roles stay reachable (old links keep working) but
- * say so instead of offering to apply.
+ * follow it as bands. An open role ends with its Apply form (#apply), which the
+ * Apply Now buttons scroll to. Closed roles stay reachable (old links keep
+ * working) but say so instead of offering to apply.
  */
 export default function JobDetail() {
   const { slug = '' } = useParams()
+  const { hash } = useLocation()
   // Each result remembers the slug it was loaded for; anything older counts as still loading.
   const [loaded, setLoaded] = useState<{ slug: string; job: JobPageData | null } | null>(null)
 
@@ -33,10 +36,16 @@ export default function JobDetail() {
   }, [slug])
 
   const job = loaded?.slug === slug ? loaded.job : undefined
+
+  // Apply Now links to #apply; the router doesn't scroll to anchors by itself.
+  useEffect(() => {
+    if (job && hash === '#apply') document.getElementById('apply')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [job, hash])
+
   if (job === undefined) return <PageSkeleton />
   if (job === null) return <NotFound />
 
-  const applyLink = `/contact?subject=${encodeURIComponent(`Application: ${job.title}`)}`
+  const applyLink = '#apply'
   const sections = job.body.filter(b => b.type === 'intro').map(b => ({ id: b.id, ...(b.value as IntroductionSectionValue) }))
   const ctas = job.body.filter(b => b.type === 'cta')
 
@@ -132,6 +141,19 @@ export default function JobDetail() {
           </div>
         </div>
       </section>
+
+      {job.is_open && (
+        <section id="apply" aria-labelledby="apply-heading" className="scroll-mt-24 bg-surface py-16 lg:py-20 border-t border-border">
+          <div className="max-w-3xl mx-auto px-6 lg:px-8">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Apply</p>
+            <h2 id="apply-heading" className="text-3xl font-extrabold text-text-primary leading-tight mb-2">{job.title}</h2>
+            <p className="text-base text-text-muted mb-8">Send us your details and CV. Every application is read by our team.</p>
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8">
+              <JobApplicationForm jobId={job.id} jobTitle={job.title} />
+            </div>
+          </div>
+        </section>
+      )}
 
       {ctas.map(b => <CTABandBlockSection key={b.id} value={b.value as CTABandValue} />)}
     </main>

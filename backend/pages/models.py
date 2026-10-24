@@ -1,10 +1,12 @@
 import json
+import uuid
 from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -16,11 +18,12 @@ from wagtail.images.models import Image
 from wagtail.models import Orderable, Page
 from wagtail.rich_text import expand_db_html
 from wagtail.search import index
-from wagtail.snippets.models import register_snippet
 from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
 from .durations import parse_duration_seconds
+from .private_files import private_storage
+from .editor_features import GELEARN_RICH_TEXT_FEATURES
 from .gelearn_blocks import HOME_SECTIONS, LANDING_SECTIONS, MEMBER_SECTIONS
 from .images import CONTENT, image_url
 from .links import PAGE_SECTIONS, genex_page_path
@@ -509,7 +512,6 @@ class LegalPage(BasePage):
 # SNIPPETS — independent content items (GeLearn listing data)
 # ===========================================================================
 
-@register_snippet
 class TeamCategory(models.Model):
     """A named team grouping (e.g. 'Development Team') with a display order.
     Assigned to TeamMemberBlock items; the frontend groups/sorts members by this."""
@@ -559,7 +561,6 @@ class CompanyPublished(models.Model):
         return {self.owner_id} if self.owner_id else set()
 
 
-@register_snippet
 class CaseStudy(CompanyPublished):
     title          = models.CharField(max_length=255)
     excerpt        = models.TextField()
@@ -574,11 +575,11 @@ class CaseStudy(CompanyPublished):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
-    intro          = RichTextField(blank=True)
+    intro          = RichTextField(blank=True, features=GELEARN_RICH_TEXT_FEATURES)
     sections       = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", RichTextBlock()),
+            ("body", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ]))
     ], blank=True, use_json_field=True)
     updated_by     = models.ForeignKey(
@@ -610,7 +611,6 @@ class CaseStudy(CompanyPublished):
         ordering = ["-date"]
 
 
-@register_snippet
 class TechArticle(CompanyPublished):
     DIFFICULTY_CHOICES = [
         ("Beginner", "Beginner"),
@@ -633,11 +633,11 @@ class TechArticle(CompanyPublished):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
-    intro           = RichTextField(blank=True)
+    intro           = RichTextField(blank=True, features=GELEARN_RICH_TEXT_FEATURES)
     sections        = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", RichTextBlock()),
+            ("body", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ]))
     ], blank=True, use_json_field=True)
     callout_label   = models.CharField(max_length=100, blank=True)
@@ -675,7 +675,6 @@ class TechArticle(CompanyPublished):
         ordering = ["-featured", "-date"]
 
 
-@register_snippet
 class Tender(CompanyPublished):
     STATUS_CHOICES = [
         ("Open", "Open"),
@@ -717,7 +716,6 @@ class Tender(CompanyPublished):
         verbose_name_plural = "Policies & Tenders"
 
 
-@register_snippet
 class Whitepaper(CompanyPublished):
     title         = models.CharField(max_length=255)
     date          = models.DateField()
@@ -813,7 +811,6 @@ class SubmissionOwnedMixin:
         return {submission.author_id} if submission is not None and submission.author_id else set()
 
 
-@register_snippet
 class VideoItem(SubmissionOwnedMixin, AccessControlled):
     title               = models.CharField(max_length=255)
     date                = models.DateField()
@@ -906,7 +903,6 @@ class Topic(models.Model):
         ordering = ["name"]
 
 
-@register_snippet
 class BlogPost(SubmissionOwnedMixin, AccessControlled):
     title   = models.CharField(max_length=255)
     topics  = models.ManyToManyField(Topic, blank=True, related_name="posts")
@@ -918,7 +914,7 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
         on_delete=models.SET_NULL, related_name="+",
     )
     body    = StreamField([
-        ("rich_text", RichTextBlock()),
+        ("rich_text", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ("image", blocks.StructBlock([
             ("image", blocks.CharBlock(help_text="Image URL or path")),
             ("caption", blocks.CharBlock(required=False)),
@@ -950,7 +946,6 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
         ordering = ["-date"]
 
 
-@register_snippet
 class PodcastEpisode(CompanyPublished, AccessControlled):
     title         = models.CharField(max_length=255)
     date          = models.DateField()
@@ -1011,7 +1006,6 @@ class PodcastEpisode(CompanyPublished, AccessControlled):
         ordering = ["-date"]
 
 
-@register_snippet
 class Testimonial(models.Model):
     """A quote for the GeLearn home page. The section stays hidden until at least 3 are active."""
     quote = models.TextField(max_length=600)
@@ -1048,68 +1042,45 @@ class Testimonial(models.Model):
 # Contact & Job snippets (form submissions / applications)
 # ---------------------------------------------------------------------------
 
-@register_snippet
-class ContactLead(models.Model):
-    name         = models.CharField(max_length=200)
-    email        = models.EmailField()
-    company      = models.CharField(max_length=200, blank=True)
-    phone        = models.CharField(max_length=30, blank=True)
-    project_type = models.CharField(max_length=100, blank=True)
-    message      = models.TextField()
-    created_at   = models.DateTimeField(auto_now_add=True)
+def cv_upload_path(instance, filename):
+    """A random name under the month: an applicant's own file name can carry personal details."""
+    return f"applications/{timezone.now():%Y/%m}/{uuid.uuid4().hex}.pdf"
 
-    panels = [
-        FieldPanel("name"),
-        FieldPanel("email"),
-        FieldPanel("company"),
-        FieldPanel("phone"),
-        FieldPanel("project_type"),
-        FieldPanel("message"),
+
+class JobApplication(models.Model):
+    """
+    An application sent from a job page's Apply form (pages/JobDetail.tsx).
+    Reviewed in Django admin → Job applications; the CV is kept in private
+    storage (pages/private_files.py) and downloaded only from there.
+    """
+    STATUS_NEW = "new"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "New"),
+        ("reviewed", "Reviewed"),
+        ("shortlisted", "Shortlisted"),
+        ("rejected", "Not taken forward"),
     ]
 
-    def __str__(self):
-        return f"{self.name} — {self.email} ({self.created_at:%Y-%m-%d})"
-
-    class Meta:
-        verbose_name = "Contact Lead"
-        ordering = ["-created_at"]
-
-
-@register_snippet
-class JobApplication(models.Model):
     job         = models.ForeignKey(JobPage, null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     name        = models.CharField(max_length=200)
     email       = models.EmailField()
-    phone       = models.CharField(max_length=30, blank=True)
-    linkedin    = models.URLField(blank=True)
+    phone       = models.CharField(max_length=40)
+    linkedin    = models.URLField(blank=True, verbose_name="LinkedIn")
     portfolio   = models.URLField(blank=True)
-    experience  = models.CharField(max_length=100, blank=True)
-    message     = models.TextField(blank=True)
-    resume      = models.ForeignKey(
-        "wagtaildocs.Document", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="+",
-    )
+    experience  = models.CharField(max_length=100, blank=True, help_text="As the applicant wrote it, e.g. '6 years'.")
+    message     = models.TextField(max_length=5000, blank=True)
+    cv          = models.FileField(upload_to=cv_upload_path, storage=private_storage, verbose_name="CV")
+    status      = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
+    email_sent  = models.BooleanField(default=False, help_text="Whether the notification to the Genex inbox was sent.")
+    consent_at  = models.DateTimeField(help_text="When the applicant agreed to the Privacy Policy.")
     created_at  = models.DateTimeField(auto_now_add=True)
 
-    panels = [
-        FieldPanel("job"),
-        FieldPanel("name"),
-        FieldPanel("email"),
-        FieldPanel("phone"),
-        FieldPanel("linkedin"),
-        FieldPanel("portfolio"),
-        FieldPanel("experience"),
-        FieldPanel("message"),
-        FieldPanel("resume"),
-    ]
-
     def __str__(self):
-        return f"{self.name} — {self.job or 'General'} ({self.created_at:%Y-%m-%d})"
+        return f"{self.name} — {self.job.title if self.job else 'Job no longer listed'} ({self.created_at:%Y-%m-%d})"
 
     class Meta:
-        verbose_name = "Job Application"
+        verbose_name = "Job application"
         ordering = ["-created_at"]
-
 
 # ---------------------------------------------------------------------------
 # User-submitted blog posts (UGC) — reviewed by an admin before being copied

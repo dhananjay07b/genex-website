@@ -78,6 +78,22 @@ class ApprovalCarriesAccessTests(TestCase):
         self.assertNotIn("onclick", str(post.body.raw_data))
         self.assertEqual(post.access_owner_ids(), {self.pro.pk})
 
+    def test_blog_approval_keeps_formatting_and_uploaded_images_editable_in_wagtail(self):
+        from wagtail.images import get_image_model
+        from wagtail.images.tests.utils import get_test_image_file
+        image = get_image_model().objects.create(title="Chart", file=get_test_image_file(), uploaded_by_user=self.pro)
+        submission = UserBlogPost.objects.create(
+            author=self.pro, title="Formatting", excerpt="e", status="pending",
+            body=(
+                "<p><u>Under</u> <s>struck</s></p><pre><code>x = 1</code></pre>"
+                f'<img src="/media/x.png" alt="Chart" data-embedtype="image" data-id="{image.pk}" data-format="fullwidth" data-alt="Chart">'
+            ),
+        )
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(self.request, UserBlogPost.objects.filter(pk=submission.pk))
+        stored = UserBlogPost.objects.get(pk=submission.pk).published_post.body[0].value.source
+        for kept in ("<u>Under</u>", "<s>struck</s>", "<pre>", f'embedtype="image" format="fullwidth" id="{image.pk}"'):
+            self.assertIn(kept, stored)
+
     def test_video_approval_publishes_access(self):
         submission = UserVideoPost.objects.create(
             author=self.pro, title="Members video", excerpt="e", video_url="https://v.example/1",
@@ -651,3 +667,132 @@ class CareersJobPagesTests(TestCase):
     def test_careers_page_no_longer_has_open_roles_block(self):
         from .models import CareersPage
         self.assertNotIn("open_roles", CareersPage.body.field.stream_block.child_blocks)
+
+
+class GeLearnRichTextFeaturesInWagtailTests(TestCase):
+    """The Wagtail editor offers the GeLearn editor's tools (pages/editor_features.py)."""
+
+    def test_geacademy_editor_has_underline_code_block_and_image(self):
+        from django.conf import settings
+        from pages.models import TechArticle
+        item = TechArticle.objects.create(title="T", difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e",
+                                          intro="<p><u>u</u></p>")
+        self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+        res = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}snippets/pages/techarticle/edit/{item.pk}/")
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        for feature in ("UNDERLINE", "STRIKETHROUGH", "code-block", "blockquote", "image"):
+            self.assertIn(feature, html)
+
+
+class WagtailBlockShapeTests(TestCase):
+    """GeLearn editor HTML survives being opened and saved in the Wagtail editor."""
+
+    def test_quotes_and_lists_keep_their_text_after_a_cms_save(self):
+        from wagtail.admin.rich_text.converters.contentstate import ContentstateConverter
+        from pages.editor_features import GELEARN_RICH_TEXT_FEATURES
+        from pages.richtext import sanitize_rich_text
+        cms = ContentstateConverter(features=GELEARN_RICH_TEXT_FEATURES)
+        stored = sanitize_rich_text(
+            "<blockquote><p>Quoted</p></blockquote><ul><li><p>One</p></li><li><p>Two</p></li></ul>"
+            "<blockquote><p>A</p><p>B</p></blockquote>"
+        )
+        after_cms_save = cms.to_database_format(cms.from_database_format(stored))
+        for kept in (">Quoted</blockquote>", ">One</li>", ">Two</li>", ">A</blockquote>", ">B</blockquote>"):
+            self.assertIn(kept, after_cms_save)
+        self.assertNotRegex(after_cms_save, r"<blockquote[^>]*></blockquote>")  # no emptied quotes
+        self.assertNotRegex(after_cms_save, r"<li[^>]*></li>")  # no emptied list items
+
+
+class LiveEditSyncsToSubmissionTests(TestCase):
+    """A live post edited in Wagtail flows back to the author's dashboard copy."""
+
+    def setUp(self):
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        self.submission = UserBlogPost.objects.create(author=self.pro, title="Original", excerpt="e", status="pending",
+                                                      body="<p>Original body</p>")
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(request, UserBlogPost.objects.filter(pk=self.submission.pk))
+        self.submission.refresh_from_db()
+        self.post = self.submission.published_post
+
+    def _cms_edit(self, title, body_db_html):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from wagtail import hooks
+        self.post.title = title
+        self.post.body = [("rich_text", body_db_html)]
+        self.post.save()
+        request = RequestFactory().post("/")
+        request.user, request.session = self.admin, {}
+        request._messages = FallbackStorage(request)
+        for hook in hooks.get_hooks("after_edit_snippet"):
+            hook(request, self.post)
+        return [str(m) for m in request._messages]
+
+    def test_cms_edit_reaches_the_dashboard_copy(self):
+        self.assertEqual(self._cms_edit("Edited in CMS", "<p>CMS body</p><blockquote>Quote</blockquote>"), [])
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.title, "Edited in CMS")
+        self.assertIn("CMS body", self.submission.body)
+        self.assertIn("<blockquote>Quote</blockquote>", self.submission.body)
+        self.assertEqual(self.submission.status, "published")
+
+        mine = APIClient()
+        mine.force_authenticate(self.pro)
+        self.assertEqual(mine.get(f"/api/snippets/blog-submissions/{self.submission.pk}/").json()["title"], "Edited in CMS")
+
+    def test_authors_pending_edits_are_not_overwritten(self):
+        UserBlogPost.objects.filter(pk=self.submission.pk).update(status="pending", title="Author's new draft")
+        self.post.refresh_from_db()
+        warnings = self._cms_edit("Edited in CMS", "<p>CMS body</p>")
+        self.assertTrue(any("unpublished changes" in w for w in warnings))
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.title, "Author's new draft")
+
+
+class BackOfficeLayoutTests(TestCase):
+    """Wagtail groups GeLearn's snippets by purpose and links to Django admin, and back."""
+
+    def setUp(self):
+        from django.conf import settings
+        from django.core.cache import cache
+        # Loading admin pages caches Wagtail's site list (empty here); don't leak it into later tests.
+        self.addCleanup(cache.clear)
+        self.cms = "/" + settings.WAGTAIL_ADMIN_PATH
+        self.dj = "/" + settings.DJANGO_ADMIN_PATH
+        self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+
+    def test_menu_groups_and_django_admin_link(self):
+        html = self.client.get(self.cms).content.decode()
+        for label in ("GeLearn content", "GeLearn setup", "Website", "Django admin", self.dj):
+            self.assertIn(label, html)
+
+    def test_company_content_lists_by_company(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        genex = Company.objects.create(name="Genex", slug="genex")
+        other = Company.objects.create(name="Other", slug="other")
+        TechArticle.objects.create(title="Genex piece", company=genex, difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e")
+        TechArticle.objects.create(title="Other piece", company=other, difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e")
+        res = self.client.get(f"{self.cms}snippets/pages/techarticle/?company={genex.pk}")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Genex piece")
+        self.assertNotContains(res, "Other piece")
+
+    def test_every_grouped_listing_opens(self):
+        for path in ("pages/blogpost", "pages/videoitem", "pages/techarticle", "pages/casestudy", "pages/tender",
+                     "pages/whitepaper", "pages/podcastepisode", "pages/topic", "pages/topicgroup", "learning/careerrole",
+                     "learning/livesession", "pages/testimonial", "pages/teamcategory"):
+            self.assertEqual(self.client.get(f"{self.cms}snippets/{path}/").status_code, 200, path)
+
+    def test_submission_links_to_its_live_post_in_cms(self):
+        pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        submission = UserBlogPost.objects.create(author=pro, title="Live", excerpt="e", status="pending", body="<p>b</p>")
+        request = RequestFactory().post("/")
+        request.user = User.objects.get(username="root")
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(request, UserBlogPost.objects.filter(pk=submission.pk))
+        post = UserBlogPost.objects.get(pk=submission.pk).published_post
+        res = self.client.get(f"{self.dj}pages/userblogpost/{submission.pk}/change/")
+        self.assertContains(res, f'href="{self.cms}snippets/pages/blogpost/edit/{post.pk}/"')

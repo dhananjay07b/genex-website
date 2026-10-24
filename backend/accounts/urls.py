@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .activity_views import ActivityFeedView, MyCommentsView, MyPodcastAppearancesView
-from .media_views import AvatarUploadView, CoverPhotoUploadView
+from .media_views import AvatarUploadView, CoverPhotoUploadView, EditorImageUploadView
 from .public_views import (
     PublicProfileView,
     PublicUserBlogPostsView,
@@ -20,6 +20,7 @@ urlpatterns = [
     path("me/work-email/", WorkEmailView.as_view(), name="my-work-email"),
     path("me/avatar/", AvatarUploadView.as_view(), name="my-avatar"),
     path("me/cover-photo/", CoverPhotoUploadView.as_view(), name="my-cover-photo"),
+    path("me/images/", EditorImageUploadView.as_view(), name="my-editor-images"),
     path("me/social-accounts/", SocialAccountListView.as_view(), name="my-social-accounts"),
     path("me/social-accounts/<int:pk>/", SocialAccountDisconnectView.as_view(), name="my-social-account-disconnect"),
     path("google/", GoogleLoginView.as_view(), name="google-login"),
