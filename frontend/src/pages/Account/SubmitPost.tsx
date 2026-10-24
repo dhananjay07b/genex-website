@@ -17,10 +17,10 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { AccessField } from '@/components/gelearn/AccessField'
+import { TopicPicker } from '@/components/gelearn/TopicPicker'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import { ConfirmDialog } from './dashboard/ConfirmDialog'
-import type { Topic } from '@/types/api'
 import type { UserBlogPost } from '@/types/auth'
 
 const schema = z.object({
@@ -60,7 +60,6 @@ export default function SubmitPost() {
   const isEditing = !!id
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [loaded, setLoaded] = useState(!isEditing)
-  const [topics, setTopics] = useState<Topic[]>([])
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [wasPublished, setWasPublished] = useState(false)
@@ -76,12 +75,6 @@ export default function SubmitPost() {
     setValue,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '', topics: [], access: 'free', price: '' } })
-
-  const selectedTopics = watch('topics')
-
-  useEffect(() => {
-    apiFetch<Topic[]>('/api/snippets/topics/').then(setTopics).catch(() => setTopics([]))
-  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -129,13 +122,6 @@ export default function SubmitPost() {
 
   function onSaveDraft() {
     handleSubmit(data => submitForm(data, true))()
-  }
-
-  function toggleTopic(topicId: number, onChange: (v: number[]) => void) {
-    const next = selectedTopics.includes(topicId)
-      ? selectedTopics.filter(t => t !== topicId)
-      : selectedTopics.length < 3 ? [...selectedTopics, topicId] : selectedTopics
-    onChange(next)
   }
 
   if (!loaded) return null
@@ -214,37 +200,14 @@ export default function SubmitPost() {
             <div className="w-full lg:w-80 shrink-0 flex flex-col gap-5">
               <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
                 <div>
-                  <label className="text-sm font-semibold text-text-primary block mb-1.5">Topics (up to 3)</label>
                   <Controller
                     name="topics"
                     control={control}
                     render={({ field }) => (
-                      <div className="flex flex-wrap gap-2">
-                        {topics.map(t => {
-                          const active = field.value.includes(t.id)
-                          const disabled = !active && field.value.length >= 3
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => toggleTopic(t.id, field.onChange)}
-                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                                active
-                                  ? 'bg-primary text-white border-primary'
-                                  : disabled
-                                    ? 'bg-surface text-text-muted/50 border-border cursor-not-allowed'
-                                    : 'bg-white text-text-primary border-border hover:border-primary'
-                              }`}
-                            >
-                              {t.name}
-                            </button>
-                          )
-                        })}
-                      </div>
+                      <TopicPicker value={field.value} onChange={field.onChange} max={3} error={errors.topics?.message}
+                        help="Used for topic pages and recommendations on GeLearn." />
                     )}
                   />
-                  {errors.topics && <p className="text-xs text-red-500 mt-1.5">{errors.topics.message}</p>}
                 </div>
 
                 <Input

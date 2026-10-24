@@ -108,7 +108,7 @@ function ToolbarButton({ onClick, active, label, children }: ToolbarButtonProps)
       aria-label={label}
       title={label}
       className={cn(
-        'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
+        'w-7 h-8 shrink-0 rounded-md flex items-center justify-center transition-colors',
         active ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-surface hover:text-text-primary'
       )}
     >
@@ -135,7 +135,8 @@ function Toolbar({ editor }: { editor: Editor }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-surface">
+    // One row: compact enough for the Studio's narrow columns; scrolls sideways on a phone rather than wrapping.
+    <div className="flex items-center overflow-x-auto px-1.5 py-1.5 border-b border-border bg-surface">
       <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <FormatBoldIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
@@ -149,7 +150,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <StrikethroughSIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Heading 2" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
         <span className="text-xs font-extrabold">H2</span>
@@ -161,7 +162,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <span className="text-xs font-extrabold">H4</span>
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
         <FormatListBulletedIcon sx={{ fontSize: 17 }} />
@@ -179,7 +180,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <HorizontalRuleIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Insert link" active={editor.isActive('link')} onClick={addLink}>
         <LinkIcon sx={{ fontSize: 17 }} />
@@ -188,7 +189,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <ImageOutlinedIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
 
-      <span className="w-px h-5 bg-border mx-1" />
+      <span className="w-px h-5 shrink-0 bg-border mx-1" />
 
       <ToolbarButton label="Undo" onClick={() => editor.chain().focus().undo().run()}>
         <UndoIcon sx={{ fontSize: 17 }} />

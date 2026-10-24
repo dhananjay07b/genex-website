@@ -21,6 +21,7 @@ import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
 import { CertificatePrivacy } from './CertificatePrivacy'
+import { TopicPicker } from '@/components/gelearn/TopicPicker'
 import type { CareerRole, Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
@@ -113,14 +114,6 @@ export function SettingsTab() {
   }
 
   if (!user) return null
-
-  function toggleExpertise(topicId: number) {
-    setExpertise(prev => {
-      if (prev.includes(topicId)) return prev.filter(id => id !== topicId)
-      if (prev.length >= 3) return prev
-      return [...prev, topicId]
-    })
-  }
 
   function handleSelectAvatar(file: File) {
     setAvatarFile(file)
@@ -403,32 +396,7 @@ export function SettingsTab() {
             <Input label="LinkedIn URL" placeholder="https://linkedin.com/in/…" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} />
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-text-primary block mb-1.5">Areas of Expertise (up to 3)</label>
-            <div className="flex flex-wrap gap-2">
-              {topics.map(topic => {
-                const active = expertise.includes(topic.id)
-                const disabled = !active && expertise.length >= 3
-                return (
-                  <button
-                    key={topic.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => toggleExpertise(topic.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                      active
-                        ? 'bg-primary text-white border-primary'
-                        : disabled
-                          ? 'bg-surface text-text-muted/50 border-border cursor-not-allowed'
-                          : 'bg-white text-text-primary border-border hover:border-primary'
-                    }`}
-                  >
-                    {topic.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <TopicPicker label="Areas of Expertise" value={expertise} onChange={setExpertise} max={3} />
 
           <div id="career-goal" className="scroll-mt-28">
             {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
