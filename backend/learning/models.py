@@ -14,7 +14,6 @@ from django.db import models
 from django.db.models import Q
 from django.utils.text import slugify
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
-from wagtail.snippets.models import register_snippet
 
 from pages.models import AccessControlled
 
@@ -82,7 +81,6 @@ def unique_slug(instance, value, max_length=200, fallback="item"):
     return slug
 
 
-@register_snippet
 class CareerRole(models.Model):
     """A job in the sector that courses prepare people for, e.g. "SCADA Engineer"."""
     name = models.CharField(max_length=120, unique=True)
@@ -488,7 +486,6 @@ class ReviewReply(models.Model):
             raise ValidationError({"author": "Only the course's owner or instructors can reply to its reviews."})
 
 
-@register_snippet
 class LiveSession(models.Model):
     """
     A webinar or live talk listed on GeLearn. Registration and the session

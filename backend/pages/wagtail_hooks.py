@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.http import HttpResponsePermanentRedirect
 from django.contrib import messages
 from django.db.models import Count
@@ -6,6 +7,7 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.text import capfirst
 from wagtail import hooks
+from wagtail.admin.menu import MenuItem
 import wagtail.admin.rich_text.editors.draftail.features as draftail_features
 from wagtail.admin.rich_text.converters.editor_html import WhitelistRule
 from wagtail.admin.rich_text.converters.html_to_contentstate import BlockElementHandler, InlineStyleElementHandler
@@ -13,11 +15,16 @@ from wagtail.admin.ui.tables import Column
 from wagtail.snippets.bulk_actions.snippet_bulk_action import SnippetBulkAction
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.permissions import get_permission_name
-from wagtail.snippets.views.snippets import SnippetViewSet
+from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
 from wagtail.whitelist import allow_without_attributes
 
+from learning.models import CareerRole, LiveSession
+
 from .links import company_chooser_viewset, course_chooser_viewset, frontend_url
-from .models import BlogPost, Topic, TopicGroup, VideoItem
+from .models import (
+    BlogPost, CaseStudy, JobApplication, PodcastEpisode, TeamCategory, TechArticle, Tender, Testimonial,
+    Topic, TopicGroup, VideoItem, Whitepaper,
+)
 from .submission_sync import sync_blog_post_to_submission, sync_video_to_submission
 from .topics import merge_topics, with_usage
 
@@ -81,8 +88,141 @@ class TopicGroupViewSet(SnippetViewSet):
         return TopicGroup.objects.annotate(topic_count=Count("topics"))
 
 
-register_snippet(TopicGroupViewSet)
-register_snippet(TopicViewSet)
+# ── Snippet menus: what lives here, grouped by what it's for ────────────────
+# Wagtail holds content that's published on the sites and edited as rich text;
+# people, review queues and records live in Django admin (linked below).
+
+class BlogPostViewSet(SnippetViewSet):
+    model = BlogPost
+    icon = "doc-full"
+    menu_label = "Blog posts"
+    list_display = ["title", "date", "access", "featured"]
+    list_filter = ["access", "featured"]
+    search_fields = ["title"]
+    ordering = ["-date"]
+
+
+class VideoItemViewSet(SnippetViewSet):
+    model = VideoItem
+    icon = "media"
+    menu_label = "Videos"
+    list_display = ["title", "date", "access", "featured"]
+    list_filter = ["access", "featured"]
+    search_fields = ["title"]
+    ordering = ["-date"]
+
+
+class CompanyContentViewSet(SnippetViewSet):
+    """Company Studio content: the publishing company is a column and a filter."""
+    list_display = ["title", "company", "date"]
+    list_filter = ["company"]
+    search_fields = ["title"]
+    ordering = ["-date"]
+
+
+class TechArticleViewSet(CompanyContentViewSet):
+    model = TechArticle
+    icon = "pick"
+    menu_label = "GeAcademy"
+
+
+class CaseStudyViewSet(CompanyContentViewSet):
+    model = CaseStudy
+    icon = "doc-full-inverse"
+    menu_label = "Research"
+
+
+class TenderViewSet(CompanyContentViewSet):
+    model = Tender
+    icon = "list-ul"
+    menu_label = "Policies & tenders"
+    list_display = ["title", "company", "status", "deadline"]
+    list_filter = ["company", "status"]
+    ordering = ["-deadline"]
+
+
+class WhitepaperViewSet(CompanyContentViewSet):
+    model = Whitepaper
+    icon = "doc-empty-inverse"
+    menu_label = "Whitepapers"
+
+
+class PodcastEpisodeViewSet(CompanyContentViewSet):
+    model = PodcastEpisode
+    icon = "media"
+    menu_label = "Podcasts"
+
+
+class GeLearnContentGroup(SnippetViewSetGroup):
+    menu_label = "GeLearn content"
+    menu_icon = "doc-full"
+    menu_order = 200
+    items = (BlogPostViewSet, VideoItemViewSet, TechArticleViewSet, CaseStudyViewSet,
+             TenderViewSet, WhitepaperViewSet, PodcastEpisodeViewSet)
+
+
+class CareerRoleViewSet(SnippetViewSet):
+    model = CareerRole
+    icon = "user"
+    menu_label = "Career roles"
+    list_display = ["name", "sort_order"]
+    search_fields = ["name"]
+    ordering = ["sort_order", "name"]
+
+
+class LiveSessionViewSet(SnippetViewSet):
+    model = LiveSession
+    icon = "date"
+    menu_label = "Live sessions"
+    list_display = ["title", "starts_at", "is_published"]
+    list_filter = ["is_published"]
+    search_fields = ["title"]
+    ordering = ["-starts_at"]
+
+
+class TestimonialViewSet(SnippetViewSet):
+    model = Testimonial
+    icon = "openquote"
+    menu_label = "Testimonials"
+    list_display = ["name", "is_active"]
+    list_filter = ["is_active"]
+
+
+class GeLearnSetupGroup(SnippetViewSetGroup):
+    menu_label = "GeLearn setup"
+    menu_icon = "cogs"
+    menu_order = 210
+    items = (TopicGroupViewSet, TopicViewSet, CareerRoleViewSet, LiveSessionViewSet, TestimonialViewSet)
+
+
+class TeamCategoryViewSet(SnippetViewSet):
+    model = TeamCategory
+    icon = "group"
+    menu_label = "Team categories"
+
+
+class JobApplicationViewSet(SnippetViewSet):
+    model = JobApplication
+    icon = "mail"
+    menu_label = "Job applications"
+
+
+class WebsiteGroup(SnippetViewSetGroup):
+    menu_label = "Website"
+    menu_icon = "site"
+    menu_order = 220
+    items = (TeamCategoryViewSet, JobApplicationViewSet)
+
+
+register_snippet(GeLearnContentGroup)
+register_snippet(GeLearnSetupGroup)
+register_snippet(WebsiteGroup)
+
+
+@hooks.register("register_admin_menu_item")
+def django_admin_menu_item():
+    """Users, companies, courses, review queues and enquiries are in Django admin."""
+    return MenuItem("Django admin", "/" + settings.DJANGO_ADMIN_PATH, icon_name="cogs", order=10000)
 
 
 class MergeTopicsForm(forms.Form):

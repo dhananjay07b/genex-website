@@ -750,3 +750,49 @@ class LiveEditSyncsToSubmissionTests(TestCase):
         self.assertTrue(any("unpublished changes" in w for w in warnings))
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.title, "Author's new draft")
+
+
+class BackOfficeLayoutTests(TestCase):
+    """Wagtail groups GeLearn's snippets by purpose and links to Django admin, and back."""
+
+    def setUp(self):
+        from django.conf import settings
+        from django.core.cache import cache
+        # Loading admin pages caches Wagtail's site list (empty here); don't leak it into later tests.
+        self.addCleanup(cache.clear)
+        self.cms = "/" + settings.WAGTAIL_ADMIN_PATH
+        self.dj = "/" + settings.DJANGO_ADMIN_PATH
+        self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+
+    def test_menu_groups_and_django_admin_link(self):
+        html = self.client.get(self.cms).content.decode()
+        for label in ("GeLearn content", "GeLearn setup", "Website", "Django admin", self.dj):
+            self.assertIn(label, html)
+
+    def test_company_content_lists_by_company(self):
+        from organizations.models import Company
+        from pages.models import TechArticle
+        genex = Company.objects.create(name="Genex", slug="genex")
+        other = Company.objects.create(name="Other", slug="other")
+        TechArticle.objects.create(title="Genex piece", company=genex, difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e")
+        TechArticle.objects.create(title="Other piece", company=other, difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e")
+        res = self.client.get(f"{self.cms}snippets/pages/techarticle/?company={genex.pk}")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Genex piece")
+        self.assertNotContains(res, "Other piece")
+
+    def test_every_grouped_listing_opens(self):
+        for path in ("pages/blogpost", "pages/videoitem", "pages/techarticle", "pages/casestudy", "pages/tender",
+                     "pages/whitepaper", "pages/podcastepisode", "pages/topic", "pages/topicgroup", "learning/careerrole",
+                     "learning/livesession", "pages/testimonial", "pages/teamcategory", "pages/jobapplication"):
+            self.assertEqual(self.client.get(f"{self.cms}snippets/{path}/").status_code, 200, path)
+
+    def test_submission_links_to_its_live_post_in_cms(self):
+        pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        submission = UserBlogPost.objects.create(author=pro, title="Live", excerpt="e", status="pending", body="<p>b</p>")
+        request = RequestFactory().post("/")
+        request.user = User.objects.get(username="root")
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(request, UserBlogPost.objects.filter(pk=submission.pk))
+        post = UserBlogPost.objects.get(pk=submission.pk).published_post
+        res = self.client.get(f"{self.dj}pages/userblogpost/{submission.pk}/change/")
+        self.assertContains(res, f'href="{self.cms}snippets/pages/blogpost/edit/{post.pk}/"')

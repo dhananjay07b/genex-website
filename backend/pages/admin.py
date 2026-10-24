@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.text import slugify
 from engagement.models import Notification
 
@@ -16,6 +18,14 @@ def _notify_status(submission, kind, text, target=None):
         content_type=ContentType.objects.get_for_model(target) if target else None,
         object_id=target.pk if target else None,
     )
+
+
+def _cms_link(obj, label):
+    """A link to edit a live post/video in Wagtail (same host: both admins are on the CMS domain)."""
+    if obj is None:
+        return "Not published yet"
+    url = reverse(f"wagtailsnippets_{obj._meta.app_label}_{obj._meta.model_name}:edit", args=[obj.pk])
+    return format_html('<a href="{}">{}</a>', url, label)
 
 
 def _submission_topics(submission):
@@ -42,7 +52,11 @@ class UserBlogPostAdmin(admin.ModelAdmin):
     # status/published_post/reviewed_* only change via the actions above — a
     # plain form edit would flip the badge without ever creating the BlogPost
     # or notifying the author, which is exactly the bug that bit us once.
-    readonly_fields = ("status", "published_post", "reviewed_at", "reviewed_by")
+    readonly_fields = ("status", "published_post", "live_in_cms", "reviewed_at", "reviewed_by")
+
+    @admin.display(description="Live post")
+    def live_in_cms(self, obj):
+        return _cms_link(obj.published_post, "Open live post in CMS")
 
     @admin.action(description="Approve and publish selected submissions")
     def approve_and_publish(self, request, queryset):
@@ -98,7 +112,11 @@ class UserVideoPostAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("title", "author__username", "author__display_name")
     actions = ["approve_and_publish", "reject"]
-    readonly_fields = ("status", "published_video", "reviewed_at", "reviewed_by")
+    readonly_fields = ("status", "published_video", "live_in_cms", "reviewed_at", "reviewed_by")
+
+    @admin.display(description="Live video")
+    def live_in_cms(self, obj):
+        return _cms_link(obj.published_video, "Open live video in CMS")
     filter_horizontal = ("topics",)
 
     @admin.action(description="Approve and publish selected submissions")
