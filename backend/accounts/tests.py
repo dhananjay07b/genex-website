@@ -106,9 +106,22 @@ class BackofficeAccessTests(TestCase):
         self.google = Company.objects.create(name="Google", slug="google")
 
     def _assert_blocked(self, user):
+        # Treated as signed out: sent to the login page, never into the admin.
         self.client.force_login(user)
-        self.assertEqual(self.client.get(WAGTAIL_ADMIN).status_code, 404)
-        self.assertEqual(self.client.get(DJANGO_ADMIN).status_code, 404)
+        for admin_home in (WAGTAIL_ADMIN, DJANGO_ADMIN):
+            res = self.client.get(admin_home)
+            self.assertEqual(res.status_code, 302)
+            self.assertIn(admin_home + "login/", res["Location"])
+            self.assertEqual(self.client.get(admin_home + "login/").status_code, 200)
+        self.assertEqual(self.client.get(DJANGO_ADMIN + "accounts/user/").status_code, 302)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)  # their GeLearn session is untouched
+
+    def test_superuser_can_sign_in_over_a_gelearn_session(self):
+        User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.client.force_login(make_user("learner"))
+        res = self.client.post(DJANGO_ADMIN + "login/", {"username": "root", "password": "Passw0rd!x"})
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(self.client.get(DJANGO_ADMIN).status_code, 200)
 
     def test_superuser_allowed(self):
         self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
@@ -170,8 +183,8 @@ class ProductionAdminPathTests(TestCase):
             self.assertEqual(client.get("/cms/").status_code, 404)
 
             client.force_login(make_user("learner"))
-            self.assertEqual(client.get("/admin/").status_code, 404)
-            self.assertEqual(client.get("/dj-admin/").status_code, 404)
+            self.assertIn("/admin/login/", client.get("/admin/")["Location"])
+            self.assertIn("/dj-admin/login/", client.get("/dj-admin/")["Location"])
 
     def test_robots_txt_follows(self):
         with production_admin_paths():
