@@ -105,6 +105,40 @@ class StudioContentTests(StudioTestBase):
         self.assertEqual(public["company"], {"name": "Genex", "slug": "genex", "logo_url": None, "verified": True})
         self.assertEqual(len(public["sections"]), 1)
 
+    def test_geacademy_keeps_gelearn_formatting_and_uploaded_images(self):
+        from wagtail.images.tests.utils import get_test_image_file
+        png = SimpleUploadedFile("photo.png", get_test_image_file().file.getvalue(), content_type="image/png")
+        uploaded = self.api.post("/api/accounts/me/images/", {"file": png}, format="multipart")
+        self.assertEqual(uploaded.status_code, 201, uploaded.content)
+        image = uploaded.json()
+
+        body = (
+            "<p><u>Under</u> <s>struck</s></p><blockquote><p>Quoted</p></blockquote>"
+            "<pre><code>x = 1</code></pre><hr>"
+            f'<img src="{image["url"]}" alt="Single-line diagram" data-embedtype="image" '
+            f'data-id="{image["id"]}" data-format="fullwidth" data-alt="Single-line diagram">'
+        )
+        res = self.api.post("/api/studio/geacademy/", {
+            "title": "Formatting", "difficulty": "Beginner", "read_time": "2 min", "date": TODAY, "excerpt": "e",
+            "intro": "<p>Intro</p>", "sections": [{"heading": "One", "body": body}],
+        }, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+
+        stored = TechArticle.objects.get(pk=res.json()["id"]).sections[0].value["body"].source
+        for kept in ("<u>Under</u>", "<s>struck</s>", "<blockquote>", "<pre>", "<hr", f'<embed alt="Single-line diagram" embedtype="image" format="fullwidth" id="{image["id"]}"/>'):
+            self.assertIn(kept, stored)
+
+        # Reopened in the Studio editor, the image still says which upload it is…
+        editing = self.api.get(f"/api/studio/geacademy/{res.json()['id']}/").json()["sections"]
+        self.assertIn(f'data-id="{image["id"]}"', editing[0]["body"])
+        # …so saving again keeps it.
+        self.api.patch(f"/api/studio/geacademy/{res.json()['id']}/", {"sections": editing}, format="json")
+        stored = TechArticle.objects.get(pk=res.json()["id"]).sections[0].value["body"].source
+        self.assertIn('embedtype="image"', stored)
+
+        public = APIClient().get(f"/api/snippets/tech-articles/{res.json()['id']}/").json()
+        self.assertIn('<img alt="Single-line diagram"', str(public["sections"]))
+
     def test_whitepaper_document_must_be_pdf(self):
         paper = Whitepaper.objects.create(title="W", date=datetime.date.today(), pages="1", description="d", company=self.genex)
         bad = SimpleUploadedFile("notes.exe", b"MZ", content_type="application/octet-stream")

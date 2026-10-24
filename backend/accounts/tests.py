@@ -1228,3 +1228,40 @@ class PurgeUserTests(TestCase):
                                {"action": "delete_with_gelearn_content", "_selected_action": [root.pk], "confirm": "yes"}, follow=True)
         self.assertContains(res, "Superusers can")
         self.assertTrue(User.objects.filter(pk=root.pk).exists())
+
+
+class EditorImageUploadTests(TestCase):
+    """POST /api/accounts/me/images/ — images for the GeLearn rich-text editor."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.api = APIClient()
+        self.user = make_user("writer", account_type="professional", company_other="Acme", role_title="Eng")
+
+    def _png(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from wagtail.images.tests.utils import get_test_image_file
+        return SimpleUploadedFile("photo.png", get_test_image_file().file.getvalue(), content_type="image/png")
+
+    def test_signed_in_upload_returns_the_image(self):
+        from wagtail.images import get_image_model
+        self.api.force_authenticate(self.user)
+        res = self.api.post("/api/accounts/me/images/", {"file": self._png()}, format="multipart")
+        self.assertEqual(res.status_code, 201, res.content)
+        body = res.json()
+        self.assertTrue(body["url"].startswith("/media/"))
+        self.assertTrue(body["width"] and body["height"])
+        self.assertEqual(get_image_model().objects.get(pk=body["id"]).uploaded_by_user, self.user)
+
+    def test_anonymous_refused(self):
+        self.assertEqual(self.api.post("/api/accounts/me/images/", {"file": self._png()}, format="multipart").status_code, 401)
+
+    def test_svg_and_missing_file_refused(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.api.force_authenticate(self.user)
+        svg = SimpleUploadedFile("x.svg", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', content_type="image/svg+xml")
+        self.assertEqual(self.api.post("/api/accounts/me/images/", {"file": svg}, format="multipart").status_code, 400)
+        self.assertEqual(self.api.post("/api/accounts/me/images/", {}, format="multipart").status_code, 400)
+        fake = SimpleUploadedFile("photo.png", b"not an image", content_type="image/png")
+        self.assertEqual(self.api.post("/api/accounts/me/images/", {"file": fake}, format="multipart").status_code, 400)

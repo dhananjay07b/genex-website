@@ -21,6 +21,7 @@ from wagtail.contrib.settings.models import BaseSiteSetting, register_setting
 from wagtail import blocks
 
 from .durations import parse_duration_seconds
+from .editor_features import GELEARN_RICH_TEXT_FEATURES
 from .gelearn_blocks import HOME_SECTIONS, LANDING_SECTIONS, MEMBER_SECTIONS
 from .images import CONTENT, image_url
 from .links import PAGE_SECTIONS, genex_page_path
@@ -574,11 +575,11 @@ class CaseStudy(CompanyPublished):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
-    intro          = RichTextField(blank=True)
+    intro          = RichTextField(blank=True, features=GELEARN_RICH_TEXT_FEATURES)
     sections       = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", RichTextBlock()),
+            ("body", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ]))
     ], blank=True, use_json_field=True)
     updated_by     = models.ForeignKey(
@@ -633,11 +634,11 @@ class TechArticle(CompanyPublished):
         "wagtailimages.Image", null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
     )
-    intro           = RichTextField(blank=True)
+    intro           = RichTextField(blank=True, features=GELEARN_RICH_TEXT_FEATURES)
     sections        = StreamField([
         ("section", blocks.StructBlock([
             ("heading", blocks.CharBlock()),
-            ("body", RichTextBlock()),
+            ("body", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ]))
     ], blank=True, use_json_field=True)
     callout_label   = models.CharField(max_length=100, blank=True)
@@ -918,7 +919,7 @@ class BlogPost(SubmissionOwnedMixin, AccessControlled):
         on_delete=models.SET_NULL, related_name="+",
     )
     body    = StreamField([
-        ("rich_text", RichTextBlock()),
+        ("rich_text", RichTextBlock(features=GELEARN_RICH_TEXT_FEATURES)),
         ("image", blocks.StructBlock([
             ("image", blocks.CharBlock(help_text="Image URL or path")),
             ("caption", blocks.CharBlock(required=False)),

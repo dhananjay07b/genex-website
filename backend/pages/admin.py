@@ -5,7 +5,7 @@ from django.utils.text import slugify
 from engagement.models import Notification
 
 from .models import BlogPost, Topic, UserBlogPost, UserVideoPost, VideoItem
-from .richtext import sanitize_submission_html
+from .richtext import sanitize_rich_text
 
 
 def _notify_status(submission, kind, text, target=None):
@@ -50,9 +50,11 @@ class UserBlogPostAdmin(admin.ModelAdmin):
             fields = dict(
                 title=submission.title,
                 excerpt=submission.excerpt,
-                # Cleaned again here even though the API cleans on save — the
-                # live post must never carry unsanitised author HTML.
-                body=[("rich_text", sanitize_submission_html(submission.body))],
+                # Converted to Wagtail rich text (and cleaned again, even though the
+                # API cleans on save — the live post must never carry unsanitised
+                # author HTML), so the CMS editor can open it without losing
+                # uploaded images, underline, strikethrough or code blocks.
+                body=[("rich_text", sanitize_rich_text(submission.body))],
                 image=submission.image,
                 access=submission.access,
                 price=submission.price,

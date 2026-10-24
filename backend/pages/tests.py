@@ -78,6 +78,22 @@ class ApprovalCarriesAccessTests(TestCase):
         self.assertNotIn("onclick", str(post.body.raw_data))
         self.assertEqual(post.access_owner_ids(), {self.pro.pk})
 
+    def test_blog_approval_keeps_formatting_and_uploaded_images_editable_in_wagtail(self):
+        from wagtail.images import get_image_model
+        from wagtail.images.tests.utils import get_test_image_file
+        image = get_image_model().objects.create(title="Chart", file=get_test_image_file(), uploaded_by_user=self.pro)
+        submission = UserBlogPost.objects.create(
+            author=self.pro, title="Formatting", excerpt="e", status="pending",
+            body=(
+                "<p><u>Under</u> <s>struck</s></p><pre><code>x = 1</code></pre>"
+                f'<img src="/media/x.png" alt="Chart" data-embedtype="image" data-id="{image.pk}" data-format="fullwidth" data-alt="Chart">'
+            ),
+        )
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(self.request, UserBlogPost.objects.filter(pk=submission.pk))
+        stored = UserBlogPost.objects.get(pk=submission.pk).published_post.body[0].value.source
+        for kept in ("<u>Under</u>", "<s>struck</s>", "<pre>", f'embedtype="image" format="fullwidth" id="{image.pk}"'):
+            self.assertIn(kept, stored)
+
     def test_video_approval_publishes_access(self):
         submission = UserVideoPost.objects.create(
             author=self.pro, title="Members video", excerpt="e", video_url="https://v.example/1",
@@ -651,3 +667,19 @@ class CareersJobPagesTests(TestCase):
     def test_careers_page_no_longer_has_open_roles_block(self):
         from .models import CareersPage
         self.assertNotIn("open_roles", CareersPage.body.field.stream_block.child_blocks)
+
+
+class GeLearnRichTextFeaturesInWagtailTests(TestCase):
+    """The Wagtail editor offers the GeLearn editor's tools (pages/editor_features.py)."""
+
+    def test_geacademy_editor_has_underline_code_block_and_image(self):
+        from django.conf import settings
+        from pages.models import TechArticle
+        item = TechArticle.objects.create(title="T", difficulty="Beginner", read_time="1 min", date="2026-10-24", excerpt="e",
+                                          intro="<p><u>u</u></p>")
+        self.client.force_login(User.objects.create_superuser("root", "root@example.org", "Passw0rd!x"))
+        res = self.client.get(f"/{settings.WAGTAIL_ADMIN_PATH}snippets/pages/techarticle/edit/{item.pk}/")
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        for feature in ("UNDERLINE", "STRIKETHROUGH", "code-block", "blockquote", "image"):
+            self.assertIn(feature, html)

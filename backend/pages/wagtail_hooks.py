@@ -6,11 +6,15 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.text import capfirst
 from wagtail import hooks
+import wagtail.admin.rich_text.editors.draftail.features as draftail_features
+from wagtail.admin.rich_text.converters.editor_html import WhitelistRule
+from wagtail.admin.rich_text.converters.html_to_contentstate import BlockElementHandler, InlineStyleElementHandler
 from wagtail.admin.ui.tables import Column
 from wagtail.snippets.bulk_actions.snippet_bulk_action import SnippetBulkAction
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.permissions import get_permission_name
 from wagtail.snippets.views.snippets import SnippetViewSet
+from wagtail.whitelist import allow_without_attributes
 
 from .links import company_chooser_viewset, course_chooser_viewset, frontend_url
 from .models import Topic, TopicGroup
@@ -109,6 +113,48 @@ class MergeTopicsBulkAction(SnippetBulkAction):
         target = self.cleaned_form.cleaned_data["target"]
         noun = capfirst(Topic._meta.verbose_name if num_parent_objects == 1 else Topic._meta.verbose_name_plural)
         return f'{num_parent_objects} {noun.lower()} merged into "{target}".'
+
+
+# ── Rich text: the GeLearn editor's tools in Wagtail too (pages/editor_features.py) ─
+
+@hooks.register("register_rich_text_features")
+def register_gelearn_rich_text_features(features):
+    """
+    Wagtail's editor has no underline or code block, so add them; and the
+    "editorhtml" rules let pages.richtext keep what the GeLearn editor sends.
+    Wagtail only ships editorhtml rules for links, bold, italic, headings and
+    lists, so without these Studio quotes, rules, strikethrough, underline and
+    code blocks were silently stripped on save.
+    """
+    features.register_editor_plugin(
+        "draftail", "underline",
+        draftail_features.InlineStyleFeature({"type": "UNDERLINE", "label": "U", "description": "Underline"}),
+    )
+    features.register_converter_rule("contentstate", "underline", {
+        "from_database_format": {"u": InlineStyleElementHandler("UNDERLINE")},
+        "to_database_format": {"style_map": {"UNDERLINE": "u"}},
+    })
+
+    features.register_editor_plugin(
+        "draftail", "code-block",
+        draftail_features.BlockFeature({"type": "code-block", "icon": "code", "description": "Code block"}),
+    )
+    features.register_converter_rule("contentstate", "code-block", {
+        "from_database_format": {"pre": BlockElementHandler("code-block")},
+        "to_database_format": {"block_map": {"code-block": "pre"}},
+    })
+
+    editor_html_rules = {
+        "underline": ["u"],
+        "strikethrough": ["s"],
+        "blockquote": ["blockquote"],
+        "code-block": ["pre", "code"],  # the GeLearn editor writes <pre><code>…</code></pre>
+        "hr": ["hr"],
+    }
+    for feature, elements in editor_html_rules.items():
+        features.register_converter_rule(
+            "editorhtml", feature, [WhitelistRule(element, allow_without_attributes) for element in elements],
+        )
 
 
 # ── Link picker (pages/links.py): course and company choosers, editor script ─

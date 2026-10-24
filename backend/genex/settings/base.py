@@ -218,6 +218,7 @@ REST_FRAMEWORK = {
         "view-track": "120/hour",
         "search": "60/minute",
         "enquiry": "10/hour",
+        "editor-image": "60/hour",
     },
 }
 
