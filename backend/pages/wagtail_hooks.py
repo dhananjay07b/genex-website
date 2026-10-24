@@ -17,7 +17,8 @@ from wagtail.snippets.views.snippets import SnippetViewSet
 from wagtail.whitelist import allow_without_attributes
 
 from .links import company_chooser_viewset, course_chooser_viewset, frontend_url
-from .models import Topic, TopicGroup
+from .models import BlogPost, Topic, TopicGroup, VideoItem
+from .submission_sync import sync_blog_post_to_submission, sync_video_to_submission
 from .topics import merge_topics, with_usage
 
 AUDITED_MODELS = ("Tender", "Whitepaper", "CaseStudy")
@@ -37,6 +38,23 @@ def set_updated_by_on_create(request, instance):
 @hooks.register("after_edit_snippet")
 def set_updated_by_on_edit(request, instance):
     _record_updated_by(request, instance)
+
+
+@hooks.register("after_edit_snippet")
+def sync_live_edit_to_submission(request, instance):
+    """A live Professional post/video edited here: carry the edit back to the author's copy."""
+    if isinstance(instance, BlogPost):
+        result = sync_blog_post_to_submission(instance)
+    elif isinstance(instance, VideoItem):
+        result = sync_video_to_submission(instance)
+    else:
+        return
+    if result == "skipped":
+        messages.warning(
+            request,
+            "Saved to the live page only. The author has unpublished changes of their own waiting, "
+            "so their dashboard copy was left as it is; approving those changes will replace this edit.",
+        )
 
 
 # ── Topics: usage counts, group filter, and "Merge into…" ────────────────────

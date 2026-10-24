@@ -683,3 +683,70 @@ class GeLearnRichTextFeaturesInWagtailTests(TestCase):
         html = res.content.decode()
         for feature in ("UNDERLINE", "STRIKETHROUGH", "code-block", "blockquote", "image"):
             self.assertIn(feature, html)
+
+
+class WagtailBlockShapeTests(TestCase):
+    """GeLearn editor HTML survives being opened and saved in the Wagtail editor."""
+
+    def test_quotes_and_lists_keep_their_text_after_a_cms_save(self):
+        from wagtail.admin.rich_text.converters.contentstate import ContentstateConverter
+        from pages.editor_features import GELEARN_RICH_TEXT_FEATURES
+        from pages.richtext import sanitize_rich_text
+        cms = ContentstateConverter(features=GELEARN_RICH_TEXT_FEATURES)
+        stored = sanitize_rich_text(
+            "<blockquote><p>Quoted</p></blockquote><ul><li><p>One</p></li><li><p>Two</p></li></ul>"
+            "<blockquote><p>A</p><p>B</p></blockquote>"
+        )
+        after_cms_save = cms.to_database_format(cms.from_database_format(stored))
+        for kept in (">Quoted</blockquote>", ">One</li>", ">Two</li>", ">A</blockquote>", ">B</blockquote>"):
+            self.assertIn(kept, after_cms_save)
+        self.assertNotRegex(after_cms_save, r"<blockquote[^>]*></blockquote>")  # no emptied quotes
+        self.assertNotRegex(after_cms_save, r"<li[^>]*></li>")  # no emptied list items
+
+
+class LiveEditSyncsToSubmissionTests(TestCase):
+    """A live post edited in Wagtail flows back to the author's dashboard copy."""
+
+    def setUp(self):
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        self.submission = UserBlogPost.objects.create(author=self.pro, title="Original", excerpt="e", status="pending",
+                                                      body="<p>Original body</p>")
+        UserBlogPostAdmin(UserBlogPost, AdminSite()).approve_and_publish(request, UserBlogPost.objects.filter(pk=self.submission.pk))
+        self.submission.refresh_from_db()
+        self.post = self.submission.published_post
+
+    def _cms_edit(self, title, body_db_html):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from wagtail import hooks
+        self.post.title = title
+        self.post.body = [("rich_text", body_db_html)]
+        self.post.save()
+        request = RequestFactory().post("/")
+        request.user, request.session = self.admin, {}
+        request._messages = FallbackStorage(request)
+        for hook in hooks.get_hooks("after_edit_snippet"):
+            hook(request, self.post)
+        return [str(m) for m in request._messages]
+
+    def test_cms_edit_reaches_the_dashboard_copy(self):
+        self.assertEqual(self._cms_edit("Edited in CMS", "<p>CMS body</p><blockquote>Quote</blockquote>"), [])
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.title, "Edited in CMS")
+        self.assertIn("CMS body", self.submission.body)
+        self.assertIn("<blockquote>Quote</blockquote>", self.submission.body)
+        self.assertEqual(self.submission.status, "published")
+
+        mine = APIClient()
+        mine.force_authenticate(self.pro)
+        self.assertEqual(mine.get(f"/api/snippets/blog-submissions/{self.submission.pk}/").json()["title"], "Edited in CMS")
+
+    def test_authors_pending_edits_are_not_overwritten(self):
+        UserBlogPost.objects.filter(pk=self.submission.pk).update(status="pending", title="Author's new draft")
+        self.post.refresh_from_db()
+        warnings = self._cms_edit("Edited in CMS", "<p>CMS body</p>")
+        self.assertTrue(any("unpublished changes" in w for w in warnings))
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.title, "Author's new draft")
