@@ -24,11 +24,14 @@ export type StudioValue = string | string[] | number[] | StudioSection[] | Studi
 export interface StudioItem {
   id: number
   title: string
+  is_draft: boolean
   image_url?: string | null
   document_url?: string | null
   owner: { username: string; display_name: string } | null
   [field: string]: unknown
 }
+
+export type StudioCountKey = 'geacademy' | 'research' | 'policies_tenders' | 'whitepapers' | 'podcasts'
 
 export interface StudioCompany {
   id: number
@@ -37,7 +40,9 @@ export interface StudioCompany {
   logo_url: string | null
   website: string
   description: string
-  counts: Record<'geacademy' | 'research' | 'policies_tenders' | 'whitepapers' | 'podcasts', number>
+  /** Published items per type; drafts are counted separately. */
+  counts: Record<StudioCountKey, number>
+  drafts: Record<StudioCountKey, number>
 }
 
 export interface StudioTeam {

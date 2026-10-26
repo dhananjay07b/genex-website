@@ -4,6 +4,8 @@ sanitised subset of each content type — rich text goes through Wagtail's own
 whitelister (pages.richtext), and editorial
 flags (featured, publisher) are never client-writable.
 """
+import re
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -19,8 +21,15 @@ MAX_TOPICS = 5
 
 
 class SectionSerializer(serializers.Serializer):
-    heading = serializers.CharField(max_length=255)
-    body = serializers.CharField()
+    # Blanks are allowed so a draft can hold a half-written section; publishing refuses them.
+    heading = serializers.CharField(max_length=255, allow_blank=True)
+    body = serializers.CharField(allow_blank=True)
+
+
+def _is_blank_section(section):
+    body = section["body"]
+    has_text = re.sub(r"<[^>]*>", "", body).strip() or "<img" in body or "<embed" in body
+    return not section["heading"].strip() or not has_text
 
 
 def sections_to_stream(sections):
@@ -127,6 +136,8 @@ class RichContentMixin(serializers.Serializer):
     def validate_sections(self, value):
         if len(value) > MAX_SECTIONS:
             raise serializers.ValidationError(f"Use at most {MAX_SECTIONS} sections.")
+        if not self._will_be_draft() and any(_is_blank_section(s) for s in value):
+            raise serializers.ValidationError("Every section needs a heading and some text. Remove empty sections.")
         return value
 
     def _apply_rich(self, validated_data):

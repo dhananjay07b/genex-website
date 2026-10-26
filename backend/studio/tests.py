@@ -258,6 +258,14 @@ class StudioDraftTests(StudioTestBase):
         self.assertEqual(item.title, "")
         self.assertIsNotNone(item.date)  # today, so the row is valid
 
+    def test_a_draft_keeps_half_written_sections_but_publishing_refuses_them(self):
+        draft = self._draft(sections=[{"heading": "", "body": "<p>Notes so far</p>"}])
+        item = TechArticle.all_objects.get(pk=draft["id"])
+        self.assertEqual(len(item.sections), 1)
+        res = self.api.patch(f"/api/studio/geacademy/{draft['id']}/", {"is_draft": False, "sections": [{"heading": "", "body": "<p>Notes so far</p>"}]}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("sections", res.json())
+
     def test_a_draft_is_private_everywhere_but_the_studio(self):
         draft = self._draft()
         public = APIClient()

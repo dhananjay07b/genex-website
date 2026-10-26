@@ -12,6 +12,7 @@ import { apiFetch } from '@/lib/api/client'
 import type { SnippetListResponse } from '@/types/api'
 import type { StudioItem } from '@/types/studio'
 import { getStudioType } from './studioTypes'
+import { StudioStatusBadge } from './StudioStatusBadge'
 
 export default function StudioList() {
   const { type } = useParams<{ type: string }>()
@@ -84,47 +85,56 @@ export default function StudioList() {
         <EmptyState
           icon={<Icon sx={{ fontSize: 24 }} />}
           title={`No ${config.label.toLowerCase()} yet`}
-          description={`Anything you publish here appears on GeLearn under your company's name.`}
+          description={`Save drafts while you write; anything you publish appears on GeLearn under your company's name.`}
           action={
             <Link to={`/studio/${config.key}/new`} className="text-sm font-bold text-primary hover:underline">
-              Publish your first {config.singular}
+              Write your first {config.singular}
             </Link>
           }
         />
       ) : (
         <ul className="border border-border rounded-2xl divide-y divide-border overflow-hidden">
-          {items.map(item => (
-            <li key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-surface/60 transition-colors">
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-text-primary truncate">{item.title}</p>
-                <p className="text-xs text-text-muted mt-1 truncate">
-                  {config.listMeta(item)}
-                  {item.owner && <> · by {item.owner.display_name || item.owner.username}</>}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Link to={config.publicPath(item)} title="View on GeLearn" aria-label={`View ${item.title} on GeLearn`}
-                  className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-white hover:text-primary">
-                  <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
-                </Link>
-                <Link to={`/studio/${config.key}/${item.id}/edit`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
-                  <EditOutlinedIcon sx={{ fontSize: 14 }} /> Edit
-                </Link>
-                <button type="button" onClick={() => setPendingDelete(item)} aria-label={`Delete ${item.title}`}
-                  className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-red-50 hover:text-red-600">
-                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                </button>
-              </div>
-            </li>
-          ))}
+          {items.map(item => {
+            const title = item.title || 'Untitled draft'
+            return (
+              <li key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-surface/60 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="font-bold text-text-primary truncate">{title}</p>
+                    {item.is_draft && <StudioStatusBadge isDraft />}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1 truncate">
+                    {config.listMeta(item)}
+                    {item.owner && <> · by {item.owner.display_name || item.owner.username}</>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* A draft has no public page yet. */}
+                  {!item.is_draft && (
+                    <Link to={config.publicPath(item)} title="View on GeLearn" aria-label={`View ${title} on GeLearn`}
+                      className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-white hover:text-primary">
+                      <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+                    </Link>
+                  )}
+                  <Link to={`/studio/${config.key}/${item.id}/edit`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
+                    <EditOutlinedIcon sx={{ fontSize: 14 }} /> Edit
+                  </Link>
+                  <button type="button" onClick={() => setPendingDelete(item)} aria-label={`Delete ${title}`}
+                    className="size-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-red-50 hover:text-red-600">
+                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 
       {pendingDelete && (
         <ConfirmDeleteDialog
-          label={pendingDelete.title}
-          message="will be removed from GeLearn for everyone."
+          label={pendingDelete.title || 'Untitled draft'}
+          message={pendingDelete.is_draft ? 'will be deleted for good.' : 'will be removed from GeLearn for everyone.'}
           confirming={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={confirmDelete}
