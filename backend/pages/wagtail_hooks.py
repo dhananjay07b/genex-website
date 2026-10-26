@@ -114,9 +114,9 @@ class VideoItemViewSet(SnippetViewSet):
 
 
 class CompanyContentViewSet(SnippetViewSet):
-    """Company Studio content: the publishing company is a column and a filter."""
-    list_display = ["title", "company", "date"]
-    list_filter = ["company"]
+    """Company Studio content: publishing company and draft state are columns and filters."""
+    list_display = ["title", "company", "is_draft", "date"]
+    list_filter = ["company", "is_draft"]
     search_fields = ["title"]
     ordering = ["-date"]
 
@@ -137,8 +137,8 @@ class TenderViewSet(CompanyContentViewSet):
     model = Tender
     icon = "list-ul"
     menu_label = "Policies & tenders"
-    list_display = ["title", "company", "status", "deadline"]
-    list_filter = ["company", "status"]
+    list_display = ["title", "company", "is_draft", "status", "deadline"]
+    list_filter = ["company", "is_draft", "status"]
     ordering = ["-deadline"]
 
 

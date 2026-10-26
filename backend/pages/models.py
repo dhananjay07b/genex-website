@@ -532,13 +532,33 @@ class TeamCategory(models.Model):
         ordering = ["priority", "name"]
 
 
+class PublishedManager(models.Manager):
+    """Only what's live: drafts are left out."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_draft=False)
+
+
 class CompanyPublished(models.Model):
     """
     Content a Company publishes (GeAcademy, Research, Policies & Tenders,
     Whitepapers, Podcasts). `company` drives the public "[logo] Company ✓"
     attribution and scopes the Company Studio; `owner` is the staff login that
     created it. Both are empty for editorial content Admin creates in the CMS.
+
+    Drafts: `Model.objects` is published content only, so every public read
+    (API, search, topic/company pages, course picker…) leaves drafts out by
+    itself. `Model.all_objects` (declared first, so it's Django's default
+    manager: Wagtail, Django admin, related lookups) includes them, and is what
+    the Company Studio uses.
     """
+    is_draft = models.BooleanField(
+        default=False, db_index=True, verbose_name="draft",
+        help_text="Drafts are only visible in the Company Studio and here; untick to publish.",
+    )
+
+    all_objects = models.Manager()
+    objects = PublishedManager()
     company = models.ForeignKey(
         "organizations.Company", null=True, blank=True,
         on_delete=models.PROTECT, related_name="%(class)s_items",
@@ -551,7 +571,7 @@ class CompanyPublished(models.Model):
     )
 
     publisher_panels = [
-        MultiFieldPanel([FieldPanel("company"), FieldPanel("owner")], heading="Publisher"),
+        MultiFieldPanel([FieldPanel("company"), FieldPanel("owner"), FieldPanel("is_draft")], heading="Publisher"),
     ]
 
     class Meta:
