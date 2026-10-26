@@ -201,9 +201,9 @@ export default function BlogPost() {
             </div>
 
             {/* Hero image */}
-            {/* The whole cover, at its own shape; very tall images are capped and centred. */}
-            <div className="rounded-3xl overflow-hidden mb-8 shadow-sm bg-[#f0f4f8] flex justify-center">
-              <img src={heroImg} alt={post.title} className="w-full h-auto max-h-160 object-contain" />
+            {/* 16:9 to match most covers; others are trimmed evenly, never letterboxed. */}
+            <div className="rounded-3xl overflow-hidden aspect-video mb-8 shadow-sm">
+              <img src={heroImg} alt={post.title} className="w-full h-full object-cover" />
             </div>
 
             {/* Body — withheld by the API when the viewer can't open this post */}

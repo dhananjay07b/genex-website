@@ -12,7 +12,7 @@ import { PageMeta } from '@/components/seo/PageMeta'
 import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { RichText } from '@/components/ui/RichText'
 import { apiFetch } from '@/lib/api/client'
-import { cn, formatDisplayDate, getMediaUrl } from '@/lib/utils'
+import { formatDisplayDate, getMediaUrl } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
 import { renderStreamField, type BlockComponentMap } from '@/lib/streamfield/renderStreamField'
 import type { CaseStudySectionValue, TechArticleItem, SnippetListResponse } from '@/types/api'
@@ -201,14 +201,11 @@ export default function GeAcademyDetail() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.18, ease: 'easeOut' as const }}
-            className={cn(
-              'rounded-3xl overflow-hidden mb-16 bg-[#f0f4f8] flex items-center justify-center',
-              !article.image_url && 'aspect-21/9',
-            )}
+            className="rounded-3xl overflow-hidden aspect-video mb-16 bg-[#f0f4f8] flex items-center justify-center"
           >
-            {/* The whole cover, at its own shape; very tall images are capped and centred. */}
+            {/* 16:9 to match most covers; others are trimmed evenly, never letterboxed. */}
             {article.image_url ? (
-              <img src={getMediaUrl(article.image_url)} alt={article.title} className="w-full h-auto max-h-160 object-contain" />
+              <img src={getMediaUrl(article.image_url)} alt={article.title} className="w-full h-full object-cover" />
             ) : (
               <span className="text-sm font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
             )}
