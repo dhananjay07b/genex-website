@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
@@ -46,12 +45,6 @@ const COMING_SOON = [
     description: 'Submit now, publish later — pick a future date and we\'ll take it live automatically once approved.',
     chipClass: 'bg-linear-to-br from-primary to-secondary',
   },
-  {
-    icon: EditNoteOutlinedIcon,
-    title: 'Browse the media library',
-    description: 'Image insertion currently takes a URL. Browsing and reusing images already in GeLearn’s library is coming.',
-    chipClass: 'bg-linear-to-br from-amber-500 to-orange-500',
-  },
 ]
 
 export default function SubmitPost() {
@@ -73,6 +66,8 @@ export default function SubmitPost() {
     reset,
     watch,
     setValue,
+    getValues,
+    clearErrors,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { body: '', topics: [], access: 'free', price: '' } })
 
@@ -120,8 +115,15 @@ export default function SubmitPost() {
     submitForm(data, false)
   }
 
+  // A draft is saved as it is — the checks are for sending it for review. Editing a
+  // post that's already live always goes to review, so that path keeps them.
   function onSaveDraft() {
-    handleSubmit(data => submitForm(data, true))()
+    if (isEditing && wasPublished) {
+      handleSubmit(data => submitForm(data, true))()
+      return
+    }
+    clearErrors()
+    submitForm(getValues(), true)
   }
 
   if (!loaded) return null

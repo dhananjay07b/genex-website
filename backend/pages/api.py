@@ -275,20 +275,46 @@ class PodcastEpisodeSerializer(PublisherSerializerMixin, GatedContentSerializerM
 
 
 class SubmissionAccessMixin(serializers.Serializer):
-    """Professionals choose who can open their post/video once it's published."""
+    """
+    Professionals choose who can open their post/video once it's published.
+
+    Drafts are saved as they are (half-written is the point of a draft); what a
+    reviewer needs is checked only when it's sent for review. Editing a post
+    that's already live always goes to review (see update()), so that's never a draft.
+    """
     access = serializers.ChoiceField(choices=[c[0] for c in AccessControlled.ACCESS_CHOICES], required=False)
     price = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=1, required=False, allow_null=True)
 
     ACCESS_FIELDS = ["access", "price", "currency"]
+    # Field → message, checked (non-blank) when sent for review. Set per serializer.
+    REQUIRED_FOR_REVIEW = {}
+
+    def _is_draft(self):
+        if self.instance is not None and self.instance.status == "published":
+            return False
+        return self.initial_data.get("status") == "draft"
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         access = attrs.get("access", getattr(self.instance, "access", AccessControlled.ACCESS_FREE))
         price = attrs.get("price", getattr(self.instance, "price", None))
-        if access == AccessControlled.ACCESS_PAID and not price:
-            raise serializers.ValidationError({"price": "Set a price for paid content."})
         if access != AccessControlled.ACCESS_PAID:
             attrs["price"] = None
+        if self._is_draft():
+            return attrs
+
+        errors = {}
+        if access == AccessControlled.ACCESS_PAID and not price:
+            errors["price"] = "Set a price for paid content."
+        for field, message in self.REQUIRED_FOR_REVIEW.items():
+            value = attrs.get(field, getattr(self.instance, field, ""))
+            if not (value or "").strip():
+                errors[field] = message
+        topics = attrs["topics"] if "topics" in attrs else (list(self.instance.topics.all()) if self.instance else [])
+        if not topics:
+            errors["topics"] = "Select at least 1 topic."
+        if errors:
+            raise serializers.ValidationError(errors)
         return attrs
 
 
@@ -301,6 +327,9 @@ class UserBlogPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer)
         fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at",
                   *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        extra_kwargs = {f: {"required": False, "allow_blank": True} for f in ("title", "excerpt", "body")}
+
+    REQUIRED_FOR_REVIEW = {"title": "Add a title.", "excerpt": "Add an excerpt.", "body": "Write the post."}
 
     def get_image_url(self, obj):
         return image_url(obj.image, CONTENT)
@@ -438,6 +467,9 @@ class UserVideoPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer
         fields = ["id", "title", "excerpt", "video_url", "topics", "other_topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at",
                   *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
+        extra_kwargs = {f: {"required": False, "allow_blank": True} for f in ("title", "excerpt", "video_url")}
+
+    REQUIRED_FOR_REVIEW = {"title": "Add a title.", "excerpt": "Add an excerpt.", "video_url": "Add the video link."}
 
     def get_thumbnail_url(self, obj):
         return image_url(obj.thumbnail, CONTENT)

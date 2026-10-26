@@ -22,7 +22,7 @@ export default function StudioHome() {
       <div>
         <h2 className="text-xl font-extrabold text-text-primary">What would you like to publish?</h2>
         <p className="text-sm text-text-muted mt-1">
-          Everything you publish goes live immediately under your company&apos;s name and verified badge.
+          Save drafts while you write. When you publish, it goes live under your company&apos;s name and verified badge.
         </p>
         {company?.website && (
           <a href={company.website} target="_blank" rel="noopener noreferrer"
@@ -45,8 +45,13 @@ export default function StudioHome() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="font-bold text-text-primary">{type.label}</p>
-                    <span className="text-sm font-extrabold text-text-primary">{company ? company.counts[type.countKey] : '–'}</span>
+                    <span className="text-sm font-extrabold text-text-primary" title="Published">{company ? company.counts[type.countKey] : '–'}</span>
                   </div>
+                  {company && company.drafts[type.countKey] > 0 && (
+                    <p className="text-xs font-semibold text-text-muted mt-0.5">
+                      {company.drafts[type.countKey]} {company.drafts[type.countKey] === 1 ? 'draft' : 'drafts'}
+                    </p>
+                  )}
                   <p className="text-sm text-text-muted leading-relaxed mt-1">{type.description}</p>
                 </div>
               </div>

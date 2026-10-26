@@ -20,7 +20,8 @@ from . import serializers as s
 class StudioViewSet(viewsets.ModelViewSet):
     """
     CRUD for one content type, scoped to the signed-in staff member's company.
-    Content publishes immediately (Company posts aren't reviewed). Any staff
+    Content isn't reviewed: it's live as soon as it's saved unless it's saved
+    as a draft (is_draft), which only the company's Studio sees. Any staff
     login of the company may edit or delete its items; Admin may act on all
     of them but publishes new content from the CMS instead.
     """
@@ -30,7 +31,8 @@ class StudioViewSet(viewsets.ModelViewSet):
     ordering = ("-date", "-id")
 
     def get_queryset(self):
-        qs = self.model.objects.select_related("company", "owner").order_by(*self.ordering)
+        # all_objects: the Studio works on drafts too (Model.objects is published only).
+        qs = self.model.all_objects.select_related("company", "owner").order_by(*self.ordering)
         if is_admin(self.request.user):
             return qs
         return qs.filter(company_id=self.request.user.company_id)
@@ -107,13 +109,10 @@ class StudioCompanyView(APIView):
     def get(self, request):
         company = request.user.company
         data = CompanyDetailSerializer(company).data
-        data["counts"] = {
-            "geacademy": TechArticle.objects.filter(company=company).count(),
-            "research": CaseStudy.objects.filter(company=company).count(),
-            "policies_tenders": Tender.objects.filter(company=company).count(),
-            "whitepapers": Whitepaper.objects.filter(company=company).count(),
-            "podcasts": PodcastEpisode.objects.filter(company=company).count(),
-        }
+        models = {"geacademy": TechArticle, "research": CaseStudy, "policies_tenders": Tender,
+                  "whitepapers": Whitepaper, "podcasts": PodcastEpisode}
+        data["counts"] = {key: M.objects.filter(company=company).count() for key, M in models.items()}  # published
+        data["drafts"] = {key: M.all_objects.filter(company=company, is_draft=True).count() for key, M in models.items()}
         return Response(data)
 
 

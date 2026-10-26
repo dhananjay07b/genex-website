@@ -90,7 +90,7 @@ export function VideosTab() {
 
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="font-bold text-text-primary text-sm">{video.title}</p>
+                  <p className="font-bold text-text-primary text-sm">{video.title || 'Untitled draft'}</p>
                   <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_BADGE_CLASS}`}>
                     {STATUS_LABEL[video.status]}
                   </span>
@@ -119,7 +119,7 @@ export function VideosTab() {
 
       {pendingDelete && (
         <ConfirmDeleteDialog
-          label={pendingDelete.title}
+          label={pendingDelete.title || 'Untitled draft'}
           confirming={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={handleConfirmDelete}

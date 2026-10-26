@@ -232,3 +232,81 @@ class StudioTopicsTests(StudioTestBase):
         }, format="json")
         self.assertEqual(res.status_code, 400)
         self.assertIn("topics", res.json())
+
+
+class StudioDraftTests(StudioTestBase):
+    """Company content can be saved as a draft: visible in the Studio and the CMS only."""
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()  # search throttle
+        from pages.models import Topic
+        self.topic = Topic.objects.create(name="Draft test topic", slug="draft-test-topic")
+        self.api.force_authenticate(self.staff)
+
+    def _draft(self, **extra):
+        res = self.api.post("/api/studio/geacademy/", {"is_draft": True, "title": "Zebrafinch draft piece", "topics": [self.topic.pk], **extra}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        return res.json()
+
+    def test_an_empty_draft_saves(self):
+        res = self.api.post("/api/studio/geacademy/", {"is_draft": True}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        item = TechArticle.all_objects.get(pk=res.json()["id"])
+        self.assertTrue(item.is_draft)
+        self.assertEqual(item.title, "")
+        self.assertIsNotNone(item.date)  # today, so the row is valid
+
+    def test_a_draft_keeps_half_written_sections_but_publishing_refuses_them(self):
+        draft = self._draft(sections=[{"heading": "", "body": "<p>Notes so far</p>"}])
+        item = TechArticle.all_objects.get(pk=draft["id"])
+        self.assertEqual(len(item.sections), 1)
+        res = self.api.patch(f"/api/studio/geacademy/{draft['id']}/", {"is_draft": False, "sections": [{"heading": "", "body": "<p>Notes so far</p>"}]}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("sections", res.json())
+
+    def test_a_draft_is_private_everywhere_but_the_studio(self):
+        draft = self._draft()
+        public = APIClient()
+        self.assertEqual([i["id"] for i in self.api.get("/api/studio/geacademy/").json()["results"]], [draft["id"]])
+        self.assertTrue(self.api.get(f"/api/studio/geacademy/{draft['id']}/").json()["is_draft"])
+
+        self.assertNotIn(draft["id"], [i["id"] for i in public.get("/api/snippets/tech-articles/").json()["results"]])
+        self.assertEqual(public.get(f"/api/snippets/tech-articles/{draft['id']}/").status_code, 404)
+        self.assertEqual(public.get("/api/discovery/search/?q=Zebrafinch").json()["count"], 0)
+        self.assertNotIn("Zebrafinch", str(public.get(f"/api/discovery/topics/{self.topic.slug}/").json()))
+        self.assertNotIn("Zebrafinch", str(public.get(f"/api/organizations/companies/{self.genex.slug}/").json()))
+        self.assertNotIn("Zebrafinch", str(public.get("/api/discovery/home/").json()))
+
+        from learning.serializers import library_for
+        self.assertFalse(library_for(self.staff)["article"].filter(pk=draft["id"]).exists())  # can't become a course lesson
+
+        overview = self.api.get("/api/studio/company/").json()
+        self.assertEqual((overview["counts"]["geacademy"], overview["drafts"]["geacademy"]), (0, 1))
+
+    def test_publishing_needs_the_required_fields(self):
+        draft = self._draft()
+        res = self.api.patch(f"/api/studio/geacademy/{draft['id']}/", {"is_draft": False}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.json()), {"read_time", "excerpt"})
+        res = self.api.patch(f"/api/studio/geacademy/{draft['id']}/", {"is_draft": False, "read_time": "5 min", "excerpt": "e"}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(APIClient().get(f"/api/snippets/tech-articles/{draft['id']}/").status_code, 200)
+
+    def test_back_to_draft_unless_it_is_a_course_lesson(self):
+        from learning.models import Playlist, PlaylistItem
+        item = self._draft(is_draft=False, read_time="5 min", excerpt="e", date=TODAY)
+        res = self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": True}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": False}, format="json")
+
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Grid course", status="published")
+        PlaylistItem.objects.create(playlist=course, article_id=item["id"])
+        res = self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": True}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Grid course", res.json()["is_draft"][0])
+
+    def test_paid_podcast_draft_needs_no_price_until_published(self):
+        res = self.api.post("/api/studio/podcasts/", {"is_draft": True, "title": "Ep", "access": "paid"}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)

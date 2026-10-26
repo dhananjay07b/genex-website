@@ -18,6 +18,7 @@ import { AccessField } from '@/components/gelearn/AccessField'
 import { CollaboratorsField } from './fields/CollaboratorsField'
 import { FileField } from './fields/FileField'
 import { TopicPicker } from '@/components/gelearn/TopicPicker'
+import { StudioStatusBadge } from './StudioStatusBadge'
 
 type Values = Record<string, StudioValue>
 type Errors = Record<string, string>
@@ -78,18 +79,43 @@ function validate(config: StudioTypeConfig, values: Values): Errors {
   return errors
 }
 
-function toPayload(config: StudioTypeConfig, values: Values) {
-  const payload: Record<string, unknown> = {}
+function toPayload(config: StudioTypeConfig, values: Values, isDraft: boolean) {
+  const payload: Record<string, unknown> = { is_draft: isDraft }
   for (const field of config.fields) {
     const value = values[field.name]
     if (field.kind === 'collaborators') payload[field.name] = asPeople(value).map(p => p.username)
     else if (field.kind === 'sections') payload[field.name] = asSections(value).map(({ heading, body }) => ({ heading, body }))
     else if (field.kind === 'access') {
       payload.access = value
-      payload.price = value === 'paid' ? values.price : null
+      payload.price = value === 'paid' && values.price ? values.price : null
     } else payload[field.name] = value
   }
   return payload
+}
+
+type SaveAction = 'draft' | 'publish' | 'save' | 'unpublish'
+
+const ACTION_LABEL: Record<SaveAction, string> = {
+  draft: 'Save draft',
+  publish: 'Publish',
+  save: 'Save changes',
+  unpublish: 'Unpublish',
+}
+
+const FLASH: Record<SaveAction, (title: string) => string> = {
+  draft: title => `Saved draft “${title}”.`,
+  publish: title => `Published “${title}”.`,
+  save: title => `Saved “${title}”.`,
+  unpublish: title => `Moved “${title}” back to drafts. It's no longer on GeLearn.`,
+}
+
+function Busy() {
+  return (
+    <>
+      <AutorenewIcon sx={{ fontSize: 16 }} className="animate-spin mr-2" />
+      Saving…
+    </>
+  )
 }
 
 /** Keyed by route so switching between items (or to "new") always starts with fresh form state. */
@@ -107,7 +133,7 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
   const [values, setValues] = useState<Values | null>(() => (config && !isEditing ? initialValues(config, null) : null))
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState<SaveAction | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [documentFile, setDocumentFile] = useState<File | null>(null)
 
@@ -130,32 +156,35 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
 
   const set = (name: string, value: StudioValue) => setValues(prev => (prev ? { ...prev, [name]: value } : prev))
 
-  async function save() {
+  /** Drafts skip the required checks; publishing (or saving a published item) runs them. */
+  async function save(action: SaveAction) {
     if (!config || !values) return
-    const found = validate(config, values)
+    const asDraft = action === 'draft' || action === 'unpublish'
+    const found = asDraft ? {} : validate(config, values)
     setErrors(found)
     setFormError('')
     if (Object.keys(found).length) {
-      setFormError('Please fix the highlighted fields.')
+      setFormError('Please fill in the highlighted fields to publish.')
       return
     }
 
-    setSaving(true)
+    setSaving(action)
     let saved: StudioItem
     try {
       saved = await apiFetch<StudioItem>(
         isEditing ? `/api/studio/${config.key}/${id}/` : `/api/studio/${config.key}/`,
-        { method: isEditing ? 'PATCH' : 'POST', body: toPayload(config, values) },
+        { method: isEditing ? 'PATCH' : 'POST', body: toPayload(config, values, asDraft) },
       )
     } catch (err) {
-      const fields = err instanceof ApiError ? err.fields : {}
+      const { is_draft: draftError, ...fields } = err instanceof ApiError ? err.fields : {}
       setErrors(fields)
       setFormError(
-        Object.keys(fields).length
-          ? 'Please fix the highlighted fields.'
-          : err instanceof ApiError ? err.message : "Couldn't save. Please try again.",
+        draftError
+          ?? (Object.keys(fields).length
+            ? 'Please fix the highlighted fields.'
+            : err instanceof ApiError ? err.message : "Couldn't save. Please try again."),
       )
-      setSaving(false)
+      setSaving(null)
       return
     }
 
@@ -168,16 +197,15 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
       try {
         await apiFetch(`/api/studio/${config.key}/${saved.id}/${endpoint}/`, { method: 'POST', body: form })
       } catch (err) {
-        setSaving(false)
+        setSaving(null)
         setFormError(`Saved, but the ${endpoint === 'image' ? 'image' : 'PDF'} upload failed: ${err instanceof ApiError ? err.message : 'please try again.'}`)
         if (!isEditing) navigate(`/studio/${config.key}/${saved.id}/edit`, { replace: true })
         return
       }
     }
 
-    navigate(`/studio/${config.key}`, {
-      state: { flash: `${isEditing ? 'Saved' : 'Published'} “${saved.title}”.` },
-    })
+    const title = saved.title || 'Untitled draft'
+    navigate(`/studio/${config.key}`, { state: { flash: FLASH[action](title) } })
   }
 
   function renderField(field: StudioField): ReactNode {
@@ -248,6 +276,11 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
     }
   }
 
+  // A new item and a draft offer Save draft + Publish; a live item offers Save changes + Unpublish.
+  const isLive = isEditing && item?.is_draft === false
+  const primary: SaveAction = isLive ? 'save' : 'publish'
+  const secondary: SaveAction = isLive ? 'unpublish' : 'draft'
+
   const mainFields = config.fields.filter(f => f.column === 'main')
   const sideFields = config.fields.filter(f => f.column === 'side')
   const heading = `${isEditing ? 'Edit' : 'New'} ${config.singular}`
@@ -259,7 +292,10 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
       {/* Writing column */}
       <div className="flex-1 min-w-0 w-full bg-white border border-border rounded-3xl shadow-sm p-6 lg:p-8 flex flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</p>
+          <div className="flex items-center gap-2.5">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</p>
+            {isEditing && item && <StudioStatusBadge isDraft={!isLive} />}
+          </div>
           <Link to={`/studio/${config.key}`}
             className="flex items-center gap-1.5 border border-border rounded-full px-4 py-2 text-xs font-bold text-text-primary hover:border-primary hover:text-primary transition-colors">
             <ArrowBackIcon sx={{ fontSize: 13 }} /> Back to {config.label}
@@ -286,16 +322,16 @@ function StudioEditorForm({ type, id }: { type: string | undefined; id: string |
         )}
 
         <div className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-3 shadow-sm lg:sticky lg:top-24">
-          <Button type="button" variant="primary" size="md" disabled={saving} onClick={save} className="w-full justify-center">
-            {saving ? (
-              <>
-                <AutorenewIcon sx={{ fontSize: 16 }} className="animate-spin mr-2" />
-                Saving…
-              </>
-            ) : isEditing ? 'Save changes' : 'Publish'}
+          <Button type="button" variant="primary" size="md" disabled={saving !== null} onClick={() => save(primary)} className="w-full justify-center">
+            {saving === primary ? <Busy /> : ACTION_LABEL[primary]}
+          </Button>
+          <Button type="button" variant="secondary" size="md" disabled={saving !== null} onClick={() => save(secondary)} className="w-full justify-center">
+            {saving === secondary ? <Busy /> : ACTION_LABEL[secondary]}
           </Button>
           <p className="text-xs text-text-muted leading-relaxed">
-            {isEditing ? 'Changes go live as soon as you save.' : 'Publishes immediately under your company’s name.'}
+            {isLive
+              ? 'Live on GeLearn. Changes go live as soon as you save. Unpublish hides it and moves it back to drafts.'
+              : 'Drafts are only visible in your Studio. Publish puts it live on GeLearn under your company’s name.'}
           </p>
           {formError && <p role="alert" className="text-xs font-semibold text-red-600">{formError}</p>}
         </div>

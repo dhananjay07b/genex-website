@@ -4,6 +4,9 @@ sanitised subset of each content type — rich text goes through Wagtail's own
 whitelister (pages.richtext), and editorial
 flags (featured, publisher) are never client-writable.
 """
+import re
+
+from django.utils import timezone
 from rest_framework import serializers
 
 from accounts.models import User
@@ -18,8 +21,15 @@ MAX_TOPICS = 5
 
 
 class SectionSerializer(serializers.Serializer):
-    heading = serializers.CharField(max_length=255)
-    body = serializers.CharField()
+    # Blanks are allowed so a draft can hold a half-written section; publishing refuses them.
+    heading = serializers.CharField(max_length=255, allow_blank=True)
+    body = serializers.CharField(allow_blank=True)
+
+
+def _is_blank_section(section):
+    body = section["body"]
+    has_text = re.sub(r"<[^>]*>", "", body).strip() or "<img" in body or "<embed" in body
+    return not section["heading"].strip() or not has_text
 
 
 def sections_to_stream(sections):
@@ -48,9 +58,67 @@ class TopicsMixin(serializers.Serializer):
 
 
 class StudioBaseSerializer(serializers.ModelSerializer):
-    """Read-only bits every Studio item returns."""
+    """
+    Read-only bits every Studio item returns, and drafts.
+
+    `is_draft`: a draft is saved as it is, so the fields a published item needs
+    are relaxed (optional, blank allowed) while saving a draft, and checked when
+    it's published. A draft with no date gets today's.
+    """
     image_url = serializers.SerializerMethodField()
     owner = serializers.SerializerMethodField()
+    is_draft = serializers.BooleanField(required=False)
+
+    def _will_be_draft(self):
+        data = getattr(self, "initial_data", None) or {}
+        if "is_draft" in data:
+            return str(data["is_draft"]).lower() in ("true", "1", "on")
+        return bool(getattr(self.instance, "is_draft", False))  # instance may be a list when listing
+
+    def get_fields(self):
+        fields = super().get_fields()
+        self._needed_to_publish = {name for name, field in fields.items() if field.required and not field.read_only}
+        if self._will_be_draft():
+            for field in fields.values():
+                if field.read_only:
+                    continue
+                field.required = False
+                if hasattr(field, "allow_blank"):
+                    field.allow_blank = True
+        return fields
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self._will_be_draft():
+            if getattr(self.instance, "is_draft", None) is False:
+                self._refuse_unpublishing_course_lessons()
+            return attrs
+        missing = {}
+        for name in self._needed_to_publish:
+            value = attrs[name] if name in attrs else getattr(self.instance, name, None)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                missing[name] = "This field is required to publish."
+        if missing:
+            raise serializers.ValidationError(missing)
+        return attrs
+
+    def _refuse_unpublishing_course_lessons(self):
+        """A lesson in a course can't vanish: completion and certificates count every lesson."""
+        from learning.models import PlaylistItem
+        for field in PlaylistItem._meta.get_fields():
+            if getattr(field, "related_model", None) is type(self.instance):
+                titles = list(PlaylistItem.objects.filter(**{field.name: self.instance})
+                              .values_list("playlist__title", flat=True).distinct()[:3])
+                if titles:
+                    raise serializers.ValidationError({"is_draft": (
+                        f"This is a lesson in {', '.join(titles)}. Remove it from the course "
+                        "before moving it back to draft."
+                    )})
+
+    def create(self, validated_data):
+        if "date" in {f.name for f in self.Meta.model._meta.fields} and not validated_data.get("date"):
+            validated_data["date"] = timezone.localdate()
+        return super().create(validated_data)
 
     def get_image_url(self, obj):
         image = getattr(obj, "image", None)
@@ -68,6 +136,8 @@ class RichContentMixin(serializers.Serializer):
     def validate_sections(self, value):
         if len(value) > MAX_SECTIONS:
             raise serializers.ValidationError(f"Use at most {MAX_SECTIONS} sections.")
+        if not self._will_be_draft() and any(_is_blank_section(s) for s in value):
+            raise serializers.ValidationError("Every section needs a heading and some text. Remove empty sections.")
         return value
 
     def _apply_rich(self, validated_data):
@@ -94,7 +164,7 @@ class ResearchSerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
     class Meta:
         model = CaseStudy
         fields = [
-            "id", "title", "topics", "excerpt", "date", "read_time",
+            "id", "is_draft", "title", "topics", "excerpt", "date", "read_time",
             "intro", "sections", "image_url", "owner",
         ]
 
@@ -113,7 +183,7 @@ class GeAcademySerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
     class Meta:
         model = TechArticle
         fields = [
-            "id", "title", "topics", "difficulty", "read_time", "date", "excerpt", "tags",
+            "id", "is_draft", "title", "topics", "difficulty", "read_time", "date", "excerpt", "tags",
             "intro", "sections", "callout_label", "callout_content", "takeaways", "image_url", "owner",
         ]
 
@@ -149,7 +219,7 @@ class GeAcademySerializer(RichContentMixin, TopicsMixin, StudioBaseSerializer):
 class PolicyTenderSerializer(StudioBaseSerializer):
     class Meta:
         model = Tender
-        fields = ["id", "title", "authority", "deadline", "value", "status", "sector", "description", "owner"]
+        fields = ["id", "is_draft", "title", "authority", "deadline", "value", "status", "sector", "description", "owner"]
 
 
 class WhitepaperSerializer(TopicsMixin, StudioBaseSerializer):
@@ -157,7 +227,7 @@ class WhitepaperSerializer(TopicsMixin, StudioBaseSerializer):
 
     class Meta:
         model = Whitepaper
-        fields = ["id", "title", "topics", "date", "pages", "description", "document_url", "owner"]
+        fields = ["id", "is_draft", "title", "topics", "date", "pages", "description", "document_url", "owner"]
 
     def get_document_url(self, obj):
         return obj.document.url if obj.document_id else None
@@ -191,14 +261,15 @@ class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
     class Meta:
         model = PodcastEpisode
         fields = [
-            "id", "title", "topics", "date", "duration", "description", "guest", "guest_role",
+            "id", "is_draft", "title", "topics", "date", "duration", "description", "guest", "guest_role",
             "audio_url", "access", "price", "collaborators", "image_url", "owner",
         ]
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)
         access = attrs.get("access", getattr(self.instance, "access", AccessControlled.ACCESS_FREE))
         price = attrs.get("price", getattr(self.instance, "price", None))
-        if access == AccessControlled.ACCESS_PAID and not price:
+        if access == AccessControlled.ACCESS_PAID and not price and not self._will_be_draft():
             raise serializers.ValidationError({"price": "Set a price for paid content."})
         if access != AccessControlled.ACCESS_PAID:
             attrs["price"] = None

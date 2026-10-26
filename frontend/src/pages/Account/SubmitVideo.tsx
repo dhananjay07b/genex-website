@@ -68,6 +68,8 @@ export default function SubmitVideo() {
     control,
     watch,
     setValue,
+    getValues,
+    clearErrors,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { topics: [], access: 'free', price: '' } })
 
@@ -115,8 +117,15 @@ export default function SubmitVideo() {
     submitForm(data, false)
   }
 
+  // A draft is saved as it is — the checks are for sending it for review. Editing a
+  // post that's already live always goes to review, so that path keeps them.
   function onSaveDraft() {
-    handleSubmit(data => submitForm(data, true))()
+    if (isEditing && wasPublished) {
+      handleSubmit(data => submitForm(data, true))()
+      return
+    }
+    clearErrors()
+    submitForm(getValues(), true)
   }
 
   if (!loaded) return null

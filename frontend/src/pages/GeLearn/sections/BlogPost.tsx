@@ -201,6 +201,7 @@ export default function BlogPost() {
             </div>
 
             {/* Hero image */}
+            {/* 16:9 to match most covers; others are trimmed evenly, never letterboxed. */}
             <div className="rounded-3xl overflow-hidden aspect-video mb-8 shadow-sm">
               <img src={heroImg} alt={post.title} className="w-full h-full object-cover" />
             </div>

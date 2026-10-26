@@ -200,7 +200,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         return obj.video_submissions.filter(status="published").count()
 
     def get_podcast_appearance_count(self, obj):
-        return obj.podcast_collaborations.count()
+        return obj.podcast_collaborations.filter(is_draft=False).count()
 
     def get_followers_count(self, obj):
         return obj.followers.count()
