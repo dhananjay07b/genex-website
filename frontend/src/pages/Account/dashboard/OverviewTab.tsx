@@ -161,7 +161,7 @@ export function OverviewTab({ onSelectTab, canPublish }: OverviewTabProps) {
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-text-primary truncate">{entry.title}</p>
+                  <p className="text-sm font-bold text-text-primary truncate">{entry.title || 'Untitled draft'}</p>
                   <p className="text-xs text-text-muted mt-0.5">
                     {entry.description ? `${entry.description} · ` : ''}{formatRelativeTime(entry.timestamp)}
                   </p>

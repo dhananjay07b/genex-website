@@ -93,7 +93,7 @@ export function BlogPostsTab() {
               </div>
 
               <div className="p-4">
-                <p className="font-bold text-text-primary text-sm leading-snug">{post.title}</p>
+                <p className="font-bold text-text-primary text-sm leading-snug">{post.title || 'Untitled draft'}</p>
                 <div className="flex items-center justify-between gap-2 mt-1.5">
                   <p className="text-xs text-text-muted">
                     Updated {formatRelativeTime(post.submitted_at ?? post.created_at)}
@@ -122,7 +122,7 @@ export function BlogPostsTab() {
 
       {pendingDelete && (
         <ConfirmDeleteDialog
-          label={pendingDelete.title}
+          label={pendingDelete.title || 'Untitled draft'}
           confirming={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={handleConfirmDelete}

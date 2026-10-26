@@ -25,11 +25,39 @@ class SubmissionRoleTests(TestCase):
         self.api = APIClient()
         self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
         self.learner = make_user("learner")
+        self.topic = Topic.objects.create(name="Submission test topic", slug="submission-test-topic")
 
     def _post(self, **extra):
-        payload = {"title": "Field notes", "excerpt": "An excerpt long enough.", "body": BODY, "status": "pending"}
+        payload = {"title": "Field notes", "excerpt": "An excerpt long enough.", "body": BODY, "status": "pending", "topics": [self.topic.pk]}
         payload.update(extra)
         return self.api.post("/api/snippets/blog-submissions/", payload, format="json")
+
+    def test_a_draft_saves_half_written(self):
+        self.api.force_authenticate(self.pro)
+        res = self.api.post("/api/snippets/blog-submissions/", {"title": "", "status": "draft", "access": "paid"}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        draft = UserBlogPost.objects.get()
+        self.assertEqual((draft.status, draft.title, draft.body), ("draft", "", ""))
+        res = self.api.post("/api/snippets/video-submissions/", {"title": "Half", "status": "draft"}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+
+    def test_sending_for_review_needs_the_essentials(self):
+        self.api.force_authenticate(self.pro)
+        res = self._post(title="  ", excerpt="", body="", topics=[], access="paid")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.json()), {"title", "excerpt", "body", "topics", "price"})
+        res = self.api.post("/api/snippets/video-submissions/", {"title": "Video", "excerpt": "e", "status": "pending"}, format="json")
+        self.assertEqual(set(res.json()), {"video_url", "topics"})
+
+    def test_a_draft_is_checked_when_sent_for_review(self):
+        self.api.force_authenticate(self.pro)
+        draft_id = self.api.post("/api/snippets/blog-submissions/", {"title": "Half", "status": "draft"}, format="json").json()["id"]
+        res = self.api.patch(f"/api/snippets/blog-submissions/{draft_id}/", {"status": "pending"}, format="json")
+        self.assertEqual(set(res.json()), {"excerpt", "body", "topics"})
+        res = self.api.patch(f"/api/snippets/blog-submissions/{draft_id}/",
+                             {"status": "pending", "excerpt": "An excerpt.", "body": BODY, "topics": [self.topic.pk]}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(UserBlogPost.objects.get(pk=draft_id).status, "pending")
 
     def test_only_professionals_can_submit(self):
         self.api.force_authenticate(self.learner)
