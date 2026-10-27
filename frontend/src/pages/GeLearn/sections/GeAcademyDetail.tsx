@@ -55,9 +55,13 @@ function RelatedCard({ article }: { article: TechArticleItem }) {
       {/* Colour bar */}
       <div className="h-1 gradient-brand w-full shrink-0" />
 
-      {/* Thumbnail placeholder */}
+      {/* Cover image, or the topic name when there's none */}
       <div className="mx-5 mt-4 rounded-2xl overflow-hidden bg-[#f3f4f6] aspect-video shrink-0 flex items-center justify-center">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
+        {article.image_url ? (
+          <img src={getMediaUrl(article.image_url)} alt="" loading="lazy" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xs font-bold uppercase tracking-widest text-[#62748e]">{article.topics[0]?.name ?? 'GeAcademy'}</span>
+        )}
       </div>
 
       {/* Body */}
