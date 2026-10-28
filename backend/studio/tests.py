@@ -105,6 +105,23 @@ class StudioContentTests(StudioTestBase):
         self.assertEqual(public["company"], {"name": "Genex", "slug": "genex", "logo_url": None, "verified": True})
         self.assertEqual(len(public["sections"]), 1)
 
+    def test_a_section_can_be_a_heading_and_an_image_only(self):
+        from wagtail.images.tests.utils import get_test_image_file
+        png = SimpleUploadedFile("chart.png", get_test_image_file().file.getvalue(), content_type="image/png")
+        image = self.api.post("/api/accounts/me/images/", {"file": png}, format="multipart").json()
+        body = (f'<img src="{image["url"]}" alt="Infographic" data-embedtype="image" '
+                f'data-id="{image["id"]}" data-format="fullwidth" data-alt="Infographic">')
+        res = self.api.post("/api/studio/geacademy/", {
+            "title": "Infographic", "difficulty": "Beginner", "read_time": "2 min", "date": TODAY, "excerpt": "e",
+            "sections": [{"heading": "At a glance", "body": body}],
+        }, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertIn("<embed", TechArticle.objects.get(pk=res.json()["id"]).sections[0].value["body"].source)
+        # Reopened and saved again, it still counts as content.
+        editing = self.api.get(f"/api/studio/geacademy/{res.json()['id']}/").json()["sections"]
+        again = self.api.patch(f"/api/studio/geacademy/{res.json()['id']}/", {"sections": editing}, format="json")
+        self.assertEqual(again.status_code, 200, again.content)
+
     def test_geacademy_keeps_gelearn_formatting_and_uploaded_images(self):
         from wagtail.images.tests.utils import get_test_image_file
         png = SimpleUploadedFile("photo.png", get_test_image_file().file.getvalue(), content_type="image/png")

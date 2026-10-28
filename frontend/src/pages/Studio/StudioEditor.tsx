@@ -60,7 +60,8 @@ const asStrings = (v: StudioValue) => (Array.isArray(v) ? (v as string[]) : [])
 const asSections = (v: StudioValue) => (Array.isArray(v) ? (v as StudioSection[]) : [])
 const asPeople = (v: StudioValue) => (Array.isArray(v) ? (v as StudioPerson[]) : [])
 const asIds = (v: StudioValue) => (Array.isArray(v) ? (v as number[]) : [])
-const isBlankHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim() === ''
+// An image counts as content, so a section can be just a heading and an infographic.
+const isBlankHtml = (html: string) => !/<img\b/i.test(html) && html.replace(/<[^>]*>/g, '').trim() === ''
 
 function validate(config: StudioTypeConfig, values: Values): Errors {
   const errors: Errors = {}
@@ -70,7 +71,7 @@ function validate(config: StudioTypeConfig, values: Values): Errors {
       errors[field.name] = `${field.label} is required.`
     }
     if (field.kind === 'sections' && asSections(value).some(s => !s.heading.trim() || isBlankHtml(s.body))) {
-      errors[field.name] = 'Every section needs a heading and some text. Remove empty sections.'
+      errors[field.name] = 'Every section needs a heading and some text or an image. Remove empty sections.'
     }
     if (field.kind === 'access' && value === 'paid' && !(Number(values.price) >= 1)) {
       errors.price = 'Enter a price of at least ₹1.'
