@@ -80,6 +80,11 @@ class SearchTests(DiscoveryTestBase):
         self.assertEqual(data["results"][0]["title"].lower().count("scada"), 1)  # title matches first
         self.assertEqual(data["counts"]["research"], 1)
 
+    def test_query_matches_geacademy_tags(self):
+        self.article.tags.add("MPPT", "Single line diagram")
+        self.assertEqual([(r["type"], r["title"]) for r in self.search(q="mppt")["results"]], [("geacademy", "Reading an SLD")])
+        self.assertEqual(self.search(q="single line")["counts"]["geacademy"], 1)  # part of a tag, counted once
+
     def test_filters(self):
         self.assertEqual([r["title"] for r in self.search(topic="solar")["results"]], ["Reading an SLD"])
         levels = {(r["type"], r["title"]) for r in self.search(level="beginner")["results"]}

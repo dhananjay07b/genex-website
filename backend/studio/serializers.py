@@ -137,7 +137,7 @@ class RichContentMixin(serializers.Serializer):
         if len(value) > MAX_SECTIONS:
             raise serializers.ValidationError(f"Use at most {MAX_SECTIONS} sections.")
         if not self._will_be_draft() and any(_is_blank_section(s) for s in value):
-            raise serializers.ValidationError("Every section needs a heading and some text. Remove empty sections.")
+            raise serializers.ValidationError("Every section needs a heading and some text or an image. Remove empty sections.")
         return value
 
     def _apply_rich(self, validated_data):

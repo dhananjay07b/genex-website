@@ -73,7 +73,7 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       },
       { name: 'read_time', label: 'Read time', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 8 min read' },
       { name: 'date', label: 'Publish date', kind: 'date', column: 'side', required: true },
-      { name: 'tags', label: 'Tags', kind: 'list', column: 'side', maxItems: 12, placeholder: 'Add a tag and press Enter' },
+      { name: 'tags', label: 'Tags', kind: 'list', column: 'side', maxItems: 12, placeholder: 'Add a tag and press Enter', help: 'Search keywords: exact terms readers might search for, e.g. MPPT, IEC 61850.' },
     ],
   },
   {
