@@ -290,13 +290,15 @@ export default function GeAcademyDetail() {
                 <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#62748e] mb-4">Tags</p>
                   <div className="flex flex-wrap gap-2">
+                    {/* Tags are search keywords: each one searches GeLearn for that term. */}
                     {article.tags.map(tag => (
-                      <span
+                      <Link
                         key={tag}
-                        className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158]"
+                        to={`/search?q=${encodeURIComponent(tag)}`}
+                        className="px-3 py-1.5 bg-[#f7f7f7] border border-[#e2e8f0] rounded-full text-xs font-medium text-[#314158] hover:border-primary hover:text-primary transition-colors"
                       >
                         {tag}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 </div>

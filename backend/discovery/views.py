@@ -59,7 +59,7 @@ class TrackView(APIView):
 # Free-text fields searched per type, in addition to the title.
 SEARCH_FIELDS = {
     "course": ["description"],
-    "geacademy": ["excerpt"],
+    "geacademy": ["excerpt", "tags__name"],  # tags are the article's search keywords
     "research": ["excerpt"],
     "whitepaper": ["description"],
     "tender": ["description", "authority", "sector"],
