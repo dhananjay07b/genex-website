@@ -465,6 +465,8 @@ export interface VideoItem extends GatedFields {
   image_url: string | null
   video_url: string | null
   author: ContentAuthor | null
+  /** Set for videos a company published from Company Studio. */
+  company: CompanyDisplay | null
 }
 
 export interface PodcastItem extends GatedFields {

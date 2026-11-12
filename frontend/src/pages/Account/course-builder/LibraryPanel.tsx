@@ -43,13 +43,13 @@ export function LibraryPanel({ draft, patch, library, isCompany }: {
 
   return (
     <BuilderCard n={4} title={isCompany ? "Your company's published content" : 'Your library'}
-      hint={isCompany ? 'GeAcademy articles, research, whitepapers and podcasts' : 'Your published videos and blog posts'}>
+      hint={isCompany ? 'GeAcademy articles, research, whitepapers, podcasts and videos' : 'Your published videos and blog posts'}>
       {library === null ? (
         <div className="min-h-20" />
       ) : library.length === 0 ? (
         isCompany ? (
           <p className="text-sm text-text-muted">
-            Company courses are built from your published GeAcademy articles, research, whitepapers and podcasts.{' '}
+            Company courses are built from your published GeAcademy articles, research, whitepapers, podcasts and videos.{' '}
             <Link to="/studio" className="text-primary font-semibold hover:underline">Publish something in Company Studio</Link> first.
           </p>
         ) : (
