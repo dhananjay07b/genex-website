@@ -37,7 +37,7 @@ export default function StudioLayout() {
       <section className="bg-white py-10 flex-1">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col lg:flex-row gap-7 lg:items-start">
           <nav aria-label="Studio" className="lg:w-60 shrink-0 lg:sticky lg:top-24">
-            <ul className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible -mx-1 px-1 pb-1 lg:pb-0 bg-white lg:border lg:border-border lg:rounded-2xl lg:p-3">
+            <ul className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible -mx-1 px-1 pb-1 lg:mx-0 bg-white lg:border lg:border-border lg:rounded-2xl lg:p-3">
               {NAV.map(({ to, label, icon: Icon, end }) => (
                 <li key={to} className="shrink-0">
                   <NavLink
