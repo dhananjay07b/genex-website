@@ -9,6 +9,7 @@ router.register(r"research", views.ResearchViewSet, basename="studio-research")
 router.register(r"policies-tenders", views.PoliciesTendersViewSet, basename="studio-policies-tenders")
 router.register(r"whitepapers", views.WhitepaperViewSet, basename="studio-whitepapers")
 router.register(r"podcasts", views.PodcastViewSet, basename="studio-podcasts")
+router.register(r"videos", views.VideoViewSet, basename="studio-videos")
 
 urlpatterns = [
     path("company/", views.StudioCompanyView.as_view(), name="studio-company"),

@@ -31,7 +31,7 @@ def _card(obj, path, meta=""):
 def company_page(company: Company):
     # Imported here: pages/learning import accounts, which import organizations.
     from learning.models import Playlist
-    from pages.models import CaseStudy, PodcastEpisode, TechArticle, Tender, Whitepaper
+    from pages.models import CaseStudy, PodcastEpisode, TechArticle, Tender, VideoItem, Whitepaper
 
     sections = [
         ("geacademy", "GeAcademy", TechArticle.objects.filter(company=company).order_by("-date"),
@@ -44,6 +44,8 @@ def company_page(company: Company):
          lambda o: _card(o, "/whitepapers", o.pages)),
         ("podcasts", "Podcasts", PodcastEpisode.objects.filter(company=company).order_by("-date"),
          lambda o: _card(o, f"/podcasts/{o.pk}", o.duration)),
+        ("videos", "Videos", VideoItem.objects.filter(company=company).order_by("-date"),
+         lambda o: _card(o, f"/videos/{o.pk}", o.duration)),
     ]
     content = []
     for key, label, queryset, card in sections:

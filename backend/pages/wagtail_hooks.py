@@ -107,8 +107,9 @@ class VideoItemViewSet(SnippetViewSet):
     model = VideoItem
     icon = "media"
     menu_label = "Videos"
-    list_display = ["title", "date", "access", "featured"]
-    list_filter = ["access", "featured"]
+    # Company is empty for Genex videos and Professionals' approved submissions.
+    list_display = ["title", "company", "is_draft", "date", "access", "featured"]
+    list_filter = ["company", "is_draft", "access", "featured"]
     search_fields = ["title"]
     ordering = ["-date"]
 
