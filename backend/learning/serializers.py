@@ -493,12 +493,13 @@ def professional_library(user):
 
 
 def company_library(company):
-    """A company's published GeAcademy articles, research, whitepapers and podcasts."""
+    """A company's published GeAcademy articles, research, whitepapers, podcasts and videos."""
     return {
         "article": TechArticle.objects.filter(company=company).select_related("image"),
         "research": CaseStudy.objects.filter(company=company).select_related("image"),
         "whitepaper": Whitepaper.objects.filter(company=company),
         "podcast": PodcastEpisode.objects.filter(company=company).select_related("image"),
+        "video": VideoItem.objects.filter(company=company).select_related("image"),
     }
 
 

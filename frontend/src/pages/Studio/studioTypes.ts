@@ -5,6 +5,7 @@ import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined'
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined'
 import { formatDisplayDate } from '@/lib/utils'
 import type { StudioCompany, StudioItem, StudioTypeKey } from '@/types/studio'
 
@@ -163,6 +164,29 @@ export const STUDIO_TYPES: StudioTypeConfig[] = [
       { name: 'duration', label: 'Duration', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 48 min' },
       { name: 'date', label: 'Date', kind: 'date', column: 'side', required: true },
       { name: 'audio_url', label: 'Audio URL', kind: 'url', column: 'side', placeholder: 'https://…' },
+      { name: 'access', label: 'Access', kind: 'access', column: 'side', required: true },
+    ],
+  },
+  {
+    key: 'videos',
+    label: 'Videos',
+    singular: 'video',
+    description: 'Demos, walkthroughs and talks, linked from YouTube, Vimeo or your own video host.',
+    icon: VideocamOutlinedIcon,
+    countKey: 'videos',
+    publicPath: item => `/videos/${item.id}`,
+    listMeta: item => [item.duration, dateMeta(item)].filter(Boolean).join(' · '),
+    image: true,
+    fields: [
+      { name: 'title', label: 'Title', kind: 'title', column: 'main', required: true, placeholder: 'Video title' },
+      { name: 'excerpt', label: 'Description', kind: 'textarea', column: 'main', required: true, help: 'Shown under the video and on cards.' },
+      {
+        name: 'video_url', label: 'Video link', kind: 'url', column: 'main', required: true, placeholder: 'https://www.youtube.com/watch?v=…',
+        help: 'A YouTube or Vimeo link, or a direct link to a video file. GeLearn plays it; it doesn’t host the file.',
+      },
+      { name: 'topics', label: 'Topics', kind: 'topics', column: 'side', maxItems: 5, help: 'Used for topic pages, the Explore menu and recommendations on GeLearn.' },
+      { name: 'duration', label: 'Duration', kind: 'text', column: 'side', required: true, placeholder: 'e.g. 14:32 min' },
+      { name: 'date', label: 'Date', kind: 'date', column: 'side', required: true },
       { name: 'access', label: 'Access', kind: 'access', column: 'side', required: true },
     ],
   },

@@ -13,6 +13,7 @@ import { CommentSection } from '@/components/gelearn/CommentSection'
 import { AuthorPanel } from '@/components/gelearn/AuthorPanel'
 import { MiniProfileCard } from '@/components/gelearn/MiniProfileCard'
 import { AuthorByline } from '@/components/gelearn/AuthorByline'
+import { CompanyBadge } from '@/components/gelearn/CompanyBadge'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { apiFetch } from '@/lib/api/client'
 import { marketingPath } from '@/lib/host'
@@ -123,6 +124,11 @@ export default function VideoDetail() {
                   />
                 </span>
               </button>
+            ) : video.company ? (
+              // Published by a company from Company Studio.
+              <div className="flex items-center gap-1.5 mb-8 text-sm text-[#45556c]">
+                Published by <CompanyBadge company={video.company} linked />
+              </div>
             ) : (
               <div className="flex items-center gap-3 mb-8">
                 <span className="size-9 rounded-full bg-[#0f2930] text-white text-xs font-extrabold flex items-center justify-center shrink-0">G</span>

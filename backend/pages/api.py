@@ -223,7 +223,7 @@ class GatedContentSerializerMixin(serializers.Serializer):
         return self._is_locked(obj)
 
 
-class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
+class VideoItemSerializer(PublisherSerializerMixin, GatedContentSerializerMixin, ImageUrlSerializerMixin, AuthorSerializerMixin, serializers.ModelSerializer):
     topics = TopicSerializer(many=True, read_only=True)
     video_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
@@ -232,7 +232,7 @@ class VideoItemSerializer(GatedContentSerializerMixin, ImageUrlSerializerMixin, 
     class Meta:
         model = VideoItem
         fields = ["id", "title", "topics", "date", "duration", "excerpt", "featured", "image_url", "video_url", "author",
-                  *GatedContentSerializerMixin.ACCESS_FIELDS]
+                  "company", *GatedContentSerializerMixin.ACCESS_FIELDS]
 
     def get_video_url(self, obj):
         return None if self._is_locked(obj) else obj.video_url
@@ -392,7 +392,7 @@ class WhitepaperViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class VideoItemViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = VideoItem.objects.all().order_by("-date").prefetch_related("topics__group")
+    queryset = VideoItem.objects.all().order_by("-date").select_related("company__logo").prefetch_related("topics__group")
     serializer_class = VideoItemSerializer
     pagination_class = GenexPagination
 

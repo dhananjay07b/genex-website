@@ -1,6 +1,6 @@
 import type { CompanyDisplay } from './auth'
 
-export type StudioTypeKey = 'geacademy' | 'research' | 'policies-tenders' | 'whitepapers' | 'podcasts'
+export type StudioTypeKey = 'geacademy' | 'research' | 'policies-tenders' | 'whitepapers' | 'podcasts' | 'videos'
 
 export interface StudioSection {
   heading: string
@@ -31,7 +31,7 @@ export interface StudioItem {
   [field: string]: unknown
 }
 
-export type StudioCountKey = 'geacademy' | 'research' | 'policies_tenders' | 'whitepapers' | 'podcasts'
+export type StudioCountKey = 'geacademy' | 'research' | 'policies_tenders' | 'whitepapers' | 'podcasts' | 'videos'
 
 export interface StudioCompany {
   id: number

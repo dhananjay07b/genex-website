@@ -142,7 +142,12 @@ def tender_card(tender, today=None):
 def video_card(video):
     card = _base(video, "video", f"/videos/{video.pk}", excerpt=video.excerpt,
                  meta=video.duration, date=video.date, image_url=_image(video))
-    card.update(_access(video), author=_submitter(video), duration_seconds=video.duration_seconds)
+    card.update(
+        _access(video),
+        author=_submitter(video),
+        company=display_publisher(video.company) if video.company_id else None,
+        duration_seconds=video.duration_seconds,
+    )
     return card
 
 
@@ -174,7 +179,7 @@ TYPES = {
     "research": (lambda: CaseStudy.objects.select_related("image", *_PUBLISHER).prefetch_related("topics"), research_card),
     "whitepaper": (lambda: Whitepaper.objects.select_related("document", *_PUBLISHER).prefetch_related("topics"), whitepaper_card),
     "tender": (lambda: Tender.objects.select_related(*_PUBLISHER), tender_card),
-    "video": (lambda: VideoItem.objects.select_related("image", *_SUBMITTER).prefetch_related("topics"), video_card),
+    "video": (lambda: VideoItem.objects.select_related("image", "company__logo", *_SUBMITTER).prefetch_related("topics"), video_card),
     "podcast": (lambda: PodcastEpisode.objects.select_related("image", *_PUBLISHER).prefetch_related("topics"), podcast_card),
     "blog": (lambda: BlogPost.objects.select_related("image", *_SUBMITTER).prefetch_related("topics"), blog_card),
 }

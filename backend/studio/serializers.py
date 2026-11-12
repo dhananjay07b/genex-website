@@ -12,7 +12,7 @@ from rest_framework import serializers
 from accounts.models import User
 from accounts.roles import display_company
 from pages.images import AVATAR, CONTENT, image_url
-from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Topic, Whitepaper
+from pages.models import AccessControlled, CaseStudy, PodcastEpisode, TechArticle, Tender, Topic, VideoItem, Whitepaper
 from pages.richtext import rich_text_for_editing, sanitize_rich_text
 
 MAX_SECTIONS = 30
@@ -252,18 +252,9 @@ class CollaboratorField(serializers.SlugRelatedField):
         }
 
 
-class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
-    collaborators = serializers.ListField(
-        child=CollaboratorField(), required=False, max_length=MAX_LIST_ITEMS, write_only=True,
-    )
+class PricedAccessMixin(serializers.Serializer):
+    """Free / members / paid access; a paid item needs a price once it's published (drafts may leave it out)."""
     access = serializers.ChoiceField(choices=[c[0] for c in AccessControlled.ACCESS_CHOICES], required=False)
-
-    class Meta:
-        model = PodcastEpisode
-        fields = [
-            "id", "is_draft", "title", "topics", "date", "duration", "description", "guest", "guest_role",
-            "audio_url", "access", "price", "collaborators", "image_url", "owner",
-        ]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -274,6 +265,19 @@ class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
         if access != AccessControlled.ACCESS_PAID:
             attrs["price"] = None
         return attrs
+
+
+class PodcastSerializer(PricedAccessMixin, TopicsMixin, StudioBaseSerializer):
+    collaborators = serializers.ListField(
+        child=CollaboratorField(), required=False, max_length=MAX_LIST_ITEMS, write_only=True,
+    )
+
+    class Meta:
+        model = PodcastEpisode
+        fields = [
+            "id", "is_draft", "title", "topics", "date", "duration", "description", "guest", "guest_role",
+            "audio_url", "access", "price", "collaborators", "image_url", "owner",
+        ]
 
     def create(self, validated_data):
         collaborators = validated_data.pop("collaborators", None)
@@ -293,3 +297,16 @@ class PodcastSerializer(TopicsMixin, StudioBaseSerializer):
         data = super().to_representation(instance)
         data["collaborators"] = [CollaboratorField().to_representation(u) for u in instance.collaborators.all()]
         return data
+
+
+class VideoSerializer(PricedAccessMixin, TopicsMixin, StudioBaseSerializer):
+    """A company video: a YouTube/Vimeo link or a direct video file URL (GeLearn doesn't host video files)."""
+
+    class Meta:
+        model = VideoItem
+        fields = [
+            "id", "is_draft", "title", "topics", "date", "duration", "excerpt", "video_url",
+            "access", "price", "image_url", "owner",
+        ]
+        # The model allows a blank link (Genex can add one later in the CMS); a published Studio video needs one.
+        extra_kwargs = {"video_url": {"required": True, "allow_blank": False}}

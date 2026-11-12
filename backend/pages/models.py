@@ -831,7 +831,12 @@ class SubmissionOwnedMixin:
         return {submission.author_id} if submission is not None and submission.author_id else set()
 
 
-class VideoItem(SubmissionOwnedMixin, AccessControlled):
+class VideoItem(SubmissionOwnedMixin, CompanyPublished, AccessControlled):
+    """
+    A video on GeLearn. Two routes in: a Professional's approved submission
+    (submission_source; company stays empty) or a Company Studio upload
+    (company + owner, may be a draft). Genex can also add one in the CMS.
+    """
     title               = models.CharField(max_length=255)
     date                = models.DateField()
     duration            = models.CharField(max_length=20, help_text="e.g. '14:32 min'")
@@ -860,7 +865,12 @@ class VideoItem(SubmissionOwnedMixin, AccessControlled):
         FieldPanel("excerpt"),
         FieldPanel("video_url"),
         *AccessControlled.access_panels,
+        *CompanyPublished.publisher_panels,
     ]
+
+    def access_owner_ids(self):
+        # The Professional who submitted it, or the Studio login that published it.
+        return SubmissionOwnedMixin.access_owner_ids(self) | CompanyPublished.access_owner_ids(self)
 
     def save(self, *args, **kwargs):
         self.duration_seconds = parse_duration_seconds(self.duration)

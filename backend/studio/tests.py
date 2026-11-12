@@ -327,3 +327,85 @@ class StudioDraftTests(StudioTestBase):
     def test_paid_podcast_draft_needs_no_price_until_published(self):
         res = self.api.post("/api/studio/podcasts/", {"is_draft": True, "title": "Ep", "access": "paid"}, format="json")
         self.assertEqual(res.status_code, 201, res.content)
+
+
+class StudioVideoTests(StudioTestBase):
+    """Company accounts publish videos (links, not uploads) from the Studio, and can use them in courses."""
+
+    VIDEO = {"title": "Commissioning a BESS", "excerpt": "Walkthrough", "duration": "12 min",
+             "video_url": "https://www.youtube.com/watch?v=abc123", "date": TODAY}
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()  # search throttle
+        self.api.force_authenticate(self.staff)
+
+    def _publish(self, **extra):
+        res = self.api.post("/api/studio/videos/", {**self.VIDEO, **extra}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        return res.json()
+
+    def test_draft_then_publish(self):
+        from pages.models import VideoItem
+        res = self.api.post("/api/studio/videos/", {"is_draft": True}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        vid = res.json()["id"]
+        self.assertEqual(APIClient().get(f"/api/snippets/videos/{vid}/").status_code, 404)
+        self.assertEqual(self.api.get("/api/studio/company/").json()["drafts"]["videos"], 1)
+
+        res = self.api.patch(f"/api/studio/videos/{vid}/", {"is_draft": False}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.json()), {"title", "excerpt", "duration", "video_url"})
+
+        res = self.api.patch(f"/api/studio/videos/{vid}/", {**self.VIDEO, "is_draft": False}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        video = VideoItem.objects.get(pk=vid)
+        self.assertEqual((video.company, video.owner, video.duration_seconds), (self.genex, self.staff, 720))
+        self.assertEqual(self.api.get("/api/studio/company/").json()["counts"]["videos"], 1)
+
+    def test_live_video_carries_the_company_everywhere(self):
+        vid = self._publish()["id"]
+        public = APIClient()
+        detail = public.get(f"/api/snippets/videos/{vid}/").json()
+        self.assertEqual(detail["company"]["slug"], "genex")
+        self.assertIsNone(detail["author"])
+        hit = public.get("/api/discovery/search/?q=Commissioning&type=video").json()["results"][0]
+        self.assertEqual(hit["company"]["slug"], "genex")
+        page = public.get(f"/api/organizations/companies/{self.genex.slug}/").json()
+        self.assertEqual([s["key"] for s in page["content"]], ["videos"])
+
+    def test_company_courses_can_use_their_videos(self):
+        from learning.models import Playlist, PlaylistItem
+        from learning.serializers import library_for
+        vid = self._publish()["id"]
+        self.assertTrue(library_for(self.staff)["video"].filter(pk=vid).exists())
+        self.assertFalse(library_for(self.rival)["video"].filter(pk=vid).exists())
+
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Storage course", status="published")
+        PlaylistItem.objects.create(playlist=course, video_id=vid)
+        res = self.api.patch(f"/api/studio/videos/{vid}/", {"is_draft": True}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Storage course", res.json()["is_draft"][0])
+
+    def test_paid_video_opens_for_the_company_only(self):
+        vid = self._publish(access="paid", price="499")["id"]
+        self.assertTrue(self.api.get(f"/api/snippets/videos/{vid}/").json()["video_url"])  # staff2 or staff
+        self.api.force_authenticate(self.learner)
+        locked = self.api.get(f"/api/snippets/videos/{vid}/").json()
+        self.assertTrue(locked["is_locked"])
+        self.assertIsNone(locked["video_url"])
+
+        self.api.force_authenticate(self.staff)
+        res = self.api.post("/api/studio/videos/", {**self.VIDEO, "access": "paid"}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("price", res.json())
+
+    def test_professional_videos_are_unchanged(self):
+        from pages.models import UserVideoPost, VideoItem
+        video = VideoItem.objects.create(title="Pro clip", date=datetime.date(2026, 9, 1), duration="5 min", excerpt="e")
+        UserVideoPost.objects.create(author=self.pro, title="Pro clip", video_url="https://youtu.be/x", status="published", published_video=video)
+        video.refresh_from_db()
+        self.assertIsNone(video.company)
+        self.assertEqual(video.access_owner_ids(), {self.pro.pk})
+        self.assertNotIn(video.pk, [r["id"] for r in self.api.get("/api/studio/videos/").json()["results"]])

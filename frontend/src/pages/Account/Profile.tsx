@@ -147,8 +147,8 @@ export default function Profile() {
 
               <div className="mt-4 pt-4 border-t border-border">
                 <div className="rounded-xl bg-surface p-3.5 text-xs text-text-muted leading-relaxed">
-                  <span className="font-bold text-text-primary">Coming to GeLearn:</span> course certificates.
-                  This account is ready for it — same profile, more to track.
+                  <span className="font-bold text-text-primary">Coming to GeLearn:</span> checkout for paid
+                  courses and content, so you can buy and unlock them right here.
                 </div>
               </div>
             </div>

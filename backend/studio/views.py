@@ -12,7 +12,7 @@ from accounts.uploads import save_uploaded_document, save_uploaded_image
 from organizations.serializers import CompanyDetailSerializer
 from pages.api import GenexPagination
 from pages.images import AVATAR, image_url
-from pages.models import CaseStudy, PodcastEpisode, TechArticle, Tender, Whitepaper
+from pages.models import CaseStudy, PodcastEpisode, TechArticle, Tender, VideoItem, Whitepaper
 
 from . import serializers as s
 
@@ -95,6 +95,11 @@ class PodcastViewSet(ImageUploadMixin, StudioViewSet):
         return super().get_queryset().prefetch_related("collaborators__company")
 
 
+class VideoViewSet(ImageUploadMixin, StudioViewSet):
+    model = VideoItem
+    serializer_class = s.VideoSerializer
+
+
 class CompanyOnly(permissions.BasePermission):
     """Company staff only — these views describe 'my company'."""
 
@@ -110,7 +115,7 @@ class StudioCompanyView(APIView):
         company = request.user.company
         data = CompanyDetailSerializer(company).data
         models = {"geacademy": TechArticle, "research": CaseStudy, "policies_tenders": Tender,
-                  "whitepapers": Whitepaper, "podcasts": PodcastEpisode}
+                  "whitepapers": Whitepaper, "podcasts": PodcastEpisode, "videos": VideoItem}
         data["counts"] = {key: M.objects.filter(company=company).count() for key, M in models.items()}  # published
         data["drafts"] = {key: M.all_objects.filter(company=company, is_draft=True).count() for key, M in models.items()}
         return Response(data)
