@@ -708,6 +708,34 @@ class PasswordChangeTests(TestCase):
         self.assertTrue(self.client.get("/api/accounts/me/").json()["has_password"])
 
 
+class PasswordChangeSignsOutOtherDevicesTests(TestCase):
+    """A new password ends every other sign-in; the device that changed it stays signed in."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = make_user("devices")
+
+    def _signed_in(self):
+        client = APIClient()
+        res = client.post("/api/auth/login/", {"email": self.user.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        return client
+
+    def test_other_devices_are_signed_out_and_this_one_stays_in(self):
+        laptop, phone = self._signed_in(), self._signed_in()
+        res = laptop.post("/api/auth/password/change/", {
+            "old_password": "Passw0rd!x", "new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!",
+        }, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(laptop.get("/api/accounts/me/").status_code, 200)
+        self.assertEqual(phone.get("/api/accounts/me/").status_code, 401)
+        self.assertEqual(phone.post("/api/auth/token/refresh/", {}, format="json").status_code, 401)
+        session = phone.get("/api/accounts/session/").json()
+        self.assertEqual((session["user"], session["can_refresh"]), (None, False))
+        self.assertEqual(laptop.post("/api/auth/token/refresh/", {}, format="json").status_code, 200)
+
+
 class DuplicateEmailTests(TestCase):
     """One account per email, ignoring case, however the existing account was made."""
 

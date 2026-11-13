@@ -262,6 +262,12 @@ REST_AUTH = {
     "TOKEN_MODEL": None,
 }
 
+SIMPLE_JWT = {
+    # Sign-ins carry a fingerprint of the password, so changing it signs out every
+    # other device (accounts.views.GenexPasswordChangeView re-signs this one in).
+    "CHECK_REVOKE_TOKEN": True,
+}
+
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APP": {

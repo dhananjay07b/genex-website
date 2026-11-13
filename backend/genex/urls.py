@@ -17,6 +17,7 @@ from accounts.views import (
     GenexPasswordResetView,
     GenexRegisterView,
     GenexResendEmailView,
+    GenexTokenRefreshView,
     GenexVerifyEmailView,
 )
 from genex.seo import robots_txt
@@ -39,6 +40,7 @@ urlpatterns = [
     path("api/auth/password/reset/", GenexPasswordResetView.as_view(), name="rest_password_reset"),
     path("api/auth/password/reset/confirm/", GenexPasswordResetConfirmView.as_view(), name="rest_password_reset_confirm"),
     path("api/auth/password/change/", GenexPasswordChangeView.as_view(), name="rest_password_change"),
+    path("api/auth/token/refresh/", GenexTokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/", include("dj_rest_auth.urls")),
     # Throttled overrides — must precede the dj-rest-auth include they shadow.
     path("api/auth/registration/", GenexRegisterView.as_view(), name="rest_register"),
