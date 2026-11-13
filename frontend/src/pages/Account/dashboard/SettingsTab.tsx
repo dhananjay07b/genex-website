@@ -29,6 +29,17 @@ const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { learner: 'Learner', professional: 'Professional', company: 'Company' }
 const PROVIDER_ICON: Record<string, () => ReactElement> = { google: GoogleGlyph }
 
+/** Warns before the page is closed or reloaded while `when` is true. */
+function WarnOnLeave({ when }: { when: boolean }) {
+  useEffect(() => {
+    if (!when) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [when])
+  return null
+}
+
 export function SettingsTab() {
   const { user, refetch } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
@@ -164,6 +175,22 @@ export function SettingsTab() {
     setCoverRemoved(true)
   }
 
+  /** Sends a staged photo/cover change; returns why it failed, or '' when it worked (or nothing was staged). */
+  async function saveImage(endpoint: 'avatar' | 'cover-photo', file: File | null, removed: boolean) {
+    try {
+      if (file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        await apiFetch<User>(`/api/accounts/me/${endpoint}/`, { method: 'POST', body: formData })
+      } else if (removed) {
+        await apiFetch<User>(`/api/accounts/me/${endpoint}/`, { method: 'DELETE' })
+      }
+      return ''
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'Please try again.'
+    }
+  }
+
   async function handleSaveProfile() {
     setProfileError('')
     if (accountType === 'professional' && !isCompanyAccount) {
@@ -173,23 +200,8 @@ export function SettingsTab() {
     }
     setSavingProfile(true)
     setProfileSaved(false)
+    // The text first: if it's refused, nothing changes (photos included) and the form says why.
     try {
-      if (avatarFile) {
-        const formData = new FormData()
-        formData.append('file', avatarFile)
-        await apiFetch<User>('/api/accounts/me/avatar/', { method: 'POST', body: formData })
-      } else if (avatarRemoved) {
-        await apiFetch<User>('/api/accounts/me/avatar/', { method: 'DELETE' })
-      }
-
-      if (coverFile) {
-        const formData = new FormData()
-        formData.append('file', coverFile)
-        await apiFetch<User>('/api/accounts/me/cover-photo/', { method: 'POST', body: formData })
-      } else if (coverRemoved) {
-        await apiFetch<User>('/api/accounts/me/cover-photo/', { method: 'DELETE' })
-      }
-
       await apiFetch('/api/accounts/me/', {
         method: 'PATCH',
         body: {
@@ -206,28 +218,41 @@ export function SettingsTab() {
           ...(isLearner ? { career_goal: careerGoal ? Number(careerGoal) : null } : {}),
         },
       })
-
-      await refetch()
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview)
-      if (coverPreview) URL.revokeObjectURL(coverPreview)
-      setAvatarFile(null)
-      setAvatarPreview(null)
-      setAvatarRemoved(false)
-      setCoverFile(null)
-      setCoverPreview(null)
-      setCoverRemoved(false)
-      setCompanyChoiceEdit(null)
-      setProfileSaved(true)
     } catch (err) {
       const fields = err instanceof ApiError ? err.fields : {}
       setProfileError(
         fields.company_id ?? fields.company_other ?? fields.role_title ?? fields.account_type
+          ?? (fields.linkedin_url && `LinkedIn URL: ${fields.linkedin_url}`)
+          ?? (fields.years_experience && `Years of experience: ${fields.years_experience}`)
           ?? (err instanceof ApiError ? err.message : "Couldn't save your profile. Please try again."),
       )
-    } finally {
       setSavingProfile(false)
+      return
     }
+
+    const photoFailed = await saveImage('avatar', avatarFile, avatarRemoved)
+    const coverFailed = await saveImage('cover-photo', coverFile, coverRemoved)
+    await refetch().catch(() => {})
+    // Cleared either way: a refused file can't be sent again as it is; the page shows what's saved.
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setAvatarRemoved(false)
+    setCoverFile(null)
+    setCoverPreview(null)
+    setCoverRemoved(false)
+    setCompanyChoiceEdit(null)
+    if (photoFailed || coverFailed) {
+      const failures = [
+        photoFailed && `Your photo wasn't saved: ${photoFailed}`,
+        coverFailed && `Your cover photo wasn't saved: ${coverFailed}`,
+      ]
+      setProfileError(['Profile saved.', ...failures.filter(Boolean)].join(' '))
+    } else {
+      setProfileSaved(true)
+    }
+    setSavingProfile(false)
   }
+
 
   // A Google sign-up has no password yet: it sets one, without a current password.
   const hasPassword = user.has_password
@@ -295,6 +320,7 @@ export function SettingsTab() {
 
   return (
     <div>
+      <WarnOnLeave when={hasUnsavedChanges} />
       <h2 className="text-xl font-extrabold text-text-primary mb-5">Edit Profile &amp; Settings</h2>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -477,7 +503,7 @@ export function SettingsTab() {
             <Button variant="primary" size="md" disabled={savingProfile} onClick={handleSaveProfile}>
               {savingProfile ? 'Saving…' : 'Save Changes'}
             </Button>
-            {profileSaved && <span className="text-xs font-semibold text-secondary">Saved.</span>}
+            {profileSaved && !hasUnsavedChanges && <span role="status" className="text-xs font-semibold text-secondary">Saved.</span>}
             {profileError && <span role="alert" className="text-xs font-semibold text-red-600">{profileError}</span>}
           </div>
         </div>
