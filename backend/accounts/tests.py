@@ -271,6 +271,28 @@ class AccountTypeApiTests(TestCase):
         self.assertFalse(body["is_admin"])
         self.assertEqual(body["company"], {"name": "Acme", "slug": None, "logo_url": None, "verified": False})
 
+    def test_profile_fields_follow_the_account_type(self):
+        from learning.models import CareerRole
+        from pages.models import Topic
+        topic = Topic.objects.create(name="Test topic", slug="test-topic")
+        role = CareerRole.objects.create(name="Test role", slug="test-role")
+        body = {"years_experience": 7, "expertise": [topic.pk], "career_goal": role.pk}
+        acme = Company.objects.create(name="Acme", slug="acme")
+        users = {
+            "learner": make_user("l1"),
+            "professional": make_user("p1", account_type="professional", company_other="Acme", role_title="Eng"),
+            "company": make_user("c1", account_type="company", company=acme),
+        }
+        for kind, user in users.items():
+            self.api.force_authenticate(user)
+            res = self.api.patch("/api/accounts/me/", body, format="json")
+            self.assertEqual(res.status_code, 200, res.content)
+            data = res.json()
+            is_pro = kind == "professional"
+            self.assertEqual(data["years_experience"], 7 if is_pro else None, kind)
+            self.assertEqual(data["expertise"], [topic.pk] if is_pro else [], kind)
+            self.assertEqual(data["career_goal"], role.pk if kind == "learner" else None, kind)
+
 
 class CompanyVerificationFlowTests(TestCase):
     """Professional ↔ Company domain verification, end to end through the real endpoints."""
@@ -662,6 +684,80 @@ class AuthRateLimitTests(TestCase):
         self.assertEqual(parse(None, "3/2h"), (3, 7200))
 
 
+class PasswordChangeTests(TestCase):
+    """Settings → Change Password: the current password is checked; a Google-only account sets its first one."""
+
+    URL = "/api/auth/password/change/"
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+
+    def _change(self, user, **body):
+        self.client.force_authenticate(user)
+        return self.client.post(self.URL, {"new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!", **body}, format="json")
+
+    def test_wrong_current_password_is_refused(self):
+        user = make_user("pw")
+        res = self._change(user, old_password="not-it")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("old_password", res.json())
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("Passw0rd!x"))
+
+    def test_missing_current_password_is_refused(self):
+        res = self._change(make_user("pw"))
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("old_password", res.json())
+
+    def test_right_current_password_changes_it(self):
+        user = make_user("pw")
+        self.assertEqual(self._change(user, old_password="Passw0rd!x").status_code, 200)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("N3wPassw0rd!"))
+
+    def test_google_only_account_sets_a_first_password_without_a_current_one(self):
+        user = make_user("googler")
+        user.set_unusable_password()
+        user.save()
+        self.client.force_authenticate(user)
+        self.assertFalse(self.client.get("/api/accounts/me/").json()["has_password"])
+        res = self._change(user, old_password="anything")  # ignored: there's no password to check
+        self.assertEqual(res.status_code, 200, res.content)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("N3wPassw0rd!"))
+        self.assertTrue(self.client.get("/api/accounts/me/").json()["has_password"])
+
+
+class PasswordChangeSignsOutOtherDevicesTests(TestCase):
+    """A new password ends every other sign-in; the device that changed it stays signed in."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = make_user("devices")
+
+    def _signed_in(self):
+        client = APIClient()
+        res = client.post("/api/auth/login/", {"email": self.user.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        return client
+
+    def test_other_devices_are_signed_out_and_this_one_stays_in(self):
+        laptop, phone = self._signed_in(), self._signed_in()
+        res = laptop.post("/api/auth/password/change/", {
+            "old_password": "Passw0rd!x", "new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!",
+        }, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(laptop.get("/api/accounts/me/").status_code, 200)
+        self.assertEqual(phone.get("/api/accounts/me/").status_code, 401)
+        self.assertEqual(phone.post("/api/auth/token/refresh/", {}, format="json").status_code, 401)
+        session = phone.get("/api/accounts/session/").json()
+        self.assertEqual((session["user"], session["can_refresh"]), (None, False))
+        self.assertEqual(laptop.post("/api/auth/token/refresh/", {}, format="json").status_code, 200)
+
+
 class DuplicateEmailTests(TestCase):
     """One account per email, ignoring case, however the existing account was made."""
 
@@ -833,6 +929,52 @@ class GoogleSignInTests(TestCase):
         res = self.client.post("/api/accounts/google/", {"id_token": "forged"}, format="json")
         self.assertIn(res.status_code, (400, 503))
         self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
+
+
+class GoogleConnectTests(TestCase):
+    """Settings → Connect Google: links a Google account to the signed-in user."""
+
+    URL = "/api/accounts/me/social-accounts/google/"
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+        self.user = make_user("connector")
+        self.client.force_authenticate(self.user)
+
+    def _connect(self, sub="g-9", email="someone@gmail.com"):
+        from unittest import mock
+        identity = {"sub": sub, "email": email, "email_verified": True, "name": "Some One"}
+        with mock.patch("allauth.socialaccount.providers.google.views._verify_and_decode", return_value=identity):
+            return self.client.post(self.URL, {"id_token": "tok"}, format="json")
+
+    def test_links_google_even_with_another_email(self):
+        from allauth.socialaccount.models import SocialAccount
+        res = self._connect()
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["provider"], res.json()["email"]), ("google", "someone@gmail.com"))
+        self.assertTrue(SocialAccount.objects.filter(user=self.user, provider="google", uid="g-9").exists())
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "connector@example.org")  # sign-in email unchanged
+
+    def test_connecting_twice_is_harmless(self):
+        from allauth.socialaccount.models import SocialAccount
+        self._connect()
+        self.assertEqual(self._connect().status_code, 200)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user).count(), 1)
+
+    def test_google_account_of_someone_else_is_refused(self):
+        from allauth.socialaccount.models import SocialAccount
+        other = make_user("owner")
+        SocialAccount.objects.create(user=other, provider="google", uid="g-9")
+        res = self._connect()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("another GeLearn account", res.json()["detail"])
+        self.assertFalse(SocialAccount.objects.filter(user=self.user).exists())
+
+    def test_signed_out_refused(self):
+        self.assertEqual(APIClient().post(self.URL, {"id_token": "tok"}, format="json").status_code, 401)
 
 
 class WorkEmailTests(TestCase):
@@ -1265,3 +1407,39 @@ class EditorImageUploadTests(TestCase):
         self.assertEqual(self.api.post("/api/accounts/me/images/", {}, format="multipart").status_code, 400)
         fake = SimpleUploadedFile("photo.png", b"not an image", content_type="image/png")
         self.assertEqual(self.api.post("/api/accounts/me/images/", {"file": fake}, format="multipart").status_code, 400)
+
+
+class ProfilePhotoUploadTests(TestCase):
+    """Avatar and cover photo: PNG, JPG or WebP only, with a clear message otherwise."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.user = make_user("photos")
+        self.api.force_authenticate(self.user)
+
+    def _file(self, name, content_type, content=None):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from wagtail.images.tests.utils import get_test_image_file
+        return SimpleUploadedFile(name, content or get_test_image_file().file.getvalue(), content_type=content_type)
+
+    def test_png_cover_is_saved_and_can_be_removed(self):
+        res = self.api.post("/api/accounts/me/cover-photo/", {"file": self._file("cover.png", "image/png")}, format="multipart")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertTrue(res.json()["cover_photo_url"])
+        res = self.api.delete("/api/accounts/me/cover-photo/")
+        self.assertIsNone(res.json()["cover_photo_url"])
+
+    def test_other_formats_are_refused(self):
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+        for endpoint in ("cover-photo", "avatar"):
+            for upload in (
+                self._file("x.svg", "image/svg+xml", svg),
+                self._file("x.pdf", "application/pdf", b"%PDF-1.4"),
+                self._file("x.gif", "image/gif"),
+                self._file("x.png", "image/png", b"not an image"),
+            ):
+                res = self.api.post(f"/api/accounts/me/{endpoint}/", {"file": upload}, format="multipart")
+                self.assertEqual(res.status_code, 400, (endpoint, upload.name))
+                self.assertTrue(res.json()["detail"])
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.cover_photo)

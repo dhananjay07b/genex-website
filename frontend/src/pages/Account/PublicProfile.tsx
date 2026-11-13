@@ -14,7 +14,8 @@ import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/Button'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
+import { IMAGE_ACCEPT, imageProblem } from '@/lib/imageUpload'
 import { getMediaUrl, formatRelativeTime, cn } from '@/lib/utils'
 import { useAuth } from '@/context/useAuth'
 import type { PublicProfile as PublicProfileType, FollowRow, User } from '@/types/auth'
@@ -48,6 +49,7 @@ export default function PublicProfile() {
   const coverInputRef = useRef<HTMLInputElement>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   useEffect(() => {
     if (!username) return
@@ -107,6 +109,9 @@ export default function PublicProfile() {
   }
 
   async function handleUpload(field: 'avatar' | 'cover-photo', file: File, setUploading: (v: boolean) => void) {
+    const problem = imageProblem(file)
+    setUploadError(problem ?? '')
+    if (problem) return
     setUploading(true)
     try {
       const formData = new FormData()
@@ -117,6 +122,9 @@ export default function PublicProfile() {
         const fresh = await apiFetch<PublicProfileType>(`/api/accounts/users/${username}/`)
         setProfile(fresh)
       }
+    } catch (err) {
+      const what = field === 'avatar' ? 'photo' : 'cover photo'
+      setUploadError(err instanceof ApiError ? err.message : `Couldn't upload your ${what}. Please try again.`)
     } finally {
       setUploading(false)
     }
@@ -181,7 +189,7 @@ export default function PublicProfile() {
             <input
               ref={coverInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="hidden"
               onChange={e => {
                 const file = e.target.files?.[0]
@@ -189,6 +197,11 @@ export default function PublicProfile() {
                 e.target.value = ''
               }}
             />
+            {uploadError && (
+              <p role="alert" className="absolute bottom-4 left-4 right-4 sm:left-auto bg-white text-red-600 text-xs font-semibold px-3.5 py-2 rounded-full shadow-sm">
+                {uploadError}
+              </p>
+            )}
             <Link
               to="/account"
               className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/90 text-text-primary text-xs font-bold px-3.5 py-2 rounded-full cursor-pointer hover:bg-white transition-colors"
@@ -223,7 +236,7 @@ export default function PublicProfile() {
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   className="hidden"
                   onChange={e => {
                     const file = e.target.files?.[0]

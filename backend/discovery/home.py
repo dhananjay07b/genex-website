@@ -402,7 +402,7 @@ def personal_home(user):
     else:
         latest_enrollment = Enrollment.objects.filter(user=user).select_related("playlist").first()
         anchor = latest_enrollment.playlist if latest_enrollment else None
-    goal = user.career_goal
+    goal = user.career_goal if user.account_type == User.ACCOUNT_LEARNER else None  # a Learner-only setting
     page = home_page()
     return {
         "layout": layout(page.member_sections) if page else [],

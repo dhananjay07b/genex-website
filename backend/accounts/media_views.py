@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from pages.images import CONTENT, image_payload
 
 from .serializers import UserSerializer
-from .uploads import save_uploaded_image
+from .uploads import PHOTO_EXTENSIONS, save_uploaded_image
 
 
 class _UserImageUploadView(APIView):
@@ -21,7 +21,7 @@ class _UserImageUploadView(APIView):
     user_field_name = None
 
     def post(self, request):
-        image = save_uploaded_image(request)
+        image = save_uploaded_image(request, extensions=PHOTO_EXTENSIONS)
         if isinstance(image, Response):
             return image
 

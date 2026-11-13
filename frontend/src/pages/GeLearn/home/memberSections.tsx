@@ -3,6 +3,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CheckIcon from '@mui/icons-material/Check'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/useAuth'
 import { Byline } from '@/components/gelearn/discovery/Byline'
 import { CardThumb } from '@/components/gelearn/discovery/CardThumb'
 import { ListRow } from '@/components/gelearn/discovery/ListBox'
@@ -25,6 +26,8 @@ const BUTTON_OUTLINE = 'inline-flex items-center rounded-lg border border-sky-70
 // ── Welcome: continue learning, this week, career goal ─────────────────────
 
 export function WelcomeSection({ value, me, name }: { value: WelcomeValue; me: MyHomeData; name: string }) {
+  // A career goal is a Learner's setting (Settings shows it to Learners only).
+  const isLearner = useAuth().user?.account_type === 'learner'
   const current = me.continue
   const today = new Date().toLocaleDateString('en-CA')
   return (
@@ -114,17 +117,19 @@ export function WelcomeSection({ value, me, name }: { value: WelcomeValue; me: M
           </aside>
         </div>
 
-        <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-sky-100 bg-surface px-4 py-3 text-sm text-slate-700">
-          <FlagOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700" />
-          {me.career_goal ? (
-            <>Your goal: <b className="text-text-primary">{me.career_goal.name}</b>. Courses for it are suggested below.</>
-          ) : (
-            <>{value.goal_prompt}</>
-          )}
-          <Link to="/account?tab=settings#career-goal" className="font-bold text-sky-700 hover:text-sky-800">
-            {me.career_goal ? 'Change goal' : 'Set your goal'}
-          </Link>
-        </p>
+        {isLearner && (
+          <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-sky-100 bg-surface px-4 py-3 text-sm text-slate-700">
+            <FlagOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700" />
+            {me.career_goal ? (
+              <>Your goal: <b className="text-text-primary">{me.career_goal.name}</b>. Courses for it are suggested below.</>
+            ) : (
+              <>{value.goal_prompt}</>
+            )}
+            <Link to="/account?tab=settings#career-goal" className="font-bold text-sky-700 hover:text-sky-800">
+              {me.career_goal ? 'Change goal' : 'Set your goal'}
+            </Link>
+          </p>
+        )}
       </Section>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
@@ -12,21 +12,35 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
+import { GOOGLE_CONFIGURED, requestGoogleCode, useGoogleReady } from '@/components/auth/googleCode'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { WorkEmailCard } from './WorkEmailCard'
 import { UnverifiedCompanyNote } from '@/components/auth/UnverifiedCompanyNote'
 import { cn, getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
+import { IMAGE_ACCEPT, imageProblem } from '@/lib/imageUpload'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
 import { CertificatePrivacy } from './CertificatePrivacy'
+import { ConfirmDialog } from './ConfirmDialog'
 import { TopicPicker } from '@/components/gelearn/TopicPicker'
 import type { CareerRole, Topic } from '@/types/api'
 
 const PROVIDER_LABEL: Record<string, string> = { google: 'Google' }
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { learner: 'Learner', professional: 'Professional', company: 'Company' }
 const PROVIDER_ICON: Record<string, () => ReactElement> = { google: GoogleGlyph }
+
+/** Warns before the page is closed or reloaded while `when` is true. */
+function WarnOnLeave({ when }: { when: boolean }) {
+  useEffect(() => {
+    if (!when) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [when])
+  return null
+}
 
 export function SettingsTab() {
   const { user, refetch } = useAuth()
@@ -36,6 +50,9 @@ export function SettingsTab() {
   const accountType: AccountType = user?.account_type ?? 'learner'
   const [companyOther, setCompanyOther] = useState(user?.company_other ?? '')
   const isCompanyAccount = user?.account_type === 'company'
+  // Experience and expertise describe a Professional; a career goal is a Learner's.
+  const isProfessional = accountType === 'professional'
+  const isLearner = accountType === 'learner'
   const linkedCompany = user?.company?.slug ? user.company : null
   const { companies } = useCompanies()
   // null = untouched: the choice then mirrors what's saved on the account.
@@ -61,10 +78,14 @@ export function SettingsTab() {
   const [newPassword2, setNewPassword2] = useState('')
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [passwordError, setPasswordError] = useState('')
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<Record<string, string>>({})
 
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
-  const [disconnectError, setDisconnectError] = useState('')
+  const [confirmDisconnect, setConfirmDisconnect] = useState<SocialAccount | null>(null)
+  const [socialError, setSocialError] = useState('')
+  const [connectingGoogle, setConnectingGoogle] = useState(false)
+  const googleReady = useGoogleReady(setSocialError)
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -78,6 +99,8 @@ export function SettingsTab() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverRemoved, setCoverRemoved] = useState(false)
+  // A picked file that can't be uploaded (wrong format, too big): shown at once, nothing staged.
+  const [photoError, setPhotoError] = useState('')
 
   useEffect(() => {
     apiFetch<Topic[]>('/api/snippets/topics/').then(setTopics).catch(() => setTopics([]))
@@ -102,20 +125,40 @@ export function SettingsTab() {
 
   async function handleDisconnect(id: number) {
     setDisconnectingId(id)
-    setDisconnectError('')
+    setSocialError('')
     try {
       await apiFetch(`/api/accounts/me/social-accounts/${id}/`, { method: 'DELETE' })
       setSocialAccounts(prev => prev.filter(a => a.id !== id))
+      setConfirmDisconnect(null)
     } catch (err) {
-      setDisconnectError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
+      setSocialError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
+      setConfirmDisconnect(null)
     } finally {
       setDisconnectingId(null)
     }
   }
 
+  function handleConnectGoogle() {
+    setSocialError('')
+    requestGoogleCode(response => {
+      if (!response.code) {
+        if (response.error !== 'access_denied') setSocialError("Google didn't finish connecting. Please try again.")
+        return
+      }
+      setConnectingGoogle(true)
+      apiFetch<SocialAccount>('/api/accounts/me/social-accounts/google/', { method: 'POST', body: { code: response.code } })
+        .then(account => setSocialAccounts(prev => [account, ...prev.filter(a => a.id !== account.id)]))
+        .catch(err => setSocialError(err instanceof ApiError ? err.message : "Couldn't connect Google. Please try again."))
+        .finally(() => setConnectingGoogle(false))
+    }, setSocialError)
+  }
+
   if (!user) return null
 
   function handleSelectAvatar(file: File) {
+    const problem = imageProblem(file)
+    setPhotoError(problem ?? '')
+    if (problem) return
     setAvatarFile(file)
     setAvatarRemoved(false)
     setAvatarPreview(prev => {
@@ -134,12 +177,40 @@ export function SettingsTab() {
   }
 
   function handleSelectCover(file: File) {
+    const problem = imageProblem(file)
+    setPhotoError(problem ?? '')
+    if (problem) return
     setCoverFile(file)
     setCoverRemoved(false)
     setCoverPreview(prev => {
       if (prev) URL.revokeObjectURL(prev)
       return URL.createObjectURL(file)
     })
+  }
+
+  function handleRemoveCover() {
+    setCoverFile(null)
+    setCoverPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setCoverRemoved(true)
+  }
+
+  /** Sends a staged photo/cover change; returns why it failed, or '' when it worked (or nothing was staged). */
+  async function saveImage(endpoint: 'avatar' | 'cover-photo', file: File | null, removed: boolean) {
+    try {
+      if (file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        await apiFetch<User>(`/api/accounts/me/${endpoint}/`, { method: 'POST', body: formData })
+      } else if (removed) {
+        await apiFetch<User>(`/api/accounts/me/${endpoint}/`, { method: 'DELETE' })
+      }
+      return ''
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'Please try again.'
+    }
   }
 
   async function handleSaveProfile() {
@@ -151,23 +222,8 @@ export function SettingsTab() {
     }
     setSavingProfile(true)
     setProfileSaved(false)
+    // The text first: if it's refused, nothing changes (photos included) and the form says why.
     try {
-      if (avatarFile) {
-        const formData = new FormData()
-        formData.append('file', avatarFile)
-        await apiFetch<User>('/api/accounts/me/avatar/', { method: 'POST', body: formData })
-      } else if (avatarRemoved) {
-        await apiFetch<User>('/api/accounts/me/avatar/', { method: 'DELETE' })
-      }
-
-      if (coverFile) {
-        const formData = new FormData()
-        formData.append('file', coverFile)
-        await apiFetch<User>('/api/accounts/me/cover-photo/', { method: 'POST', body: formData })
-      } else if (coverRemoved) {
-        await apiFetch<User>('/api/accounts/me/cover-photo/', { method: 'DELETE' })
-      }
-
       await apiFetch('/api/accounts/me/', {
         method: 'PATCH',
         body: {
@@ -178,55 +234,91 @@ export function SettingsTab() {
               ? { company_id: null, company_other: companyOther }
               : { company_id: Number(companyChoice) }
             : {}),
-          role_title: accountType === 'learner' ? '' : roleTitle,
-          years_experience: yearsExperience ? Number(yearsExperience) : null,
+          role_title: isLearner ? '' : roleTitle,
           linkedin_url: linkedinUrl,
-          expertise,
-          career_goal: careerGoal ? Number(careerGoal) : null,
+          ...(isProfessional ? { years_experience: yearsExperience ? Number(yearsExperience) : null, expertise } : {}),
+          ...(isLearner ? { career_goal: careerGoal ? Number(careerGoal) : null } : {}),
         },
       })
-
-      await refetch()
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview)
-      if (coverPreview) URL.revokeObjectURL(coverPreview)
-      setAvatarFile(null)
-      setAvatarPreview(null)
-      setAvatarRemoved(false)
-      setCoverFile(null)
-      setCoverPreview(null)
-      setCoverRemoved(false)
-      setCompanyChoiceEdit(null)
-      setProfileSaved(true)
     } catch (err) {
       const fields = err instanceof ApiError ? err.fields : {}
       setProfileError(
         fields.company_id ?? fields.company_other ?? fields.role_title ?? fields.account_type
+          ?? (fields.linkedin_url && `LinkedIn URL: ${fields.linkedin_url}`)
+          ?? (fields.years_experience && `Years of experience: ${fields.years_experience}`)
           ?? (err instanceof ApiError ? err.message : "Couldn't save your profile. Please try again."),
       )
-    } finally {
       setSavingProfile(false)
+      return
     }
+
+    const photoFailed = await saveImage('avatar', avatarFile, avatarRemoved)
+    const coverFailed = await saveImage('cover-photo', coverFile, coverRemoved)
+    await refetch().catch(() => {})
+    // Cleared either way: a refused file can't be sent again as it is; the page shows what's saved.
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setAvatarRemoved(false)
+    setCoverFile(null)
+    setCoverPreview(null)
+    setCoverRemoved(false)
+    setCompanyChoiceEdit(null)
+    if (photoFailed || coverFailed) {
+      const failures = [
+        photoFailed && `Your photo wasn't saved: ${photoFailed}`,
+        coverFailed && `Your cover photo wasn't saved: ${coverFailed}`,
+      ]
+      setProfileError(['Profile saved.', ...failures.filter(Boolean)].join(' '))
+    } else {
+      setProfileSaved(true)
+    }
+    setSavingProfile(false)
   }
 
-  async function handleChangePassword() {
+
+  // A Google sign-up has no password yet: it sets one, without a current password.
+  const hasPassword = user.has_password
+
+  function editPassword(setter: (value: string) => void, value: string) {
+    setter(value)
+    if (passwordStatus !== 'saving') setPasswordStatus('idle')
+    setPasswordFieldErrors({})
+  }
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault()
+    setPasswordFieldErrors({})
+    if (newPassword1 !== newPassword2) {
+      setPasswordFieldErrors({ new_password2: "The two new passwords don't match." })
+      return
+    }
     setPasswordStatus('saving')
     try {
       await apiFetch('/api/auth/password/change/', {
         method: 'POST',
-        body: { old_password: oldPassword, new_password1: newPassword1, new_password2: newPassword2 },
+        body: { ...(hasPassword ? { old_password: oldPassword } : {}), new_password1: newPassword1, new_password2: newPassword2 },
       })
-      setPasswordStatus('saved')
       setOldPassword('')
       setNewPassword1('')
       setNewPassword2('')
+      await refetch()
+      setPasswordStatus('saved')
     } catch (err) {
-      setPasswordError(err instanceof ApiError && err.status === 429 ? err.message : "Couldn't update password.")
+      const fields = err instanceof ApiError ? err.fields : {}
+      const fieldErrors = Object.fromEntries(
+        ['old_password', 'new_password1', 'new_password2'].filter(key => fields[key]).map(key => [key, fields[key]]),
+      )
+      setPasswordFieldErrors(fieldErrors)
+      setPasswordError(
+        Object.keys(fieldErrors).length ? '' : err instanceof ApiError ? err.message : "Couldn't update your password. Please try again.",
+      )
       setPasswordStatus('error')
     }
   }
 
   const previewInitials = (displayName || user.username).slice(0, 2).toUpperCase()
-  const previewExpertise = topics.filter(t => expertise.includes(t.id))
+  const previewExpertise = isProfessional ? topics.filter(t => expertise.includes(t.id)) : []
+  const previewYears = isProfessional ? yearsExperience : ''
   const companyName = accountType === 'learner'
     ? ''
     : selectedCompany?.name ?? (companyChoice === OTHER_COMPANY ? companyOther : linkedCompany?.name ?? '')
@@ -250,6 +342,7 @@ export function SettingsTab() {
 
   return (
     <div>
+      <WarnOnLeave when={hasUnsavedChanges} />
       <h2 className="text-xl font-extrabold text-text-primary mb-5">Edit Profile &amp; Settings</h2>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -263,19 +356,32 @@ export function SettingsTab() {
           className="h-28 rounded-t-xl relative overflow-hidden -mb-7 bg-linear-to-br from-primary to-secondary bg-cover bg-center"
           style={coverSrc ? { backgroundImage: `url(${coverSrc})` } : undefined}
         >
-          <button
-            type="button"
-            onClick={() => coverInputRef.current?.click()}
-            disabled={savingProfile}
-            className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full disabled:opacity-60"
-          >
-            <PhotoCameraOutlinedIcon sx={{ fontSize: 13 }} />
-            Change Cover
-          </button>
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-2">
+            {coverSrc && (
+              <button
+                type="button"
+                onClick={handleRemoveCover}
+                disabled={savingProfile}
+                className="flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-dark-bg/60 transition-colors disabled:opacity-60"
+              >
+                <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />
+                Remove Cover
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              disabled={savingProfile}
+              className="flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-dark-bg/60 transition-colors disabled:opacity-60"
+            >
+              <PhotoCameraOutlinedIcon sx={{ fontSize: 13 }} />
+              Change Cover
+            </button>
+          </div>
           <input
             ref={coverInputRef}
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT}
             className="hidden"
             onChange={e => {
               const file = e.target.files?.[0]
@@ -306,7 +412,7 @@ export function SettingsTab() {
             <input
               ref={avatarInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="hidden"
               onChange={e => {
                 const file = e.target.files?.[0]
@@ -326,6 +432,7 @@ export function SettingsTab() {
             Remove Photo
           </button>
           <p className="text-[11px] text-text-muted mt-2">Photo and cover changes apply when you click Save Changes below.</p>
+          {photoError && <p role="alert" className="text-xs font-semibold text-red-600 mt-1.5">{photoError}</p>}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -383,38 +490,42 @@ export function SettingsTab() {
           )}
           {/* Signed up with a personal email? A confirmed work email gets them verified (hidden once verified by sign-in email). */}
           {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} companyVerified={Boolean(user.company_verified)} />}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Years of Experience"
-              type="number"
-              min={0}
-              max={99}
-              placeholder="e.g. 12"
-              value={yearsExperience}
-              onChange={e => setYearsExperience(e.target.value)}
-            />
+          <div className={cn('grid grid-cols-1 gap-4', isProfessional && 'sm:grid-cols-2')}>
+            {isProfessional && (
+              <Input
+                label="Years of Experience"
+                type="number"
+                min={0}
+                max={99}
+                placeholder="e.g. 12"
+                value={yearsExperience}
+                onChange={e => setYearsExperience(e.target.value)}
+              />
+            )}
             <Input label="LinkedIn URL" placeholder="https://linkedin.com/in/…" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} />
           </div>
 
-          <TopicPicker label="Areas of Expertise" value={expertise} onChange={setExpertise} max={3} />
+          {isProfessional && <TopicPicker label="Areas of Expertise" value={expertise} onChange={setExpertise} max={3} />}
 
-          <div id="career-goal" className="scroll-mt-28">
-            {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
-            <Select
-              id="career-goal-select"
-              label="Career goal"
-              options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
-              value={careerGoal}
-              onChange={e => setCareerGoal(e.target.value)}
-            />
-            <p className="text-xs text-text-muted mt-1.5">The role you're working toward. Your GeLearn home suggests courses for it.</p>
-          </div>
+          {isLearner && (
+            <div id="career-goal" className="scroll-mt-28">
+              {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
+              <Select
+                id="career-goal-select"
+                label="Career goal"
+                options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
+                value={careerGoal}
+                onChange={e => setCareerGoal(e.target.value)}
+              />
+              <p className="text-xs text-text-muted mt-1.5">The role you're working toward. Your GeLearn home suggests courses for it.</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <Button variant="primary" size="md" disabled={savingProfile} onClick={handleSaveProfile}>
               {savingProfile ? 'Saving…' : 'Save Changes'}
             </Button>
-            {profileSaved && <span className="text-xs font-semibold text-secondary">Saved.</span>}
+            {profileSaved && !hasUnsavedChanges && <span role="status" className="text-xs font-semibold text-secondary">Saved.</span>}
             {profileError && <span role="alert" className="text-xs font-semibold text-red-600">{profileError}</span>}
           </div>
         </div>
@@ -430,39 +541,54 @@ export function SettingsTab() {
             Email changes aren&apos;t available from here yet — contact support if you need to update it.
           </p>
 
-          <div className="border-t border-border pt-4 flex flex-col gap-3">
-            <p className="text-sm font-semibold text-text-primary">Change Password</p>
-            <Input
-              label="Current Password"
-              type="password"
-              value={oldPassword}
-              onChange={e => setOldPassword(e.target.value)}
-            />
+          <form onSubmit={handleChangePassword} noValidate className="border-t border-border pt-4 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-text-primary">{hasPassword ? 'Change Password' : 'Set a Password'}</p>
+            {!hasPassword && (
+              <p className="text-xs text-text-muted -mt-1.5 leading-relaxed">
+                You sign in with Google. Set a password to also sign in with {user.email}.
+              </p>
+            )}
+            {/* Lets password managers file the new password under this account. */}
+            <input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+            {hasPassword && (
+              <Input
+                label="Current Password"
+                type="password"
+                autoComplete="current-password"
+                value={oldPassword}
+                error={passwordFieldErrors.old_password}
+                onChange={e => editPassword(setOldPassword, e.target.value)}
+              />
+            )}
             <Input
               label="New Password"
               type="password"
+              autoComplete="new-password"
               value={newPassword1}
-              onChange={e => setNewPassword1(e.target.value)}
+              error={passwordFieldErrors.new_password1}
+              onChange={e => editPassword(setNewPassword1, e.target.value)}
             />
             <Input
               label="Confirm New Password"
               type="password"
+              autoComplete="new-password"
               value={newPassword2}
-              onChange={e => setNewPassword2(e.target.value)}
+              error={passwordFieldErrors.new_password2}
+              onChange={e => editPassword(setNewPassword2, e.target.value)}
             />
             <div className="flex items-center gap-3">
               <Button
+                type="submit"
                 variant="secondary"
                 size="md"
-                disabled={passwordStatus === 'saving' || !oldPassword || !newPassword1 || !newPassword2}
-                onClick={handleChangePassword}
+                disabled={passwordStatus === 'saving' || (hasPassword && !oldPassword) || !newPassword1 || !newPassword2}
               >
-                {passwordStatus === 'saving' ? 'Updating…' : 'Update Password'}
+                {passwordStatus === 'saving' ? 'Saving…' : hasPassword ? 'Update Password' : 'Set Password'}
               </Button>
-              {passwordStatus === 'saved' && <span className="text-xs font-semibold text-secondary">Password updated.</span>}
-              {passwordStatus === 'error' && <span role="alert" className="text-xs font-semibold text-red-600">{passwordError}</span>}
+              {passwordStatus === 'saved' && <span role="status" className="text-xs font-semibold text-secondary">Password saved.</span>}
+              {passwordStatus === 'error' && passwordError && <span role="alert" className="text-xs font-semibold text-red-600">{passwordError}</span>}
             </div>
-          </div>
+          </form>
         </div>
       </section>
 
@@ -479,6 +605,8 @@ export function SettingsTab() {
           <div className="flex flex-col gap-3">
             {socialAccounts.map(account => {
               const Icon = PROVIDER_ICON[account.provider]
+              // The backend refuses to remove the only way in: no password and no other connected account.
+              const onlySignIn = !user.has_password && socialAccounts.length === 1
               return (
                 <div key={account.id} className="flex items-center gap-3 border border-border rounded-xl px-4 py-3">
                   <span className="shrink-0">{Icon ? <Icon /> : null}</span>
@@ -491,8 +619,9 @@ export function SettingsTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={disconnectingId === account.id}
-                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingId === account.id || onlySignIn}
+                    title={onlySignIn ? 'Set a password first: this is how you sign in.' : undefined}
+                    onClick={() => setConfirmDisconnect(account)}
                   >
                     <LinkOffIcon sx={{ fontSize: 15 }} className="mr-1.5" />
                     {disconnectingId === account.id ? 'Disconnecting…' : 'Disconnect'}
@@ -502,7 +631,34 @@ export function SettingsTab() {
             })}
           </div>
         )}
-        {disconnectError && <p className="text-xs font-semibold text-red-600 mt-3">{disconnectError}</p>}
+        {GOOGLE_CONFIGURED && !socialAccounts.some(a => a.provider === 'google') && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            disabled={!googleReady || connectingGoogle}
+            onClick={handleConnectGoogle}
+          >
+            <span className="mr-2 flex"><GoogleGlyph /></span>
+            {connectingGoogle ? 'Connecting…' : 'Connect Google'}
+          </Button>
+        )}
+        {!user.has_password && socialAccounts.length === 1 && (
+          <p className="text-xs text-text-muted mt-3">
+            You sign in with Google only. To disconnect it, set a password under Account first.
+          </p>
+        )}
+        {socialError && <p role="alert" className="text-xs font-semibold text-red-600 mt-3">{socialError}</p>}
+        {confirmDisconnect && (
+          <ConfirmDialog
+            title={`Disconnect ${PROVIDER_LABEL[confirmDisconnect.provider] ?? confirmDisconnect.provider}?`}
+            description={`You won't be able to sign in with ${confirmDisconnect.email || 'this account'} any more. You can connect it again later.`}
+            confirmLabel="Disconnect"
+            confirming={disconnectingId === confirmDisconnect.id}
+            onCancel={() => setConfirmDisconnect(null)}
+            onConfirm={() => handleDisconnect(confirmDisconnect.id)}
+          />
+        )}
       </section>
 
       <CertificatePrivacy />
@@ -606,7 +762,7 @@ export function SettingsTab() {
                   {roleAtCompany}
                 </p>
               )}
-              {yearsExperience && <p className="text-[11px] text-text-muted mt-1">{yearsExperience} years of experience</p>}
+              {previewYears && <p className="text-[11px] text-text-muted mt-1">{previewYears} years of experience</p>}
               {bio && <p className="text-xs text-text-muted leading-relaxed mt-2 line-clamp-2">{bio}</p>}
               {previewExpertise.length > 0 && (
                 <div className="flex flex-wrap justify-start gap-1.5 mt-2">
@@ -649,7 +805,7 @@ export function SettingsTab() {
             <div className="px-4 pt-2 pb-4">
               <p className="text-sm font-extrabold text-text-primary">{displayName || user.username}</p>
               {roleAtCompany && <p className="text-xs text-text-primary font-semibold mt-1">{roleAtCompany}</p>}
-              {yearsExperience && <p className="text-[11px] text-text-muted mt-0.5">{yearsExperience} years of experience</p>}
+              {previewYears && <p className="text-[11px] text-text-muted mt-0.5">{previewYears} years of experience</p>}
               {previewExpertise.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {previewExpertise.map(topic => (

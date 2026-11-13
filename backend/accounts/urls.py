@@ -9,7 +9,14 @@ from .public_views import (
     PublicUserVideosView,
 )
 from .work_email import WorkEmailView
-from .views import GoogleLoginView, MeView, SessionView, SocialAccountDisconnectView, SocialAccountListView
+from .views import (
+    GoogleConnectView,
+    GoogleLoginView,
+    MeView,
+    SessionView,
+    SocialAccountDisconnectView,
+    SocialAccountListView,
+)
 
 urlpatterns = [
     path("session/", SessionView.as_view(), name="account-session"),
@@ -22,6 +29,7 @@ urlpatterns = [
     path("me/cover-photo/", CoverPhotoUploadView.as_view(), name="my-cover-photo"),
     path("me/images/", EditorImageUploadView.as_view(), name="my-editor-images"),
     path("me/social-accounts/", SocialAccountListView.as_view(), name="my-social-accounts"),
+    path("me/social-accounts/google/", GoogleConnectView.as_view(), name="my-google-connect"),
     path("me/social-accounts/<int:pk>/", SocialAccountDisconnectView.as_view(), name="my-social-account-disconnect"),
     path("google/", GoogleLoginView.as_view(), name="google-login"),
     path("users/<str:username>/", PublicProfileView.as_view(), name="public-profile"),

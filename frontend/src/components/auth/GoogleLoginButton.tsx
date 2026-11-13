@@ -4,43 +4,7 @@ import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/context/useAuth'
 import { cn } from '@/lib/utils'
 import { GoogleProfileDialog, type GoogleProfile, type GoogleProfilePrefill } from './GoogleProfileDialog'
-
-/** The part of Google Identity Services this button uses: the sign-in popup that returns a one-time code. */
-interface GoogleCodeResponse { code?: string; error?: string }
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initCodeClient: (config: {
-            client_id: string
-            scope: string
-            ux_mode: 'popup'
-            callback: (response: GoogleCodeResponse) => void
-            error_callback?: (error: { type: string }) => void
-          }) => { requestCode: () => void }
-        }
-      }
-    }
-  }
-}
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined
-const GOOGLE_SCRIPT = 'https://accounts.google.com/gsi/client'
-
-// Google's script, loaded once per page however many buttons there are.
-let scriptLoad: Promise<void> | null = null
-function loadGoogleScript() {
-  scriptLoad ??= new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = GOOGLE_SCRIPT
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => { scriptLoad = null; reject(new Error('Google script failed to load')) }
-    document.head.appendChild(script)
-  })
-  return scriptLoad
-}
+import { GOOGLE_CONFIGURED, requestGoogleCode, useGoogleReady, type GoogleCodeResponse } from './googleCode'
 
 /** POST /api/accounts/google/ (backend accounts.views.GoogleLoginView). */
 type GoogleResult =
@@ -68,21 +32,12 @@ const BUTTON_CLASS =
 export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'signin_with' }: GoogleLoginButtonProps) {
   const { refetch } = useAuth()
   const navigate = useNavigate()
-  const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const ready = useGoogleReady(setError)
   // A new Google user, while they finish the profile step. signupToken: the server's
   // signed ticket for finishing the sign-up (Google's own token can only be checked once).
   const [pending, setPending] = useState<{ signupToken: string; email: string; name: string; prefill?: GoogleProfilePrefill } | null>(null)
-
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return
-    let cancelled = false
-    loadGoogleScript()
-      .then(() => { if (!cancelled) setReady(true) })
-      .catch(() => { if (!cancelled) setError("Couldn't reach Google. Check your connection and reload the page.") })
-    return () => { cancelled = true }
-  }, [])
 
   async function send(body: { code: string } | ({ signup_token: string } & GoogleProfile)) {
     const result = await apiFetch<GoogleResult>('/api/accounts/google/', { method: 'POST', body })
@@ -113,21 +68,12 @@ export function GoogleLoginButton({ redirectTo = '/account', prefill, text = 'si
   function start() {
     if (!window.google) return
     setError('')
-    // Opened straight from the click, so browsers don't block the popup.
-    window.google.accounts.oauth2.initCodeClient({
-      client_id: GOOGLE_CLIENT_ID!,
-      scope: 'openid email profile',
-      ux_mode: 'popup',
-      callback: response => onCode.current(response),
-      error_callback: err => {
-        if (err.type !== 'popup_closed') setError("Google's sign-in window couldn't open. Allow pop-ups for this site and try again.")
-      },
-    }).requestCode()
+    requestGoogleCode(response => onCode.current(response), setError)
   }
 
   const label = text === 'signup_with' ? 'Sign up with Google' : 'Sign in with Google'
 
-  if (!GOOGLE_CLIENT_ID) {
+  if (!GOOGLE_CONFIGURED) {
     // No VITE_GOOGLE_OAUTH_CLIENT_ID set. Stay silent in production (a real deploy
     // always has it), but show a disabled placeholder in dev so it's obvious *why*.
     if (!import.meta.env.DEV) return null

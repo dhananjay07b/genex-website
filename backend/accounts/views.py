@@ -5,7 +5,7 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.models import SocialAccount
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, VerifyEmailView
-from dj_rest_auth.jwt_auth import JWTCookieAuthentication, set_jwt_cookies
+from dj_rest_auth.jwt_auth import JWTCookieAuthentication, get_refresh_view, set_jwt_cookies
 from dj_rest_auth.utils import jwt_encode
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.conf import settings
@@ -22,8 +22,10 @@ from rest_framework.generics import DestroyAPIView, ListAPIView, RetrieveUpdateA
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.utils import get_md5_hash_password
 
 from .backoffice import is_backoffice_session
 from .models import User
@@ -39,6 +41,15 @@ from .throttles import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def is_current_sign_in(token):
+    """
+    A token made before the account's password last changed is refused. simplejwt
+    checks this for access tokens (CHECK_REVOKE_TOKEN), but not for refresh tokens.
+    """
+    user = User.objects.filter(pk=token.get(jwt_settings.USER_ID_CLAIM)).only("password").first()
+    return user is not None and token.get(jwt_settings.REVOKE_TOKEN_CLAIM) == get_md5_hash_password(user.password)
 
 
 class SessionView(APIView):
@@ -75,8 +86,7 @@ class SessionView(APIView):
         raw_refresh = request.COOKIES.get(settings.REST_AUTH["JWT_AUTH_REFRESH_COOKIE"])
         if user is None and raw_refresh:
             try:
-                RefreshToken(raw_refresh)  # checks its signature and expiry
-                can_refresh = True
+                can_refresh = is_current_sign_in(RefreshToken(raw_refresh))  # also checks its signature and expiry
             except TokenError:
                 pass
 
@@ -311,6 +321,42 @@ class SocialAccountListView(ListAPIView):
         return SocialAccount.objects.filter(user=self.request.user).order_by("-date_joined")
 
 
+class GoogleConnectView(APIView):
+    """
+    Settings → Connected Socials → Connect Google: links the Google account from
+    the sign-in popup's one-time code to the signed-in user, so they can also sign
+    in with it. Its email needn't match theirs. A Google account already linked to
+    someone else is refused (it can only sign in to one GeLearn account).
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [LoginIPThrottle]
+
+    def post(self, request):
+        try:
+            provider = get_social_adapter(request).get_provider(request, "google")
+        except ImproperlyConfigured:
+            return Response({"detail": "Google sign-in isn't set up yet."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        try:
+            code = request.data.get("code")
+            id_token = _exchange_google_code(provider, code) if code else request.data.get("id_token", "")
+            login = provider.sociallogin_from_response(request, _verify_google_id_token(provider, id_token))
+        except Exception as exc:  # expired, forged, for another site's client ID, or verification broken
+            logger.warning("Google connect token refused: %s: %s", type(exc).__name__, exc.__cause__ or exc)
+            return Response({"detail": "Google couldn't confirm your account. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        login.lookup()
+        if login.is_existing:
+            if login.user.pk != request.user.pk:
+                return Response(
+                    {"detail": "That Google account is already linked to another GeLearn account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            login.connect(request, request.user)
+        account = SocialAccount.objects.get(user=request.user, provider="google", uid=login.account.uid)
+        return Response(SocialAccountSerializer(account).data)
+
+
 class SocialAccountDisconnectView(DestroyAPIView):
     """
     Refuses to disconnect a user's only sign-in method — a Google-only
@@ -355,7 +401,33 @@ class GenexPasswordResetConfirmView(PasswordResetConfirmView):
 
 
 class GenexPasswordChangeView(PasswordChangeView):
+    """
+    The new password signs every other device out (their tokens carry the old
+    password's fingerprint); this one gets fresh sign-in cookies so it stays in.
+    """
     throttle_classes = [PasswordChangeThrottle]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == status.HTTP_200_OK:
+            access, refresh = jwt_encode(request.user)
+            set_jwt_cookies(response, access, refresh)
+        return response
+
+
+class GenexTokenRefreshView(get_refresh_view()):
+    """Refreshing a sign-in from before a password change is refused, like using it."""
+
+    def post(self, request, *args, **kwargs):
+        raw = request.data.get("refresh") or request.COOKIES.get(settings.REST_AUTH["JWT_AUTH_REFRESH_COOKIE"])
+        if raw:
+            try:
+                token = RefreshToken(raw)
+            except TokenError:
+                token = None  # the parent class reports it
+            if token is not None and not is_current_sign_in(token):
+                raise InvalidToken("Your password was changed. Please sign in again.")
+        return super().post(request, *args, **kwargs)
 
 
 class GenexLogoutView(LogoutView):
