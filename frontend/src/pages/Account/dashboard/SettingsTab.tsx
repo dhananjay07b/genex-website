@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { GoogleGlyph } from '@/components/auth/GoogleLoginButton'
+import { GOOGLE_CONFIGURED, requestGoogleCode, useGoogleReady } from '@/components/auth/googleCode'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { WorkEmailCard } from './WorkEmailCard'
 import { UnverifiedCompanyNote } from '@/components/auth/UnverifiedCompanyNote'
@@ -80,7 +81,9 @@ export function SettingsTab() {
 
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
-  const [disconnectError, setDisconnectError] = useState('')
+  const [socialError, setSocialError] = useState('')
+  const [connectingGoogle, setConnectingGoogle] = useState(false)
+  const googleReady = useGoogleReady(setSocialError)
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -120,15 +123,30 @@ export function SettingsTab() {
 
   async function handleDisconnect(id: number) {
     setDisconnectingId(id)
-    setDisconnectError('')
+    setSocialError('')
     try {
       await apiFetch(`/api/accounts/me/social-accounts/${id}/`, { method: 'DELETE' })
       setSocialAccounts(prev => prev.filter(a => a.id !== id))
     } catch (err) {
-      setDisconnectError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
+      setSocialError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
     } finally {
       setDisconnectingId(null)
     }
+  }
+
+  function handleConnectGoogle() {
+    setSocialError('')
+    requestGoogleCode(response => {
+      if (!response.code) {
+        if (response.error !== 'access_denied') setSocialError("Google didn't finish connecting. Please try again.")
+        return
+      }
+      setConnectingGoogle(true)
+      apiFetch<SocialAccount>('/api/accounts/me/social-accounts/google/', { method: 'POST', body: { code: response.code } })
+        .then(account => setSocialAccounts(prev => [account, ...prev.filter(a => a.id !== account.id)]))
+        .catch(err => setSocialError(err instanceof ApiError ? err.message : "Couldn't connect Google. Please try again."))
+        .finally(() => setConnectingGoogle(false))
+    }, setSocialError)
   }
 
   if (!user) return null
@@ -606,7 +624,19 @@ export function SettingsTab() {
             })}
           </div>
         )}
-        {disconnectError && <p className="text-xs font-semibold text-red-600 mt-3">{disconnectError}</p>}
+        {GOOGLE_CONFIGURED && !socialAccounts.some(a => a.provider === 'google') && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            disabled={!googleReady || connectingGoogle}
+            onClick={handleConnectGoogle}
+          >
+            <span className="mr-2 flex"><GoogleGlyph /></span>
+            {connectingGoogle ? 'Connecting…' : 'Connect Google'}
+          </Button>
+        )}
+        {socialError && <p role="alert" className="text-xs font-semibold text-red-600 mt-3">{socialError}</p>}
       </section>
 
       <CertificatePrivacy />

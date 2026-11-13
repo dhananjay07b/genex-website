@@ -321,6 +321,42 @@ class SocialAccountListView(ListAPIView):
         return SocialAccount.objects.filter(user=self.request.user).order_by("-date_joined")
 
 
+class GoogleConnectView(APIView):
+    """
+    Settings → Connected Socials → Connect Google: links the Google account from
+    the sign-in popup's one-time code to the signed-in user, so they can also sign
+    in with it. Its email needn't match theirs. A Google account already linked to
+    someone else is refused (it can only sign in to one GeLearn account).
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [LoginIPThrottle]
+
+    def post(self, request):
+        try:
+            provider = get_social_adapter(request).get_provider(request, "google")
+        except ImproperlyConfigured:
+            return Response({"detail": "Google sign-in isn't set up yet."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        try:
+            code = request.data.get("code")
+            id_token = _exchange_google_code(provider, code) if code else request.data.get("id_token", "")
+            login = provider.sociallogin_from_response(request, _verify_google_id_token(provider, id_token))
+        except Exception as exc:  # expired, forged, for another site's client ID, or verification broken
+            logger.warning("Google connect token refused: %s: %s", type(exc).__name__, exc.__cause__ or exc)
+            return Response({"detail": "Google couldn't confirm your account. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        login.lookup()
+        if login.is_existing:
+            if login.user.pk != request.user.pk:
+                return Response(
+                    {"detail": "That Google account is already linked to another GeLearn account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            login.connect(request, request.user)
+        account = SocialAccount.objects.get(user=request.user, provider="google", uid=login.account.uid)
+        return Response(SocialAccountSerializer(account).data)
+
+
 class SocialAccountDisconnectView(DestroyAPIView):
     """
     Refuses to disconnect a user's only sign-in method — a Google-only

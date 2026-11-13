@@ -931,6 +931,52 @@ class GoogleSignInTests(TestCase):
         self.assertFalse(User.objects.filter(email="new@gmail.com").exists())
 
 
+class GoogleConnectTests(TestCase):
+    """Settings → Connect Google: links a Google account to the signed-in user."""
+
+    URL = "/api/accounts/me/social-accounts/google/"
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+        self.user = make_user("connector")
+        self.client.force_authenticate(self.user)
+
+    def _connect(self, sub="g-9", email="someone@gmail.com"):
+        from unittest import mock
+        identity = {"sub": sub, "email": email, "email_verified": True, "name": "Some One"}
+        with mock.patch("allauth.socialaccount.providers.google.views._verify_and_decode", return_value=identity):
+            return self.client.post(self.URL, {"id_token": "tok"}, format="json")
+
+    def test_links_google_even_with_another_email(self):
+        from allauth.socialaccount.models import SocialAccount
+        res = self._connect()
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["provider"], res.json()["email"]), ("google", "someone@gmail.com"))
+        self.assertTrue(SocialAccount.objects.filter(user=self.user, provider="google", uid="g-9").exists())
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "connector@example.org")  # sign-in email unchanged
+
+    def test_connecting_twice_is_harmless(self):
+        from allauth.socialaccount.models import SocialAccount
+        self._connect()
+        self.assertEqual(self._connect().status_code, 200)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user).count(), 1)
+
+    def test_google_account_of_someone_else_is_refused(self):
+        from allauth.socialaccount.models import SocialAccount
+        other = make_user("owner")
+        SocialAccount.objects.create(user=other, provider="google", uid="g-9")
+        res = self._connect()
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("another GeLearn account", res.json()["detail"])
+        self.assertFalse(SocialAccount.objects.filter(user=self.user).exists())
+
+    def test_signed_out_refused(self):
+        self.assertEqual(APIClient().post(self.URL, {"id_token": "tok"}, format="json").status_code, 401)
+
+
 class WorkEmailTests(TestCase):
     """A Professional on a personal email gets verified by confirming a work email on their company's domain."""
 
