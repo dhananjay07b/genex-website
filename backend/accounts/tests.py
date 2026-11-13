@@ -271,6 +271,28 @@ class AccountTypeApiTests(TestCase):
         self.assertFalse(body["is_admin"])
         self.assertEqual(body["company"], {"name": "Acme", "slug": None, "logo_url": None, "verified": False})
 
+    def test_profile_fields_follow_the_account_type(self):
+        from learning.models import CareerRole
+        from pages.models import Topic
+        topic = Topic.objects.create(name="Test topic", slug="test-topic")
+        role = CareerRole.objects.create(name="Test role", slug="test-role")
+        body = {"years_experience": 7, "expertise": [topic.pk], "career_goal": role.pk}
+        acme = Company.objects.create(name="Acme", slug="acme")
+        users = {
+            "learner": make_user("l1"),
+            "professional": make_user("p1", account_type="professional", company_other="Acme", role_title="Eng"),
+            "company": make_user("c1", account_type="company", company=acme),
+        }
+        for kind, user in users.items():
+            self.api.force_authenticate(user)
+            res = self.api.patch("/api/accounts/me/", body, format="json")
+            self.assertEqual(res.status_code, 200, res.content)
+            data = res.json()
+            is_pro = kind == "professional"
+            self.assertEqual(data["years_experience"], 7 if is_pro else None, kind)
+            self.assertEqual(data["expertise"], [topic.pk] if is_pro else [], kind)
+            self.assertEqual(data["career_goal"], role.pk if kind == "learner" else None, kind)
+
 
 class CompanyVerificationFlowTests(TestCase):
     """Professional ↔ Company domain verification, end to end through the real endpoints."""

@@ -103,6 +103,12 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"account_type": ACCOUNT_TYPE_LOCKED})
         account_type = instance.account_type
 
+        # Experience and expertise describe a Professional; a career goal is a Learner's.
+        if account_type != User.ACCOUNT_PROFESSIONAL:
+            attrs["years_experience"], attrs["expertise"] = None, []
+        if account_type != User.ACCOUNT_LEARNER:
+            attrs["career_goal"] = None
+
         if account_type == User.ACCOUNT_COMPANY:
             # Company staff: their company is set by Admin only.
             attrs.pop("company_id", None)

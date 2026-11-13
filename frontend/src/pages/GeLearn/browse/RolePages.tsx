@@ -67,6 +67,8 @@ function GoalButton({ role }: { role: RoleDetail }) {
     }
   }
 
+  // Career goals are for Learners; signed-out visitors still see the button (it asks them to log in).
+  if (user && user.account_type !== 'learner') return null
   if (isGoal) {
     return <span className={BUTTON.outline}><CheckIcon sx={{ fontSize: 18 }} /> Your career goal</span>
   }

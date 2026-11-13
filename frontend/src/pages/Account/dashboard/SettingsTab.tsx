@@ -36,6 +36,9 @@ export function SettingsTab() {
   const accountType: AccountType = user?.account_type ?? 'learner'
   const [companyOther, setCompanyOther] = useState(user?.company_other ?? '')
   const isCompanyAccount = user?.account_type === 'company'
+  // Experience and expertise describe a Professional; a career goal is a Learner's.
+  const isProfessional = accountType === 'professional'
+  const isLearner = accountType === 'learner'
   const linkedCompany = user?.company?.slug ? user.company : null
   const { companies } = useCompanies()
   // null = untouched: the choice then mirrors what's saved on the account.
@@ -179,11 +182,10 @@ export function SettingsTab() {
               ? { company_id: null, company_other: companyOther }
               : { company_id: Number(companyChoice) }
             : {}),
-          role_title: accountType === 'learner' ? '' : roleTitle,
-          years_experience: yearsExperience ? Number(yearsExperience) : null,
+          role_title: isLearner ? '' : roleTitle,
           linkedin_url: linkedinUrl,
-          expertise,
-          career_goal: careerGoal ? Number(careerGoal) : null,
+          ...(isProfessional ? { years_experience: yearsExperience ? Number(yearsExperience) : null, expertise } : {}),
+          ...(isLearner ? { career_goal: careerGoal ? Number(careerGoal) : null } : {}),
         },
       })
 
@@ -250,7 +252,8 @@ export function SettingsTab() {
   }
 
   const previewInitials = (displayName || user.username).slice(0, 2).toUpperCase()
-  const previewExpertise = topics.filter(t => expertise.includes(t.id))
+  const previewExpertise = isProfessional ? topics.filter(t => expertise.includes(t.id)) : []
+  const previewYears = isProfessional ? yearsExperience : ''
   const companyName = accountType === 'learner'
     ? ''
     : selectedCompany?.name ?? (companyChoice === OTHER_COMPANY ? companyOther : linkedCompany?.name ?? '')
@@ -407,32 +410,36 @@ export function SettingsTab() {
           )}
           {/* Signed up with a personal email? A confirmed work email gets them verified (hidden once verified by sign-in email). */}
           {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} companyVerified={Boolean(user.company_verified)} />}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Years of Experience"
-              type="number"
-              min={0}
-              max={99}
-              placeholder="e.g. 12"
-              value={yearsExperience}
-              onChange={e => setYearsExperience(e.target.value)}
-            />
+          <div className={cn('grid grid-cols-1 gap-4', isProfessional && 'sm:grid-cols-2')}>
+            {isProfessional && (
+              <Input
+                label="Years of Experience"
+                type="number"
+                min={0}
+                max={99}
+                placeholder="e.g. 12"
+                value={yearsExperience}
+                onChange={e => setYearsExperience(e.target.value)}
+              />
+            )}
             <Input label="LinkedIn URL" placeholder="https://linkedin.com/in/…" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} />
           </div>
 
-          <TopicPicker label="Areas of Expertise" value={expertise} onChange={setExpertise} max={3} />
+          {isProfessional && <TopicPicker label="Areas of Expertise" value={expertise} onChange={setExpertise} max={3} />}
 
-          <div id="career-goal" className="scroll-mt-28">
-            {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
-            <Select
-              id="career-goal-select"
-              label="Career goal"
-              options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
-              value={careerGoal}
-              onChange={e => setCareerGoal(e.target.value)}
-            />
-            <p className="text-xs text-text-muted mt-1.5">The role you're working toward. Your GeLearn home suggests courses for it.</p>
-          </div>
+          {isLearner && (
+            <div id="career-goal" className="scroll-mt-28">
+              {/* The wrapper keeps id="career-goal" for the GeLearn home's link; the field needs its own. */}
+              <Select
+                id="career-goal-select"
+                label="Career goal"
+                options={[{ value: '', label: 'Not set' }, ...roles.map(r => ({ value: String(r.id), label: r.name }))]}
+                value={careerGoal}
+                onChange={e => setCareerGoal(e.target.value)}
+              />
+              <p className="text-xs text-text-muted mt-1.5">The role you're working toward. Your GeLearn home suggests courses for it.</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <Button variant="primary" size="md" disabled={savingProfile} onClick={handleSaveProfile}>
@@ -645,7 +652,7 @@ export function SettingsTab() {
                   {roleAtCompany}
                 </p>
               )}
-              {yearsExperience && <p className="text-[11px] text-text-muted mt-1">{yearsExperience} years of experience</p>}
+              {previewYears && <p className="text-[11px] text-text-muted mt-1">{previewYears} years of experience</p>}
               {bio && <p className="text-xs text-text-muted leading-relaxed mt-2 line-clamp-2">{bio}</p>}
               {previewExpertise.length > 0 && (
                 <div className="flex flex-wrap justify-start gap-1.5 mt-2">
@@ -688,7 +695,7 @@ export function SettingsTab() {
             <div className="px-4 pt-2 pb-4">
               <p className="text-sm font-extrabold text-text-primary">{displayName || user.username}</p>
               {roleAtCompany && <p className="text-xs text-text-primary font-semibold mt-1">{roleAtCompany}</p>}
-              {yearsExperience && <p className="text-[11px] text-text-muted mt-0.5">{yearsExperience} years of experience</p>}
+              {previewYears && <p className="text-[11px] text-text-muted mt-0.5">{previewYears} years of experience</p>}
               {previewExpertise.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {previewExpertise.map(topic => (
