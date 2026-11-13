@@ -1361,3 +1361,39 @@ class EditorImageUploadTests(TestCase):
         self.assertEqual(self.api.post("/api/accounts/me/images/", {}, format="multipart").status_code, 400)
         fake = SimpleUploadedFile("photo.png", b"not an image", content_type="image/png")
         self.assertEqual(self.api.post("/api/accounts/me/images/", {"file": fake}, format="multipart").status_code, 400)
+
+
+class ProfilePhotoUploadTests(TestCase):
+    """Avatar and cover photo: PNG, JPG or WebP only, with a clear message otherwise."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.user = make_user("photos")
+        self.api.force_authenticate(self.user)
+
+    def _file(self, name, content_type, content=None):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from wagtail.images.tests.utils import get_test_image_file
+        return SimpleUploadedFile(name, content or get_test_image_file().file.getvalue(), content_type=content_type)
+
+    def test_png_cover_is_saved_and_can_be_removed(self):
+        res = self.api.post("/api/accounts/me/cover-photo/", {"file": self._file("cover.png", "image/png")}, format="multipart")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertTrue(res.json()["cover_photo_url"])
+        res = self.api.delete("/api/accounts/me/cover-photo/")
+        self.assertIsNone(res.json()["cover_photo_url"])
+
+    def test_other_formats_are_refused(self):
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+        for endpoint in ("cover-photo", "avatar"):
+            for upload in (
+                self._file("x.svg", "image/svg+xml", svg),
+                self._file("x.pdf", "application/pdf", b"%PDF-1.4"),
+                self._file("x.gif", "image/gif"),
+                self._file("x.png", "image/png", b"not an image"),
+            ):
+                res = self.api.post(f"/api/accounts/me/{endpoint}/", {"file": upload}, format="multipart")
+                self.assertEqual(res.status_code, 400, (endpoint, upload.name))
+                self.assertTrue(res.json()["detail"])
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.cover_photo)

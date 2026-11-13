@@ -5,6 +5,7 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { apiFetch, ApiError } from '@/lib/api/client'
+import { IMAGE_ACCEPT, imageProblem } from '@/lib/imageUpload'
 
 /** What POST /api/accounts/me/images/ returns: a Wagtail image, resized for pages. */
 export interface UploadedImage {
@@ -13,9 +14,6 @@ export interface UploadedImage {
   width: number
   height: number
 }
-
-const TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const MAX_BYTES = 10 * 1024 * 1024
 
 /**
  * Picks an image from the computer, asks for its description (alt text, for
@@ -47,12 +45,9 @@ export function RichTextImageDialog({ onInsert, onClose }: {
   function pick(next: File | undefined) {
     setError('')
     if (!next) return
-    if (!TYPES.includes(next.type)) {
-      setError('Choose a PNG, JPG or WebP image.')
-      return
-    }
-    if (next.size > MAX_BYTES) {
-      setError('Images must be 10 MB or smaller.')
+    const problem = imageProblem(next)
+    if (problem) {
+      setError(problem)
       return
     }
     setFile(next)
@@ -97,7 +92,7 @@ export function RichTextImageDialog({ onInsert, onClose }: {
               : <ImageOutlinedIcon sx={{ fontSize: 32 }} className="text-text-muted" />}
             <span className="text-sm font-semibold text-text-primary">{file ? file.name : 'Choose an image from your computer'}</span>
             <span className="text-xs text-text-muted">PNG, JPG or WebP, up to 10 MB</span>
-            <input ref={fileRef} type="file" accept={TYPES.join(',')} className="sr-only" disabled={busy}
+            <input ref={fileRef} type="file" accept={IMAGE_ACCEPT} className="sr-only" disabled={busy}
               onChange={e => pick(e.target.files?.[0])} />
           </label>
 

@@ -17,6 +17,7 @@ import { WorkEmailCard } from './WorkEmailCard'
 import { UnverifiedCompanyNote } from '@/components/auth/UnverifiedCompanyNote'
 import { cn, getMediaUrl, formatDisplayDate } from '@/lib/utils'
 import { marketingPath } from '@/lib/host'
+import { IMAGE_ACCEPT, imageProblem } from '@/lib/imageUpload'
 import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
@@ -82,6 +83,8 @@ export function SettingsTab() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverRemoved, setCoverRemoved] = useState(false)
+  // A picked file that can't be uploaded (wrong format, too big): shown at once, nothing staged.
+  const [photoError, setPhotoError] = useState('')
 
   useEffect(() => {
     apiFetch<Topic[]>('/api/snippets/topics/').then(setTopics).catch(() => setTopics([]))
@@ -120,6 +123,9 @@ export function SettingsTab() {
   if (!user) return null
 
   function handleSelectAvatar(file: File) {
+    const problem = imageProblem(file)
+    setPhotoError(problem ?? '')
+    if (problem) return
     setAvatarFile(file)
     setAvatarRemoved(false)
     setAvatarPreview(prev => {
@@ -138,6 +144,9 @@ export function SettingsTab() {
   }
 
   function handleSelectCover(file: File) {
+    const problem = imageProblem(file)
+    setPhotoError(problem ?? '')
+    if (problem) return
     setCoverFile(file)
     setCoverRemoved(false)
     setCoverPreview(prev => {
@@ -302,7 +311,7 @@ export function SettingsTab() {
           <input
             ref={coverInputRef}
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT}
             className="hidden"
             onChange={e => {
               const file = e.target.files?.[0]
@@ -333,7 +342,7 @@ export function SettingsTab() {
             <input
               ref={avatarInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="hidden"
               onChange={e => {
                 const file = e.target.files?.[0]
@@ -353,6 +362,7 @@ export function SettingsTab() {
             Remove Photo
           </button>
           <p className="text-[11px] text-text-muted mt-2">Photo and cover changes apply when you click Save Changes below.</p>
+          {photoError && <p role="alert" className="text-xs font-semibold text-red-600 mt-1.5">{photoError}</p>}
         </div>
 
         <div className="flex flex-col gap-4">

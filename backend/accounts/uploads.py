@@ -15,6 +15,8 @@ from .roles import is_admin
 
 MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 DOCUMENT_EXTENSIONS = {".pdf"}
+# Profile photos and covers: the formats every browser shows (no SVG, GIF animation or AVIF gaps).
+PHOTO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
 def _is_svg(upload):
@@ -22,15 +24,18 @@ def _is_svg(upload):
     return name.endswith((".svg", ".svgz")) or (getattr(upload, "content_type", "") or "").startswith("image/svg")
 
 
-def save_uploaded_image(request):
+def save_uploaded_image(request, extensions=None):
     """
     Returns a saved wagtailimages Image, or a 400 Response to return as-is.
     SVG is allowed only for Admin (company logos): an SVG can carry script,
-    and uploads are served from the backend's own origin.
+    and uploads are served from the backend's own origin. `extensions` limits
+    the formats further (e.g. PHOTO_EXTENSIONS).
     """
     upload = request.FILES.get("file")
     if not upload:
         return Response({"detail": "No file uploaded."}, status=400)
+    if extensions and os.path.splitext(upload.name or "")[1].lower() not in extensions:
+        return Response({"detail": "Upload a PNG, JPG or WebP image."}, status=400)
     if _is_svg(upload) and not is_admin(request.user):
         return Response({"detail": "SVG images aren't accepted. Upload a PNG, JPG or WebP instead."}, status=400)
 
