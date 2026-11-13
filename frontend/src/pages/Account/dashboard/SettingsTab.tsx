@@ -23,6 +23,7 @@ import { useAuth } from '@/context/useAuth'
 import { OTHER_COMPANY, companyOptions, useCompanies } from '@/hooks/useCompanies'
 import type { AccountType, SocialAccount, User } from '@/types/auth'
 import { CertificatePrivacy } from './CertificatePrivacy'
+import { ConfirmDialog } from './ConfirmDialog'
 import { TopicPicker } from '@/components/gelearn/TopicPicker'
 import type { CareerRole, Topic } from '@/types/api'
 
@@ -81,6 +82,7 @@ export function SettingsTab() {
 
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
+  const [confirmDisconnect, setConfirmDisconnect] = useState<SocialAccount | null>(null)
   const [socialError, setSocialError] = useState('')
   const [connectingGoogle, setConnectingGoogle] = useState(false)
   const googleReady = useGoogleReady(setSocialError)
@@ -127,8 +129,10 @@ export function SettingsTab() {
     try {
       await apiFetch(`/api/accounts/me/social-accounts/${id}/`, { method: 'DELETE' })
       setSocialAccounts(prev => prev.filter(a => a.id !== id))
+      setConfirmDisconnect(null)
     } catch (err) {
       setSocialError(err instanceof ApiError ? err.message : 'Could not disconnect this account.')
+      setConfirmDisconnect(null)
     } finally {
       setDisconnectingId(null)
     }
@@ -601,6 +605,8 @@ export function SettingsTab() {
           <div className="flex flex-col gap-3">
             {socialAccounts.map(account => {
               const Icon = PROVIDER_ICON[account.provider]
+              // The backend refuses to remove the only way in: no password and no other connected account.
+              const onlySignIn = !user.has_password && socialAccounts.length === 1
               return (
                 <div key={account.id} className="flex items-center gap-3 border border-border rounded-xl px-4 py-3">
                   <span className="shrink-0">{Icon ? <Icon /> : null}</span>
@@ -613,8 +619,9 @@ export function SettingsTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={disconnectingId === account.id}
-                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingId === account.id || onlySignIn}
+                    title={onlySignIn ? 'Set a password first: this is how you sign in.' : undefined}
+                    onClick={() => setConfirmDisconnect(account)}
                   >
                     <LinkOffIcon sx={{ fontSize: 15 }} className="mr-1.5" />
                     {disconnectingId === account.id ? 'Disconnecting…' : 'Disconnect'}
@@ -636,7 +643,22 @@ export function SettingsTab() {
             {connectingGoogle ? 'Connecting…' : 'Connect Google'}
           </Button>
         )}
+        {!user.has_password && socialAccounts.length === 1 && (
+          <p className="text-xs text-text-muted mt-3">
+            You sign in with Google only. To disconnect it, set a password under Account first.
+          </p>
+        )}
         {socialError && <p role="alert" className="text-xs font-semibold text-red-600 mt-3">{socialError}</p>}
+        {confirmDisconnect && (
+          <ConfirmDialog
+            title={`Disconnect ${PROVIDER_LABEL[confirmDisconnect.provider] ?? confirmDisconnect.provider}?`}
+            description={`You won't be able to sign in with ${confirmDisconnect.email || 'this account'} any more. You can connect it again later.`}
+            confirmLabel="Disconnect"
+            confirming={disconnectingId === confirmDisconnect.id}
+            onCancel={() => setConfirmDisconnect(null)}
+            onConfirm={() => handleDisconnect(confirmDisconnect.id)}
+          />
+        )}
       </section>
 
       <CertificatePrivacy />
