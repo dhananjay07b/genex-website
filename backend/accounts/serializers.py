@@ -1,7 +1,7 @@
 from allauth.account.adapter import get_adapter
 from allauth.account.utils import setup_user_email, user_pk_to_url_str
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import PasswordResetSerializer
+from dj_rest_auth.serializers import PasswordChangeSerializer, PasswordResetSerializer
 from django.conf import settings
 from learning.models import CareerRole
 from pages.api import TopicSerializer
@@ -46,6 +46,8 @@ class UserSerializer(serializers.ModelSerializer):
     verification_step = serializers.SerializerMethodField()
     # Write: pick a registered company (null to clear). Read: `company` above.
     company_id = serializers.IntegerField(required=False, allow_null=True)
+    # False for a Google sign-up that hasn't set a password: Settings offers "Set a password" (no current one).
+    has_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -53,12 +55,16 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "username", "email", "display_name", "bio", "avatar_url", "cover_photo_url",
             "account_type", "is_admin", "cms_url", "company", "company_id", "company_other", "company_verified",
             "verification_step", "role_title", "years_experience", "linkedin_url", "expertise", "career_goal", "show_certificates",
+            "has_password",
         ]
         # account_type is fixed at registration — only Admin can change it (Django admin).
         read_only_fields = ["id", "email", "account_type", "avatar_url", "cover_photo_url", "company_verified", "verification_step"]
 
     def get_is_admin(self, obj):
         return is_admin(obj)
+
+    def get_has_password(self, obj):
+        return obj.has_usable_password()
 
     def get_cms_url(self, obj):
         if not is_admin(obj):
@@ -136,6 +142,19 @@ class UserSerializer(serializers.ModelSerializer):
         user = super().update(instance, validated_data)
         refresh_company_verification(user)
         return user
+
+
+class GenexPasswordChangeSerializer(PasswordChangeSerializer):
+    """
+    The current password is checked (OLD_PASSWORD_FIELD_ENABLED). An account
+    with no usable password (a Google sign-up) has none to give, so it sets its
+    first password without one.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.user is not None and not self.user.has_usable_password():
+            self.fields.pop("old_password", None)
 
 
 class PublicUserSerializer(serializers.ModelSerializer):

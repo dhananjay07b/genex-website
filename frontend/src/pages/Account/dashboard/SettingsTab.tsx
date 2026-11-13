@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined'
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined'
@@ -61,6 +61,7 @@ export function SettingsTab() {
   const [newPassword2, setNewPassword2] = useState('')
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [passwordError, setPasswordError] = useState('')
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<Record<string, string>>({})
 
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null)
@@ -208,19 +209,42 @@ export function SettingsTab() {
     }
   }
 
-  async function handleChangePassword() {
+  // A Google sign-up has no password yet: it sets one, without a current password.
+  const hasPassword = user.has_password
+
+  function editPassword(setter: (value: string) => void, value: string) {
+    setter(value)
+    if (passwordStatus !== 'saving') setPasswordStatus('idle')
+    setPasswordFieldErrors({})
+  }
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault()
+    setPasswordFieldErrors({})
+    if (newPassword1 !== newPassword2) {
+      setPasswordFieldErrors({ new_password2: "The two new passwords don't match." })
+      return
+    }
     setPasswordStatus('saving')
     try {
       await apiFetch('/api/auth/password/change/', {
         method: 'POST',
-        body: { old_password: oldPassword, new_password1: newPassword1, new_password2: newPassword2 },
+        body: { ...(hasPassword ? { old_password: oldPassword } : {}), new_password1: newPassword1, new_password2: newPassword2 },
       })
-      setPasswordStatus('saved')
       setOldPassword('')
       setNewPassword1('')
       setNewPassword2('')
+      await refetch()
+      setPasswordStatus('saved')
     } catch (err) {
-      setPasswordError(err instanceof ApiError && err.status === 429 ? err.message : "Couldn't update password.")
+      const fields = err instanceof ApiError ? err.fields : {}
+      const fieldErrors = Object.fromEntries(
+        ['old_password', 'new_password1', 'new_password2'].filter(key => fields[key]).map(key => [key, fields[key]]),
+      )
+      setPasswordFieldErrors(fieldErrors)
+      setPasswordError(
+        Object.keys(fieldErrors).length ? '' : err instanceof ApiError ? err.message : "Couldn't update your password. Please try again.",
+      )
       setPasswordStatus('error')
     }
   }
@@ -430,39 +454,54 @@ export function SettingsTab() {
             Email changes aren&apos;t available from here yet — contact support if you need to update it.
           </p>
 
-          <div className="border-t border-border pt-4 flex flex-col gap-3">
-            <p className="text-sm font-semibold text-text-primary">Change Password</p>
-            <Input
-              label="Current Password"
-              type="password"
-              value={oldPassword}
-              onChange={e => setOldPassword(e.target.value)}
-            />
+          <form onSubmit={handleChangePassword} noValidate className="border-t border-border pt-4 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-text-primary">{hasPassword ? 'Change Password' : 'Set a Password'}</p>
+            {!hasPassword && (
+              <p className="text-xs text-text-muted -mt-1.5 leading-relaxed">
+                You sign in with Google. Set a password to also sign in with {user.email}.
+              </p>
+            )}
+            {/* Lets password managers file the new password under this account. */}
+            <input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+            {hasPassword && (
+              <Input
+                label="Current Password"
+                type="password"
+                autoComplete="current-password"
+                value={oldPassword}
+                error={passwordFieldErrors.old_password}
+                onChange={e => editPassword(setOldPassword, e.target.value)}
+              />
+            )}
             <Input
               label="New Password"
               type="password"
+              autoComplete="new-password"
               value={newPassword1}
-              onChange={e => setNewPassword1(e.target.value)}
+              error={passwordFieldErrors.new_password1}
+              onChange={e => editPassword(setNewPassword1, e.target.value)}
             />
             <Input
               label="Confirm New Password"
               type="password"
+              autoComplete="new-password"
               value={newPassword2}
-              onChange={e => setNewPassword2(e.target.value)}
+              error={passwordFieldErrors.new_password2}
+              onChange={e => editPassword(setNewPassword2, e.target.value)}
             />
             <div className="flex items-center gap-3">
               <Button
+                type="submit"
                 variant="secondary"
                 size="md"
-                disabled={passwordStatus === 'saving' || !oldPassword || !newPassword1 || !newPassword2}
-                onClick={handleChangePassword}
+                disabled={passwordStatus === 'saving' || (hasPassword && !oldPassword) || !newPassword1 || !newPassword2}
               >
-                {passwordStatus === 'saving' ? 'Updating…' : 'Update Password'}
+                {passwordStatus === 'saving' ? 'Saving…' : hasPassword ? 'Update Password' : 'Set Password'}
               </Button>
-              {passwordStatus === 'saved' && <span className="text-xs font-semibold text-secondary">Password updated.</span>}
-              {passwordStatus === 'error' && <span role="alert" className="text-xs font-semibold text-red-600">{passwordError}</span>}
+              {passwordStatus === 'saved' && <span role="status" className="text-xs font-semibold text-secondary">Password saved.</span>}
+              {passwordStatus === 'error' && passwordError && <span role="alert" className="text-xs font-semibold text-red-600">{passwordError}</span>}
             </div>
-          </div>
+          </form>
         </div>
       </section>
 

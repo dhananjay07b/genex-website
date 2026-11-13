@@ -662,6 +662,52 @@ class AuthRateLimitTests(TestCase):
         self.assertEqual(parse(None, "3/2h"), (3, 7200))
 
 
+class PasswordChangeTests(TestCase):
+    """Settings → Change Password: the current password is checked; a Google-only account sets its first one."""
+
+    URL = "/api/auth/password/change/"
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+
+    def _change(self, user, **body):
+        self.client.force_authenticate(user)
+        return self.client.post(self.URL, {"new_password1": "N3wPassw0rd!", "new_password2": "N3wPassw0rd!", **body}, format="json")
+
+    def test_wrong_current_password_is_refused(self):
+        user = make_user("pw")
+        res = self._change(user, old_password="not-it")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("old_password", res.json())
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("Passw0rd!x"))
+
+    def test_missing_current_password_is_refused(self):
+        res = self._change(make_user("pw"))
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("old_password", res.json())
+
+    def test_right_current_password_changes_it(self):
+        user = make_user("pw")
+        self.assertEqual(self._change(user, old_password="Passw0rd!x").status_code, 200)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("N3wPassw0rd!"))
+
+    def test_google_only_account_sets_a_first_password_without_a_current_one(self):
+        user = make_user("googler")
+        user.set_unusable_password()
+        user.save()
+        self.client.force_authenticate(user)
+        self.assertFalse(self.client.get("/api/accounts/me/").json()["has_password"])
+        res = self._change(user, old_password="anything")  # ignored: there's no password to check
+        self.assertEqual(res.status_code, 200, res.content)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("N3wPassw0rd!"))
+        self.assertTrue(self.client.get("/api/accounts/me/").json()["has_password"])
+
+
 class DuplicateEmailTests(TestCase):
     """One account per email, ignoring case, however the existing account was made."""
 

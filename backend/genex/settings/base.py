@@ -255,6 +255,9 @@ REST_AUTH = {
     "REGISTER_SERIALIZER": "accounts.serializers.GenexRegisterSerializer",
     "USER_DETAILS_SERIALIZER": "accounts.serializers.UserSerializer",
     "PASSWORD_RESET_SERIALIZER": "accounts.serializers.GenexPasswordResetSerializer",
+    "PASSWORD_CHANGE_SERIALIZER": "accounts.serializers.GenexPasswordChangeSerializer",
+    # dj-rest-auth's default (False) drops old_password unchecked: any "current password" worked.
+    "OLD_PASSWORD_FIELD_ENABLED": True,
     "SESSION_LOGIN": False,
     "TOKEN_MODEL": None,
 }

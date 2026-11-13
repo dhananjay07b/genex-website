@@ -61,6 +61,8 @@ export interface User {
   career_goal: number | null
   /** Lists the learner's GeLearn certificates on their public profile. */
   show_certificates: boolean
+  /** False for a Google sign-up that hasn't set a password yet. */
+  has_password: boolean
 }
 
 export interface PublicUser {
