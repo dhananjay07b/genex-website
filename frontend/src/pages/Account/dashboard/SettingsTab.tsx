@@ -155,6 +155,15 @@ export function SettingsTab() {
     })
   }
 
+  function handleRemoveCover() {
+    setCoverFile(null)
+    setCoverPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setCoverRemoved(true)
+  }
+
   async function handleSaveProfile() {
     setProfileError('')
     if (accountType === 'professional' && !isCompanyAccount) {
@@ -299,15 +308,28 @@ export function SettingsTab() {
           className="h-28 rounded-t-xl relative overflow-hidden -mb-7 bg-linear-to-br from-primary to-secondary bg-cover bg-center"
           style={coverSrc ? { backgroundImage: `url(${coverSrc})` } : undefined}
         >
-          <button
-            type="button"
-            onClick={() => coverInputRef.current?.click()}
-            disabled={savingProfile}
-            className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full disabled:opacity-60"
-          >
-            <PhotoCameraOutlinedIcon sx={{ fontSize: 13 }} />
-            Change Cover
-          </button>
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-2">
+            {coverSrc && (
+              <button
+                type="button"
+                onClick={handleRemoveCover}
+                disabled={savingProfile}
+                className="flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-dark-bg/60 transition-colors disabled:opacity-60"
+              >
+                <DeleteOutlineOutlinedIcon sx={{ fontSize: 13 }} />
+                Remove Cover
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              disabled={savingProfile}
+              className="flex items-center gap-1.5 bg-dark-bg/40 border border-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-dark-bg/60 transition-colors disabled:opacity-60"
+            >
+              <PhotoCameraOutlinedIcon sx={{ fontSize: 13 }} />
+              Change Cover
+            </button>
+          </div>
           <input
             ref={coverInputRef}
             type="file"
