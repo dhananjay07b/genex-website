@@ -560,6 +560,44 @@ class CompanyVerificationFlowTests(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.company_verified)
 
+    def test_adding_a_company_links_professionals_with_a_confirmed_email_on_its_domain(self):
+        from allauth.account.models import EmailAddress
+
+        from .verification import refresh_company_members
+
+        def unlisted(username, email, verified, **extra):
+            user = make_user(username, email=email, account_type="professional", company_other="Acme energy", **extra)
+            EmailAddress.objects.create(user=user, email=email, primary=True, verified=verified)
+            return user
+
+        confirmed = unlisted("asha", "asha@acme.com", True)
+        subdomain = unlisted("ravi", "ravi@india.acme.com", True)
+        unconfirmed = unlisted("meera", "meera@acme.com", False)
+        elsewhere = unlisted("kiran", "kiran@notacme.com", True)
+        linked = make_user("dev", email="dev@acme.com", account_type="professional", company=self.google)
+        EmailAddress.objects.create(user=linked, email="dev@acme.com", primary=True, verified=True)
+
+        acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=acme, domain="acme.com")
+        refresh_company_members(acme)  # what saving the company in Admin runs
+
+        for user in (confirmed, subdomain):
+            user.refresh_from_db()
+            self.assertEqual((user.company_id, user.company_other, user.company_verified), (acme.pk, "", True))
+        for user in (unconfirmed, elsewhere):
+            user.refresh_from_db()
+            self.assertEqual((user.company_id, user.company_other), (None, "Acme energy"))
+        linked.refresh_from_db()
+        self.assertEqual(linked.company_id, self.google.pk)  # already linked: left alone
+
+    def test_confirming_a_sign_in_email_on_a_listed_domain_links_an_unlisted_professional(self):
+        self.assertEqual(self._register("asha@google.com", company_other="Google India").status_code, 201)
+        user = User.objects.get(email="asha@google.com")
+        self.assertIsNone(user.company_id)
+        self._confirm_latest_email()
+        user.refresh_from_db()
+        self.assertEqual((user.company_id, user.company_other, user.company_verified), (self.google.pk, "", True))
+
 
 class AuthorPayloadTests(TestCase):
     def test_author_payload_carries_company_display(self):
