@@ -508,6 +508,58 @@ class CompanyVerificationFlowTests(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.company_verified)
 
+    def _admin_moves_email(self, user, email):
+        from django.contrib.admin.sites import AdminSite
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.test import RequestFactory
+
+        from .admin import UserAdmin
+        request = RequestFactory().post("/")
+        request.user, request.session = user, SessionStore()
+        request._messages = FallbackStorage(request)
+        user.email = email
+        UserAdmin(User, AdminSite()).save_model(request, user, form=None, change=True)
+
+    def test_admin_email_change_drops_the_old_address_and_sends_a_link(self):
+        """The old sign-in address used to linger and show in Settings as a work email awaiting confirmation."""
+        from allauth.account.models import EmailAddress
+        from django.core import mail
+
+        from .work_email import work_address
+        self.assertEqual(self._register("asha@yahoo.com", company_other="Google India").status_code, 201)
+        user = User.objects.get(email="asha@yahoo.com")
+        user.company, user.company_other = self.google, ""
+        mail.outbox.clear()
+        self._admin_moves_email(user, "asha@google.com")
+
+        self.assertEqual(
+            list(EmailAddress.objects.filter(user=user).values_list("email", "primary", "verified")),
+            [("asha@google.com", True, False)],
+        )
+        self.assertIsNone(work_address(user))
+        self.assertEqual([m.to for m in mail.outbox], [["asha@google.com"]])
+        self._confirm_latest_email()
+        user.refresh_from_db()
+        self.assertTrue(user.company_verified)
+
+    def test_admin_email_change_onto_a_confirmed_work_email_keeps_it_confirmed(self):
+        from allauth.account.models import EmailAddress
+        from django.core import mail
+        user = make_user("ravi", email="ravi@gmail.com", account_type="professional", company=self.google)
+        EmailAddress.objects.create(user=user, email="ravi@gmail.com", primary=True, verified=True)
+        EmailAddress.objects.create(user=user, email="ravi@google.com", primary=False, verified=True)
+        mail.outbox.clear()
+        self._admin_moves_email(user, "ravi@google.com")
+
+        self.assertEqual(
+            list(EmailAddress.objects.filter(user=user).values_list("email", "primary", "verified")),
+            [("ravi@google.com", True, True)],
+        )
+        self.assertEqual(mail.outbox, [])
+        user.refresh_from_db()
+        self.assertTrue(user.company_verified)
+
 
 class AuthorPayloadTests(TestCase):
     def test_author_payload_carries_company_display(self):
