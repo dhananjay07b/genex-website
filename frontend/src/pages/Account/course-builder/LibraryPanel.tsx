@@ -4,7 +4,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { COURSE_ITEM_KINDS, courseItemDisplay } from '@/components/gelearn/courseItemKinds'
 import type { CourseItemKind, CourseTarget } from '@/types/learning'
 import { BuilderCard } from './parts'
 import { LIMITS, allLessons, keyOf, lessonDetail, type Draft } from './draft'
@@ -16,7 +16,8 @@ type Patch = (next: Partial<Draft>) => void
  * videos and blog posts, or the company's GeAcademy articles, research,
  * whitepapers and podcasts.
  */
-export function LibraryPanel({ draft, patch, library, isCompany }: {
+export function LibraryPanel({ n, draft, patch, library, isCompany }: {
+  n: number
   draft: Draft
   patch: Patch
   library: CourseTarget[] | null
@@ -42,20 +43,21 @@ export function LibraryPanel({ draft, patch, library, isCompany }: {
   }
 
   return (
-    <BuilderCard n={4} title={isCompany ? "Your company's published content" : 'Your library'}
+    <BuilderCard n={n} title={isCompany ? "Your company's published content" : 'Your library'}
       hint={isCompany ? 'GeAcademy articles, research, whitepapers, podcasts and videos' : 'Your published videos and blog posts'}>
       {library === null ? (
         <div className="min-h-20" />
       ) : library.length === 0 ? (
         isCompany ? (
           <p className="text-sm text-text-muted">
-            Company courses are built from your published GeAcademy articles, research, whitepapers, podcasts and videos.{' '}
-            <Link to="/studio" className="text-primary font-semibold hover:underline">Publish something in Company Studio</Link> first.
+            Nothing published yet. Your company's GeAcademy articles, research, whitepapers, podcasts and videos show here once they're
+            published in <Link to="/studio" className="text-primary font-semibold hover:underline">Company Studio</Link>, so you can reuse them as lessons.
           </p>
         ) : (
           <p className="text-sm text-text-muted">
-            Courses are built from your published videos and posts. <Link to="/submit-post" className="text-primary font-semibold hover:underline">Submit a post</Link> or{' '}
-            <Link to="/submit-video" className="text-primary font-semibold hover:underline">a video</Link> first.
+            Nothing published yet. Your videos and posts show here once they're published, so you can reuse them as lessons:{' '}
+            <Link to="/submit-post" className="text-primary font-semibold hover:underline">submit a post</Link> or{' '}
+            <Link to="/submit-video" className="text-primary font-semibold hover:underline">a video</Link>.
           </p>
         )
       ) : (
@@ -90,7 +92,7 @@ export function LibraryPanel({ draft, patch, library, isCompany }: {
           ) : (
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {available.map(item => {
-                const { icon: Icon, label } = COURSE_ITEM_KINDS[item.kind]
+                const { icon: Icon, label } = courseItemDisplay(item)
                 return (
                   <li key={keyOf(item)}>
                     <button type="button" disabled={full} onClick={() => add(item)}

@@ -3,11 +3,12 @@ from django.contrib import admin, messages
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
+from django.utils.safestring import mark_safe
 
 from engagement.models import Notification
 
 from .models import (
-    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseModule, Certificate, CourseReview, CourseRevision,
+    MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseLesson, CourseModule, Certificate, CourseReview, CourseRevision,
     Enrollment, Playlist, PlaylistItem, ReviewReply, instructor_problem,
 )
 from .revisions import apply_revision, live_value, revision_of
@@ -101,12 +102,49 @@ class PlaylistAdminForm(forms.ModelForm):
 class PlaylistItemInline(admin.TabularInline):
     model = PlaylistItem
     extra = 0
-    fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast")
-    readonly_fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast")
+    fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast", "lesson")
+    readonly_fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast", "lesson")
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
         return False
+
+
+class CourseLessonInline(admin.StackedInline):
+    """
+    Lessons written inside the course: what learners will read and watch, for
+    review with the rest of the course. Authors edit them in the course builder.
+    """
+    model = CourseLesson
+    extra = 0
+    can_delete = False
+    verbose_name_plural = "Lessons written for this course"
+    fields = ("kind", "title", "status", "is_preview", "video", "content")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Status")
+    def status(self, obj):
+        in_outline = obj.items.exists()
+        state = "Approved" if obj.approved else "Not yet approved"
+        return f"{state} · {'in the outline' if in_outline else 'not in the outline (learners never see it)'}"
+
+    @admin.display(description="Video")
+    def video(self, obj):
+        if obj.kind != CourseLesson.KIND_VIDEO:
+            return "—"
+        if not obj.video_url:
+            return "(no link yet)"
+        return format_html('<a href="{0}" target="_blank" rel="noopener">{0}</a> · {1}', obj.video_url, obj.duration or "no length")
+
+    @admin.display(description="Text")
+    def content(self, obj):
+        # Sanitised when saved (pages.richtext.sanitize_submission_html), so it's safe to render.
+        if not obj.body:
+            return "(empty)"
+        return format_html('<div style="max-height:420px;overflow:auto;border:1px solid #ddd;padding:12px;max-width:760px">{}</div>', mark_safe(obj.body))
 
 
 def _notify(course, text):
@@ -122,7 +160,7 @@ class PlaylistAdmin(admin.ModelAdmin):
     list_display = ("title", "owner", "company", "status", "changes_waiting", "level", "featured", "access", "price", "item_count", "submitted_at", "reviewed_at")
     list_filter = ("status", PendingChangesFilter, "access", "level", "featured")
     search_fields = ("title", "owner__username", "owner__display_name")
-    inlines = [CourseRevisionInline, CourseModuleInline, PlaylistItemInline, CourseFAQInline]
+    inlines = [CourseRevisionInline, CourseModuleInline, PlaylistItemInline, CourseLessonInline, CourseFAQInline]
     actions = ["approve", "reject"]
     # Status only changes through the actions, so the owner is always notified.
     # Company is fixed when the course is created (Company Studio sets it, a
@@ -163,6 +201,7 @@ class PlaylistAdmin(admin.ModelAdmin):
             course.reviewed_at = timezone.now()
             course.reviewed_by = request.user
             course.save(update_fields=["status", "reviewed_at", "reviewed_by"])
+            course.lessons.update(approved=True)  # reviewed with the course
             _notify(course, f'Your course "{course.title}" is live.')
         # Live courses with changes waiting: apply them; the course never went offline.
         for course in queryset.filter(status=Playlist.STATUS_PUBLISHED, revision__status=CourseRevision.STATUS_PENDING):

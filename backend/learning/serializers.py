@@ -11,11 +11,13 @@ from commerce.access import has_access
 from pages.api import author_payload
 from pages.durations import parse_duration_seconds
 from pages.images import CONTENT, image_url
+from pages.richtext import sanitize_submission_html
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
 from . import course_page
 from .reviews import card_rating, rating_summary
 from .models import (
+    CourseLesson,
     ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
     PROMISED_FIELDS, CareerRole, Certificate, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
@@ -31,15 +33,18 @@ def clean_lines(value, limit, label):
 
 
 # Load every possible target (and its image) in one query per course.
-ITEM_SELECT = ["video__image", "post__image", "article__image", "research__image", "whitepaper", "podcast__image"]
+ITEM_SELECT = ["video__image", "post__image", "article__image", "research__image", "whitepaper", "podcast__image", "lesson__playlist"]
 
 ITEM_PATHS = {
     "video": "/videos/{id}", "post": "/blog/{id}", "article": "/geacademy/{id}",
     "research": "/research/{id}", "whitepaper": "/whitepapers", "podcast": "/podcasts/{id}",
+    "lesson": "/courses/{slug}/lessons/{id}",
 }
 
 
 def item_meta(target, kind):
+    if kind == "lesson":  # its type is shown separately ("Video lesson")
+        return target.duration if target.kind == target.KIND_VIDEO else ""
     if kind in ("video", "podcast"):
         return target.duration
     if kind in ("article", "research"):
@@ -66,6 +71,8 @@ def lesson_minutes(target, kind):
     and research their read time, whitepapers 2 minutes a page, and blog
     posts (which store no read time) their word count at 200 words a minute.
     """
+    if kind == "lesson":
+        return lesson_own_minutes(target)
     if kind in ("video", "podcast"):
         seconds = target.duration_seconds or parse_duration_seconds(target.duration) or 0
         return math.ceil(seconds / 60)
@@ -77,8 +84,18 @@ def lesson_minutes(target, kind):
     return max(1, math.ceil(words / WORDS_PER_MINUTE)) if words else 0
 
 
+def lesson_own_minutes(lesson):
+    """A course's own lesson: its video's length plus its text at 200 words a minute."""
+    seconds = (lesson.duration_seconds or 0) if lesson.kind == lesson.KIND_VIDEO else 0
+    words = len(strip_tags(lesson.body or "").split())
+    total = math.ceil(seconds / 60) + (math.ceil(words / WORDS_PER_MINUTE) if words else 0)
+    return max(total, 1)
+
+
 def target_card(target, kind):
     """A course item's content as shown in course pages and the builder."""
+    if kind == "lesson":
+        return lesson_card(target)
     image = getattr(target, "image", None)
     price = getattr(target, "price", None)
     return {
@@ -93,6 +110,25 @@ def target_card(target, kind):
         "access": getattr(target, "access", "free"),
         "price": str(price) if price is not None else None,
         "currency": getattr(target, "currency", "INR"),
+    }
+
+
+def lesson_card(lesson):
+    """A CourseLesson as a course item. Its access is the course's: it opens with the course."""
+    course = lesson.playlist
+    return {
+        "kind": "lesson",
+        "id": lesson.pk,
+        "title": lesson.title,
+        "image_url": None,
+        "meta": item_meta(lesson, "lesson"),
+        "minutes": lesson_own_minutes(lesson),
+        "path": ITEM_PATHS["lesson"].format(slug=course.slug, id=lesson.pk),
+        "access": course.access,
+        "price": str(course.price) if course.price is not None else None,
+        "currency": course.currency,
+        "lesson_type": lesson.kind,
+        "is_preview": lesson.is_preview,
     }
 
 
@@ -451,6 +487,80 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+MAX_LESSON_BODY = 200_000  # characters of HTML; long, but not unbounded
+LESSON_KINDS_OPEN = (CourseLesson.KIND_TEXT, CourseLesson.KIND_VIDEO)  # quizzes arrive later
+
+
+def lesson_problem(lesson):
+    """What a lesson still needs before its course can be submitted, or None."""
+    if lesson.kind == CourseLesson.KIND_TEXT and not strip_tags(lesson.body or "").strip():
+        return "add its text"
+    if lesson.kind == CourseLesson.KIND_VIDEO and not (lesson.video_url and lesson.duration):
+        return "add the video link and its length"
+    return None
+
+
+class CourseLessonSerializer(serializers.ModelSerializer):
+    """A course's own lesson, as its author edits it in the course builder."""
+    in_outline = serializers.SerializerMethodField()
+    minutes = serializers.SerializerMethodField()
+    problem = serializers.SerializerMethodField()
+    card = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseLesson
+        fields = [
+            "id", "kind", "title", "video_url", "duration", "body", "is_preview",
+            "approved", "in_outline", "minutes", "problem", "card", "updated_at",
+        ]
+        read_only_fields = ["id", "approved", "updated_at"]
+        extra_kwargs = {"video_url": {"allow_blank": True}, "duration": {"allow_blank": True}, "body": {"allow_blank": True}}
+
+    def get_in_outline(self, obj):
+        return obj.items.exists()
+
+    def get_minutes(self, obj):
+        return lesson_own_minutes(obj)
+
+    def get_problem(self, obj):
+        return lesson_problem(obj)
+
+    def get_card(self, obj):
+        """The lesson as an outline item, so the builder can place it without reloading the course."""
+        return lesson_card(obj)
+
+    def validate_kind(self, value):
+        if self.instance is not None and value != self.instance.kind:
+            raise serializers.ValidationError("A lesson's type can't change. Create a new lesson instead.")
+        if value not in LESSON_KINDS_OPEN:
+            raise serializers.ValidationError("Quiz lessons aren't available yet.")
+        return value
+
+    def validate_title(self, value):
+        value = value.strip()
+        if len(value) < 3:
+            raise serializers.ValidationError("Give the lesson a title of at least 3 characters.")
+        return value
+
+    def validate_video_url(self, value):
+        value = value.strip()
+        if value and not re.match(r"^https?://", value, re.IGNORECASE):
+            raise serializers.ValidationError("Enter a link starting with http:// or https://.")
+        return value
+
+    def validate_duration(self, value):
+        value = value.strip()
+        if value and not parse_duration_seconds(value):
+            raise serializers.ValidationError("Enter the length like 14:32 or 45 min.")
+        return value
+
+    def validate_body(self, value):
+        if len(value) > MAX_LESSON_BODY:
+            raise serializers.ValidationError("This lesson is too long. Split it into two lessons.")
+        cleaned = sanitize_submission_html(value)
+        return cleaned if strip_tags(cleaned).strip() or "<img" in cleaned else ""
+
+
 class ItemRefSerializer(serializers.Serializer):
     kind = serializers.ChoiceField(choices=list(ITEM_KINDS))
     id = serializers.IntegerField()
@@ -511,4 +621,7 @@ def library_for(user):
 
 
 def library_for_course(course):
-    return company_library(course.company) if course.company_id else professional_library(course.owner)
+    """What this course's outline may hold: the author's published content plus the course's own lessons."""
+    library = company_library(course.company) if course.company_id else professional_library(course.owner)
+    library["lesson"] = course.lessons.select_related("playlist")
+    return library

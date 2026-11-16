@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined'
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
@@ -14,15 +14,16 @@ import { FileField } from '@/pages/Studio/fields/FileField'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/pages/Account/dashboard/ConfirmDialog'
-import type { CourseLevel, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
+import type { CourseLessonType, CourseLevel, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
 import { BasicsCard, FaqCard, WhatLearnersGetCard } from './cards'
 import { OutlineEditor } from './OutlineEditor'
 import { LibraryPanel } from './LibraryPanel'
+import { CourseLessonsPanel } from './CourseLessonsPanel'
 import { BuilderActions, InstructorPanel, PageChecklist } from './rail'
 import { RailCard } from './parts'
 import { PreviewModal } from './PreviewModal'
 import {
-  allLessons, changes, draftFromCourse, emptyDraft, faqsPayload, metaPayload, needsReview, outlinePayload, type Draft,
+  allLessons, changes, draftFromCourse, emptyDraft, faqsPayload, keyOf, mapItems, metaPayload, needsReview, outlinePayload, type Draft,
 } from './draft'
 
 const LEVEL_OPTIONS: { value: CourseLevel; label: string }[] = [
@@ -48,10 +49,18 @@ export default function CourseBuilder() {
 /**
  * The course builder, shared by Professionals (My Courses) and Company accounts
  * (Company Studio). They differ in their library (own videos and posts, or the
- * company's published content), page shell, and instructor panel.
+ * company's published content), page shell, and instructor panel. Both can also
+ * write lessons inside the course (CourseLessonsPanel).
  */
 function CourseBuilderForm({ id }: { id: string | undefined }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set when the first lesson was started on an unsaved course: the draft was saved, now open that lesson's editor.
+  const [openLesson] = useState<CourseLessonType | null>(() => (location.state as { openLesson?: CourseLessonType } | null)?.openLesson ?? null)
+  // Read once: drop it from history so a reload doesn't open the editor again.
+  useEffect(() => {
+    if (openLesson) navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [openLesson, navigate, location.pathname, location.search])
   const { isCompany } = useRole()
   const { user } = useAuth()
   const coursesHome = isCompany ? '/studio/courses' : '/account?tab=courses'
@@ -106,6 +115,23 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   if (isEditing && course === undefined) return <div className="min-h-screen" />
 
   const patch = (next: Partial<Draft>) => { setDraft(prev => ({ ...prev, ...next })); setNotice('') }
+  // A lesson needs a course to belong to: starting the first one on a new course saves the draft first.
+  const startFirstLesson = (kind: CourseLessonType): string | null => {
+    if (draft.title.trim().length < 3) {
+      setErrors({ title: 'Give the course a title of at least 3 characters.' })
+      return 'Give the course a title first (in Basics, at the top). The course is then saved as a draft and your lesson opens.'
+    }
+    void save(false, { openLesson: kind })
+    return null
+  }
+  // A course lesson saved or deleted on the server: update (or drop) its copy in both the saved and edited outline,
+  // so it neither shows as an unsaved change nor gets sent back after it's gone.
+  const syncLesson = (card: CourseTarget, removed: boolean) => {
+    const key = keyOf(card)
+    const fn = (item: CourseTarget) => (keyOf(item) === key ? (removed ? null : card) : item)
+    setSaved(prev => mapItems(prev, fn))
+    setDraft(prev => mapItems(prev, fn))
+  }
   const status = course?.status ?? null
   const lessonCount = allLessons(draft).length
 
@@ -118,7 +144,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     return found
   }
 
-  async function save(submit: boolean) {
+  async function save(submit: boolean, then?: { openLesson: CourseLessonType }) {
     const found = validate(submit)
     setErrors(found)
     setFormError('')
@@ -155,7 +181,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
       }
       if (first) {
         // The edit route loads the saved course (and enables Preview).
-        navigate(`${editBase}/${result.id}/edit`, { replace: true })
+        navigate(`${editBase}/${result.id}/edit`, { replace: true, state: then ?? null })
         return
       }
       load(result)
@@ -191,7 +217,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   return (
     // In Company Studio the layout already supplies the page shell, so only the builder itself renders.
     <Shell className={isCompany ? undefined : 'min-h-screen pb-10 bg-brand-tint bg-brand-tint-static'}>
-      <PageMeta title={heading} description="Build a course from published content." canonical={`${editBase}/new`} noIndex />
+      <PageMeta title={heading} description="Build a course." canonical={`${editBase}/new`} noIndex />
 
       <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16')}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -241,8 +267,11 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
             <BasicsCard draft={draft} patch={patch} titleError={errors.title} />
             <WhatLearnersGetCard draft={draft} patch={patch} />
             <OutlineEditor draft={draft} patch={patch} error={errors.items ?? errors.modules} />
-            <LibraryPanel draft={draft} patch={patch} library={library} isCompany={isCompany} />
-            <FaqCard draft={draft} patch={patch} n={5} />
+            <CourseLessonsPanel n={4} course={course ?? null} draft={draft} patch={patch}
+              openOnLoad={openLesson} onStartWithoutCourse={startFirstLesson} starting={saving === 'draft' && !course}
+              onLessonSaved={card => syncLesson(card, false)} onLessonDeleted={card => syncLesson(card, true)} />
+            <LibraryPanel n={5} draft={draft} patch={patch} library={library} isCompany={isCompany} />
+            <FaqCard draft={draft} patch={patch} n={6} />
           </div>
 
           <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-5" aria-label="Course settings">

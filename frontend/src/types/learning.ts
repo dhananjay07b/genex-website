@@ -2,8 +2,14 @@ import type { ContentAccess, ContentAuthor } from './api'
 import type { CompanyDisplay } from './auth'
 import type { DiscoveryCard } from './discovery'
 
-/** Professionals' courses use videos and posts; Company Studio courses use the company's articles, research, whitepapers and podcasts. */
-export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast'
+/**
+ * Professionals' courses use videos and posts; Company Studio courses use the company's articles, research,
+ * whitepapers and podcasts. Any course can also hold lessons written inside it ('lesson').
+ */
+export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast' | 'lesson'
+
+/** A lesson written inside a course. Quizzes arrive later. */
+export type CourseLessonType = 'text' | 'video' | 'quiz'
 
 /** A video/post as it appears in a course or the builder's library. */
 export interface CourseTarget {
@@ -20,6 +26,30 @@ export interface CourseTarget {
   access: ContentAccess
   price: string | null
   currency: string
+  /** Only on a course's own lessons (kind 'lesson'). */
+  lesson_type?: CourseLessonType
+  is_preview?: boolean
+}
+
+/** A course's own lesson as its author edits it: GET/POST /api/learning/me/courses/<id>/lessons/. */
+export interface CourseLesson {
+  id: number
+  kind: CourseLessonType
+  title: string
+  video_url: string
+  duration: string
+  /** Sanitised HTML. */
+  body: string
+  is_preview: boolean
+  /** Approved by Genex with the course. */
+  approved: boolean
+  in_outline: boolean
+  minutes: number
+  /** What it still needs before the course can be submitted, e.g. "add its text". */
+  problem: string | null
+  /** The lesson as an outline item. */
+  card: CourseTarget
+  updated_at: string
 }
 
 export interface CourseItem extends CourseTarget {

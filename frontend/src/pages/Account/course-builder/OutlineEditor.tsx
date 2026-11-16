@@ -1,7 +1,7 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay } from '@/components/gelearn/courseItemKinds'
 import type { CourseTarget } from '@/types/learning'
 import { AddButton, BuilderCard, RowControls } from './parts'
 import { LIMITS, allLessons, fieldClass, formatMinutes, keyOf, lessonDetail, move, newKey, totalMinutes, type Draft, type DraftModule } from './draft'
@@ -22,7 +22,7 @@ function LessonRow({ item, index, count, place, modules, onMove, onRemove, onRel
   onRemove: () => void
   onRelocate: (to: Place) => void
 }) {
-  const { icon: Icon } = COURSE_ITEM_KINDS[item.kind]
+  const { icon: Icon } = courseItemDisplay(item)
   return (
     <li className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-3 py-2.5 border-l-2 border-transparent hover:bg-sky-50 hover:border-primary transition-colors">
       {/* On phones the title takes its own line and the controls wrap underneath. */}
@@ -30,7 +30,7 @@ function LessonRow({ item, index, count, place, modules, onMove, onRemove, onRel
         <Icon sx={{ fontSize: 19 }} className="text-sky-700 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-text-primary truncate">{item.title}</span>
-          <span className="block text-xs text-text-muted truncate">{lessonDetail(item, COURSE_ITEM_KINDS[item.kind].label)}</span>
+          <span className="block text-xs text-text-muted truncate">{lessonDetail(item, courseItemDisplay(item).label)}</span>
         </span>
       </span>
       <span className="flex flex-wrap items-center justify-end gap-2 ml-auto">
@@ -115,7 +115,7 @@ export function OutlineEditor({ draft, patch, error }: { draft: Draft; patch: Pa
               </div>
               {m.items.length
                 ? rows(m.items, i, items => setModule(i, { items }))
-                : <p className="text-sm text-text-muted border border-dashed border-border rounded-xl px-4 py-3 text-center">No lessons yet. Add them from the library below.</p>}
+                : <p className="text-sm text-text-muted border border-dashed border-border rounded-xl px-4 py-3 text-center">No lessons yet. Write one below, or add something you've published.</p>}
             </div>
           </details>
         )
@@ -126,7 +126,7 @@ export function OutlineEditor({ draft, patch, error }: { draft: Draft; patch: Pa
           {modules.length > 0 && <p className="text-sm font-bold text-text-primary">Not in a module <span className="font-normal text-text-muted">· shown after the modules</span></p>}
           {loose.length
             ? rows(loose, 'loose', items => patch({ loose: items }))
-            : <p className="text-sm text-text-muted border border-dashed border-border rounded-xl px-4 py-6 text-center">Add lessons from the library below. They play in this order.</p>}
+            : <p className="text-sm text-text-muted border border-dashed border-border rounded-xl px-4 py-6 text-center">Write lessons below, or add content you've already published. They play in this order.</p>}
         </div>
       )}
 

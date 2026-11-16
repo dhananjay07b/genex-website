@@ -4,7 +4,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay } from '@/components/gelearn/courseItemKinds'
 import { getMediaUrl } from '@/lib/utils'
 import type { CourseTarget } from '@/types/learning'
 import { allLessons, formatMinutes, keyOf, lessonDetail, totalMinutes, type Draft } from './draft'
@@ -15,7 +15,7 @@ function Lessons({ items }: { items: CourseTarget[] }) {
   return (
     <ol className="divide-y divide-border">
       {items.map(item => {
-        const { icon: Icon, label } = COURSE_ITEM_KINDS[item.kind]
+        const { icon: Icon, label } = courseItemDisplay(item)
         return (
           <li key={keyOf(item)} className="flex items-center gap-3 px-4 py-2.5">
             <Icon sx={{ fontSize: 18 }} className="text-sky-700 shrink-0" />
@@ -23,7 +23,8 @@ function Lessons({ items }: { items: CourseTarget[] }) {
               <span className="block text-sm font-semibold text-text-primary truncate">{item.title}</span>
               <span className="block text-xs text-text-muted truncate">{lessonDetail(item, label)}</span>
             </span>
-            {item.access === 'free'
+            {/* A course's own lessons are previewable only when marked so; other content by its own access. */}
+            {(item.kind === 'lesson' ? item.is_preview : item.access === 'free')
               ? <span className="text-xs font-bold text-primary">Preview</span>
               : <LockOutlinedIcon sx={{ fontSize: 16 }} className="text-text-muted" aria-label="Locked for visitors" />}
           </li>

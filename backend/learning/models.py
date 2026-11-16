@@ -296,9 +296,60 @@ class CourseFAQ(models.Model):
         return self.question
 
 
-# A course lesson points at exactly one piece of published content. Professionals'
-# courses use videos and blog posts; Company Studio courses use the company's
-# GeAcademy articles, research, whitepapers and podcasts (and videos).
+class CourseLesson(models.Model):
+    """
+    A lesson written inside one course (text, a video by link, or a quiz)
+    rather than a piece of published GeLearn content. It isn't listed anywhere
+    else: only the course's learners open it, plus anyone when it's a free
+    preview of a live course. It's reviewed with the course: `approved` once
+    Genex has approved it, and on a live course `pending` holds edits that
+    wait for review while learners keep the approved version.
+    """
+    KIND_TEXT = "text"
+    KIND_VIDEO = "video"
+    KIND_QUIZ = "quiz"
+    KIND_CHOICES = [(KIND_TEXT, "Text"), (KIND_VIDEO, "Video"), (KIND_QUIZ, "Quiz")]
+
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="lessons", verbose_name="course")
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_TEXT)
+    title = models.CharField(max_length=200)
+    video_url = models.URLField(blank=True, help_text="Video lessons: a YouTube or Vimeo link.")
+    duration = models.CharField(max_length=20, blank=True, help_text="Video lessons, e.g. '14:32 min'.")
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    body = models.TextField(blank=True, help_text="The lesson text (notes under a video). Sanitised HTML.")
+    is_preview = models.BooleanField(default=False, verbose_name="free preview",
+                                     help_text="Anyone can open it from the course page, enrolled or not.")
+    pass_mark = models.PositiveSmallIntegerField(
+        default=70, validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Quizzes: the percentage of correct answers needed to pass.",
+    )
+    approved = models.BooleanField(default=False, help_text="Approved by Genex with the course: what learners see.")
+    pending = models.JSONField(null=True, blank=True, help_text="Edits to a live lesson waiting for review.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        verbose_name = "Course lesson"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        from pages.durations import parse_duration_seconds
+        self.duration_seconds = parse_duration_seconds(self.duration) if self.kind == self.KIND_VIDEO else None
+        super().save(*args, **kwargs)
+
+    @property
+    def access_subject(self):
+        """Opened with its course: commerce.access.has_access checks the course's access and purchases."""
+        return self.playlist
+
+
+# A course lesson points at exactly one piece of content. Professionals' courses
+# use their videos and blog posts; Company Studio courses use the company's
+# GeAcademy articles, research, whitepapers and podcasts (and videos). Any course
+# can also hold lessons written inside it (CourseLesson).
 # kind → (field on PlaylistItem, model)
 ITEM_KINDS = {
     "video": ("video", "pages.VideoItem"),
@@ -307,6 +358,7 @@ ITEM_KINDS = {
     "research": ("research", "pages.CaseStudy"),
     "whitepaper": ("whitepaper", "pages.Whitepaper"),
     "podcast": ("podcast", "pages.PodcastEpisode"),
+    "lesson": ("lesson", "learning.CourseLesson"),
 }
 _ITEM_FIELDS = [field for field, _ in ITEM_KINDS.values()]
 
@@ -319,7 +371,7 @@ def _exactly_one_target():
 
 
 class PlaylistItem(models.Model):
-    """One piece of published content, at a position in the course."""
+    """One lesson at a position in the course: a piece of published content, or a CourseLesson."""
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="items")
     module = models.ForeignKey(
         CourseModule, null=True, blank=True, on_delete=models.SET_NULL, related_name="items",
@@ -331,6 +383,7 @@ class PlaylistItem(models.Model):
     research = models.ForeignKey("pages.CaseStudy", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     whitepaper = models.ForeignKey("pages.Whitepaper", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     podcast = models.ForeignKey("pages.PodcastEpisode", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    lesson = models.ForeignKey(CourseLesson, null=True, blank=True, on_delete=models.CASCADE, related_name="items")
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -348,6 +401,8 @@ class PlaylistItem(models.Model):
         super().clean()
         if self.module_id and self.module.playlist_id != self.playlist_id:
             raise ValidationError({"module": "That module belongs to a different course."})
+        if self.lesson_id and self.lesson.playlist_id != self.playlist_id:
+            raise ValidationError({"lesson": "That lesson belongs to a different course."})
 
     @property
     def kind(self):

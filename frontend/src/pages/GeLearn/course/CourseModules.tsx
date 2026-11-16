@@ -5,7 +5,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay, timeIsEstimated } from '@/components/gelearn/courseItemKinds'
 import { cn } from '@/lib/utils'
 import type { CourseDetail, CourseItem } from '@/types/learning'
 import { formatMinutes, lessonFormats, paidLessonNote, paidLessons, plural } from './format'
@@ -19,9 +19,9 @@ interface LessonListProps {
 }
 
 function detail(item: CourseItem) {
-  const { label } = COURSE_ITEM_KINDS[item.kind]
+  const { label } = courseItemDisplay(item)
   // Show "about N min" only where the stored detail isn't already a time (blog posts, whitepapers).
-  const estimate = (item.kind === 'post' || item.kind === 'whitepaper') && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
+  const estimate = timeIsEstimated(item) && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
   return [label, item.meta, estimate].filter(Boolean).join(' · ')
 }
 
@@ -29,7 +29,7 @@ function LessonList({ items, numbers, enrolled, nextId, onOpen }: LessonListProp
   return (
     <ol>
       {items.map(item => {
-        const { icon: Icon } = COURSE_ITEM_KINDS[item.kind]
+        const { icon: Icon } = courseItemDisplay(item)
         const isNext = enrolled && item.item_id === nextId
         return (
           <li key={item.item_id}
