@@ -495,8 +495,8 @@ export function SettingsTab() {
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
             </div>
           )}
-          {/* Signed up with a personal email? A confirmed work email gets them verified (hidden once verified by sign-in email). */}
-          {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} companyVerified={Boolean(user.company_verified)} />}
+          {/* Signed up with a personal email? A confirmed work email gets them verified. */}
+          {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} canAdd={user.verification_step === 'work_email'} />}
           <div className={cn('grid grid-cols-1 gap-4', isProfessional && 'sm:grid-cols-2')}>
             {isProfessional && (
               <Input
