@@ -839,6 +839,44 @@ class SessionEndpointTests(TestCase):
         self.assertEqual(self.client.get("/api/accounts/session/").json()["user"]["username"], "sess")
 
 
+class EndedSignInTests(TestCase):
+    """A sign-in whose user was deleted or deactivated counts as signed out, not as an error on every request."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # login is throttled
+        self.user = make_user("gone")
+        self.other = make_user("other")
+        self.client = APIClient()
+        res = self.client.post("/api/auth/login/", {"email": self.user.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200)
+
+    def _check_signed_out(self):
+        self.assertEqual(self.client.get("/api/discovery/topics/").status_code, 200)
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 401)
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.json(), {"user": None, "can_refresh": False})
+        self.assertEqual((res.cookies["genex-auth"].value, res.cookies["genex-refresh"].value), ("", ""))
+        for name in ("genex-auth", "genex-refresh"):
+            del self.client.cookies[name]  # a browser drops the cleared cookies; the test client keeps sending them
+        res = self.client.post("/api/auth/login/", {"email": self.other.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+
+    def test_deleted_user(self):
+        self.user.delete()
+        self._check_signed_out()
+
+    def test_deactivated_user(self):
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        self._check_signed_out()
+
+    def test_a_good_sign_in_keeps_its_cookies(self):
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.json()["user"]["username"], "gone")
+        self.assertNotIn("genex-auth", res.cookies)
+
+
 class GoogleSignInTests(TestCase):
     """Sign in with Google: new people choose their account type; existing accounts link only on a verified email."""
 

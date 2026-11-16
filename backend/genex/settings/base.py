@@ -192,7 +192,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "dj_rest_auth.jwt_auth.JWTCookieAuthentication",
+        "accounts.authentication.GenexJWTCookieAuthentication",
         # Sign-up/Google sessions only; a CMS/admin session isn't a GeLearn sign-in.
         "accounts.backoffice.FrontendSessionAuthentication",
     ],
