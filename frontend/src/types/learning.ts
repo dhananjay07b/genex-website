@@ -52,6 +52,28 @@ export interface CourseLesson {
   updated_at: string
 }
 
+/** GET /api/learning/courses/<slug>/lessons/<id>/: a course's own lesson, for the lesson page. */
+export interface CourseLessonContent {
+  id: number
+  /** Its place in the outline; null only when the course team opens a lesson not in the outline. */
+  item_id: number | null
+  kind: CourseLessonType
+  title: string
+  video_url: string
+  duration: string
+  /** Sanitised HTML. */
+  body: string
+  is_preview: boolean
+  minutes: number
+}
+
+/** Why a lesson didn't open (403): sign in, enroll, or buy the course. */
+export interface CourseLessonBlock {
+  detail: string
+  code: 'sign_in' | 'enroll' | 'paid'
+  title: string
+}
+
 export interface CourseItem extends CourseTarget {
   item_id: number
   module_id: number | null

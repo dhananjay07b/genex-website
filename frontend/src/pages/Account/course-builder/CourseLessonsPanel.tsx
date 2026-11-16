@@ -96,7 +96,7 @@ export function CourseLessonsPanel({ n, course, draft, patch, onLessonSaved, onL
   }
 
   return (
-    <BuilderCard n={n} title="Lessons written for this course" hint="Text and video lessons that only this course's learners see">
+    <BuilderCard n={n} title="Lessons written for this course" hint="Text and video lessons for this course's learners, and free previews">
       {live && (
         <p className="flex gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs text-sky-900">
           <LockOutlinedIcon sx={{ fontSize: 15 }} className="shrink-0 mt-px" />
@@ -120,7 +120,8 @@ export function CourseLessonsPanel({ n, course, draft, patch, onLessonSaved, onL
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-text-primary truncate">{lesson.title}</span>
                     <span className="block text-xs text-text-muted truncate">
-                      {[label, lesson.kind === 'video' ? lesson.duration : lesson.minutes ? `about ${formatMinutes(lesson.minutes)}` : '']
+                      {[label, lesson.kind === 'video' ? lesson.duration : lesson.minutes ? `about ${formatMinutes(lesson.minutes)}` : '',
+                        lesson.is_preview ? 'Free preview' : '']
                         .filter(Boolean).join(' · ')}
                     </span>
                     {lesson.problem && (

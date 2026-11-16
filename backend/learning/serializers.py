@@ -229,6 +229,20 @@ class CourseProgressSerializer(CourseCardSerializer):
             cache[key] = self._build_items(obj)
         return cache[key]
 
+    def _is_enrolled(self, obj):
+        key = ("enrolled", obj.pk)
+        cache = self._cache()
+        if key not in cache:
+            user = self._user()
+            cache[key] = user.is_authenticated and obj.enrollments.filter(user=user).exists()
+        return cache[key]
+
+    def _is_locked(self, obj, item, target):
+        if item.kind == "lesson":  # opens from the course only: enrolled, the team, or a free preview
+            from .lessons import lesson_block
+            return lesson_block(self._user(), target, enrolled=self._is_enrolled(obj), cache=self._cache()) is not None
+        return not has_access(self._user(), target, self._cache())
+
     def _build_items(self, obj):
         completed = self._completed_ids(obj)
         rows = []
@@ -239,7 +253,7 @@ class CourseProgressSerializer(CourseCardSerializer):
                 item_id=item.pk,
                 module_id=item.module_id,
                 position=item.position,
-                is_locked=not has_access(self._user(), target, self._cache()),
+                is_locked=self._is_locked(obj, item, target),
                 completed=item.pk in completed,
             )
             rows.append(card)

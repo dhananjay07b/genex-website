@@ -1446,3 +1446,102 @@ class CourseLessonBuilderTests(TestCase):
         course.items.create(lesson=course.lessons.create(kind="video", title="One", video_url="https://youtu.be/a", duration="10 min"), position=0)
         course.items.create(lesson=course.lessons.create(kind="text", title="Two", body="<p>x</p>"), position=1)
         self.assertEqual(with_course_stats(Playlist.objects.filter(pk=course.pk)).get().video_seconds, 600)
+
+
+class CourseLessonLearnerTests(TestCase):
+    """Phase 2: learners open a course's own lessons from the course; free previews open for anyone."""
+
+    def setUp(self):
+        from organizations.models import Company
+        self.api = APIClient()
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.learner = make_user("learner")
+        self.stranger = make_user("stranger")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.video = publish_video(self.pro, "Published clip")
+        self.course = Playlist.objects.create(owner=self.pro, title="Mixed Course", status="published")
+        self.preview = self.course.lessons.create(kind="text", title="Welcome", body="<p>Start here.</p>", is_preview=True, approved=True)
+        self.inside = self.course.lessons.create(kind="video", title="Inside", video_url="https://youtu.be/x", duration="4 min",
+                                                 body="<p>Notes</p>", approved=True)
+        self.i1 = self.course.items.create(lesson=self.preview, position=0)
+        self.i2 = self.course.items.create(video=self.video, position=1)
+        self.i3 = self.course.items.create(lesson=self.inside, position=2)
+
+    def _lesson(self, lesson, user=None, course=None):
+        client = APIClient()
+        if user:
+            client.force_authenticate(user)
+        return client.get(f"/api/learning/courses/{(course or self.course).slug}/lessons/{lesson.pk}/")
+
+    def test_who_can_open_what(self):
+        self.assertEqual(self._lesson(self.preview).status_code, 200)  # free preview: anyone
+        res = self._lesson(self.inside)
+        self.assertEqual((res.status_code, res.json()["code"]), (403, "sign_in"))
+        self.assertNotIn("body", res.json())
+        self.assertEqual(self._lesson(self.inside, self.stranger).json()["code"], "enroll")
+        Enrollment.objects.create(user=self.learner, playlist=self.course)
+        res = self._lesson(self.inside, self.learner)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual((res.json()["video_url"], res.json()["body"], res.json()["item_id"]), ("https://youtu.be/x", "<p>Notes</p>", self.i3.pk))
+        self.assertEqual(self._lesson(self.inside, self.pro).status_code, 200)  # the owner
+        admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+        self.assertEqual(self._lesson(self.inside, admin).status_code, 200)
+
+    def test_paid_course_needs_a_purchase(self):
+        self.course.access, self.course.price = "paid", Decimal("499")
+        self.course.save()
+        Enrollment.objects.create(user=self.learner, playlist=self.course)  # e.g. enrolled before it became paid
+        self.assertEqual(self._lesson(self.inside, self.learner).json()["code"], "paid")
+        self.assertEqual(self._lesson(self.preview, self.learner).status_code, 200)  # a free preview stays open
+
+    def test_company_course_team_can_open_it(self):
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company Course", status="published")
+        lesson = course.lessons.create(kind="text", title="Ours", body="<p>x</p>", approved=True)
+        course.items.create(lesson=lesson, position=0)
+        colleague = make_user("staff2", account_type="company", company=self.genex)
+        self.assertEqual(self._lesson(lesson, colleague, course).status_code, 200)
+        self.assertEqual(self._lesson(lesson, self.stranger, course).json()["code"], "enroll")
+
+    def test_hidden_unless_live_approved_and_in_the_outline(self):
+        Enrollment.objects.create(user=self.learner, playlist=self.course)
+        loose = self.course.lessons.create(kind="text", title="Not placed", body="<p>x</p>", approved=True, is_preview=True)
+        self.assertEqual(self._lesson(loose, self.learner).status_code, 404)
+        self.assertEqual(self._lesson(loose, self.pro).status_code, 200)  # the author can still read it
+        self.inside.approved = False
+        self.inside.save()
+        self.assertEqual(self._lesson(self.inside, self.learner).status_code, 404)
+        self.course.status = "draft"
+        self.course.save()
+        self.assertEqual(self._lesson(self.preview).status_code, 404)
+        self.assertEqual(self._lesson(self.preview, self.pro).status_code, 200)
+
+    def test_course_page_locks_and_previews(self):
+        items = {i["item_id"]: i for i in APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()["items"]}
+        self.assertEqual((items[self.i1.pk]["is_locked"], items[self.i1.pk]["is_preview"]), (False, True))
+        self.assertTrue(items[self.i3.pk]["is_locked"])
+        self.assertEqual(items[self.i3.pk]["path"], f"/courses/{self.course.slug}/lessons/{self.inside.pk}")
+        self.api.force_authenticate(self.learner)
+        self.api.post(f"/api/learning/courses/{self.course.slug}/enroll/")
+        items = {i["item_id"]: i for i in self.api.get(f"/api/learning/courses/{self.course.slug}/").json()["items"]}
+        self.assertFalse(items[self.i3.pk]["is_locked"])
+
+    def test_mixed_course_completes_to_a_certificate(self):
+        self.api.force_authenticate(self.learner)
+        self.api.post(f"/api/learning/courses/{self.course.slug}/enroll/")
+        for item in (self.i1, self.i2):
+            res = self.api.post(f"/api/learning/courses/{self.course.slug}/items/{item.pk}/open/")
+            self.assertIsNone(res.json()["certificate_code"])
+        res = self.api.post(f"/api/learning/courses/{self.course.slug}/items/{self.i3.pk}/open/")
+        self.assertTrue(res.json()["certificate_code"])
+
+    def test_preview_open_without_enrolling_doesnt_count(self):
+        self.api.force_authenticate(self.stranger)
+        res = self.api.post(f"/api/learning/courses/{self.course.slug}/items/{self.i1.pk}/open/")
+        self.assertEqual(res.status_code, 403)
+
+    def test_lessons_never_appear_in_search(self):
+        res = APIClient().get("/api/discovery/search/", {"q": "Welcome"})
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn("Start here", res.content.decode())
+        self.assertNotIn("/lessons/", res.content.decode())

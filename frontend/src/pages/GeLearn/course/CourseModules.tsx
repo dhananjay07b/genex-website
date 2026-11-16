@@ -58,7 +58,9 @@ function LessonList({ items, numbers, enrolled, nextId, onOpen }: LessonListProp
             {isNext && <span className="shrink-0 rounded-full border border-sky-200 bg-white px-2 py-0.5 text-xs font-extrabold text-sky-700">Up next</span>}
             {!enrolled && (item.is_locked
               ? <LockOutlinedIcon sx={{ fontSize: 17 }} className="shrink-0 text-text-muted" aria-label="Locked" />
-              : item.access === 'free' && <Link to={item.path} className="shrink-0 text-xs font-bold text-sky-700 hover:underline">Preview</Link>)}
+              // A course's own lesson is previewable only when its author marked it so; other content by its access.
+              : (item.kind === 'lesson' ? item.is_preview : item.access === 'free')
+                && <Link to={item.path} className="shrink-0 text-xs font-bold text-sky-700 hover:underline">{item.kind === 'lesson' ? 'Free preview' : 'Preview'}</Link>)}
           </li>
         )
       })}

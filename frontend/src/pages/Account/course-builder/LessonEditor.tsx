@@ -14,6 +14,7 @@ interface Fields {
   video_url: string
   duration: string
   body: string
+  is_preview: boolean
 }
 
 const fieldsOf = (lesson: CourseLesson | null): Fields => ({
@@ -21,6 +22,7 @@ const fieldsOf = (lesson: CourseLesson | null): Fields => ({
   video_url: lesson?.video_url ?? '',
   duration: lesson?.duration ?? '',
   body: lesson?.body ?? '',
+  is_preview: lesson?.is_preview ?? false,
 })
 
 /**
@@ -129,8 +131,21 @@ export function LessonEditor({ courseId, lesson, kind, onClose, onSaved }: {
             value={fields.body} onChange={html => set({ body: html })} error={errors.body}
             minHeightClassName={isVideo ? 'min-h-40' : 'min-h-80'} />
 
+          <label className="flex items-start gap-3 rounded-xl border border-border px-4 py-3 cursor-pointer hover:border-primary">
+            <input type="checkbox" checked={fields.is_preview} onChange={e => set({ is_preview: e.target.checked })}
+              className="mt-0.5 size-4 accent-primary" />
+            <span>
+              <span className="block text-sm font-semibold text-text-primary">Free preview</span>
+              <span className="block text-xs text-text-muted leading-relaxed">
+                Anyone can open this lesson from the course page before enrolling, so they can try the course.
+              </span>
+            </span>
+          </label>
+
           <p className="text-xs text-text-muted leading-relaxed">
-            Only learners of this course can open it. Genex reviews it with the rest of the course before it goes live.
+            {fields.is_preview
+              ? 'Everyone else can open it only after enrolling.'
+              : 'Only learners of this course can open it.'} Genex reviews it with the rest of the course before it goes live.
           </p>
           {formError && <p role="alert" className="text-sm font-semibold text-red-600">{formError}</p>}
         </div>

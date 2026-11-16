@@ -2,7 +2,7 @@ import hashlib
 
 from django.core.cache import cache
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.shortcuts import get_object_or_404
@@ -25,6 +25,7 @@ from pages.models import AccessControlled
 
 from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
 from . import course_page
+from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
 from .certificate_pdf import certificate_url, render_pdf, render_png
@@ -148,6 +149,28 @@ class ItemOpenView(APIView):
             "completed": ItemProgress.objects.filter(user=request.user, item__playlist=course).count(),
             "certificate_code": certificate.code if certificate else None,
         })
+
+
+class LessonView(APIView):
+    """
+    One of a live course's own lessons, for the lesson page. Opens for enrolled
+    learners, the course team and Admin, and for anyone when it's a free preview
+    (learning/lessons.py). Visitors and learners only ever see approved lessons
+    that are in the course's outline.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, slug, lesson_id):
+        course = get_object_or_404(Playlist, slug=slug)
+        team = is_course_team(request.user, course)
+        item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
+        if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+            raise Http404
+        lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
+        block = lesson_block(request.user, lesson)
+        if block:
+            return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
+        return Response(lesson_payload(lesson, item))
 
 
 class MyEnrollmentsView(generics.ListAPIView):
