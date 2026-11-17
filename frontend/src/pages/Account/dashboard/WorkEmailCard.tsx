@@ -16,8 +16,12 @@ interface WorkEmailState {
  * For a Professional who signed in with a personal address: add a work email on
  * their company's domain and confirm it by link to show as a verified expert.
  * Sign-in keeps using their own email.
+ *
+ * `canAdd`: adding one could verify them (`verification_step` "work_email": a
+ * registered company, sign-in email not on its domain). Otherwise the card shows
+ * only to manage a work email they already have.
  */
-export function WorkEmailCard({ signInEmail, companyVerified }: { signInEmail: string; companyVerified: boolean }) {
+export function WorkEmailCard({ signInEmail, canAdd }: { signInEmail: string; canAdd: boolean }) {
   const [state, setState] = useState<WorkEmailState | null>(null)
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -64,8 +68,9 @@ export function WorkEmailCard({ signInEmail, companyVerified }: { signInEmail: s
   }
 
   if (!state) return null
-  // Already verified through their sign-in email: nothing to add.
-  if (companyVerified && !state.email) return null
+  // Verified already, unlisted company (its domain isn't known), or sign-in email on the
+  // company's domain (the banner asks them to confirm it): nothing a work email can do.
+  if (!canAdd && !state.email) return null
 
   return (
     <section aria-labelledby="work-email-title" className="rounded-xl border border-border bg-surface px-4 py-4">

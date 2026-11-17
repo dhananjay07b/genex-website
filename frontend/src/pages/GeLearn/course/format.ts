@@ -9,6 +9,7 @@ const KIND_WORDS: Record<CourseItemKind, [string, string]> = {
   research: ['research piece', 'research pieces'],
   whitepaper: ['whitepaper', 'whitepapers'],
   podcast: ['podcast', 'podcasts'],
+  lesson: ['lesson', 'lessons'],
 }
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

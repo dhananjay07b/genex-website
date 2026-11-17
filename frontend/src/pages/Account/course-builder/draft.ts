@@ -1,5 +1,6 @@
 import type { ContentAccess } from '@/types/api'
 import type { CourseFaq, CourseLevel, CourseTarget, MyCourse } from '@/types/learning'
+import { timeIsEstimated } from '@/components/gelearn/courseItemKinds'
 
 // Limits mirror backend learning.models (MAX_*); the server enforces them too.
 export const LIMITS = {
@@ -94,7 +95,7 @@ export const totalMinutes = (items: CourseTarget[]) => items.reduce((sum, i) => 
  * isn't already a time (blog posts and whitepapers).
  */
 export function lessonDetail(item: CourseTarget, kindLabel: string): string {
-  const estimate = (item.kind === 'post' || item.kind === 'whitepaper') && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
+  const estimate = timeIsEstimated(item) && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
   return [kindLabel, item.meta, estimate].filter(Boolean).join(' · ')
 }
 
@@ -184,3 +185,9 @@ export function move<T>(list: T[], from: number, to: number): T[] {
 
 export const fieldClass =
   'w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20'
+
+/** Every lesson in the outline passed through `fn`; returning null removes it. */
+export function mapItems(d: Draft, fn: (item: CourseTarget) => CourseTarget | null): Draft {
+  const keep = (items: CourseTarget[]) => items.map(fn).filter((item): item is CourseTarget => item !== null)
+  return { ...d, modules: d.modules.map(m => ({ ...m, items: keep(m.items) })), loose: keep(d.loose) }
+}

@@ -7,6 +7,7 @@ from .models import User
 from .purge import build_plan, purge_user
 from .roles import display_company
 from .verification import refresh_company_verification
+from .work_email import ensure_sign_in_address
 
 
 @admin.register(User)
@@ -98,6 +99,7 @@ class UserAdmin(DjangoUserAdmin):
         # is_staff only matters to Django admin, which is superuser-only anyway —
         # keep it in lock-step so no one else ever looks like staff.
         obj.is_staff = obj.is_superuser
+        old_email = User.objects.filter(pk=obj.pk).values_list("email", flat=True).first() if change else None
         super().save_model(request, obj, form, change)
         if obj.account_type == User.ACCOUNT_COMPANY and obj.email:
             # Admin-issued credentials: the email is trusted, so skip the
@@ -107,10 +109,16 @@ class UserAdmin(DjangoUserAdmin):
                 user=obj, email=obj.email.lower(),
                 defaults={"verified": True, "primary": True},
             )
-        elif obj.email and not EmailAddress.objects.filter(user=obj, email__iexact=obj.email).exists():
-            # Admin changed someone's email: record the new address as unconfirmed
-            # and primary, so "Resend link" can send its confirmation email
-            # (without this record the resend silently does nothing).
-            EmailAddress.objects.filter(user=obj).update(primary=False)
-            EmailAddress.objects.create(user=obj, email=obj.email.lower(), verified=False, primary=True)
+        elif obj.email:
+            moved = bool(old_email) and old_email.lower() != obj.email.lower()
+            if moved:
+                # The old sign-in address goes. Left behind, it showed in Settings as
+                # a work email waiting to be confirmed (work_email.work_address).
+                EmailAddress.objects.filter(user=obj, email__iexact=old_email).delete()
+            # The sign-in email becomes the primary address: a confirmed work email
+            # keeps its confirmation, a new one is recorded unconfirmed.
+            ensure_sign_in_address(obj)
+            address = EmailAddress.objects.get(user=obj, email__iexact=obj.email)
+            if moved and not address.verified:
+                address.send_confirmation(request)  # Settings tells them a link was sent
         refresh_company_verification(obj)

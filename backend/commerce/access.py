@@ -33,6 +33,8 @@ def has_access(user, obj, cache=None):
     `cache` is an optional dict shared across one request (e.g. a serializer's
     context) so a list of 200 items costs one purchase query, not 200.
     """
+    # A course's own lessons (learning.CourseLesson) open with the course.
+    obj = getattr(obj, "access_subject", obj)
     if getattr(obj, "access", None) in (None, "free"):
         return True  # free, or content with no access setting (GeAcademy, research, whitepapers)
     if not user or not user.is_authenticated:

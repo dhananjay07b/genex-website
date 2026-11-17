@@ -5,7 +5,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay, timeIsEstimated } from '@/components/gelearn/courseItemKinds'
 import { cn } from '@/lib/utils'
 import type { CourseDetail, CourseItem } from '@/types/learning'
 import { formatMinutes, lessonFormats, paidLessonNote, paidLessons, plural } from './format'
@@ -19,9 +19,9 @@ interface LessonListProps {
 }
 
 function detail(item: CourseItem) {
-  const { label } = COURSE_ITEM_KINDS[item.kind]
+  const { label } = courseItemDisplay(item)
   // Show "about N min" only where the stored detail isn't already a time (blog posts, whitepapers).
-  const estimate = (item.kind === 'post' || item.kind === 'whitepaper') && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
+  const estimate = timeIsEstimated(item) && item.minutes ? `about ${formatMinutes(item.minutes)}` : ''
   return [label, item.meta, estimate].filter(Boolean).join(' · ')
 }
 
@@ -29,7 +29,7 @@ function LessonList({ items, numbers, enrolled, nextId, onOpen }: LessonListProp
   return (
     <ol>
       {items.map(item => {
-        const { icon: Icon } = COURSE_ITEM_KINDS[item.kind]
+        const { icon: Icon } = courseItemDisplay(item)
         const isNext = enrolled && item.item_id === nextId
         return (
           <li key={item.item_id}
@@ -58,7 +58,9 @@ function LessonList({ items, numbers, enrolled, nextId, onOpen }: LessonListProp
             {isNext && <span className="shrink-0 rounded-full border border-sky-200 bg-white px-2 py-0.5 text-xs font-extrabold text-sky-700">Up next</span>}
             {!enrolled && (item.is_locked
               ? <LockOutlinedIcon sx={{ fontSize: 17 }} className="shrink-0 text-text-muted" aria-label="Locked" />
-              : item.access === 'free' && <Link to={item.path} className="shrink-0 text-xs font-bold text-sky-700 hover:underline">Preview</Link>)}
+              // A course's own lesson is previewable only when its author marked it so; other content by its access.
+              : (item.kind === 'lesson' ? item.is_preview : item.access === 'free')
+                && <Link to={item.path} className="shrink-0 text-xs font-bold text-sky-700 hover:underline">{item.kind === 'lesson' ? 'Free preview' : 'Preview'}</Link>)}
           </li>
         )
       })}

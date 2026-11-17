@@ -508,6 +508,96 @@ class CompanyVerificationFlowTests(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.company_verified)
 
+    def _admin_moves_email(self, user, email):
+        from django.contrib.admin.sites import AdminSite
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.test import RequestFactory
+
+        from .admin import UserAdmin
+        request = RequestFactory().post("/")
+        request.user, request.session = user, SessionStore()
+        request._messages = FallbackStorage(request)
+        user.email = email
+        UserAdmin(User, AdminSite()).save_model(request, user, form=None, change=True)
+
+    def test_admin_email_change_drops_the_old_address_and_sends_a_link(self):
+        """The old sign-in address used to linger and show in Settings as a work email awaiting confirmation."""
+        from allauth.account.models import EmailAddress
+        from django.core import mail
+
+        from .work_email import work_address
+        self.assertEqual(self._register("asha@yahoo.com", company_other="Google India").status_code, 201)
+        user = User.objects.get(email="asha@yahoo.com")
+        user.company, user.company_other = self.google, ""
+        mail.outbox.clear()
+        self._admin_moves_email(user, "asha@google.com")
+
+        self.assertEqual(
+            list(EmailAddress.objects.filter(user=user).values_list("email", "primary", "verified")),
+            [("asha@google.com", True, False)],
+        )
+        self.assertIsNone(work_address(user))
+        self.assertEqual([m.to for m in mail.outbox], [["asha@google.com"]])
+        self._confirm_latest_email()
+        user.refresh_from_db()
+        self.assertTrue(user.company_verified)
+
+    def test_admin_email_change_onto_a_confirmed_work_email_keeps_it_confirmed(self):
+        from allauth.account.models import EmailAddress
+        from django.core import mail
+        user = make_user("ravi", email="ravi@gmail.com", account_type="professional", company=self.google)
+        EmailAddress.objects.create(user=user, email="ravi@gmail.com", primary=True, verified=True)
+        EmailAddress.objects.create(user=user, email="ravi@google.com", primary=False, verified=True)
+        mail.outbox.clear()
+        self._admin_moves_email(user, "ravi@google.com")
+
+        self.assertEqual(
+            list(EmailAddress.objects.filter(user=user).values_list("email", "primary", "verified")),
+            [("ravi@google.com", True, True)],
+        )
+        self.assertEqual(mail.outbox, [])
+        user.refresh_from_db()
+        self.assertTrue(user.company_verified)
+
+    def test_adding_a_company_links_professionals_with_a_confirmed_email_on_its_domain(self):
+        from allauth.account.models import EmailAddress
+
+        from .verification import refresh_company_members
+
+        def unlisted(username, email, verified, **extra):
+            user = make_user(username, email=email, account_type="professional", company_other="Acme energy", **extra)
+            EmailAddress.objects.create(user=user, email=email, primary=True, verified=verified)
+            return user
+
+        confirmed = unlisted("asha", "asha@acme.com", True)
+        subdomain = unlisted("ravi", "ravi@india.acme.com", True)
+        unconfirmed = unlisted("meera", "meera@acme.com", False)
+        elsewhere = unlisted("kiran", "kiran@notacme.com", True)
+        linked = make_user("dev", email="dev@acme.com", account_type="professional", company=self.google)
+        EmailAddress.objects.create(user=linked, email="dev@acme.com", primary=True, verified=True)
+
+        acme = Company.objects.create(name="Acme Energy", slug="acme")
+        CompanyDomain.objects.create(company=acme, domain="acme.com")
+        refresh_company_members(acme)  # what saving the company in Admin runs
+
+        for user in (confirmed, subdomain):
+            user.refresh_from_db()
+            self.assertEqual((user.company_id, user.company_other, user.company_verified), (acme.pk, "", True))
+        for user in (unconfirmed, elsewhere):
+            user.refresh_from_db()
+            self.assertEqual((user.company_id, user.company_other), (None, "Acme energy"))
+        linked.refresh_from_db()
+        self.assertEqual(linked.company_id, self.google.pk)  # already linked: left alone
+
+    def test_confirming_a_sign_in_email_on_a_listed_domain_links_an_unlisted_professional(self):
+        self.assertEqual(self._register("asha@google.com", company_other="Google India").status_code, 201)
+        user = User.objects.get(email="asha@google.com")
+        self.assertIsNone(user.company_id)
+        self._confirm_latest_email()
+        user.refresh_from_db()
+        self.assertEqual((user.company_id, user.company_other, user.company_verified), (self.google.pk, "", True))
+
 
 class AuthorPayloadTests(TestCase):
     def test_author_payload_carries_company_display(self):
@@ -837,6 +927,44 @@ class SessionEndpointTests(TestCase):
     def test_django_session_sign_in_counts(self):
         self.client.force_login(self.user)
         self.assertEqual(self.client.get("/api/accounts/session/").json()["user"]["username"], "sess")
+
+
+class EndedSignInTests(TestCase):
+    """A sign-in whose user was deleted or deactivated counts as signed out, not as an error on every request."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # login is throttled
+        self.user = make_user("gone")
+        self.other = make_user("other")
+        self.client = APIClient()
+        res = self.client.post("/api/auth/login/", {"email": self.user.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200)
+
+    def _check_signed_out(self):
+        self.assertEqual(self.client.get("/api/discovery/topics/").status_code, 200)
+        self.assertEqual(self.client.get("/api/accounts/me/").status_code, 401)
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.json(), {"user": None, "can_refresh": False})
+        self.assertEqual((res.cookies["genex-auth"].value, res.cookies["genex-refresh"].value), ("", ""))
+        for name in ("genex-auth", "genex-refresh"):
+            del self.client.cookies[name]  # a browser drops the cleared cookies; the test client keeps sending them
+        res = self.client.post("/api/auth/login/", {"email": self.other.email, "password": "Passw0rd!x"}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+
+    def test_deleted_user(self):
+        self.user.delete()
+        self._check_signed_out()
+
+    def test_deactivated_user(self):
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        self._check_signed_out()
+
+    def test_a_good_sign_in_keeps_its_cookies(self):
+        res = self.client.get("/api/accounts/session/")
+        self.assertEqual(res.json()["user"]["username"], "gone")
+        self.assertNotIn("genex-auth", res.cookies)
 
 
 class GoogleSignInTests(TestCase):

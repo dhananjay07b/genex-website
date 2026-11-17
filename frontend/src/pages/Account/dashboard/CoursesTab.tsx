@@ -50,7 +50,7 @@ export function CoursesTab({
   basePath = '/account/courses',
   heading = 'My Courses',
   emptyTitle = 'Turn your posts and videos into a course',
-  emptyDescription = 'Group your published videos and posts into an ordered course. Learners enroll and track their progress through it.',
+  emptyDescription = 'Write lessons for a course, reuse your published videos and posts, or mix both. Learners enroll and track their progress through it.',
 }: CoursesTabProps) {
   const [courses, setCourses] = useState<MyCourse[] | null>(null)
   const [filter, setFilter] = useState<'all' | CourseStatus>('all')

@@ -2,7 +2,7 @@ import hashlib
 
 from django.core.cache import cache
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.shortcuts import get_object_or_404
@@ -25,6 +25,7 @@ from pages.models import AccessControlled
 
 from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
 from . import course_page
+from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
 from .certificate_pdf import certificate_url, render_pdf, render_png
@@ -34,6 +35,7 @@ from .serializers import (
     MAX_FAQS,
     MAX_ITEMS,
     CareerRoleSerializer,
+    CourseLessonSerializer,
     CourseCardSerializer,
     CourseDetailSerializer,
     CourseProgressSerializer,
@@ -43,6 +45,7 @@ from .serializers import (
     ReviewInputSerializer,
     eligible_instructors,
     library_for,
+    lesson_problem,
     library_for_course,
     target_card,
 )
@@ -148,6 +151,28 @@ class ItemOpenView(APIView):
         })
 
 
+class LessonView(APIView):
+    """
+    One of a live course's own lessons, for the lesson page. Opens for enrolled
+    learners, the course team and Admin, and for anyone when it's a free preview
+    (learning/lessons.py). Visitors and learners only ever see approved lessons
+    that are in the course's outline.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, slug, lesson_id):
+        course = get_object_or_404(Playlist, slug=slug)
+        team = is_course_team(request.user, course)
+        item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
+        if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+            raise Http404
+        lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
+        block = lesson_block(request.user, lesson)
+        if block:
+            return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
+        return Response(lesson_payload(lesson, item))
+
+
 class MyEnrollmentsView(generics.ListAPIView):
     """The signed-in user's enrolled courses, newest first, with progress."""
     permission_classes = [permissions.IsAuthenticated]
@@ -224,9 +249,13 @@ class MyCourseViewSet(
         data.is_valid(raise_exception=True)
         modules_in = data.validated_data["modules"]
         loose = data.validated_data["loose_items"]
-        error = self._check_refs(course, [ref for m in modules_in for ref in m["items"]] + loose)
+        refs = [ref for m in modules_in for ref in m["items"]] + loose
+        error = self._check_refs(course, refs)
         if error:
             return Response({"items": error}, status=400)
+        lesson_ids = {ref["id"] for ref in refs if ref["kind"] == "lesson"}
+        if is_live(course) and lesson_ids - set(course.lessons.filter(approved=True).values_list("pk", flat=True)):
+            return Response({"items": self.LIVE_LESSONS_LOCKED}, status=400)
 
         # Known modules: the live ones, plus those already held in a revision (ids below zero are new).
         known = set(course.modules.values_list("pk", flat=True))
@@ -263,6 +292,43 @@ class MyCourseViewSet(
                 course.save(update_fields=["updated_at"])
         return Response(self.get_serializer(course).data)
 
+    LIVE_LESSONS_LOCKED = "Lessons of a live course can't be changed yet. This is coming in the next update."
+
+    @action(detail=True, methods=["get", "post"])
+    def lessons(self, request, pk=None):
+        """The course's own lessons (written inside it, not published elsewhere); POST creates one."""
+        course = self.get_object()
+        if request.method == "GET":
+            return Response(CourseLessonSerializer(course.lessons.all(), many=True).data)
+        if is_live(course):
+            return Response({"detail": self.LIVE_LESSONS_LOCKED}, status=400)
+        if course.lessons.count() >= MAX_ITEMS:
+            return Response({"detail": f"A course can hold at most {MAX_ITEMS} lessons."}, status=400)
+        data = CourseLessonSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        lesson = data.save(playlist=course)
+        course.save(update_fields=["updated_at"])
+        return Response(CourseLessonSerializer(lesson).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get", "patch", "delete"], url_path=r"lessons/(?P<lesson_id>\d+)")
+    def lesson(self, request, pk=None, lesson_id=None):
+        """One of the course's own lessons. Deleting it also takes it out of the outline."""
+        course = self.get_object()
+        lesson = get_object_or_404(course.lessons, pk=lesson_id)
+        if request.method == "GET":
+            return Response(CourseLessonSerializer(lesson).data)
+        if is_live(course):
+            return Response({"detail": self.LIVE_LESSONS_LOCKED}, status=400)
+        if request.method == "DELETE":
+            lesson.delete()
+            course.save(update_fields=["updated_at"])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        data = CourseLessonSerializer(lesson, data=request.data, partial=True)
+        data.is_valid(raise_exception=True)
+        data.save()
+        course.save(update_fields=["updated_at"])
+        return Response(data.data)
+
     @action(detail=True, methods=["delete"], url_path="revision")
     def withdraw_revision(self, request, pk=None):
         """Drop a live course's changes that are waiting for review (or were sent back); the live version is unchanged."""
@@ -291,6 +357,13 @@ class MyCourseViewSet(
         course = self.get_object()
         if not course.items.exists():
             return Response({"items": "Add at least one item before submitting."}, status=400)
+        unfinished = [
+            f"“{lesson.title}” ({problem})"
+            for lesson in course.lessons.filter(items__playlist=course)
+            if (problem := lesson_problem(lesson))
+        ]
+        if unfinished:
+            return Response({"items": "Finish these lessons before submitting: " + "; ".join(unfinished) + "."}, status=400)
         if course.status == Playlist.STATUS_PUBLISHED:
             return Response({"detail": "This course is already live."}, status=400)
         course.status = Playlist.STATUS_PENDING

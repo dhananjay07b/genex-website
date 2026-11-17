@@ -13,8 +13,13 @@ instead (accounts.work_email). The sign-in email never changes.
 `refresh_company_verification` recomputes this from scratch and is called
 wherever any input can change: registration, profile updates, email
 confirmation, and Admin edits to a user or a company's domains.
+
+A Professional with no registered company is linked to one automatically once
+they have a confirmed email on its domain: when Admin adds the company or the
+domain, or when they confirm the email later (work_email.on_address_confirmed).
 """
 from allauth.account.models import EmailAddress
+from django.db.models import Q
 from django.dispatch import Signal
 from django.utils import timezone
 from rest_framework import serializers
@@ -57,8 +62,32 @@ def refresh_company_verification(user):
     return verified
 
 
+def link_professionals_on_domain(company):
+    """
+    Link Professionals with no registered company (usually an unlisted name typed
+    at sign-up) who have a confirmed email on this company's domains. The confirmed
+    address proves where they work; the typed name is replaced.
+    """
+    if not company.is_active:
+        return
+    domains = list(company.domains.values_list("domain", flat=True))
+    if not domains:
+        return
+    on_domain = Q()
+    for domain in domains:
+        on_domain |= Q(email__iendswith="@" + domain) | Q(email__iendswith="." + domain)
+    user_ids = EmailAddress.objects.filter(
+        on_domain, verified=True,
+        user__account_type=User.ACCOUNT_PROFESSIONAL, user__company__isnull=True,
+    ).values_list("user_id", flat=True)
+    for user in User.objects.filter(pk__in=user_ids):
+        user.company, user.company_other = company, ""
+        user.save(update_fields=["company", "company_other"])
+
+
 def refresh_company_members(company):
-    """After Admin edits a company (domains, active flag) — re-check its verified experts."""
+    """After Admin edits a company (domains, active flag) — link and re-check its experts."""
+    link_professionals_on_domain(company)
     for user in company.members.filter(account_type=User.ACCOUNT_PROFESSIONAL):
         refresh_company_verification(user)
 

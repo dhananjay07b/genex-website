@@ -50,9 +50,14 @@ def company_for_email(email):
 
 
 def on_address_confirmed(address):
-    """A work email was just confirmed: link its company, then re-check verification."""
+    """
+    An address was just confirmed. A work email links its company; so does the
+    sign-in email of a Professional with no registered company yet (one who typed
+    an unlisted name). Then verification is re-checked.
+    """
     user = address.user
-    if user.account_type == User.ACCOUNT_PROFESSIONAL and address.email.lower() != (user.email or "").lower():
+    is_work_email = address.email.lower() != (user.email or "").lower()
+    if user.account_type == User.ACCOUNT_PROFESSIONAL and (is_work_email or user.company_id is None):
         company = company_for_email(address.email)
         if company is not None and user.company_id != company.pk:
             user.company, user.company_other = company, ""

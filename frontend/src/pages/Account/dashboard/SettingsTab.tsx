@@ -476,7 +476,14 @@ export function SettingsTab() {
                     onChange={e => setCompanyChoiceEdit(e.target.value)}
                   />
                   {companyChoice === OTHER_COMPANY && (
-                    <Input placeholder="Company name, e.g. Acme Energy" aria-label="Company name" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
+                    <>
+                      <Input placeholder="Company name, e.g. Acme Energy" aria-label="Company name" value={companyOther} onChange={e => setCompanyOther(e.target.value)} />
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        Companies not listed on GeLearn show without a verified badge. Once Genex adds yours, you&apos;re
+                        linked and verified automatically if your confirmed email is on its domain; otherwise, choose it
+                        here and confirm your work email.
+                      </p>
+                    </>
                   )}
                   {selectedCompany && (selectedCompany.slug === linkedCompany?.slug && user.company_verified ? (
                     <p className="text-xs text-text-muted leading-relaxed">Verified {selectedCompany.name} expert.</p>
@@ -488,8 +495,8 @@ export function SettingsTab() {
               <Input label="Role" placeholder="e.g. Deputy GM, Grid Operations" value={roleTitle} onChange={e => setRoleTitle(e.target.value)} />
             </div>
           )}
-          {/* Signed up with a personal email? A confirmed work email gets them verified (hidden once verified by sign-in email). */}
-          {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} companyVerified={Boolean(user.company_verified)} />}
+          {/* Signed up with a personal email? A confirmed work email gets them verified. */}
+          {accountType === 'professional' && !isCompanyAccount && <WorkEmailCard signInEmail={user.email} canAdd={user.verification_step === 'work_email'} />}
           <div className={cn('grid grid-cols-1 gap-4', isProfessional && 'sm:grid-cols-2')}>
             {isProfessional && (
               <Input

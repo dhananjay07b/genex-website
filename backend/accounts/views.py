@@ -5,7 +5,7 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.models import SocialAccount
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView, VerifyEmailView
-from dj_rest_auth.jwt_auth import JWTCookieAuthentication, get_refresh_view, set_jwt_cookies
+from dj_rest_auth.jwt_auth import get_refresh_view, set_jwt_cookies, unset_jwt_cookies
 from dj_rest_auth.utils import jwt_encode
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.conf import settings
@@ -27,6 +27,7 @@ from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.utils import get_md5_hash_password
 
+from .authentication import GenexJWTCookieAuthentication
 from .backoffice import is_backoffice_session
 from .models import User
 from .roles import display_company
@@ -47,8 +48,9 @@ def is_current_sign_in(token):
     """
     A token made before the account's password last changed is refused. simplejwt
     checks this for access tokens (CHECK_REVOKE_TOKEN), but not for refresh tokens.
+    So is one for a deleted or deactivated account.
     """
-    user = User.objects.filter(pk=token.get(jwt_settings.USER_ID_CLAIM)).only("password").first()
+    user = User.objects.filter(pk=token.get(jwt_settings.USER_ID_CLAIM), is_active=True).only("password").first()
     return user is not None and token.get(jwt_settings.REVOKE_TOKEN_CLAIM) == get_md5_hash_password(user.password)
 
 
@@ -68,7 +70,7 @@ class SessionView(APIView):
     def get(self, request):
         user = None
         try:
-            result = JWTCookieAuthentication().authenticate(request)
+            result = GenexJWTCookieAuthentication().authenticate(request)
         except exceptions.APIException:  # expired or invalid sign-in cookie: not signed in
             result = None
         if result:
@@ -94,6 +96,11 @@ class SessionView(APIView):
             "user": UserSerializer(user, context={"request": request}).data if user else None,
             "can_refresh": can_refresh,
         })
+        jwt_cookies = (settings.REST_AUTH["JWT_AUTH_COOKIE"], settings.REST_AUTH["JWT_AUTH_REFRESH_COOKIE"])
+        if user is None and not can_refresh and any(name in request.COOKIES for name in jwt_cookies):
+            # A sign-in that can't come back (user deleted or deactivated, password changed, expired):
+            # drop its cookies, or the browser keeps sending them with every request.
+            unset_jwt_cookies(response)
         response["Cache-Control"] = "no-store"
         get_token(request)  # visitors need the csrftoken cookie before signing in (see MeView)
         return response
@@ -426,7 +433,7 @@ class GenexTokenRefreshView(get_refresh_view()):
             except TokenError:
                 token = None  # the parent class reports it
             if token is not None and not is_current_sign_in(token):
-                raise InvalidToken("Your password was changed. Please sign in again.")
+                raise InvalidToken("Your sign-in has ended. Please sign in again.")
         return super().post(request, *args, **kwargs)
 
 
