@@ -9,6 +9,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { RichText } from '@/components/ui/RichText'
 import { buttonVariants } from '@/components/ui/Button'
@@ -220,7 +221,18 @@ export default function CourseLessonPage() {
             </div>
           ) : lesson && type && (
             <>
-              {!enrolled && lesson.is_preview && (
+              {(lesson.has_pending || !lesson.approved) && (
+                <p className="flex gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <HourglassEmptyOutlinedIcon sx={{ fontSize: 18 }} className="shrink-0 mt-px" />
+                  <span>
+                    <b>Only the course team sees this version.</b>{' '}
+                    {lesson.has_pending
+                      ? 'It includes edits waiting for Genex review. Learners see the approved lesson until they’re approved.'
+                      : 'Genex hasn’t reviewed this lesson yet, so learners can’t open it.'}
+                  </span>
+                </p>
+              )}
+              {!enrolled && lesson.is_preview && lesson.approved && (
                 <p className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
                   <VisibilityOutlinedIcon sx={{ fontSize: 18 }} className="shrink-0" />
                   <span className="flex-1 min-w-48">This is a free preview. Enroll to open every lesson and track your progress.</span>

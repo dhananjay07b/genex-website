@@ -7,7 +7,7 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { COURSE_LESSON_TYPES } from '@/components/gelearn/courseItemKinds'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { embedVideoUrl } from '@/lib/utils'
-import type { CourseLesson, CourseLessonType } from '@/types/learning'
+import type { CourseLesson, CourseLessonSaved, CourseLessonType } from '@/types/learning'
 
 interface Fields {
   title: string
@@ -28,15 +28,18 @@ const fieldsOf = (lesson: CourseLesson | null): Fields => ({
 /**
  * Writes or edits one of the course's own lessons. It's saved straight away
  * (POST or PATCH), separately from the rest of the builder; a new lesson is then
- * placed in the outline, which the builder saves with the course.
+ * placed in the outline, which the builder saves with the course. On a live
+ * course, edits to an approved lesson wait for Genex review.
  */
-export function LessonEditor({ courseId, lesson, kind, onClose, onSaved }: {
+export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }: {
   courseId: number
   /** null for a new lesson of `kind`. */
   lesson: CourseLesson | null
   kind: CourseLessonType
+  /** The course is live: changes to its approved lessons go to Genex for review. */
+  live: boolean
   onClose: () => void
-  onSaved: (lesson: CourseLesson, created: boolean) => void
+  onSaved: (lesson: CourseLessonSaved, created: boolean) => void
 }) {
   const [fields, setFields] = useState<Fields>(() => fieldsOf(lesson))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -80,7 +83,7 @@ export function LessonEditor({ courseId, lesson, kind, onClose, onSaved }: {
     setFormError('')
     const body = { ...fields, title: fields.title.trim(), ...(lesson ? {} : { kind: type }) }
     try {
-      const saved = await apiFetch<CourseLesson>(
+      const saved = await apiFetch<CourseLessonSaved>(
         lesson ? `/api/learning/me/courses/${courseId}/lessons/${lesson.id}/` : `/api/learning/me/courses/${courseId}/lessons/`,
         { method: lesson ? 'PATCH' : 'POST', body },
       )
@@ -148,18 +151,31 @@ export function LessonEditor({ courseId, lesson, kind, onClose, onSaved }: {
             </span>
           </label>
 
-          <p className="text-xs text-text-muted leading-relaxed">
-            {fields.is_preview
-              ? 'Everyone else can open it only after enrolling.'
-              : 'Only learners of this course can open it.'} Genex reviews it with the rest of the course before it goes live.
-          </p>
+          {live && lesson?.approved ? (
+            <p className="flex gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs text-sky-900 leading-relaxed">
+              <InfoOutlinedIcon sx={{ fontSize: 15 }} className="shrink-0 mt-px" />
+              <span>
+                <b>This lesson is live.</b> Your edits go to Genex for review, and learners keep seeing the current version until
+                they&apos;re approved. Turning free preview on or off applies straight away.
+              </span>
+            </p>
+          ) : (
+            <p className="text-xs text-text-muted leading-relaxed">
+              {fields.is_preview
+                ? 'Everyone else can open it only after enrolling.'
+                : 'Only learners of this course can open it.'}{' '}
+              {live
+                ? 'It goes to Genex for review once it’s in the outline and you save the course.'
+                : 'Genex reviews it with the rest of the course before it goes live.'}
+            </p>
+          )}
           {formError && <p role="alert" className="text-sm font-semibold text-red-600">{formError}</p>}
         </div>
 
         <div className="flex flex-wrap justify-end gap-3 px-5 py-4 border-t border-border bg-surface">
           <Button type="button" variant="secondary" size="md" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button type="submit" variant="primary" size="md" disabled={saving || (lesson !== null && !dirty)}>
-            {saving ? 'Saving…' : lesson ? 'Save lesson' : 'Create lesson'}
+            {saving ? 'Saving…' : !lesson ? 'Create lesson' : live && lesson.approved ? 'Send for review' : 'Save lesson'}
           </Button>
         </div>
       </form>

@@ -144,7 +144,9 @@ export function needsReview(saved: Draft, current: Draft): boolean {
     const before = m.id === null ? undefined : savedModules.get(m.id)
     return !before || before.title.trim() !== m.title.trim() || before.summary.trim() !== m.summary.trim()
   })
-  return promised(saved) !== promised(current) || reworded || faqsOf(saved) !== faqsOf(current)
+  // A lesson Genex hasn't reviewed yet holds the outline for review too.
+  const newLesson = allLessons(current).some(i => i.kind === 'lesson' && i.approved === false)
+  return promised(saved) !== promised(current) || reworded || newLesson || faqsOf(saved) !== faqsOf(current)
 }
 
 export function metaPayload(d: Draft, includeInstructors: boolean) {

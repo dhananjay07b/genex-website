@@ -29,6 +29,8 @@ export interface CourseTarget {
   /** Only on a course's own lessons (kind 'lesson'). */
   lesson_type?: CourseLessonType
   is_preview?: boolean
+  /** Course lessons only: false until Genex has reviewed it, so adding it to a live course sends the outline for review. */
+  approved?: boolean
 }
 
 /** A course's own lesson as its author edits it: GET/POST /api/learning/me/courses/<id>/lessons/. */
@@ -43,6 +45,12 @@ export interface CourseLesson {
   is_preview: boolean
   /** Approved by Genex with the course. */
   approved: boolean
+  /**
+   * On a live course: 'new' (not reviewed yet: adding it to the outline sends it for review) or
+   * 'changed' (edits waiting for review; learners keep the approved version). Null otherwise.
+   * The other fields are the author's version, edits included.
+   */
+  review: 'new' | 'changed' | null
   in_outline: boolean
   minutes: number
   /** What it still needs before the course can be submitted, e.g. "add its text". */
@@ -51,6 +59,9 @@ export interface CourseLesson {
   card: CourseTarget
   updated_at: string
 }
+
+/** POST/PATCH/DELETE of a course lesson also return the course's review status after the change. */
+export type CourseLessonSaved = CourseLesson & { course_revision: CourseRevisionInfo | null }
 
 /** GET /api/learning/courses/<slug>/lessons/<id>/: a course's own lesson, for the lesson page. */
 export interface CourseLessonContent {
@@ -65,6 +76,10 @@ export interface CourseLessonContent {
   body: string
   is_preview: boolean
   minutes: number
+  /** Only for the course team: this shows edits still waiting for Genex review (learners see the approved version). */
+  has_pending: boolean
+  /** False when Genex hasn't reviewed the lesson yet (only the course team can open it then). */
+  approved: boolean
 }
 
 /** Why a lesson didn't open (403): sign in, enroll, or buy the course. */
@@ -283,7 +298,7 @@ export interface CourseRevisionInfo {
   status: 'pending' | 'rejected'
   submitted_at: string
   rejection_reason: string
-  /** What changed: course fields, plus "faqs" and "outline". */
+  /** What changed: course fields, plus "faqs", "outline" and "lessons" (edits to its own lessons). */
   changed: string[]
 }
 
