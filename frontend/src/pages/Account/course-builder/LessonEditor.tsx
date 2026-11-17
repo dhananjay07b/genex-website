@@ -7,7 +7,9 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { COURSE_LESSON_TYPES } from '@/components/gelearn/courseItemKinds'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { embedVideoUrl } from '@/lib/utils'
-import type { CourseLesson, CourseLessonSaved, CourseLessonType } from '@/types/learning'
+import type { CourseLesson, CourseLessonSaved, CourseLessonType, QuizQuestion } from '@/types/learning'
+import { QuizEditor } from './QuizEditor'
+import { blankQuestion, quizProblem } from './quiz'
 
 interface Fields {
   title: string
@@ -15,15 +17,26 @@ interface Fields {
   duration: string
   body: string
   is_preview: boolean
+  /** Quizzes. Kept as typed; checked on saving. */
+  pass_mark: string
+  questions: QuizQuestion[]
 }
 
-const fieldsOf = (lesson: CourseLesson | null): Fields => ({
+const fieldsOf = (lesson: CourseLesson | null, kind: CourseLessonType): Fields => ({
   title: lesson?.title ?? '',
   video_url: lesson?.video_url ?? '',
   duration: lesson?.duration ?? '',
   body: lesson?.body ?? '',
   is_preview: lesson?.is_preview ?? false,
+  pass_mark: String(lesson?.pass_mark ?? 70),
+  questions: lesson ? lesson.questions : kind === 'quiz' ? [blankQuestion()] : [],
 })
+
+/** A question with nothing typed in it is left out rather than refused. */
+const isBlank = (q: QuizQuestion) => !q.prompt.trim() && q.options.every(o => !o.trim()) && !q.explanation.trim()
+
+/** Field errors the form has no field for (e.g. "detail") are shown as the form's message. */
+const FIELD_NAMES = new Set(['title', 'video_url', 'duration', 'body'])
 
 /**
  * Writes or edits one of the course's own lessons. It's saved straight away
@@ -41,16 +54,17 @@ export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }:
   onClose: () => void
   onSaved: (lesson: CourseLessonSaved, created: boolean) => void
 }) {
-  const [fields, setFields] = useState<Fields>(() => fieldsOf(lesson))
+  const [fields, setFields] = useState<Fields>(() => fieldsOf(lesson, kind))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
-  const [initial] = useState(() => JSON.stringify(fieldsOf(lesson)))
+  const [initial] = useState(() => JSON.stringify(fieldsOf(lesson, kind)))
   const dirty = JSON.stringify(fields) !== initial
   const type = lesson?.kind ?? kind
   const { label, icon: Icon } = COURSE_LESSON_TYPES[type]
   const isVideo = type === 'video'
+  const isQuiz = type === 'quiz'
   const link = fields.video_url.trim()
   const plays = link ? embedVideoUrl(link) !== null : true
 
@@ -78,10 +92,27 @@ export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }:
       setErrors({ title: 'Give the lesson a title of at least 3 characters.' })
       return
     }
+    const { pass_mark: passMarkText, questions: typed, ...common } = fields
+    let quiz = {}
+    if (isQuiz) {
+      const passMark = Number(passMarkText)
+      if (!Number.isInteger(passMark) || passMark < 1 || passMark > 100) {
+        setErrors({ pass_mark: 'Enter a whole number from 1 to 100.' })
+        return
+      }
+      const questions = typed.filter(q => !isBlank(q))
+      const problem = quizProblem(questions)
+      if (problem) {
+        setErrors({})
+        setFormError(problem)
+        return
+      }
+      quiz = { pass_mark: passMark, questions: questions.map(q => ({ ...q, options: q.options.map(o => o.trim()) })) }
+    }
     setSaving(true)
     setErrors({})
     setFormError('')
-    const body = { ...fields, title: fields.title.trim(), ...(lesson ? {} : { kind: type }) }
+    const body = { ...common, ...quiz, title: fields.title.trim(), ...(lesson ? {} : { kind: type }) }
     try {
       const saved = await apiFetch<CourseLessonSaved>(
         lesson ? `/api/learning/me/courses/${courseId}/lessons/${lesson.id}/` : `/api/learning/me/courses/${courseId}/lessons/`,
@@ -91,7 +122,8 @@ export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }:
     } catch (err) {
       const found = err instanceof ApiError ? err.fields : {}
       setErrors(found)
-      setFormError(Object.keys(found).length ? '' : err instanceof ApiError ? err.message : "Couldn't save the lesson. Please try again.")
+      const other = Object.entries(found).find(([name]) => !FIELD_NAMES.has(name) && name !== 'pass_mark')?.[1]
+      setFormError(other ?? (Object.keys(found).length ? '' : err instanceof ApiError ? err.message : "Couldn't save the lesson. Please try again."))
     } finally {
       setSaving(false)
     }
@@ -114,7 +146,7 @@ export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }:
         </div>
 
         <div className="flex flex-col gap-5 px-5 py-5">
-          <Input ref={titleRef} label="Lesson title" placeholder={isVideo ? 'e.g. Testing a feeder relay' : 'e.g. Why protection relays trip'}
+          <Input ref={titleRef} label="Lesson title" placeholder={isVideo ? 'e.g. Testing a feeder relay' : isQuiz ? 'e.g. Check your understanding: relay basics' : 'e.g. Why protection relays trip'}
             maxLength={200} value={fields.title} error={errors.title} onChange={e => set({ title: e.target.value })} />
 
           {isVideo && (
@@ -136,9 +168,14 @@ export function LessonEditor({ courseId, lesson, kind, live, onClose, onSaved }:
             </div>
           )}
 
-          <RichTextEditor label={isVideo ? 'Notes under the video (optional)' : 'Lesson text'}
+          <RichTextEditor label={isVideo ? 'Notes under the video (optional)' : isQuiz ? 'Introduction (optional)' : 'Lesson text'}
             value={fields.body} onChange={html => set({ body: html })} error={errors.body}
-            minHeightClassName={isVideo ? 'min-h-40' : 'min-h-80'} />
+            minHeightClassName={isVideo || isQuiz ? 'min-h-32' : 'min-h-80'} />
+
+          {isQuiz && (
+            <QuizEditor questions={fields.questions} onChange={questions => set({ questions })}
+              passMark={fields.pass_mark} onPassMark={pass_mark => set({ pass_mark })} passMarkError={errors.pass_mark} />
+          )}
 
           <label className="flex items-start gap-3 rounded-xl border border-border px-4 py-3 cursor-pointer hover:border-primary">
             <input type="checkbox" checked={fields.is_preview} onChange={e => set({ is_preview: e.target.checked })}

@@ -43,6 +43,10 @@ export interface CourseLesson {
   /** Sanitised HTML. */
   body: string
   is_preview: boolean
+  /** Quizzes: the percentage of right answers needed to pass. */
+  pass_mark: number
+  /** Quizzes: every question with its right answers (the author's view). Empty for other lessons. */
+  questions: QuizQuestion[]
   /** Approved by Genex with the course. */
   approved: boolean
   /**
@@ -58,6 +62,44 @@ export interface CourseLesson {
   /** The lesson as an outline item. */
   card: CourseTarget
   updated_at: string
+}
+
+/** A quiz question as its author writes it. `correct` are indexes into `options`; several mean "select all that apply". */
+export interface QuizQuestion {
+  prompt: string
+  options: string[]
+  correct: number[]
+  explanation: string
+}
+
+/** A quiz question as learners get it before answering: no right answers. */
+export interface QuizQuestionForLearner {
+  prompt: string
+  options: string[]
+  /** More than one answer is right ("select all that apply"). */
+  multiple: boolean
+}
+
+export interface QuizBest {
+  score: number
+  total: number
+  passed: boolean
+}
+
+/** POST /api/learning/courses/<slug>/lessons/<id>/attempts/: the graded quiz. */
+export interface QuizResult {
+  score: number
+  total: number
+  percent: number
+  pass_mark: number
+  passed: boolean
+  /** Per question, in order. `correct_options` only once the quiz is passed. */
+  results: { correct: boolean; explanation: string; correct_options?: number[] }[]
+  /** Saved for an enrolled learner (free-preview tries and the course team's previews aren't). */
+  saved: boolean
+  best: QuizBest | null
+  /** Passing completed the last lesson. */
+  certificate_code: string | null
 }
 
 /** POST/PATCH/DELETE of a course lesson also return the course's review status after the change. */
@@ -80,6 +122,8 @@ export interface CourseLessonContent {
   has_pending: boolean
   /** False when Genex hasn't reviewed the lesson yet (only the course team can open it then). */
   approved: boolean
+  /** Quizzes only (null otherwise): the questions without their answers, and the viewer's best result so far. */
+  quiz: { questions: QuizQuestionForLearner[]; pass_mark: number; best: QuizBest | null } | null
 }
 
 /** Why a lesson didn't open (403): sign in, enroll, or buy the course. */

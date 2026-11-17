@@ -15,7 +15,7 @@ import { LessonEditor } from './LessonEditor'
 
 type Patch = (next: Partial<Draft>) => void
 
-const NEW_TYPES: CourseLessonType[] = ['text', 'video']
+const NEW_TYPES: CourseLessonType[] = ['text', 'video', 'quiz']
 
 /**
  * Lessons written inside this course: they live only here, open only for its
@@ -110,7 +110,7 @@ export function CourseLessonsPanel({
   }
 
   return (
-    <BuilderCard n={n} title="Lessons written for this course" hint="Text and video lessons for this course's learners, and free previews">
+    <BuilderCard n={n} title="Lessons written for this course" hint="Text, video and quiz lessons for this course's learners, and free previews">
       {live && (
         <p className="flex gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs text-sky-900 leading-relaxed">
           <InfoOutlinedIcon sx={{ fontSize: 15 }} className="shrink-0 mt-px" />
@@ -136,7 +136,9 @@ export function CourseLessonsPanel({
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-text-primary truncate">{lesson.title}</span>
                     <span className="block text-xs text-text-muted truncate">
-                      {[label, lesson.kind === 'video' ? lesson.duration : lesson.minutes ? `about ${formatMinutes(lesson.minutes)}` : '',
+                      {[label, lesson.kind === 'video' ? lesson.duration
+                        : lesson.kind === 'quiz' ? (lesson.questions.length ? `${lesson.questions.length} question${lesson.questions.length === 1 ? '' : 's'} · pass at ${lesson.pass_mark}%` : '')
+                          : lesson.minutes ? `about ${formatMinutes(lesson.minutes)}` : '',
                         lesson.is_preview ? 'Free preview' : '']
                         .filter(Boolean).join(' · ')}
                     </span>
