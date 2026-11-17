@@ -167,8 +167,8 @@ export function BuilderActions({ status, slug, dirty, saving, needsReview, lesso
 
       {isLive && needsReview && (
         <p className="rounded-lg bg-sky-50 border border-sky-200 px-3 py-2.5 text-xs text-sky-900">
-          <b>This course is live.</b> Your changes to what learners are promised go to Genex for review. Learners keep seeing the
-          live version until they&apos;re approved. Reordering or moving lessons goes live straight away.
+          <b>This course is live.</b> Your changes to what learners are promised, and new lessons, go to Genex for review. Learners
+          keep seeing the live version until they&apos;re approved. Reordering or moving lessons goes live straight away.
         </p>
       )}
 

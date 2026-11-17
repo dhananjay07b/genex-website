@@ -14,7 +14,7 @@ import { FileField } from '@/pages/Studio/fields/FileField'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/pages/Account/dashboard/ConfirmDialog'
-import type { CourseLessonType, CourseLevel, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
+import type { CourseLessonType, CourseLevel, CourseRevisionInfo, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
 import { BasicsCard, FaqCard, WhatLearnersGetCard } from './cards'
 import { OutlineEditor } from './OutlineEditor'
 import { LibraryPanel } from './LibraryPanel'
@@ -78,6 +78,8 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [withdrawing, setWithdrawing] = useState<'ask' | 'busy' | null>(null)
+  // Bumped when the course lessons should be fetched again (withdrawing drops their edits waiting for review).
+  const [lessonsKey, setLessonsKey] = useState(0)
 
   const load = (loaded: MyCourse) => {
     const d = draftFromCourse(loaded)
@@ -131,6 +133,12 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     const fn = (item: CourseTarget) => (keyOf(item) === key ? (removed ? null : card) : item)
     setSaved(prev => mapItems(prev, fn))
     setDraft(prev => mapItems(prev, fn))
+  }
+  // A lesson saved on a live course can send it for review (or, edited back, drop that): only the review status
+  // is updated, so the rest of the builder keeps any unsaved edits.
+  const setRevision = (revision: CourseRevisionInfo | null) => {
+    setCourse(prev => (prev ? { ...prev, revision } : prev))
+    if (revision?.status === 'pending' && !course?.revision) setNotice('Saved. Your changes are with Genex for review.')
   }
   const status = course?.status ?? null
   const lessonCount = allLessons(draft).length
@@ -200,6 +208,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     setWithdrawing('busy')
     try {
       load(await apiFetch<MyCourse>(`/api/learning/me/courses/${course.id}/revision/`, { method: 'DELETE' }))
+      setLessonsKey(k => k + 1)
       setNotice('Changes withdrawn. The builder shows the live version again.')
     } catch {
       setFormError("Couldn't withdraw the changes. Please try again.")
@@ -269,7 +278,8 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
             <OutlineEditor draft={draft} patch={patch} error={errors.items ?? errors.modules} />
             <CourseLessonsPanel n={4} course={course ?? null} draft={draft} patch={patch}
               openOnLoad={openLesson} onStartWithoutCourse={startFirstLesson} starting={saving === 'draft' && !course}
-              onLessonSaved={card => syncLesson(card, false)} onLessonDeleted={card => syncLesson(card, true)} />
+              onLessonSaved={card => syncLesson(card, false)} onLessonDeleted={card => syncLesson(card, true)}
+              onRevision={setRevision} reloadKey={lessonsKey} />
             <LibraryPanel n={5} draft={draft} patch={patch} library={library} isCompany={isCompany} />
             <FaqCard draft={draft} patch={patch} n={6} />
           </div>

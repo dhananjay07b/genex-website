@@ -9,6 +9,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { RichText } from '@/components/ui/RichText'
 import { buttonVariants } from '@/components/ui/Button'
@@ -20,6 +21,7 @@ import { cn, embedVideoUrl } from '@/lib/utils'
 import type { CourseDetail as Course, CourseItem, CourseLessonBlock, CourseLessonContent } from '@/types/learning'
 import { formatMinutes, plural } from './format'
 import { recordLessonOpen } from './lessons'
+import { QuizPlayer } from './QuizPlayer'
 
 type Loaded<T> = T | null | undefined
 
@@ -87,8 +89,9 @@ function Outline({ course, currentId, completed, onOpen }: {
 
 /**
  * A lesson written inside a course, opened from the course: video and/or text,
- * with the course outline beside it and Previous / Next. Opening it as an
- * enrolled learner completes it (as opening any lesson from the course does).
+ * or a quiz, with the course outline beside it and Previous / Next. Opening it
+ * as an enrolled learner completes it (as opening any lesson from the course
+ * does); a quiz is completed by passing it.
  */
 export default function CourseLessonPage() {
   const { slug, lessonId } = useParams<{ slug: string; lessonId: string }>()
@@ -131,17 +134,18 @@ export default function CourseLessonPage() {
     [course, justDone],
   )
   const itemId = lesson?.item_id ?? null
+  const isQuiz = lesson?.kind === 'quiz'
 
-  // Opening the lesson as an enrolled learner completes it; the last one issues the certificate.
+  // Opening the lesson as an enrolled learner completes it (a quiz: passing it); the last one issues the certificate.
   useEffect(() => {
-    if (!course || !enrolled || itemId === null || completed.has(itemId)) return
+    if (!course || !enrolled || isQuiz || itemId === null || completed.has(itemId)) return
     apiFetch<{ completed: number; certificate_code: string | null }>(
       `/api/learning/courses/${course.slug}/items/${itemId}/open/`, { method: 'POST' },
     ).then(res => {
       setJustDone(prev => new Set(prev).add(itemId))
       if (res.certificate_code) setCertificate(res.certificate_code)
     }).catch(() => {})
-  }, [course, enrolled, itemId, completed])
+  }, [course, enrolled, isQuiz, itemId, completed])
 
   if (course === null || (lesson === null && !block)) return <Navigate to={course ? `/courses/${course.slug}` : '/courses'} replace />
   if (course === undefined || lesson === undefined) {
@@ -220,7 +224,18 @@ export default function CourseLessonPage() {
             </div>
           ) : lesson && type && (
             <>
-              {!enrolled && lesson.is_preview && (
+              {(lesson.has_pending || !lesson.approved) && (
+                <p className="flex gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <HourglassEmptyOutlinedIcon sx={{ fontSize: 18 }} className="shrink-0 mt-px" />
+                  <span>
+                    <b>Only the course team sees this version.</b>{' '}
+                    {lesson.has_pending
+                      ? 'It includes edits waiting for Genex review. Learners see the approved lesson until they’re approved.'
+                      : 'Genex hasn’t reviewed this lesson yet, so learners can’t open it.'}
+                  </span>
+                </p>
+              )}
+              {!enrolled && lesson.is_preview && lesson.approved && (
                 <p className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
                   <VisibilityOutlinedIcon sx={{ fontSize: 18 }} className="shrink-0" />
                   <span className="flex-1 min-w-48">This is a free preview. Enroll to open every lesson and track your progress.</span>
@@ -247,6 +262,15 @@ export default function CourseLessonPage() {
               ))}
 
               {lesson.body && <RichText html={lesson.body} className="max-w-3xl text-base text-slate-800" />}
+
+              {lesson.quiz && (
+                <QuizPlayer key={key} slug={course.slug} lessonId={lesson.id} quiz={lesson.quiz}
+                  saving={enrolled && itemId !== null && !lesson.has_pending}
+                  onPassed={code => {
+                    if (itemId !== null) setJustDone(prev => new Set(prev).add(itemId))
+                    if (code) setCertificate(code)
+                  }} />
+              )}
             </>
           )}
 

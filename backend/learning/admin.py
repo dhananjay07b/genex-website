@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -11,7 +12,7 @@ from .models import (
     MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseLesson, CourseModule, Certificate, CourseReview, CourseRevision,
     Enrollment, Playlist, PlaylistItem, ReviewReply, instructor_problem,
 )
-from .revisions import apply_revision, live_value, revision_of
+from .revisions import apply_revision, live_value, outline_lesson_ids, revision_of
 
 
 class CourseModuleInline(admin.TabularInline):
@@ -59,6 +60,12 @@ class CourseRevisionInline(admin.StackedInline):
             lessons = sum(len(m["items"]) for m in new["modules"]) + len(new["loose_items"])
             rows.append(("Modules", "; ".join(course.modules.values_list("title", flat=True)) or "(none)",
                          f"{'; '.join(m['title'] for m in new['modules']) or '(none)'} ({lessons} lessons)"))
+            added = course.lessons.filter(pk__in=outline_lesson_ids(new), approved=False).values_list("title", flat=True)
+            if added:
+                rows.append(("New lessons", "(not live)", "; ".join(added)))
+        if revision.changes.get("lessons"):
+            edited = course.lessons.filter(pk__in=revision.changes["lessons"]).values_list("title", flat=True)
+            rows.append(("Edited lessons", "(see “Lessons written for this course” below)", "; ".join(edited)))
         body = format_html_join("", "<tr><th style='padding:4px 12px 4px 0'>{}</th><td style='padding:4px 12px'>{}</td><td style='padding:4px 0'>{}</td></tr>", rows)
         return format_html("<table><tr><th></th><th style='text-align:left;padding:4px 12px'>Live now</th><th style='text-align:left'>Proposed</th></tr>{}</table>", body)
 
@@ -110,16 +117,42 @@ class PlaylistItemInline(admin.TabularInline):
         return False
 
 
+def _rich(html):
+    # Sanitised when saved (pages.richtext.sanitize_submission_html), so it's safe to render.
+    if not html:
+        return "(empty)"
+    return format_html('<div style="max-height:420px;overflow:auto;border:1px solid #ddd;padding:12px;max-width:760px">{}</div>', mark_safe(html))
+
+
+def _questions(questions, pass_mark):
+    """A quiz for review: each question with its answers, the right ones marked ✓."""
+    if not questions:
+        return "(no questions yet)"
+    blocks = []
+    for n, q in enumerate(questions, 1):
+        options = format_html_join("", "<li>{}{}</li>", ((("✓ " if i in q["correct"] else ""), o) for i, o in enumerate(q["options"])))
+        explanation = format_html("<div style='color:#555'>Why: {}</div>", q["explanation"]) if q.get("explanation") else ""
+        blocks.append(format_html("<div style='margin:0 0 10px'><b>{}. {}</b><ul style='margin:4px 0'>{}</ul>{}</div>", n, q["prompt"], options, explanation))
+    return format_html("<div style='max-width:760px'><p>Pass mark: {}%</p>{}</div>", pass_mark, mark_safe("".join(blocks)))
+
+
+def _video(url, duration):
+    if not url:
+        return "(no link yet)"
+    return format_html('<a href="{0}" target="_blank" rel="noopener">{0}</a> · {1}', url, duration or "no length")
+
+
 class CourseLessonInline(admin.StackedInline):
     """
     Lessons written inside the course: what learners will read and watch, for
     review with the rest of the course. Authors edit them in the course builder.
+    On a live course, a lesson's edits waiting for review show next to the live version.
     """
     model = CourseLesson
     extra = 0
     can_delete = False
     verbose_name_plural = "Lessons written for this course"
-    fields = ("kind", "title", "status", "is_preview", "video", "content")
+    fields = ("kind", "title", "status", "is_preview", "preview", "video", "content", "quiz", "waiting")
     readonly_fields = fields
 
     def has_add_permission(self, request, obj=None):
@@ -128,23 +161,50 @@ class CourseLessonInline(admin.StackedInline):
     @admin.display(description="Status")
     def status(self, obj):
         in_outline = obj.items.exists()
-        state = "Approved" if obj.approved else "Not yet approved"
-        return f"{state} · {'in the outline' if in_outline else 'not in the outline (learners never see it)'}"
+        if obj.pending:
+            state = "Live · edits waiting for review (below)"
+        elif obj.approved:
+            state = "Approved"
+        else:
+            state = "Not yet approved"
+        return f"{state} · {'in the outline' if in_outline else 'not in the live outline (learners never see it)'}"
 
-    @admin.display(description="Video")
+    @admin.display(description="Preview")
+    def preview(self, obj):
+        # The lesson page shows the course team and Admin the version with edits waiting for review.
+        url = f"{settings.GELEARN_FRONTEND_URL.rstrip('/')}/courses/{obj.playlist.slug}/lessons/{obj.pk}"
+        return format_html('<a href="{}" target="_blank" rel="noopener">Preview on GeLearn</a>', url)
+
+    @admin.display(description="Video (live)")
     def video(self, obj):
-        if obj.kind != CourseLesson.KIND_VIDEO:
-            return "—"
-        if not obj.video_url:
-            return "(no link yet)"
-        return format_html('<a href="{0}" target="_blank" rel="noopener">{0}</a> · {1}', obj.video_url, obj.duration or "no length")
+        return _video(obj.video_url, obj.duration) if obj.kind == CourseLesson.KIND_VIDEO else "—"
 
-    @admin.display(description="Text")
+    @admin.display(description="Text (live)")
     def content(self, obj):
-        # Sanitised when saved (pages.richtext.sanitize_submission_html), so it's safe to render.
-        if not obj.body:
-            return "(empty)"
-        return format_html('<div style="max-height:420px;overflow:auto;border:1px solid #ddd;padding:12px;max-width:760px">{}</div>', mark_safe(obj.body))
+        return _rich(obj.body)
+
+    @admin.display(description="Quiz (live)")
+    def quiz(self, obj):
+        from .quizzes import live_questions
+        return _questions(live_questions(obj), obj.pass_mark) if obj.kind == CourseLesson.KIND_QUIZ else "—"
+
+    @admin.display(description="Waiting for review")
+    def waiting(self, obj):
+        """The proposed version of each changed field. Approve applies them; Reject sends them back."""
+        if not obj.pending:
+            return "—"
+        rows = []
+        if "title" in obj.pending:
+            rows.append(("Title", obj.pending["title"]))
+        if "video_url" in obj.pending or "duration" in obj.pending:
+            rows.append(("Video", _video(obj.pending.get("video_url", obj.video_url), obj.pending.get("duration", obj.duration))))
+        if "body" in obj.pending:
+            rows.append(("Text", _rich(obj.pending["body"])))
+        if "questions" in obj.pending or "pass_mark" in obj.pending:
+            from .quizzes import live_questions
+            questions = obj.pending.get("questions", live_questions(obj))
+            rows.append(("Quiz", _questions(questions, obj.pending.get("pass_mark", obj.pass_mark))))
+        return format_html_join("", "<p style='margin:0 0 4px'><b>{}</b></p><div style='margin:0 0 12px'>{}</div>", rows)
 
 
 def _notify(course, text):
@@ -201,7 +261,8 @@ class PlaylistAdmin(admin.ModelAdmin):
             course.reviewed_at = timezone.now()
             course.reviewed_by = request.user
             course.save(update_fields=["status", "reviewed_at", "reviewed_by"])
-            course.lessons.update(approved=True)  # reviewed with the course
+            # Reviewed with the course: the lessons its outline uses. Others wait until they're added (and reviewed).
+            course.lessons.filter(pk__in=course.items.filter(lesson__isnull=False).values("lesson")).update(approved=True)
             _notify(course, f'Your course "{course.title}" is live.')
         # Live courses with changes waiting: apply them; the course never went offline.
         for course in queryset.filter(status=Playlist.STATUS_PUBLISHED, revision__status=CourseRevision.STATUS_PENDING):

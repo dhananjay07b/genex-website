@@ -3,6 +3,11 @@ Pending changes to live courses (Phase 8). An edit to what a live course
 promises (PROMISED_FIELDS, its modules or its FAQs) is held in a
 CourseRevision while learners keep seeing the live course. Approving the
 course in Django admin applies the revision; rejecting it keeps the live course.
+
+The course's own lessons (CourseLesson) join in: an edit to an approved lesson
+is held on the lesson (`pending`) and listed under the revision's "lessons" key;
+a new lesson isn't approved, so adding it to the outline holds the outline.
+Approving applies the held edits and approves the lessons the outline uses.
 """
 from decimal import Decimal
 
@@ -15,6 +20,11 @@ from .serializers import library_for_course
 
 def is_live(course):
     return course.status == Playlist.STATUS_PUBLISHED
+
+
+def _delete(course, revision):
+    revision.delete()
+    Playlist.revision.related.delete_cached_value(course)  # so `course.revision` doesn't return the deleted row
 
 
 def revision_of(course):
@@ -45,6 +55,8 @@ def live_outline(course):
 
 
 def live_value(course, key):
+    if key == "lessons":  # ids of lessons with edits held for review; none on the live course
+        return []
     if key == "faqs":
         return [[f.question, f.answer] for f in course.faqs.all()]
     if key == "outline":
@@ -82,7 +94,7 @@ def stage(course, user, updates):
             changes[key] = value
     if not changes:
         if revision:
-            revision.delete()
+            _delete(course, revision)
         return None
     if revision is None:
         revision = CourseRevision(playlist=course)
@@ -94,6 +106,37 @@ def stage(course, user, updates):
         revision.submitted_by = user
         revision.save()
     return revision
+
+
+def lessons_with_edits(course):
+    return sorted(course.lessons.filter(pending__isnull=False).values_list("pk", flat=True))
+
+
+def restage_lessons(course, user):
+    """
+    After a lesson of a live course changed: list the lessons with held edits in
+    the revision (dropping it when nothing is held any more). Changes Genex sent
+    back go back into review, as when any other part is saved again.
+    """
+    return stage(course, user, {"lessons": lessons_with_edits(course)})
+
+
+def outline_lesson_ids(outline):
+    refs = [r for m in outline["modules"] for r in m["items"]] + outline["loose_items"]
+    return {r["id"] for r in refs if r["kind"] == "lesson"}
+
+
+def drop_from_held_outline(course, user, lesson_id):
+    """A deleted lesson leaves the outline waiting for review too."""
+    revision = revision_of(course)
+    if not (revision and "outline" in revision.changes):
+        return
+    outline = revision.changes["outline"]
+    keep = lambda refs: [r for r in refs if not (r["kind"] == "lesson" and r["id"] == lesson_id)]  # noqa: E731
+    stage(course, user, {"outline": {
+        "modules": [{**m, "items": keep(m["items"])} for m in outline["modules"]],
+        "loose_items": keep(outline["loose_items"]),
+    }})
 
 
 def sync_items(course, rows):
@@ -179,10 +222,34 @@ def apply_revision(course):
     if "faqs" in changes:
         apply_faqs(course, changes["faqs"])
     if "outline" in changes:
-        apply_outline(course, _still_allowed(course, changes["outline"]))
+        outline = _still_allowed(course, changes["outline"])
+        course.lessons.filter(pk__in=outline_lesson_ids(outline)).update(approved=True)
+        apply_outline(course, outline)
+    apply_lesson_edits(course)
     course.save()
-    revision.delete()
+    _delete(course, revision)
     return True
+
+
+def apply_lesson_edits(course):
+    """Write each lesson's held edits to the live lesson (on approval)."""
+    from .quizzes import write_questions
+    for lesson in course.lessons.filter(pending__isnull=False):
+        for field, value in lesson.pending.items():
+            if field == "questions":
+                write_questions(lesson, value)
+            else:
+                setattr(lesson, field, value)
+        lesson.pending = None
+        lesson.save()
+
+
+def withdraw(course):
+    """Drop everything waiting for review: the revision and the lessons' held edits. New lessons stay as unpublished drafts."""
+    revision = revision_of(course)
+    if revision:
+        _delete(course, revision)
+    course.lessons.filter(pending__isnull=False).update(pending=None)
 
 
 def rewords(course, outline):

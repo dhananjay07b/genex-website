@@ -23,14 +23,21 @@ from commerce.access import has_access
 from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
-from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
+from .models import (
+    MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseLesson, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem,
+    QuizAttempt, ReviewReply,
+)
 from . import course_page
-from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload
+from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload, shown_version
+from .quizzes import answers_problem, best_attempt, grade, lesson_questions
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
 from .certificate_pdf import certificate_url, render_pdf, render_png
 from .certificates import certificate_payload, issue_if_finished
-from .revisions import apply_faqs, apply_outline, is_live, live_value, normalise_outline, revision_of, rewords, stage
+from .revisions import (
+    apply_faqs, apply_outline, drop_from_held_outline, is_live, live_value, normalise_outline, outline_lesson_ids,
+    restage_lessons, revision_of, rewords, stage, withdraw,
+)
 from .serializers import (
     MAX_FAQS,
     MAX_ITEMS,
@@ -46,6 +53,7 @@ from .serializers import (
     eligible_instructors,
     library_for,
     lesson_problem,
+    revision_summary,
     library_for_course,
     target_card,
 )
@@ -136,14 +144,16 @@ class ItemOpenView(APIView):
 
     def post(self, request, slug, item_id):
         item = get_object_or_404(
-            PlaylistItem.objects.select_related("playlist"), pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
+            PlaylistItem.objects.select_related("playlist", "lesson"), pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
         )
         course = item.playlist
         if not Enrollment.objects.filter(user=request.user, playlist=course).exists():
             return Response({"detail": "Enroll in the course to track progress."}, status=status.HTTP_403_FORBIDDEN)
         if not has_access(request.user, item.target):
             return Response({"detail": "This lesson is locked."}, status=status.HTTP_403_FORBIDDEN)
-        ItemProgress.objects.get_or_create(user=request.user, item=item)
+        # A quiz is completed by passing it (QuizAttemptView), not by opening it.
+        if not (item.lesson_id and item.lesson.kind == CourseLesson.KIND_QUIZ):
+            ItemProgress.objects.get_or_create(user=request.user, item=item)
         certificate = issue_if_finished(request.user, course)
         return Response({
             "completed": ItemProgress.objects.filter(user=request.user, item__playlist=course).count(),
@@ -151,26 +161,85 @@ class ItemOpenView(APIView):
         })
 
 
+def _open_lesson(request, slug, lesson_id):
+    """
+    The lesson `request.user` may open, as (course, item, lesson, team), or a
+    Response saying why not. Visitors and learners only ever reach approved
+    lessons in a live course's outline.
+    """
+    course = get_object_or_404(Playlist, slug=slug)
+    team = is_course_team(request.user, course)
+    item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
+    if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+        raise Http404
+    lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
+    block = lesson_block(request.user, lesson)
+    if block:
+        return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
+    return course, item, lesson, team
+
+
 class LessonView(APIView):
     """
     One of a live course's own lessons, for the lesson page. Opens for enrolled
     learners, the course team and Admin, and for anyone when it's a free preview
     (learning/lessons.py). Visitors and learners only ever see approved lessons
-    that are in the course's outline.
+    that are in the course's outline, as approved; the course team also sees
+    edits waiting for review, so reviewers and authors can preview them.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, slug, lesson_id):
-        course = get_object_or_404(Playlist, slug=slug)
-        team = is_course_team(request.user, course)
-        item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
-        if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+        opened = _open_lesson(request, slug, lesson_id)
+        if isinstance(opened, Response):
+            return opened
+        course, item, lesson, team = opened
+        return Response(lesson_payload(lesson, item, request.user, author_view=team))
+
+
+class QuizAttemptView(APIView):
+    """
+    POST `{answers: [[option index], …]}` (one list per question, in order) to
+    grade a quiz on the server. Returns the score and, per question, whether it
+    was right and the author's explanation; the right options themselves only
+    once the quiz is passed. For an enrolled learner the attempt is saved, and
+    passing completes the lesson (and can issue the certificate). Free-preview
+    tries and the course team's previews aren't saved.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "quiz-attempt"
+
+    def post(self, request, slug, lesson_id):
+        opened = _open_lesson(request, slug, lesson_id)
+        if isinstance(opened, Response):
+            return opened
+        course, item, lesson, team = opened
+        if lesson.kind != CourseLesson.KIND_QUIZ:
             raise Http404
-        lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
-        block = lesson_block(request.user, lesson)
-        if block:
-            return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
-        return Response(lesson_payload(lesson, item))
+        shown, has_pending = shown_version(lesson, team)
+        questions = lesson_questions(shown)
+        answers = request.data.get("answers") if isinstance(request.data, dict) else None
+        problem = answers_problem(questions, answers) if questions else "This quiz has no questions yet."
+        if problem:
+            return Response({"answers": problem}, status=400)
+        score, percent, passed, results = grade(questions, answers, shown.pass_mark)
+        if passed:
+            for result, question in zip(results, questions):
+                result["correct_options"] = question["correct"]
+
+        saved, certificate = False, None
+        enrolled = request.user.is_authenticated and Enrollment.objects.filter(user=request.user, playlist=course).exists()
+        if enrolled and item is not None and not has_pending and course.status == Playlist.STATUS_PUBLISHED:
+            QuizAttempt.objects.create(user=request.user, lesson=lesson, score=score, total=len(questions), passed=passed, answers=answers)
+            saved = True
+            if passed:
+                ItemProgress.objects.get_or_create(user=request.user, item=item)
+                certificate = issue_if_finished(request.user, course)
+        return Response({
+            "score": score, "total": len(questions), "percent": percent, "pass_mark": shown.pass_mark, "passed": passed,
+            "results": results, "saved": saved, "best": best_attempt(request.user, lesson) if saved else None,
+            "certificate_code": certificate.code if certificate else None,
+        })
 
 
 class MyEnrollmentsView(generics.ListAPIView):
@@ -253,9 +322,14 @@ class MyCourseViewSet(
         error = self._check_refs(course, refs)
         if error:
             return Response({"items": error}, status=400)
-        lesson_ids = {ref["id"] for ref in refs if ref["kind"] == "lesson"}
-        if is_live(course) and lesson_ids - set(course.lessons.filter(approved=True).values_list("pk", flat=True)):
-            return Response({"items": self.LIVE_LESSONS_LOCKED}, status=400)
+        # On a live course, lessons Genex hasn't reviewed yet hold the outline for review, so they must be finished.
+        new_lessons = []
+        if is_live(course):
+            lesson_ids = {ref["id"] for ref in refs if ref["kind"] == "lesson"}
+            new_lessons = list(course.lessons.filter(pk__in=lesson_ids, approved=False))
+            unfinished = self._unfinished(new_lessons)
+            if unfinished:
+                return Response({"items": "Finish these lessons before sending them for review: " + unfinished + "."}, status=400)
 
         # Known modules: the live ones, plus those already held in a revision (ids below zero are new).
         known = set(course.modules.values_list("pk", flat=True))
@@ -268,7 +342,7 @@ class MyCourseViewSet(
 
         outline = normalise_outline(modules_in, loose)
         with transaction.atomic():
-            if is_live(course) and ((held and "outline" in held.changes) or rewords(course, outline)):
+            if is_live(course) and ((held and "outline" in held.changes) or new_lessons or rewords(course, outline)):
                 stage(course, request.user, {"outline": outline})
             else:
                 apply_outline(course, outline)
@@ -292,52 +366,74 @@ class MyCourseViewSet(
                 course.save(update_fields=["updated_at"])
         return Response(self.get_serializer(course).data)
 
-    LIVE_LESSONS_LOCKED = "Lessons of a live course can't be changed yet. This is coming in the next update."
+    @staticmethod
+    def _unfinished(lessons):
+        """“Title” (what it needs); … for lessons that aren't ready for review, or ""."""
+        return "; ".join(f"“{lesson.title}” ({problem})" for lesson in lessons if (problem := lesson_problem(lesson)))
 
     @action(detail=True, methods=["get", "post"])
     def lessons(self, request, pk=None):
-        """The course's own lessons (written inside it, not published elsewhere); POST creates one."""
+        """
+        The course's own lessons (written inside it, not published elsewhere); POST
+        creates one. On a live course a new lesson waits for Genex review: adding it
+        to the outline sends the outline for review with it.
+        """
         course = self.get_object()
         if request.method == "GET":
-            return Response(CourseLessonSerializer(course.lessons.all(), many=True).data)
-        if is_live(course):
-            return Response({"detail": self.LIVE_LESSONS_LOCKED}, status=400)
+            return Response(CourseLessonSerializer(course.lessons.select_related("playlist"), many=True).data)
         if course.lessons.count() >= MAX_ITEMS:
             return Response({"detail": f"A course can hold at most {MAX_ITEMS} lessons."}, status=400)
         data = CourseLessonSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         lesson = data.save(playlist=course)
         course.save(update_fields=["updated_at"])
-        return Response(CourseLessonSerializer(lesson).data, status=status.HTTP_201_CREATED)
+        return Response({**CourseLessonSerializer(lesson).data, "course_revision": revision_summary(course)}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get", "patch", "delete"], url_path=r"lessons/(?P<lesson_id>\d+)")
     def lesson(self, request, pk=None, lesson_id=None):
-        """One of the course's own lessons. Deleting it also takes it out of the outline."""
+        """
+        One of the course's own lessons. On a live course, edits to an approved
+        lesson wait for Genex review (learners keep the approved lesson). Deleting
+        takes it out of the outline, the live one included, straight away.
+        `course_revision` in the reply is the course's review status after the change.
+        """
         course = self.get_object()
-        lesson = get_object_or_404(course.lessons, pk=lesson_id)
+        lesson = get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
         if request.method == "GET":
             return Response(CourseLessonSerializer(lesson).data)
-        if is_live(course):
-            return Response({"detail": self.LIVE_LESSONS_LOCKED}, status=400)
+        live = is_live(course)
         if request.method == "DELETE":
-            lesson.delete()
-            course.save(update_fields=["updated_at"])
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        data = CourseLessonSerializer(lesson, data=request.data, partial=True)
+            with transaction.atomic():
+                lesson.delete()
+                if live:
+                    drop_from_held_outline(course, request.user, int(lesson_id))
+                    restage_lessons(course, request.user)
+                course.save(update_fields=["updated_at"])
+            if live:
+                from .certificates import issue_due
+                issue_due(course)  # learners may now have opened every remaining lesson
+            return Response({"course_revision": revision_summary(course)})
+        data = CourseLessonSerializer(lesson, data=request.data, partial=True, context={"live": live})
         data.is_valid(raise_exception=True)
-        data.save()
-        course.save(update_fields=["updated_at"])
-        return Response(data.data)
+        with transaction.atomic():
+            data.save()
+            if live and (lesson.approved or self._in_held_outline(course, lesson)):
+                restage_lessons(course, request.user)
+            course.save(update_fields=["updated_at"])
+        return Response({**data.data, "course_revision": revision_summary(course)})
+
+    @staticmethod
+    def _in_held_outline(course, lesson):
+        held = revision_of(course)
+        return bool(held and "outline" in held.changes and lesson.pk in outline_lesson_ids(held.changes["outline"]))
 
     @action(detail=True, methods=["delete"], url_path="revision")
     def withdraw_revision(self, request, pk=None):
-        """Drop a live course's changes that are waiting for review (or were sent back); the live version is unchanged."""
+        """Drop a live course's changes that are waiting for review (or were sent back), lesson edits included; the live version is unchanged."""
         course = self.get_object()
-        revision = revision_of(course)
-        if revision:
-            revision.delete()
-            course = self.get_object()  # drop the cached revision
-        return Response(self.get_serializer(course).data)
+        with transaction.atomic():
+            withdraw(course)
+        return Response(self.get_serializer(self.get_object()).data)  # reloaded: drops the cached revision
 
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     def cover(self, request, pk=None):
@@ -357,13 +453,9 @@ class MyCourseViewSet(
         course = self.get_object()
         if not course.items.exists():
             return Response({"items": "Add at least one item before submitting."}, status=400)
-        unfinished = [
-            f"“{lesson.title}” ({problem})"
-            for lesson in course.lessons.filter(items__playlist=course)
-            if (problem := lesson_problem(lesson))
-        ]
+        unfinished = self._unfinished(course.lessons.filter(items__playlist=course))
         if unfinished:
-            return Response({"items": "Finish these lessons before submitting: " + "; ".join(unfinished) + "."}, status=400)
+            return Response({"items": "Finish these lessons before submitting: " + unfinished + "."}, status=400)
         if course.status == Playlist.STATUS_PUBLISHED:
             return Response({"detail": "This course is already live."}, status=400)
         course.status = Playlist.STATUS_PENDING
