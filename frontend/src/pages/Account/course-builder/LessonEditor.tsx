@@ -51,14 +51,20 @@ export function LessonEditor({ courseId, lesson, kind, onClose, onSaved }: {
   const link = fields.video_url.trim()
   const plays = link ? embedVideoUrl(link) !== null : true
 
-  // Escape closes only while nothing is typed, so a stray key never loses a lesson.
+  // On opening only: focus the title and stop the page behind from scrolling. (Re-focusing on later renders
+  // would pull the cursor out of the lesson text mid-typing.)
   useEffect(() => {
     titleRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !dirty) onClose() }
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = overflow }
+  }, [])
+
+  // Escape closes only while nothing is typed, so a stray key never loses a lesson.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !dirty) onClose() }
     window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = overflow }
+    return () => window.removeEventListener('keydown', onKey)
   }, [onClose, dirty])
 
   const set = (next: Partial<Fields>) => { setFields(prev => ({ ...prev, ...next })); setFormError('') }
