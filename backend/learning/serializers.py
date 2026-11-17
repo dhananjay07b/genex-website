@@ -15,6 +15,7 @@ from pages.richtext import sanitize_submission_html
 from pages.models import AccessControlled, BlogPost, CaseStudy, PodcastEpisode, TechArticle, Topic, VideoItem, Whitepaper
 
 from . import course_page
+from .lessons import REVIEWED_FIELDS, held_edits, with_pending
 from .reviews import card_rating, rating_summary
 from .models import (
     CourseLesson,
@@ -129,7 +130,14 @@ def lesson_card(lesson):
         "currency": course.currency,
         "lesson_type": lesson.kind,
         "is_preview": lesson.is_preview,
+        # False only for a lesson Genex hasn't reviewed yet (the builder: adding it to a live course needs review).
+        "approved": lesson.approved,
     }
+
+
+def builder_card(target, kind):
+    """target_card for the course builder: a course lesson shows its author's version, with edits held for review."""
+    return target_card(with_pending(target) if kind == "lesson" else target, kind)
 
 
 def cover_url(playlist):
@@ -357,6 +365,20 @@ class CareerRoleSerializer(serializers.ModelSerializer):
 
 # ── Owner (Professional) ────────────────────────────────────────────────────
 
+def revision_summary(course):
+    """A live course's changes waiting for Genex review: status, when, why sent back, and which parts changed."""
+    from .revisions import revision_of
+    revision = revision_of(course)
+    if revision is None:
+        return None
+    return {
+        "status": revision.status,
+        "submitted_at": revision.submitted_at.isoformat(),
+        "rejection_reason": revision.rejection_reason,
+        "changed": sorted(revision.changes),
+    }
+
+
 class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     cover_url = serializers.SerializerMethodField()
     items = serializers.SerializerMethodField()
@@ -386,7 +408,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
 
     def get_items(self, obj):
         return [
-            {**target_card(item.target, item.kind), "item_id": item.pk, "module_id": item.module_id}
+            {**builder_card(item.target, item.kind), "item_id": item.pk, "module_id": item.module_id}
             for item in obj.items.select_related(*ITEM_SELECT)
         ]
 
@@ -398,17 +420,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
         return not (obj.status == Playlist.STATUS_PUBLISHED and obj.enrollments.exists())
 
     def get_revision(self, obj):
-        """A live course's changes waiting for Genex review: status, when, why sent back, and which parts changed."""
-        from .revisions import revision_of
-        revision = revision_of(obj)
-        if revision is None:
-            return None
-        return {
-            "status": revision.status,
-            "submitted_at": revision.submitted_at.isoformat(),
-            "rejection_reason": revision.rejection_reason,
-            "changed": sorted(revision.changes),
-        }
+        return revision_summary(obj)
 
     def to_representation(self, obj):
         # The builder edits the held changes, so it shows them in place of the live values.
@@ -432,7 +444,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             live_ids = {(i.kind, getattr(i, f"{ITEM_KINDS[i.kind][0]}_id")): i.pk for i in obj.items.all()}
             held["modules"] = [{"id": m["id"], "title": m["title"], "summary": m["summary"]} for m in outline["modules"]]
             held["items"] = [
-                {**target_card(found[(r["kind"], r["id"])], r["kind"]), "item_id": live_ids.get((r["kind"], r["id"])), "module_id": module_id}
+                {**builder_card(found[(r["kind"], r["id"])], r["kind"]), "item_id": live_ids.get((r["kind"], r["id"])), "module_id": module_id}
                 for r, module_id in refs if (r["kind"], r["id"]) in found
             ]
         return held
@@ -515,8 +527,16 @@ def lesson_problem(lesson):
 
 
 class CourseLessonSerializer(serializers.ModelSerializer):
-    """A course's own lesson, as its author edits it in the course builder."""
+    """
+    A course's own lesson, as its author edits it in the course builder: their
+    version, including edits held for review. On a live course (context
+    `live=True`) an edit to an approved lesson is held in `pending` while
+    learners keep the approved lesson; "free preview" applies straight away.
+    `review` is "new" (on a live course, not approved yet), "changed" (edits
+    held for review) or None.
+    """
     in_outline = serializers.SerializerMethodField()
+    review = serializers.SerializerMethodField()
     minutes = serializers.SerializerMethodField()
     problem = serializers.SerializerMethodField()
     card = serializers.SerializerMethodField()
@@ -525,10 +545,41 @@ class CourseLessonSerializer(serializers.ModelSerializer):
         model = CourseLesson
         fields = [
             "id", "kind", "title", "video_url", "duration", "body", "is_preview",
-            "approved", "in_outline", "minutes", "problem", "card", "updated_at",
+            "approved", "review", "in_outline", "minutes", "problem", "card", "updated_at",
         ]
         read_only_fields = ["id", "approved", "updated_at"]
         extra_kwargs = {"video_url": {"allow_blank": True}, "duration": {"allow_blank": True}, "body": {"allow_blank": True}}
+
+    def to_representation(self, instance):
+        return super().to_representation(with_pending(instance))
+
+    def get_review(self, obj):
+        if obj.pending:
+            return "changed"
+        if not obj.approved and obj.playlist.status == Playlist.STATUS_PUBLISHED:
+            return "new"
+        return None
+
+    def _holds(self):
+        return self.instance is not None and self.instance.approved and self.context.get("live", False)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self._holds():
+            # A live lesson can be changed, not emptied: what goes to review must be complete.
+            problem = lesson_problem(with_pending(self.instance, {k: v for k, v in attrs.items() if k in REVIEWED_FIELDS}))
+            if problem:
+                raise serializers.ValidationError({"detail": f"This lesson is live, so it can't be left empty: {problem}."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        if self._holds():
+            instance.pending = held_edits(instance, validated_data)
+            validated_data = {k: v for k, v in validated_data.items() if k not in REVIEWED_FIELDS}
+            validated_data["pending"] = instance.pending
+        elif instance.pending:
+            validated_data["pending"] = None  # the course isn't live any more: edits apply directly
+        return super().update(instance, validated_data)
 
     def get_in_outline(self, obj):
         return obj.items.exists()

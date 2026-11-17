@@ -12,7 +12,7 @@ from engagement.models import Notification
 from pages.models import BlogPost, UserBlogPost, UserVideoPost, VideoItem
 
 from .admin import PlaylistAdmin
-from .models import CourseReview, Enrollment, Playlist
+from .models import Certificate, CourseReview, CourseRevision, Enrollment, ItemProgress, Playlist
 
 TODAY = datetime.date(2026, 9, 30)
 
@@ -1416,22 +1416,22 @@ class CourseLessonBuilderTests(TestCase):
         course_id = self._course(self.pro)
         lesson = self.api.post(self._lessons_url(course_id), {"kind": "text", "title": "Gone", "body": "<p>x</p>"}, format="json").json()
         self.api.put(f"/api/learning/me/courses/{course_id}/outline/", lessons([{"kind": "lesson", "id": lesson["id"]}]), format="json")
-        self.assertEqual(self.api.delete(self._lessons_url(course_id, lesson["id"])).status_code, 204)
+        res = self.api.delete(self._lessons_url(course_id, lesson["id"]))
+        self.assertEqual((res.status_code, res.json()["course_revision"]), (200, None))
         self.assertEqual(self.api.get(f"/api/learning/me/courses/{course_id}/").json()["items"], [])
 
-    def test_approval_approves_the_lessons_and_a_live_course_locks_them(self):
+    def test_approval_approves_the_lessons_in_the_outline(self):
         course_id = self._build_and_submit(self.pro)
+        spare = Playlist.objects.get(pk=course_id).lessons.create(kind="text", title="Not placed", body="<p>x</p>")
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         request = RequestFactory().post("/")
         request.user = admin
         PlaylistAdmin(Playlist, AdminSite()).approve(request, Playlist.objects.filter(pk=course_id))
         course = Playlist.objects.get(pk=course_id)
         self.assertEqual(course.status, "published")
-        self.assertTrue(all(course.lessons.values_list("approved", flat=True)))
-        lesson = course.lessons.first()
-        self.assertEqual(self.api.patch(self._lessons_url(course_id, lesson.pk), {"title": "Changed live"}, format="json").status_code, 400)
-        self.assertEqual(self.api.post(self._lessons_url(course_id), {"kind": "text", "title": "New one"}, format="json").status_code, 400)
-        self.assertEqual(self.api.delete(self._lessons_url(course_id, lesson.pk)).status_code, 400)
+        self.assertTrue(all(course.lessons.exclude(pk=spare.pk).values_list("approved", flat=True)))
+        spare.refresh_from_db()
+        self.assertFalse(spare.approved)  # not in the outline: reviewed when it's added
 
     def test_lessons_open_with_their_course(self):
         from commerce.access import has_access
@@ -1545,3 +1545,178 @@ class CourseLessonLearnerTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertNotIn("Start here", res.content.decode())
         self.assertNotIn("/lessons/", res.content.decode())
+
+
+class CourseLessonLiveReviewTests(TestCase):
+    """Phase 3: lesson changes on a live course wait for Genex review; learners keep the approved lessons."""
+
+    def setUp(self):
+        from organizations.models import Company
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.learner = make_user("learner")
+        self.admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+
+    def _live_course(self, author):
+        """A live course of two approved lessons, built by `author` (a Professional or a Company account)."""
+        course = Playlist.objects.create(owner=author, company=author.company if author.account_type == "company" else None,
+                                         title="Live Lessons", status="published")
+        self.text = course.lessons.create(kind="text", title="Why relays trip", body="<p>Old text</p>", approved=True)
+        self.video = course.lessons.create(kind="video", title="Testing", video_url="https://youtu.be/old", duration="5 min", approved=True)
+        self.i1 = course.items.create(lesson=self.text, position=0)
+        self.i2 = course.items.create(lesson=self.video, position=1)
+        Enrollment.objects.create(user=self.learner, playlist=course)
+        self.author = APIClient()
+        self.author.force_authenticate(author)
+        return course
+
+    def _url(self, course, lesson=None):
+        base = f"/api/learning/me/courses/{course.pk}/lessons/"
+        return f"{base}{lesson.pk if hasattr(lesson, 'pk') else lesson}/" if lesson else base
+
+    def _as_learner(self, course, lesson):
+        client = APIClient()
+        client.force_authenticate(self.learner)
+        return client.get(f"/api/learning/courses/{course.slug}/lessons/{lesson.pk if hasattr(lesson, 'pk') else lesson}/")
+
+    def _admin(self, action, course):
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        request._messages = None
+        getattr(PlaylistAdmin(Playlist, AdminSite()), action)(request, Playlist.objects.filter(pk=course.pk))
+
+    def _edit_then_approve(self, author):
+        course = self._live_course(author)
+        # The learner has opened the first lesson: that progress must survive the update.
+        learner = APIClient()
+        learner.force_authenticate(self.learner)
+        learner.post(f"/api/learning/courses/{course.slug}/items/{self.i1.pk}/open/")
+
+        res = self.author.patch(self._url(course, self.text), {"title": "Why relays trip (updated)", "body": "<p>New text</p>"}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["title"], res.json()["body"], res.json()["review"]), ("Why relays trip (updated)", "<p>New text</p>", "changed"))
+        self.assertEqual(res.json()["course_revision"]["status"], "pending")
+        self.assertEqual(res.json()["course_revision"]["changed"], ["lessons"])
+
+        # Learners keep the approved lesson; the builder shows the author's version.
+        live = self._as_learner(course, self.text).json()
+        self.assertEqual((live["title"], live["body"], live["has_pending"]), ("Why relays trip", "<p>Old text</p>", False))
+        builder = self.author.get(f"/api/learning/me/courses/{course.pk}/").json()
+        self.assertEqual(builder["items"][0]["title"], "Why relays trip (updated)")
+        self.assertEqual(APIClient().get(f"/api/learning/courses/{course.slug}/").json()["items"][0]["title"], "Why relays trip")
+        # The author's preview of the lesson page shows the edits, flagged.
+        preview = self.author.get(f"/api/learning/courses/{course.slug}/lessons/{self.text.pk}/").json()
+        self.assertEqual((preview["body"], preview["has_pending"]), ("<p>New text</p>", True))
+
+        self._admin("approve", course)
+        live = self._as_learner(course, self.text).json()
+        self.assertEqual((live["title"], live["body"]), ("Why relays trip (updated)", "<p>New text</p>"))
+        self.text.refresh_from_db()
+        self.assertIsNone(self.text.pending)
+        self.assertFalse(CourseRevision.objects.filter(playlist=course).exists())
+        self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.i1).exists())
+
+    def test_professional_edits_a_live_lesson_through_review(self):
+        self._edit_then_approve(self.pro)
+
+    def test_company_edits_a_live_lesson_through_review(self):
+        self._edit_then_approve(self.staff)
+
+    def _add_new_lesson(self, author):
+        course = self._live_course(author)
+        res = self.author.post(self._url(course), {"kind": "text", "title": "Coordination", "body": "<p>Grading curves</p>"}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        new = res.json()
+        self.assertEqual((new["review"], new["card"]["approved"], new["course_revision"]), ("new", False, None))
+        refs = [{"kind": "lesson", "id": i} for i in (self.text.pk, self.video.pk, new["id"])]
+        res = self.author.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons(refs), format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()["revision"]["changed"], ["outline"])
+        self.assertEqual(len(res.json()["items"]), 3)  # the builder shows the outline waiting for review
+        self.assertEqual(course.items.count(), 2)  # learners still have the live two
+        self.assertEqual(self._as_learner(course, new["id"]).status_code, 404)
+        return course, new
+
+    def test_professional_adds_a_lesson_to_a_live_course(self):
+        course, new = self._add_new_lesson(self.pro)
+        self._admin("approve", course)
+        self.assertEqual(course.items.count(), 3)
+        self.assertTrue(course.lessons.get(pk=new["id"]).approved)
+        self.assertEqual(self._as_learner(course, new["id"]).json()["body"], "<p>Grading curves</p>")
+
+    def test_company_adds_a_lesson_to_a_live_course(self):
+        course, new = self._add_new_lesson(self.staff)
+        self._admin("approve", course)
+        self.assertEqual(self._as_learner(course, new["id"]).status_code, 200)
+
+    def test_an_unfinished_new_lesson_cant_go_for_review(self):
+        course = self._live_course(self.pro)
+        empty = self.author.post(self._url(course), {"kind": "video", "title": "Coming soon"}, format="json").json()
+        refs = [{"kind": "lesson", "id": i} for i in (self.text.pk, self.video.pk, empty["id"])]
+        res = self.author.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons(refs), format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Coming soon", res.json()["items"])
+
+    def test_a_live_lesson_cant_be_emptied(self):
+        course = self._live_course(self.pro)
+        res = self.author.patch(self._url(course, self.video), {"video_url": ""}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.video.refresh_from_db()
+        self.assertIsNone(self.video.pending)
+
+    def test_free_preview_applies_straight_away(self):
+        course = self._live_course(self.pro)
+        res = self.author.patch(self._url(course, self.text), {"is_preview": True}, format="json")
+        self.assertEqual((res.json()["review"], res.json()["course_revision"]), (None, None))
+        self.assertEqual(APIClient().get(f"/api/learning/courses/{course.slug}/lessons/{self.text.pk}/").status_code, 200)
+
+    def test_editing_back_to_the_live_version_drops_the_review(self):
+        course = self._live_course(self.pro)
+        self.author.patch(self._url(course, self.text), {"title": "Changed"}, format="json")
+        res = self.author.patch(self._url(course, self.text), {"title": "Why relays trip"}, format="json")
+        self.assertEqual((res.json()["review"], res.json()["course_revision"]), (None, None))
+
+    def test_sent_back_then_sent_again(self):
+        course = self._live_course(self.pro)
+        self.author.patch(self._url(course, self.text), {"body": "<p>Draft wording</p>"}, format="json")
+        self._admin("reject", course)
+        self.assertEqual(course.revision.status, "rejected")
+        self.text.refresh_from_db()
+        self.assertEqual(self.text.pending, {"body": "<p>Draft wording</p>"})  # kept, so the author can fix it
+        self.assertEqual(self._as_learner(course, self.text).json()["body"], "<p>Old text</p>")
+        res = self.author.patch(self._url(course, self.text), {"body": "<p>Better wording</p>"}, format="json")
+        self.assertEqual(res.json()["course_revision"]["status"], "pending")
+
+    def test_withdraw_drops_lesson_edits(self):
+        course, new = self._add_new_lesson(self.pro)
+        self.author.patch(self._url(course, self.text), {"title": "Changed"}, format="json")
+        res = self.author.delete(f"/api/learning/me/courses/{course.pk}/revision/")
+        self.assertIsNone(res.json()["revision"])
+        self.text.refresh_from_db()
+        self.assertIsNone(self.text.pending)
+        self.assertEqual(self.author.get(self._url(course, new["id"])).json()["review"], "new")  # kept as a draft lesson
+        self.assertEqual(len(res.json()["items"]), 2)
+
+    def test_deleting_a_new_lesson_leaves_the_held_outline(self):
+        course, new = self._add_new_lesson(self.pro)
+        res = self.author.delete(self._url(course, new["id"]))
+        self.assertIsNone(res.json()["course_revision"])  # the outline is back to the live one, so nothing waits
+
+    def test_deleting_a_live_lesson_can_finish_the_course(self):
+        course = self._live_course(self.pro)
+        learner = APIClient()
+        learner.force_authenticate(self.learner)
+        learner.post(f"/api/learning/courses/{course.slug}/items/{self.i1.pk}/open/")
+        self.assertEqual(self.author.delete(self._url(course, self.video)).status_code, 200)
+        self.assertEqual(course.items.count(), 1)
+        self.assertTrue(Certificate.objects.filter(user=self.learner, playlist=course).exists())
+
+    def test_lessons_of_other_courses_are_untouched_by_approval(self):
+        course = self._live_course(self.pro)
+        other = Playlist.objects.create(owner=self.pro, title="Other", status="published")
+        held = other.lessons.create(kind="text", title="Other lesson", body="<p>a</p>", approved=True, pending={"body": "<p>b</p>"})
+        self.author.patch(self._url(course, self.text), {"title": "Changed"}, format="json")
+        self._admin("approve", course)
+        held.refresh_from_db()
+        self.assertEqual((held.body, held.pending), ("<p>a</p>", {"body": "<p>b</p>"}))

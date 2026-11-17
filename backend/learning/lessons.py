@@ -10,7 +10,7 @@ course:
 from accounts.roles import is_admin
 from commerce.access import has_access
 
-from .models import Enrollment, Playlist
+from .models import CourseLesson, Enrollment, Playlist
 
 SIGN_IN = "sign_in"
 ENROLL = "enroll"
@@ -44,10 +44,46 @@ BLOCK_MESSAGES = {
 }
 
 
-def lesson_payload(lesson, item):
-    """What the lesson page shows. Live (approved) fields only."""
+# What an edit to an approved lesson of a live course holds for review (CourseLesson.pending).
+# "Free preview" isn't among them: it changes who can open the lesson, not what it says.
+REVIEWED_FIELDS = ("title", "video_url", "duration", "body")
+
+
+def with_pending(lesson, extra=None):
+    """
+    The author's version of `lesson`: the live lesson with its held edits (and
+    `extra`) laid over it, as an unsaved copy. Learners never get this.
+    """
+    changes = {**(lesson.pending or {}), **(extra or {})}
+    if not changes:
+        return lesson
+    from pages.durations import parse_duration_seconds
+    copy = CourseLesson(**{f.attname: getattr(lesson, f.attname) for f in CourseLesson._meta.concrete_fields})
+    for field, value in changes.items():
+        setattr(copy, field, value)
+    copy.duration_seconds = parse_duration_seconds(copy.duration) if copy.kind == copy.KIND_VIDEO else None
+    copy.playlist = lesson.playlist
+    return copy
+
+
+def held_edits(lesson, wanted):
+    """`wanted` ({field: value}) on top of what's already held, minus fields equal to the live lesson; None when nothing differs."""
+    merged = {**(lesson.pending or {}), **{k: v for k, v in wanted.items() if k in REVIEWED_FIELDS}}
+    return {k: v for k, v in merged.items() if v != getattr(lesson, k)} or None
+
+
+def lesson_payload(lesson, item, author_view=False):
+    """
+    What the lesson page shows: the live lesson, or for the course team its
+    version with edits waiting for review (`has_pending` then says so).
+    """
     from .serializers import lesson_own_minutes
+    has_pending = author_view and bool(lesson.pending)
+    if has_pending:
+        lesson = with_pending(lesson)
     return {
+        "has_pending": has_pending,
+        "approved": lesson.approved,
         "id": lesson.pk,
         "item_id": item.pk if item else None,
         "kind": lesson.kind,
