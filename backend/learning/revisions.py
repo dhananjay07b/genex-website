@@ -233,9 +233,13 @@ def apply_revision(course):
 
 def apply_lesson_edits(course):
     """Write each lesson's held edits to the live lesson (on approval)."""
+    from .quizzes import write_questions
     for lesson in course.lessons.filter(pending__isnull=False):
         for field, value in lesson.pending.items():
-            setattr(lesson, field, value)
+            if field == "questions":
+                write_questions(lesson, value)
+            else:
+                setattr(lesson, field, value)
         lesson.pending = None
         lesson.save()
 

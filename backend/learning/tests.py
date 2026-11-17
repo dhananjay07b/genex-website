@@ -12,7 +12,7 @@ from engagement.models import Notification
 from pages.models import BlogPost, UserBlogPost, UserVideoPost, VideoItem
 
 from .admin import PlaylistAdmin
-from .models import Certificate, CourseReview, CourseRevision, Enrollment, ItemProgress, Playlist
+from .models import Certificate, CourseReview, CourseRevision, Enrollment, ItemProgress, Playlist, QuizAttempt
 
 TODAY = datetime.date(2026, 9, 30)
 
@@ -1397,7 +1397,8 @@ class CourseLessonBuilderTests(TestCase):
     def test_validation(self):
         course_id = self._course(self.pro)
         url = self._lessons_url(course_id)
-        self.assertEqual(self.api.post(url, {"kind": "quiz", "title": "Check"}, format="json").status_code, 400)
+        quiz = self.api.post(url, {"kind": "quiz", "title": "Check"}, format="json")
+        self.assertEqual((quiz.status_code, quiz.json()["problem"]), (201, "add at least one question"))
         self.assertEqual(self.api.post(url, {"kind": "text", "title": "x"}, format="json").status_code, 400)
         self.assertIn("video_url", self.api.post(url, {"kind": "video", "title": "Clip", "video_url": "javascript:alert(1)"}, format="json").json())
         self.assertIn("duration", self.api.post(url, {"kind": "video", "title": "Clip", "duration": "soon"}, format="json").json())
@@ -1720,3 +1721,184 @@ class CourseLessonLiveReviewTests(TestCase):
         self._admin("approve", course)
         held.refresh_from_db()
         self.assertEqual((held.body, held.pending), ("<p>a</p>", {"body": "<p>b</p>"}))
+
+
+def question(prompt, options, correct, explanation=""):
+    return {"prompt": prompt, "options": options, "correct": correct, "explanation": explanation}
+
+
+QUIZ = [
+    question("Which relay clears a fault fastest?", ["Overcurrent", "Differential", "Distance"], [1], "Differential is unit protection."),
+    question("Which are protection relays? (all that apply)", ["Differential", "Ammeter", "Distance"], [0, 2]),
+]
+
+
+class CourseQuizTests(TestCase):
+    """Phase 4: quiz lessons, graded on the server; passing completes them."""
+
+    def setUp(self):
+        from organizations.models import Company
+        self.genex = Company.objects.create(name="Genex", slug="genex")
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.staff = make_user("staff", account_type="company", company=self.genex)
+        self.learner = make_user("learner")
+        self.stranger = make_user("stranger")
+        self.admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
+
+    def _client(self, user=None):
+        client = APIClient()
+        if user:
+            client.force_authenticate(user)
+        return client
+
+    def _build_quiz(self, author):
+        """Builds a draft course with a text lesson and a quiz through the builder API; returns (course, quiz lesson json)."""
+        api = self._client(author)
+        course_id = api.post("/api/learning/me/courses/", {"title": "Relay Check"}, format="json").json()["id"]
+        url = f"/api/learning/me/courses/{course_id}/lessons/"
+        text = api.post(url, {"kind": "text", "title": "Read first", "body": "<p>Relays</p>"}, format="json").json()
+        res = api.post(url, {"kind": "quiz", "title": "Relay quiz", "pass_mark": 50, "questions": QUIZ}, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        quiz = res.json()
+        self.assertEqual((quiz["problem"], quiz["minutes"], quiz["questions"][1]["correct"]), (None, 2, [0, 2]))
+        refs = [{"kind": "lesson", "id": text["id"]}, {"kind": "lesson", "id": quiz["id"]}]
+        self.assertEqual(api.put(f"/api/learning/me/courses/{course_id}/outline/", lessons(refs), format="json").status_code, 200)
+        return Playlist.objects.get(pk=course_id), quiz
+
+    def _publish(self, course):
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        request._messages = None
+        api = self._client(course.owner)
+        self.assertEqual(api.post(f"/api/learning/me/courses/{course.pk}/submit/").status_code, 200)
+        PlaylistAdmin(Playlist, AdminSite()).approve(request, Playlist.objects.filter(pk=course.pk))
+        course.refresh_from_db()
+
+    def _enrolled(self, course):
+        api = self._client(self.learner)
+        api.post(f"/api/learning/courses/{course.slug}/enroll/")
+        return api
+
+    def _attempt(self, api, course, quiz_id, answers):
+        return api.post(f"/api/learning/courses/{course.slug}/lessons/{quiz_id}/attempts/", {"answers": answers}, format="json")
+
+    def test_professional_and_company_build_quizzes(self):
+        for author in (self.pro, self.staff):
+            course, _ = self._build_quiz(author)
+            self._publish(course)
+            self.assertEqual(course.status, "published")
+
+    def test_question_validation(self):
+        api = self._client(self.pro)
+        course_id = api.post("/api/learning/me/courses/", {"title": "Checks"}, format="json").json()["id"]
+        url = f"/api/learning/me/courses/{course_id}/lessons/"
+        bad = [
+            [question("Q?", ["Only one"], [0])],
+            [question("Q?", ["A", "B"], [])],
+            [question("Q?", ["A", "B"], [2])],
+            [question("Q?", ["A", "a"], [0])],
+            [question("Q?", ["A", " "], [0])],
+            [question("Q?", ["A", "B"], [0])] * 31,
+        ]
+        for questions in bad:
+            res = api.post(url, {"kind": "quiz", "title": "Bad quiz", "questions": questions}, format="json")
+            self.assertEqual(res.status_code, 400, questions[0])
+        res = api.post(url, {"kind": "text", "title": "Text", "questions": QUIZ}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(api.post(url, {"kind": "quiz", "title": "Mark", "pass_mark": 0}, format="json").status_code, 400)
+
+    def test_learners_never_get_the_answers_before_submitting(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        res = self._enrolled(course).get(f"/api/learning/courses/{course.slug}/lessons/{quiz['id']}/")
+        data = res.json()["quiz"]
+        self.assertEqual([q["multiple"] for q in data["questions"]], [False, True])
+        self.assertNotIn("correct", res.content.decode())
+        self.assertNotIn("Differential is unit", res.content.decode())
+        self.assertEqual((data["pass_mark"], data["best"]), (50, None))
+
+    def test_fail_then_pass_completes_the_course(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        api = self._enrolled(course)
+        text_item = course.items.get(position=0)
+        quiz_item = course.items.get(lesson_id=quiz["id"])
+        api.post(f"/api/learning/courses/{course.slug}/items/{text_item.pk}/open/")
+        # Opening a quiz doesn't complete it.
+        api.post(f"/api/learning/courses/{course.slug}/items/{quiz_item.pk}/open/")
+        self.assertFalse(ItemProgress.objects.filter(user=self.learner, item=quiz_item).exists())
+
+        res = self._attempt(api, course, quiz["id"], [[0], [0]]).json()  # both wrong ([0] alone misses Distance)
+        self.assertEqual((res["score"], res["passed"], res["saved"]), (0, False, True))
+        self.assertEqual([r["correct"] for r in res["results"]], [False, False])
+        self.assertEqual(res["results"][0]["explanation"], "Differential is unit protection.")
+        self.assertNotIn("correct_options", res["results"][0])  # the right options only once passed
+        self.assertFalse(ItemProgress.objects.filter(user=self.learner, item=quiz_item).exists())
+
+        res = self._attempt(api, course, quiz["id"], [[1], [2, 0]]).json()
+        self.assertEqual((res["score"], res["percent"], res["passed"]), (2, 100, True))
+        self.assertEqual(res["results"][1]["correct_options"], [0, 2])
+        self.assertTrue(res["certificate_code"])
+
+        # A worse retake doesn't undo the pass.
+        self._attempt(api, course, quiz["id"], [[0], [1]])
+        best = api.get(f"/api/learning/courses/{course.slug}/lessons/{quiz['id']}/").json()["quiz"]["best"]
+        self.assertEqual(best, {"score": 2, "total": 2, "passed": True})
+        self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=quiz_item).exists())
+
+    def test_pass_mark_decides(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        api = self._enrolled(course)
+        self.assertTrue(self._attempt(api, course, quiz["id"], [[1], [0]]).json()["passed"])  # 50% at a 50% mark
+        CourseLessonModel = course.lessons.model
+        CourseLessonModel.objects.filter(pk=quiz["id"]).update(pass_mark=60)
+        self.assertFalse(self._attempt(api, course, quiz["id"], [[1], [0]]).json()["passed"])
+
+    def test_bad_answers_are_refused(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        api = self._enrolled(course)
+        for answers in ([[1]], [[1], []], [[1], [7]], [[0, 1], [0]], "1,2", [[True], [0]]):
+            self.assertEqual(self._attempt(api, course, quiz["id"], answers).status_code, 400, answers)
+        self.assertFalse(QuizAttempt.objects.exists())
+
+    def test_preview_tries_arent_saved_and_locked_quizzes_stay_locked(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        res = self._attempt(self._client(self.stranger), course, quiz["id"], [[1], [0, 2]])
+        self.assertEqual(res.status_code, 403)  # not a preview: enroll first
+        course.lessons.filter(pk=quiz["id"]).update(is_preview=True)
+        for client in (self._client(), self._client(self.stranger)):
+            res = self._attempt(client, course, quiz["id"], [[1], [0, 2]]).json()
+            self.assertEqual((res["passed"], res["saved"]), (True, False))
+        self.assertFalse(QuizAttempt.objects.exists())
+
+    def test_live_quiz_edits_wait_for_review(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        author = self._client(self.pro)
+        changed = [question("Which relay protects a transformer?", ["Differential", "Fuse only"], [0])]
+        res = author.patch(f"/api/learning/me/courses/{course.pk}/lessons/{quiz['id']}/", {"questions": changed}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["review"], len(res.json()["questions"])), ("changed", 1))
+        api = self._enrolled(course)
+        live = api.get(f"/api/learning/courses/{course.slug}/lessons/{quiz['id']}/").json()["quiz"]
+        self.assertEqual(len(live["questions"]), 2)  # learners keep the approved quiz
+        self.assertTrue(self._attempt(api, course, quiz["id"], [[1], [0, 2]]).json()["passed"])  # graded against it too
+        # The author's preview shows (and grades) the version waiting for review, without saving.
+        preview = self._attempt(author, course, quiz["id"], [[0]]).json()
+        self.assertEqual((preview["passed"], preview["saved"]), (True, False))
+
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        request._messages = None
+        PlaylistAdmin(Playlist, AdminSite()).approve(request, Playlist.objects.filter(pk=course.pk))
+        live = api.get(f"/api/learning/courses/{course.slug}/lessons/{quiz['id']}/").json()["quiz"]
+        self.assertEqual([q["prompt"] for q in live["questions"]], ["Which relay protects a transformer?"])
+
+    def test_a_live_quiz_cant_lose_all_its_questions(self):
+        course, quiz = self._build_quiz(self.pro)
+        self._publish(course)
+        res = self._client(self.pro).patch(f"/api/learning/me/courses/{course.pk}/lessons/{quiz['id']}/", {"questions": []}, format="json")
+        self.assertEqual(res.status_code, 400)

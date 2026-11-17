@@ -219,6 +219,7 @@ REST_FRAMEWORK = {
         "blog-submission": "5/day",
         "video-submission": "5/day",
         "view-track": "120/hour",
+        "quiz-attempt": "60/hour",  # retakes are unlimited, but not as fast as a script can guess
         "search": "60/minute",
         "enquiry": "10/hour",
         "editor-image": "60/hour",

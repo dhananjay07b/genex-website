@@ -18,7 +18,7 @@ from . import course_page
 from .lessons import REVIEWED_FIELDS, held_edits, with_pending
 from .reviews import card_rating, rating_summary
 from .models import (
-    CourseLesson,
+    CourseLesson, MAX_QUIZ_OPTIONS, MAX_QUIZ_QUESTIONS, MIN_QUIZ_OPTIONS, QuizQuestion,
     ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
     PROMISED_FIELDS, CareerRole, Certificate, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
@@ -86,10 +86,13 @@ def lesson_minutes(target, kind):
 
 
 def lesson_own_minutes(lesson):
-    """A course's own lesson: its video's length plus its text at 200 words a minute."""
+    """A course's own lesson: its video's length plus its text at 200 words a minute, plus a minute per quiz question."""
     seconds = (lesson.duration_seconds or 0) if lesson.kind == lesson.KIND_VIDEO else 0
     words = len(strip_tags(lesson.body or "").split())
     total = math.ceil(seconds / 60) + (math.ceil(words / WORDS_PER_MINUTE) if words else 0)
+    if lesson.kind == lesson.KIND_QUIZ:
+        from .quizzes import lesson_questions
+        total += len(lesson_questions(lesson))
     return max(total, 1)
 
 
@@ -514,7 +517,6 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
 
 
 MAX_LESSON_BODY = 200_000  # characters of HTML; long, but not unbounded
-LESSON_KINDS_OPEN = (CourseLesson.KIND_TEXT, CourseLesson.KIND_VIDEO)  # quizzes arrive later
 
 
 def lesson_problem(lesson):
@@ -523,7 +525,33 @@ def lesson_problem(lesson):
         return "add its text"
     if lesson.kind == CourseLesson.KIND_VIDEO and not (lesson.video_url and lesson.duration):
         return "add the video link and its length"
+    if lesson.kind == CourseLesson.KIND_QUIZ:
+        from .quizzes import lesson_questions
+        if not lesson_questions(lesson):
+            return "add at least one question"
     return None
+
+
+class QuizQuestionInputSerializer(serializers.Serializer):
+    """One question as the builder sends it. `correct` are indexes into `options`."""
+    prompt = serializers.CharField(max_length=QuizQuestion._meta.get_field("prompt").max_length)
+    options = serializers.ListField(child=serializers.CharField(max_length=200, allow_blank=True), max_length=MAX_QUIZ_OPTIONS)
+    correct = serializers.ListField(child=serializers.IntegerField(min_value=0), allow_empty=True)
+    explanation = serializers.CharField(max_length=1000, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        prompt = attrs["prompt"].strip()
+        options = [o.strip() for o in attrs["options"]]
+        if not prompt:
+            raise serializers.ValidationError("Write the question.")
+        if len(options) < MIN_QUIZ_OPTIONS or any(not o for o in options):
+            raise serializers.ValidationError(f"“{prompt[:60]}”: give it at least {MIN_QUIZ_OPTIONS} answers, none of them empty.")
+        if len({o.casefold() for o in options}) != len(options):
+            raise serializers.ValidationError(f"“{prompt[:60]}”: two answers are the same.")
+        correct = sorted(set(attrs["correct"]))
+        if not correct or correct[-1] >= len(options):
+            raise serializers.ValidationError(f"“{prompt[:60]}”: mark at least one answer as correct.")
+        return {"prompt": prompt, "options": options, "correct": correct, "explanation": attrs.get("explanation", "").strip()}
 
 
 class CourseLessonSerializer(serializers.ModelSerializer):
@@ -537,6 +565,8 @@ class CourseLessonSerializer(serializers.ModelSerializer):
     """
     in_outline = serializers.SerializerMethodField()
     review = serializers.SerializerMethodField()
+    # Quizzes: the whole list, replaced on each save (read back with the right answers: this is the author's view).
+    questions = QuizQuestionInputSerializer(many=True, required=False, write_only=True)
     minutes = serializers.SerializerMethodField()
     problem = serializers.SerializerMethodField()
     card = serializers.SerializerMethodField()
@@ -544,14 +574,18 @@ class CourseLessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseLesson
         fields = [
-            "id", "kind", "title", "video_url", "duration", "body", "is_preview",
+            "id", "kind", "title", "video_url", "duration", "body", "is_preview", "pass_mark", "questions",
             "approved", "review", "in_outline", "minutes", "problem", "card", "updated_at",
         ]
         read_only_fields = ["id", "approved", "updated_at"]
         extra_kwargs = {"video_url": {"allow_blank": True}, "duration": {"allow_blank": True}, "body": {"allow_blank": True}}
 
     def to_representation(self, instance):
-        return super().to_representation(with_pending(instance))
+        from .quizzes import lesson_questions
+        merged = with_pending(instance)
+        data = super().to_representation(merged)
+        data["questions"] = lesson_questions(merged) if merged.kind == CourseLesson.KIND_QUIZ else []
+        return data
 
     def get_review(self, obj):
         if obj.pending:
@@ -565,6 +599,9 @@ class CourseLessonSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        kind = self.instance.kind if self.instance is not None else attrs.get("kind", CourseLesson.KIND_TEXT)
+        if attrs.get("questions") and kind != CourseLesson.KIND_QUIZ:
+            raise serializers.ValidationError({"questions": "Only quizzes have questions."})
         if self._holds():
             # A live lesson can be changed, not emptied: what goes to review must be complete.
             problem = lesson_problem(with_pending(self.instance, {k: v for k, v in attrs.items() if k in REVIEWED_FIELDS}))
@@ -572,14 +609,33 @@ class CourseLessonSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"detail": f"This lesson is live, so it can't be left empty: {problem}."})
         return attrs
 
+    def validate_questions(self, value):
+        if len(value) > MAX_QUIZ_QUESTIONS:
+            raise serializers.ValidationError(f"A quiz can have at most {MAX_QUIZ_QUESTIONS} questions.")
+        return value
+
+    def create(self, validated_data):
+        from .quizzes import write_questions
+        questions = validated_data.pop("questions", None)
+        lesson = super().create(validated_data)
+        if questions is not None and lesson.kind == CourseLesson.KIND_QUIZ:
+            write_questions(lesson, questions)
+        return lesson
+
     def update(self, instance, validated_data):
         if self._holds():
             instance.pending = held_edits(instance, validated_data)
             validated_data = {k: v for k, v in validated_data.items() if k not in REVIEWED_FIELDS}
             validated_data["pending"] = instance.pending
-        elif instance.pending:
+            return super().update(instance, validated_data)
+        if instance.pending:
             validated_data["pending"] = None  # the course isn't live any more: edits apply directly
-        return super().update(instance, validated_data)
+        questions = validated_data.pop("questions", None)
+        lesson = super().update(instance, validated_data)
+        if questions is not None and lesson.kind == CourseLesson.KIND_QUIZ:
+            from .quizzes import write_questions
+            write_questions(lesson, questions)
+        return lesson
 
     def get_in_outline(self, obj):
         return obj.items.exists()
@@ -597,8 +653,6 @@ class CourseLessonSerializer(serializers.ModelSerializer):
     def validate_kind(self, value):
         if self.instance is not None and value != self.instance.kind:
             raise serializers.ValidationError("A lesson's type can't change. Create a new lesson instead.")
-        if value not in LESSON_KINDS_OPEN:
-            raise serializers.ValidationError("Quiz lessons aren't available yet.")
         return value
 
     def validate_title(self, value):

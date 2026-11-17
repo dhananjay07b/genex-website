@@ -124,6 +124,18 @@ def _rich(html):
     return format_html('<div style="max-height:420px;overflow:auto;border:1px solid #ddd;padding:12px;max-width:760px">{}</div>', mark_safe(html))
 
 
+def _questions(questions, pass_mark):
+    """A quiz for review: each question with its answers, the right ones marked ✓."""
+    if not questions:
+        return "(no questions yet)"
+    blocks = []
+    for n, q in enumerate(questions, 1):
+        options = format_html_join("", "<li>{}{}</li>", ((("✓ " if i in q["correct"] else ""), o) for i, o in enumerate(q["options"])))
+        explanation = format_html("<div style='color:#555'>Why: {}</div>", q["explanation"]) if q.get("explanation") else ""
+        blocks.append(format_html("<div style='margin:0 0 10px'><b>{}. {}</b><ul style='margin:4px 0'>{}</ul>{}</div>", n, q["prompt"], options, explanation))
+    return format_html("<div style='max-width:760px'><p>Pass mark: {}%</p>{}</div>", pass_mark, mark_safe("".join(blocks)))
+
+
 def _video(url, duration):
     if not url:
         return "(no link yet)"
@@ -140,7 +152,7 @@ class CourseLessonInline(admin.StackedInline):
     extra = 0
     can_delete = False
     verbose_name_plural = "Lessons written for this course"
-    fields = ("kind", "title", "status", "is_preview", "preview", "video", "content", "waiting")
+    fields = ("kind", "title", "status", "is_preview", "preview", "video", "content", "quiz", "waiting")
     readonly_fields = fields
 
     def has_add_permission(self, request, obj=None):
@@ -171,6 +183,11 @@ class CourseLessonInline(admin.StackedInline):
     def content(self, obj):
         return _rich(obj.body)
 
+    @admin.display(description="Quiz (live)")
+    def quiz(self, obj):
+        from .quizzes import live_questions
+        return _questions(live_questions(obj), obj.pass_mark) if obj.kind == CourseLesson.KIND_QUIZ else "—"
+
     @admin.display(description="Waiting for review")
     def waiting(self, obj):
         """The proposed version of each changed field. Approve applies them; Reject sends them back."""
@@ -183,6 +200,10 @@ class CourseLessonInline(admin.StackedInline):
             rows.append(("Video", _video(obj.pending.get("video_url", obj.video_url), obj.pending.get("duration", obj.duration))))
         if "body" in obj.pending:
             rows.append(("Text", _rich(obj.pending["body"])))
+        if "questions" in obj.pending or "pass_mark" in obj.pending:
+            from .quizzes import live_questions
+            questions = obj.pending.get("questions", live_questions(obj))
+            rows.append(("Quiz", _questions(questions, obj.pending.get("pass_mark", obj.pass_mark))))
         return format_html_join("", "<p style='margin:0 0 4px'><b>{}</b></p><div style='margin:0 0 12px'>{}</div>", rows)
 
 

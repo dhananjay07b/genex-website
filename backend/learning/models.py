@@ -346,6 +346,56 @@ class CourseLesson(models.Model):
         return self.playlist
 
 
+MAX_QUIZ_QUESTIONS = 30
+MIN_QUIZ_OPTIONS, MAX_QUIZ_OPTIONS = 2, 6
+
+
+class QuizQuestion(models.Model):
+    """
+    One question of a quiz lesson. `options` are the answers shown (2 to 6);
+    `correct` lists the indexes of the right ones: one means pick one, several
+    mean "select all that apply". Learners never receive `correct` or
+    `explanation` before they submit (learning/quizzes.py grades on the server).
+    """
+    lesson = models.ForeignKey(CourseLesson, on_delete=models.CASCADE, related_name="questions")
+    prompt = models.CharField(max_length=500)
+    options = models.JSONField(default=list)
+    correct = models.JSONField(default=list)
+    explanation = models.TextField(blank=True, max_length=1000, help_text="Shown after answering, e.g. why the answer is right.")
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return self.prompt[:80]
+
+    def as_dict(self):
+        return {"prompt": self.prompt, "options": list(self.options), "correct": list(self.correct), "explanation": self.explanation}
+
+
+class QuizAttempt(models.Model):
+    """
+    An enrolled learner's submitted quiz. Retakes are unlimited; passing once
+    (score at or above the lesson's pass mark) completes the lesson for good.
+    `answers` keeps what they chose ([[option indexes], …] in question order).
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="quiz_attempts")
+    lesson = models.ForeignKey(CourseLesson, on_delete=models.CASCADE, related_name="attempts")
+    score = models.PositiveSmallIntegerField()
+    total = models.PositiveSmallIntegerField()
+    passed = models.BooleanField(default=False)
+    answers = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "lesson"])]
+
+    def __str__(self):
+        return f"{self.user} · {self.lesson} · {self.score}/{self.total}"
+
+
 # A course lesson points at exactly one piece of content. Professionals' courses
 # use their videos and blog posts; Company Studio courses use the company's
 # GeAcademy articles, research, whitepapers and podcasts (and videos). Any course

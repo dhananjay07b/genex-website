@@ -23,9 +23,13 @@ from commerce.access import has_access
 from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
-from .models import MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem, ReviewReply
+from .models import (
+    MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseLesson, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem,
+    QuizAttempt, ReviewReply,
+)
 from . import course_page
-from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload
+from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload, shown_version
+from .quizzes import answers_problem, best_attempt, grade, lesson_questions
 from .queries import published_courses
 from .reviews import REVIEW_SELECT, review_block_reason, review_payload, with_progress
 from .certificate_pdf import certificate_url, render_pdf, render_png
@@ -140,19 +144,39 @@ class ItemOpenView(APIView):
 
     def post(self, request, slug, item_id):
         item = get_object_or_404(
-            PlaylistItem.objects.select_related("playlist"), pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
+            PlaylistItem.objects.select_related("playlist", "lesson"), pk=item_id, playlist__slug=slug, playlist__status=Playlist.STATUS_PUBLISHED,
         )
         course = item.playlist
         if not Enrollment.objects.filter(user=request.user, playlist=course).exists():
             return Response({"detail": "Enroll in the course to track progress."}, status=status.HTTP_403_FORBIDDEN)
         if not has_access(request.user, item.target):
             return Response({"detail": "This lesson is locked."}, status=status.HTTP_403_FORBIDDEN)
-        ItemProgress.objects.get_or_create(user=request.user, item=item)
+        # A quiz is completed by passing it (QuizAttemptView), not by opening it.
+        if not (item.lesson_id and item.lesson.kind == CourseLesson.KIND_QUIZ):
+            ItemProgress.objects.get_or_create(user=request.user, item=item)
         certificate = issue_if_finished(request.user, course)
         return Response({
             "completed": ItemProgress.objects.filter(user=request.user, item__playlist=course).count(),
             "certificate_code": certificate.code if certificate else None,
         })
+
+
+def _open_lesson(request, slug, lesson_id):
+    """
+    The lesson `request.user` may open, as (course, item, lesson, team), or a
+    Response saying why not. Visitors and learners only ever reach approved
+    lessons in a live course's outline.
+    """
+    course = get_object_or_404(Playlist, slug=slug)
+    team = is_course_team(request.user, course)
+    item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
+    if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+        raise Http404
+    lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
+    block = lesson_block(request.user, lesson)
+    if block:
+        return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
+    return course, item, lesson, team
 
 
 class LessonView(APIView):
@@ -166,16 +190,56 @@ class LessonView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, slug, lesson_id):
-        course = get_object_or_404(Playlist, slug=slug)
-        team = is_course_team(request.user, course)
-        item = PlaylistItem.objects.filter(playlist=course, lesson_id=lesson_id).select_related("lesson__playlist").first()
-        if not team and (course.status != Playlist.STATUS_PUBLISHED or item is None or not item.lesson.approved):
+        opened = _open_lesson(request, slug, lesson_id)
+        if isinstance(opened, Response):
+            return opened
+        course, item, lesson, team = opened
+        return Response(lesson_payload(lesson, item, request.user, author_view=team))
+
+
+class QuizAttemptView(APIView):
+    """
+    POST `{answers: [[option index], …]}` (one list per question, in order) to
+    grade a quiz on the server. Returns the score and, per question, whether it
+    was right and the author's explanation; the right options themselves only
+    once the quiz is passed. For an enrolled learner the attempt is saved, and
+    passing completes the lesson (and can issue the certificate). Free-preview
+    tries and the course team's previews aren't saved.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "quiz-attempt"
+
+    def post(self, request, slug, lesson_id):
+        opened = _open_lesson(request, slug, lesson_id)
+        if isinstance(opened, Response):
+            return opened
+        course, item, lesson, team = opened
+        if lesson.kind != CourseLesson.KIND_QUIZ:
             raise Http404
-        lesson = item.lesson if item else get_object_or_404(course.lessons.select_related("playlist"), pk=lesson_id)
-        block = lesson_block(request.user, lesson)
-        if block:
-            return Response({"detail": BLOCK_MESSAGES[block], "code": block, "title": lesson.title}, status=status.HTTP_403_FORBIDDEN)
-        return Response(lesson_payload(lesson, item, author_view=team))
+        shown, has_pending = shown_version(lesson, team)
+        questions = lesson_questions(shown)
+        answers = request.data.get("answers") if isinstance(request.data, dict) else None
+        problem = answers_problem(questions, answers) if questions else "This quiz has no questions yet."
+        if problem:
+            return Response({"answers": problem}, status=400)
+        score, percent, passed, results = grade(questions, answers, shown.pass_mark)
+        if passed:
+            for result, question in zip(results, questions):
+                result["correct_options"] = question["correct"]
+
+        saved, certificate = False, None
+        enrolled = request.user.is_authenticated and Enrollment.objects.filter(user=request.user, playlist=course).exists()
+        if enrolled and item is not None and not has_pending and course.status == Playlist.STATUS_PUBLISHED:
+            QuizAttempt.objects.create(user=request.user, lesson=lesson, score=score, total=len(questions), passed=passed, answers=answers)
+            saved = True
+            if passed:
+                ItemProgress.objects.get_or_create(user=request.user, item=item)
+                certificate = issue_if_finished(request.user, course)
+        return Response({
+            "score": score, "total": len(questions), "percent": percent, "pass_mark": shown.pass_mark, "passed": passed,
+            "results": results, "saved": saved, "best": best_attempt(request.user, lesson) if saved else None,
+            "certificate_code": certificate.code if certificate else None,
+        })
 
 
 class MyEnrollmentsView(generics.ListAPIView):
