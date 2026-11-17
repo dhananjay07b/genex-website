@@ -21,6 +21,7 @@ import { cn, embedVideoUrl } from '@/lib/utils'
 import type { CourseDetail as Course, CourseItem, CourseLessonBlock, CourseLessonContent } from '@/types/learning'
 import { formatMinutes, plural } from './format'
 import { recordLessonOpen } from './lessons'
+import { QuizPlayer } from './QuizPlayer'
 
 type Loaded<T> = T | null | undefined
 
@@ -88,8 +89,9 @@ function Outline({ course, currentId, completed, onOpen }: {
 
 /**
  * A lesson written inside a course, opened from the course: video and/or text,
- * with the course outline beside it and Previous / Next. Opening it as an
- * enrolled learner completes it (as opening any lesson from the course does).
+ * or a quiz, with the course outline beside it and Previous / Next. Opening it
+ * as an enrolled learner completes it (as opening any lesson from the course
+ * does); a quiz is completed by passing it.
  */
 export default function CourseLessonPage() {
   const { slug, lessonId } = useParams<{ slug: string; lessonId: string }>()
@@ -132,17 +134,18 @@ export default function CourseLessonPage() {
     [course, justDone],
   )
   const itemId = lesson?.item_id ?? null
+  const isQuiz = lesson?.kind === 'quiz'
 
-  // Opening the lesson as an enrolled learner completes it; the last one issues the certificate.
+  // Opening the lesson as an enrolled learner completes it (a quiz: passing it); the last one issues the certificate.
   useEffect(() => {
-    if (!course || !enrolled || itemId === null || completed.has(itemId)) return
+    if (!course || !enrolled || isQuiz || itemId === null || completed.has(itemId)) return
     apiFetch<{ completed: number; certificate_code: string | null }>(
       `/api/learning/courses/${course.slug}/items/${itemId}/open/`, { method: 'POST' },
     ).then(res => {
       setJustDone(prev => new Set(prev).add(itemId))
       if (res.certificate_code) setCertificate(res.certificate_code)
     }).catch(() => {})
-  }, [course, enrolled, itemId, completed])
+  }, [course, enrolled, isQuiz, itemId, completed])
 
   if (course === null || (lesson === null && !block)) return <Navigate to={course ? `/courses/${course.slug}` : '/courses'} replace />
   if (course === undefined || lesson === undefined) {
@@ -259,6 +262,15 @@ export default function CourseLessonPage() {
               ))}
 
               {lesson.body && <RichText html={lesson.body} className="max-w-3xl text-base text-slate-800" />}
+
+              {lesson.quiz && (
+                <QuizPlayer key={key} slug={course.slug} lessonId={lesson.id} quiz={lesson.quiz}
+                  saving={enrolled && itemId !== null && !lesson.has_pending}
+                  onPassed={code => {
+                    if (itemId !== null) setJustDone(prev => new Set(prev).add(itemId))
+                    if (code) setCertificate(code)
+                  }} />
+              )}
             </>
           )}
 
