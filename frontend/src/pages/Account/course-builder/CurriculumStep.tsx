@@ -16,6 +16,7 @@ import ToggleOnIcon from '@mui/icons-material/ToggleOn'
 import ToggleOffOutlinedIcon from '@mui/icons-material/ToggleOffOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 import { COURSE_LESSON_TYPES } from '@/components/gelearn/courseItemKinds'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ const TYPE_TILE: Record<CourseLessonType, string> = {
   quiz: 'bg-amber-50 text-amber-700',
 }
 
+/** Closing the "how courses are built" note is remembered in this browser; "How courses are built" brings it back. */
 const HELP_KEY = 'gelearn.builder.curriculumHelpHidden'
 const MODULE_ID = (m: DraftModule) => `module:${m.key}`
 const LESSON_ID = (item: CourseTarget) => `lesson:${item.id}`
@@ -222,6 +224,11 @@ export function CurriculumStep({
     try { window.localStorage.setItem(HELP_KEY, '1') } catch { /* the help just shows again next time */ }
   }
 
+  function showHelp() {
+    setHelpHidden(false)
+    try { window.localStorage.removeItem(HELP_KEY) } catch { /* nothing to undo */ }
+  }
+
   const lessonMenu = (item: CourseTarget, m: DraftModule, index: number): MenuEntry[] => {
     const lesson = byId.get(item.id)
     const preview = lesson?.is_preview ?? item.is_preview ?? false
@@ -255,7 +262,7 @@ export function CurriculumStep({
   return (
     <div className="flex flex-col gap-4">
       {!helpHidden && (
-        <div className="flex gap-3 items-start rounded-2xl border border-sky-200 bg-brand-tint p-4">
+        <div className="flex gap-3 items-start rounded-2xl border border-border border-l-4 border-l-primary bg-white p-4">
           <ol className="flex-1 grid gap-3 md:grid-cols-3">
             {[
               ['Make a module', 'A module is a chapter, such as “Field communication”.'],
@@ -263,7 +270,7 @@ export function CurriculumStep({
               ['Learners finish every lesson', 'They open each text and video lesson and pass each quiz to get the certificate.'],
             ].map(([title, body], i) => (
               <li key={title} className="flex gap-2.5">
-                <span className="size-6 shrink-0 rounded-full border border-sky-200 bg-white text-xs font-extrabold text-primary flex items-center justify-center">{i + 1}</span>
+                <span className="size-6 shrink-0 rounded-full bg-sky-50 border border-sky-200 text-xs font-extrabold text-primary flex items-center justify-center">{i + 1}</span>
                 <span className="min-w-0">
                   <b className="block text-sm text-text-primary">{title}</b>
                   <span className="block text-xs text-text-muted leading-relaxed">{body}</span>
@@ -272,7 +279,7 @@ export function CurriculumStep({
             ))}
           </ol>
           <button type="button" onClick={hideHelp} aria-label="Hide this help"
-            className="size-8 shrink-0 rounded-lg flex items-center justify-center text-text-muted hover:bg-white hover:text-text-primary">
+            className="size-8 shrink-0 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface hover:text-text-primary">
             <CloseIcon sx={{ fontSize: 18 }} />
           </button>
         </div>
@@ -299,6 +306,11 @@ export function CurriculumStep({
           )
         })}
         {minutes > 0 && <span>about {formatMinutes(minutes)}</span>}
+        {helpHidden && (
+          <button type="button" onClick={showHelp} className="ml-auto inline-flex items-center gap-1 font-bold text-primary hover:underline">
+            <HelpOutlineIcon sx={{ fontSize: 16 }} /> How courses are built
+          </button>
+        )}
       </p>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -323,7 +335,7 @@ export function CurriculumStep({
                 </SortableContext>
                 <div className="px-3.5 pb-3.5 pt-1">
                   {picking === m.key ? (
-                    <div className="rounded-xl border border-sky-200 bg-brand-tint p-3 flex flex-col gap-2.5">
+                    <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 flex flex-col gap-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-extrabold text-text-primary">What kind of lesson?</span>
                         <button type="button" onClick={() => setPicking(null)} aria-label="Cancel"
@@ -350,7 +362,7 @@ export function CurriculumStep({
                     </div>
                   ) : (
                     <button type="button" onClick={() => { setMessage(''); setPicking(m.key) }} disabled={full}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-sky-300 px-3 py-2.5 text-sm font-bold text-primary hover:border-solid hover:bg-primary/5 transition disabled:opacity-40">
+                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-sky-300 px-3 py-2.5 text-sm font-bold text-primary hover:border-solid hover:border-primary hover:bg-sky-100 hover:text-sky-800 transition-colors disabled:opacity-40">
                       <AddIcon sx={{ fontSize: 18 }} /> Add lesson to module {mi + 1}
                     </button>
                   )}
@@ -366,7 +378,7 @@ export function CurriculumStep({
       )}
 
       <button type="button" onClick={() => patch({ modules: [...modules, blankModule()] })} disabled={modules.length >= LIMITS.modules}
-        className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-300 bg-brand-tint px-3 py-3 text-sm font-bold text-primary hover:border-solid transition disabled:opacity-40">
+        className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-300 bg-sky-50 px-3 py-3 text-sm font-bold text-primary hover:border-solid hover:border-primary hover:bg-sky-100 hover:text-sky-800 transition-colors disabled:opacity-40">
         <AddIcon sx={{ fontSize: 18 }} /> Add a module
       </button>
 
@@ -438,7 +450,7 @@ function ModuleCard({ module: m, index, menu, titleMissing, onChange, children }
     <section ref={setNodeRef} aria-label={`Module ${index + 1}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('rounded-2xl border border-sky-200 bg-white', isDragging && 'relative z-10 shadow-lg opacity-90')}>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-t-2xl border-b border-sky-200 bg-brand-tint py-2.5 pl-2 pr-2.5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-t-2xl border-b border-sky-200 bg-tint py-2.5 pl-2 pr-2.5">
         <span className="flex items-center gap-1">
           <DragHandle label={`Drag module ${index + 1}`} listeners={listeners} attributes={attributes} />
           <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-widest text-white whitespace-nowrap">Module {index + 1}</span>

@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -58,6 +58,8 @@ interface RichTextEditorProps {
   stickyToolbar?: string
   /** Show the word count and reading time under the text. */
   wordCount?: boolean
+  /** Told when a sticky toolbar pins under the bar above (true) or returns to its place (false). */
+  onToolbarPinned?: (pinned: boolean) => void
 }
 
 /** About 200 words a minute, as for blog posts. */
@@ -69,7 +71,7 @@ const readingMinutes = (words: number) => Math.max(1, Math.round(words / 200))
  * content (backend pages/editor_features.py), so nothing is lost either way.
  */
 export function RichTextEditor({
-  value, onChange, error, label, ariaLabel, minHeightClassName = 'min-h-96', stickyToolbar, wordCount,
+  value, onChange, error, label, ariaLabel, minHeightClassName = 'min-h-96', stickyToolbar, wordCount, onToolbarPinned,
 }: RichTextEditorProps) {
   const labelId = useId()
   // StarterKit includes Link and Underline (Tiptap v3). No inline code: Wagtail's editor here has code blocks only.
@@ -99,7 +101,7 @@ export function RichTextEditor({
       {label && <p id={labelId} className="block text-sm font-semibold text-text-primary mb-1.5">{label}</p>}
       {/* No overflow clipping with a sticky toolbar: it would stop the toolbar sticking. */}
       <div className={cn('border rounded-xl bg-white', !stickyToolbar && 'overflow-hidden', error ? 'border-red-500' : 'border-border')}>
-        <Toolbar editor={editor} sticky={stickyToolbar} />
+        <Toolbar editor={editor} sticky={stickyToolbar} onPinned={onToolbarPinned} />
         <EditorContent editor={editor} />
         {wordCount && <WordCount editor={editor} />}
       </div>
@@ -143,7 +145,29 @@ function WordCount({ editor }: { editor: Editor }) {
   )
 }
 
-function Toolbar({ editor, sticky }: { editor: Editor; sticky?: string }) {
+/**
+ * True while a sticky toolbar is pinned below the bar above it (it has moved
+ * down from the top of its editor box), so it can draw its own top edge there.
+ */
+function useStuck(ref: RefObject<HTMLDivElement | null>, enabled: boolean) {
+  const [stuck, setStuck] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    const box = el?.parentElement
+    if (!enabled || !el || !box) return
+    const check = () => setStuck(el.getBoundingClientRect().top - box.getBoundingClientRect().top > 2)
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => { window.removeEventListener('scroll', check); window.removeEventListener('resize', check) }
+  }, [ref, enabled])
+  return stuck
+}
+
+function Toolbar({ editor, sticky, onPinned }: { editor: Editor; sticky?: string; onPinned?: (pinned: boolean) => void }) {
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const stuck = useStuck(toolbarRef, Boolean(sticky))
+  useEffect(() => { onPinned?.(stuck) }, [stuck, onPinned])
   const [imageDialog, setImageDialog] = useState(false)
   const [linkDialog, setLinkDialog] = useState<{ href: string; askText: boolean; editing: boolean } | null>(null)
 
@@ -177,10 +201,14 @@ function Toolbar({ editor, sticky }: { editor: Editor; sticky?: string }) {
   }
 
   return (
-    // One row: compact enough for the Studio's narrow columns; scrolls sideways on a phone rather than wrapping.
+    // Sticky: the top strip of the editor box, pinned flush under the bar above while scrolling, with the same
+    // rounded top as at rest. While pinned it sits exactly over the box's side borders (-mx-px) with white behind
+    // its corners, so those borders never show past the curve.
+    <div ref={toolbarRef} className={cn(sticky && cn('sticky z-10', sticky, stuck && '-mx-px bg-white'))}>
+    {/* One row: compact enough for the Studio's narrow columns; scrolls sideways on a phone rather than wrapping. */}
     <div role="toolbar" aria-label="Formatting"
       className={cn('flex items-center overflow-x-auto px-1.5 py-1.5 border-b border-border bg-surface',
-        sticky && cn('sticky z-10 rounded-t-xl shadow-sm', sticky))}>
+        sticky && cn('rounded-t-xl', stuck && 'border-x border-t shadow-sm'))}>
       <ToolbarButton label="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <FormatBoldIcon sx={{ fontSize: 17 }} />
       </ToolbarButton>
@@ -248,6 +276,7 @@ function Toolbar({ editor, sticky }: { editor: Editor; sticky?: string }) {
           onApply={applyLink} onRemove={linkDialog.editing ? removeLink : undefined}
           onClose={() => { setLinkDialog(null); editor.commands.focus() }} />
       )}
+    </div>
     </div>
   )
 }

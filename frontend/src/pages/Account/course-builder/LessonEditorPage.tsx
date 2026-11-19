@@ -93,6 +93,8 @@ function LessonEditorForm({ courseId, lessonId }: { courseId: number; lessonId: 
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  // The text toolbar is pinned right under the lesson bar: the bar's bottom line is hidden so only the toolbar's edge shows.
+  const [toolbarPinned, setToolbarPinned] = useState(false)
   // Set just before navigating away on purpose (after the first save), so the unsaved-changes guard lets it through.
   const leaving = useRef(false)
   const dirty = JSON.stringify(fields) !== initial
@@ -239,8 +241,8 @@ function LessonEditorForm({ courseId, lessonId }: { courseId: number; lessonId: 
     <form onSubmit={submit} className="flex flex-col gap-5" aria-label={`${lesson ? 'Edit' : 'New'} ${label.toLowerCase()}`}>
       <PageMeta title={lesson ? `Edit: ${lesson.title}` : `New ${label.toLowerCase()}`} description="Write a course lesson." canonical={backTo} noIndex />
 
-      {/* Lesson bar: a fixed height, so the text toolbar can stick right under it (top-40 = header 6rem + bar 4rem). */}
-      <div className="sticky top-24 z-20 -mx-1 flex h-16 items-center gap-3 border-b border-border bg-white px-1">
+      {/* Lesson bar: a fixed height, so the text toolbar can stick just under it (top-42 = header 6rem + bar 4rem + a 0.5rem gap). */}
+      <div className={cn('sticky top-24 z-20 -mx-1 flex h-16 items-center gap-3 border-b bg-white px-1', toolbarPinned ? 'border-transparent' : 'border-border')}>
         <Link to={backTo} aria-label="Back to Curriculum"
           className="size-9 shrink-0 rounded-lg border border-border flex items-center justify-center text-text-primary hover:border-primary hover:text-primary">
           <ArrowBackIcon sx={{ fontSize: 18 }} />
@@ -304,7 +306,7 @@ function LessonEditorForm({ courseId, lessonId }: { courseId: number; lessonId: 
 
       {kind === 'text' && (
         <RichTextEditor label="Lesson text" value={fields.body} onChange={html => set({ body: html })} error={errors.body}
-          minHeightClassName="min-h-96" stickyToolbar="top-40" wordCount />
+          minHeightClassName="min-h-96" stickyToolbar="top-40" wordCount onToolbarPinned={setToolbarPinned} />
       )}
 
       {isVideo && (

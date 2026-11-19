@@ -133,7 +133,7 @@ export function QuizEditor({ questions, onChange, passMark, onPassMark, passMark
                   <div className="flex items-center gap-2 py-2 pl-3 pr-2">
                     <button type="button" aria-expanded={isOpen} onClick={() => setOpen(prev => prev.map((v, i) => (i === qi ? !isOpen : v)))}
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left">
-                      <span className="size-7 shrink-0 rounded-full bg-brand-tint text-xs font-extrabold text-primary flex items-center justify-center">{qi + 1}</span>
+                      <span className="size-7 shrink-0 rounded-full bg-sky-50 text-xs font-extrabold text-primary flex items-center justify-center">{qi + 1}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-text-primary">{q.prompt.trim() || `Question ${qi + 1}`}</span>
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
@@ -225,7 +225,7 @@ export function QuizEditor({ questions, onChange, passMark, onPassMark, passMark
           </ol>
 
           <button type="button" onClick={addQuestion} disabled={questions.length >= QUIZ_LIMITS.questions}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-300 bg-brand-tint px-3 py-3 text-sm font-bold text-primary hover:border-solid transition disabled:opacity-40">
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-300 bg-sky-50 px-3 py-3 text-sm font-bold text-primary hover:border-solid hover:border-primary hover:bg-sky-100 hover:text-sky-800 transition-colors disabled:opacity-40">
             <AddIcon sx={{ fontSize: 18 }} /> Add a question
           </button>
         </>

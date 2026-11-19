@@ -52,7 +52,7 @@ export function FurtherReadingStep({ draft, patch, library, isCompany, live }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="flex gap-2.5 rounded-xl border border-sky-200 bg-brand-tint px-4 py-3 text-sm text-text-muted">
+      <p className="flex gap-2.5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-text-muted">
         <InfoOutlinedIcon sx={{ fontSize: 19 }} className="text-primary shrink-0 mt-px" />
         <span>
           <b className="text-text-primary">Optional.</b> Point learners to your published content for extra reading. It shows after the

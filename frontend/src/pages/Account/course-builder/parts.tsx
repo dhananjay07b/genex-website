@@ -13,7 +13,7 @@ export function BuilderCard({ n, title, hint, children }: { n?: number; title: R
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-extrabold text-text-primary">
           {n !== undefined && (
-            <span className="size-6 rounded-full bg-brand-tint text-primary text-xs font-bold flex items-center justify-center">{n}</span>
+            <span className="size-6 rounded-full bg-sky-50 text-primary text-xs font-bold flex items-center justify-center">{n}</span>
           )}
           {title}
         </h2>
@@ -53,7 +53,7 @@ export function RowControls({ label, index, count, onMove, onRemove }: {
 export function AddButton({ children, onClick, disabled }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className="self-start inline-flex items-center gap-1 rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-1.5 text-sm font-bold text-primary hover:border-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none">
+      className="self-start inline-flex items-center gap-1 rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-1.5 text-sm font-bold text-primary hover:border-solid hover:border-primary hover:bg-sky-100 hover:text-sky-800 transition-colors disabled:opacity-40 disabled:pointer-events-none">
       <AddIcon sx={{ fontSize: 17 }} /> {children}
     </button>
   )

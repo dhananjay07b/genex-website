@@ -34,7 +34,7 @@ export function WorkspaceShell({ label, navLabel, items, navFooter, children }: 
 
       <section className="bg-white py-10 flex-1">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col lg:flex-row gap-7 lg:items-start">
-          <nav aria-label={navLabel} className="lg:w-60 shrink-0 lg:sticky lg:top-24 min-w-0">
+          <nav aria-label={navLabel} className="lg:w-60 shrink-0 lg:sticky lg:top-28 min-w-0">
             <ul className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible -mx-1 px-1 pb-1 lg:mx-0 bg-white lg:border lg:border-border lg:rounded-2xl lg:p-3">
               {items.map(({ to, label: itemLabel, icon: Icon, active }) => (
                 <li key={to} className="shrink-0">

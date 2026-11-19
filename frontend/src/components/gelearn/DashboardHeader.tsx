@@ -31,7 +31,7 @@ export function DashboardHeader({ label }: DashboardHeaderProps) {
   const image = isCompany ? user.company?.logo_url : user.avatar_url
 
   return (
-    <div className="bg-brand-tint border-b border-border pt-16">
+    <div className="bg-tint border-b border-border pt-16">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-9 flex items-center gap-4">
         <span
           aria-hidden="true"
