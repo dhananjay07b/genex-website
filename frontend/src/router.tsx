@@ -46,6 +46,7 @@ const CourseDetail          = lazy(() => import('@/pages/GeLearn/course/CourseDe
 const CourseLessonPage      = lazy(() => import('@/pages/GeLearn/course/CourseLessonPage'))
 const CertificatePage       = lazy(() => import('@/pages/GeLearn/certificate/CertificatePage'))
 const CourseBuilder         = lazy(() => import('@/pages/Account/course-builder/CourseBuilder'))
+const LessonEditorPage      = lazy(() => import('@/pages/Account/course-builder/LessonEditorPage'))
 const CompanyPage           = lazy(() => import('@/pages/GeLearn/CompanyPage'))
 const Login                 = lazy(() => import('@/pages/Account/Login'))
 const Register              = lazy(() => import('@/pages/Account/Register'))
@@ -188,6 +189,8 @@ export const gelearnRouter = createBrowserRouter([
                     children: [
                       { path: '/account/courses/new',  element: s(<CourseBuilder />) },
                       { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
+                      { path: '/account/courses/:id/lessons/new', element: s(<LessonEditorPage />) },
+                      { path: '/account/courses/:id/lessons/:lessonId', element: s(<LessonEditorPage />) },
                     ],
                   },
                 ],
@@ -217,6 +220,8 @@ export const gelearnRouter = createBrowserRouter([
                   { path: 'courses',            element: s(<StudioCourses />) },
                   { path: 'courses/new',        element: s(<CourseBuilder />) },
                   { path: 'courses/:id/edit',   element: s(<CourseBuilder />) },
+                  { path: 'courses/:id/lessons/new',       element: s(<LessonEditorPage />) },
+                  { path: 'courses/:id/lessons/:lessonId', element: s(<LessonEditorPage />) },
                   { path: ':type',              element: s(<StudioList />) },
                   { path: ':type/new',          element: s(<StudioEditor />) },
                   { path: ':type/:id/edit',     element: s(<StudioEditor />) },

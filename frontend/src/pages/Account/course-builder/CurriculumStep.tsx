@@ -21,11 +21,13 @@ import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/pages/Account/dashboard/ConfirmDialog'
 import type { CourseLesson, CourseLessonSaved, CourseLessonType, CourseRevisionInfo, CourseTarget } from '@/types/learning'
-import { LessonEditor } from './LessonEditor'
 import { MoreMenu, type MenuEntry } from './MoreMenu'
 import { LIMITS, allLessons, blankModule, formatMinutes, move, type Draft, type DraftModule } from './draft'
 
 type Patch = (next: Partial<Draft>) => void
+
+/** A lesson to open: an existing one, or a new one of a type in a module. */
+export type LessonTarget = { lessonId: number } | { kind: CourseLessonType; moduleKey: string }
 
 const NEW_TYPES: { kind: CourseLessonType; hint: string }[] = [
   { kind: 'text', hint: 'Write it here, with headings, images and tables' },
@@ -75,7 +77,7 @@ function lessonLine(item: CourseTarget, lesson: CourseLesson | undefined) {
  * lesson in that module. Drag by the handle to reorder (keyboard too), or use ⋯.
  */
 export function CurriculumStep({
-  courseId, live, revision, draft, patch, lessons, setLessons, error, starting, onStartWithoutCourse, openOnLoad,
+  courseId, live, revision, draft, patch, lessons, setLessons, error, opening, onOpenLesson,
   onLessonSaved, onLessonDeleted, onRevision,
 }: {
   /** null until the course is first saved. */
@@ -88,12 +90,10 @@ export function CurriculumStep({
   lessons: CourseLesson[] | null
   setLessons: (update: (prev: CourseLesson[] | null) => CourseLesson[] | null) => void
   error?: string
-  /** The draft is being saved so the first lesson has a course to belong to. */
-  starting: boolean
-  /** A new lesson on an unsaved course: the builder saves the draft first. Returns why it can't, if it can't. */
-  onStartWithoutCourse: (kind: CourseLessonType, moduleIndex: number) => string | null
-  /** Open a new lesson's editor straight away (just after the draft was saved for it). */
-  openOnLoad: { kind: CourseLessonType; module: number } | null
+  /** The course is being saved before a lesson's editor opens. */
+  opening: boolean
+  /** Opens a lesson's editor page (a new one goes into that module); the builder saves pending changes first. */
+  onOpenLesson: (target: LessonTarget) => void
   /** Keeps the outline's copy of a lesson in step after an edit. */
   onLessonSaved: (card: CourseTarget) => void
   /** The server already took it out of the outline. */
@@ -102,11 +102,6 @@ export function CurriculumStep({
 }) {
   const { modules } = draft
   const [picking, setPicking] = useState<string | null>(null)
-  const [editing, setEditing] = useState<{ lesson: CourseLesson | null; kind: CourseLessonType; moduleKey: string } | null>(() => {
-    if (!openOnLoad || courseId === null) return null
-    const m = modules[Math.min(openOnLoad.module, modules.length - 1)]
-    return m ? { lesson: null, kind: openOnLoad.kind, moduleKey: m.key } : null
-  })
   const [deleting, setDeleting] = useState<{ title: string; lessons: CourseTarget[]; moduleKey: string | null; busy: boolean } | null>(null)
   const [helpHidden, setHelpHidden] = useState(readHelpHidden)
   const [message, setMessage] = useState('')
@@ -171,25 +166,12 @@ export function CurriculumStep({
   function start(kind: CourseLessonType, moduleKey: string) {
     setMessage('')
     setPicking(null)
-    if (courseId !== null) {
-      setEditing({ lesson: null, kind, moduleKey })
-      return
-    }
-    const problem = onStartWithoutCourse(kind, modules.findIndex(m => m.key === moduleKey))
-    if (problem) setMessage(problem)
+    onOpenLesson({ kind, moduleKey })
   }
 
-  function saved({ course_revision, ...lesson }: CourseLessonSaved, created: boolean) {
-    setLessons(prev => (created ? [...(prev ?? []), lesson] : (prev ?? []).map(l => (l.id === lesson.id ? lesson : l))))
-    const into = editing?.moduleKey
-    setEditing(null)
-    if (created) {
-      const target = modules.find(m => m.key === into) ?? modules[modules.length - 1]
-      if (target) setItems(target.key, [...target.items, lesson.card])
-      else patch({ modules: [{ ...blankModule(), items: [lesson.card] }] })
-    } else {
-      onLessonSaved(lesson.card)
-    }
+  function saved({ course_revision, ...lesson }: CourseLessonSaved) {
+    setLessons(prev => (prev ?? []).map(l => (l.id === lesson.id ? lesson : l)))
+    onLessonSaved(lesson.card)
     onRevision(course_revision)
   }
 
@@ -200,7 +182,7 @@ export function CurriculumStep({
       const result = await apiFetch<CourseLessonSaved>(`/api/learning/me/courses/${courseId}/lessons/${item.id}/`, {
         method: 'PATCH', body: { is_preview: !(lesson?.is_preview ?? item.is_preview) },
       })
-      saved(result, false)
+      saved(result)
     } catch {
       setMessage("Couldn't change the free preview. Please try again.")
     }
@@ -245,7 +227,7 @@ export function CurriculumStep({
     const preview = lesson?.is_preview ?? item.is_preview ?? false
     const others = modules.filter(x => x.key !== m.key)
     return [
-      { label: 'Edit lesson', icon: EditOutlinedIcon, disabled: !lesson, onSelect: () => lesson && setEditing({ lesson, kind: lesson.kind, moduleKey: m.key }) },
+      { label: 'Edit lesson', icon: EditOutlinedIcon, onSelect: () => onOpenLesson({ lessonId: item.id }) },
       { label: `Free preview ${preview ? 'on' : 'off'}`, icon: preview ? ToggleOnIcon : ToggleOffOutlinedIcon, on: preview, onSelect: () => void togglePreview(item) },
       { kind: 'separator' },
       { label: 'Move up', icon: ArrowUpwardIcon, disabled: index === 0, onSelect: () => setItems(m.key, move(m.items, index, index - 1)) },
@@ -334,7 +316,7 @@ export function CurriculumStep({
                       return (
                         <LessonRow key={item.id} item={item} lesson={lesson} line={lessonLine(item, lesson)} tag={tag}
                           menu={lessonMenu(item, m, li)}
-                          onEdit={lesson ? () => setEditing({ lesson, kind: lesson.kind, moduleKey: m.key }) : undefined} />
+                          onEdit={() => onOpenLesson({ lessonId: item.id })} />
                       )
                     })}
                   </ol>
@@ -353,7 +335,7 @@ export function CurriculumStep({
                         {NEW_TYPES.map(({ kind, hint }) => {
                           const { icon: Icon, label } = COURSE_LESSON_TYPES[kind]
                           return (
-                            <button key={kind} type="button" onClick={() => start(kind, m.key)} disabled={starting}
+                            <button key={kind} type="button" onClick={() => start(kind, m.key)} disabled={opening}
                               className="flex items-center gap-2.5 rounded-xl border border-border bg-white p-2.5 text-left hover:border-primary hover:shadow-sm transition disabled:opacity-50">
                               <span className={cn('size-9 shrink-0 rounded-lg flex items-center justify-center', TYPE_TILE[kind])}><Icon sx={{ fontSize: 20 }} /></span>
                               <span className="min-w-0">
@@ -364,7 +346,7 @@ export function CurriculumStep({
                           )
                         })}
                       </div>
-                      {starting && <p role="status" className="text-xs font-semibold text-text-muted">Saving the course as a draft…</p>}
+                      {opening && <p role="status" className="text-xs font-semibold text-text-muted">Saving the course…</p>}
                     </div>
                   ) : (
                     <button type="button" onClick={() => { setMessage(''); setPicking(m.key) }} disabled={full}
@@ -418,10 +400,6 @@ export function CurriculumStep({
         <span>Drag a lesson or module by its handle, or use <b>⋯</b> to move it. Learners keep their progress when you reorder. Save to keep the changes.</span>
       </p>
 
-      {editing && courseId !== null && (
-        <LessonEditor courseId={courseId} lesson={editing.lesson} kind={editing.kind} live={live}
-          onClose={() => setEditing(null)} onSaved={saved} />
-      )}
       {deleting && (
         <ConfirmDialog
           title={deleting.moduleKey ? `Delete “${deleting.title}” and its ${deleting.lessons.length} lesson${deleting.lessons.length === 1 ? '' : 's'}?` : `Delete “${deleting.title}”?`}
@@ -485,7 +463,7 @@ function LessonRow({ item, lesson, line, tag, menu, onEdit }: {
   line: string
   tag: { label: string; className: string } | null
   menu: MenuEntry[]
-  onEdit?: () => void
+  onEdit: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: LESSON_ID(item) })
   const type = lesson?.kind ?? item.lesson_type ?? 'text'
@@ -509,12 +487,10 @@ function LessonRow({ item, lesson, line, tag, menu, onEdit }: {
         </span>
       </span>
       <span className="flex items-center gap-1">
-        {onEdit && (
-          <button type="button" onClick={onEdit} aria-label={`Edit ${item.title}`}
-            className="hidden sm:inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-bold text-text-primary hover:border-primary hover:text-primary">
-            <EditOutlinedIcon sx={{ fontSize: 15 }} /> Edit
-          </button>
-        )}
+        <button type="button" onClick={onEdit} aria-label={`Edit ${item.title}`}
+          className="hidden sm:inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-bold text-text-primary hover:border-primary hover:text-primary">
+          <EditOutlinedIcon sx={{ fontSize: 15 }} /> Edit
+        </button>
         <MoreMenu label={`More for ${item.title}`} entries={menu} />
       </span>
     </li>

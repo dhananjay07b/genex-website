@@ -14,9 +14,9 @@ import { useAuth } from '@/context/useAuth'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/pages/Account/dashboard/ConfirmDialog'
-import type { CourseLesson, CourseLessonType, CourseRevisionInfo, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
+import type { CourseLesson, CourseRevisionInfo, CourseStatus, CourseTarget, MyCourse } from '@/types/learning'
 import { BasicsCard, WhatLearnersGetCard } from './cards'
-import { CurriculumStep } from './CurriculumStep'
+import { CurriculumStep, type LessonTarget } from './CurriculumStep'
 import { FurtherReadingStep } from './FurtherReadingStep'
 import { SettingsStep } from './SettingsStep'
 import { PreviewModal } from './PreviewModal'
@@ -49,8 +49,6 @@ const FIELD_STEP: Record<string, StepKey> = {
   price: 'settings', access: 'settings', level: 'settings', topics: 'settings', roles: 'settings', instructors: 'settings', faqs: 'settings',
 }
 
-/** Set by the first lesson on an unsaved course: once the draft is saved, open that lesson's editor in that module. */
-interface OpenLesson { kind: CourseLessonType; module: number }
 
 /** Keyed by route so switching between courses always starts fresh. */
 export default function CourseBuilder() {
@@ -69,11 +67,6 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const step: StepKey = isStep(params.get('step')) ? (params.get('step') as StepKey) : 'details'
-  const [openLesson, setOpenLesson] = useState<OpenLesson | null>(() => (location.state as { openLesson?: OpenLesson } | null)?.openLesson ?? null)
-  // Read once: drop it from history so a reload doesn't open the editor again.
-  useEffect(() => {
-    if (openLesson) navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
-  }, [openLesson, navigate, location.pathname, location.search])
   const { isCompany } = useRole()
   const { user } = useAuth()
   const coursesHome = isCompany ? '/studio/courses' : '/account?tab=courses'
@@ -93,6 +86,8 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [withdrawing, setWithdrawing] = useState<'ask' | 'busy' | null>(null)
+  // A lesson to open once the user agrees to save their pending changes first.
+  const [pendingOpen, setPendingOpen] = useState<{ target: LessonTarget; use: Draft } | null>(null)
   // Bumped when the course lessons should be fetched again (withdrawing drops their edits waiting for review).
   const [lessonsKey, setLessonsKey] = useState(0)
 
@@ -142,19 +137,40 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   if (isEditing && course === undefined) return <div className="min-h-screen" />
 
   const goTo = (next: StepKey) => {
-    setOpenLesson(null) // only the first visit to Curriculum after saving opens the new lesson
     setParams(prev => { const p = new URLSearchParams(prev); p.set('step', next); return p }, { replace: true })
     topRef.current?.scrollIntoView({ block: 'start' })
   }
   const patch = (next: Partial<Draft>) => { setDraft(prev => ({ ...prev, ...next })); setNotice('') }
-  // A lesson needs a course to belong to: starting the first one on a new course saves the draft first.
-  const startFirstLesson = (kind: CourseLessonType, module: number): string | null => {
-    if (draft.title.trim().length < 3) {
-      setErrors({ title: 'Give the course a title of at least 3 characters.' })
-      return 'Give the course a title first (in Details). The course is then saved as a draft and your lesson opens.'
+  /** Navigates to a lesson's editor page once the course is saved (a new lesson's module is found by its place in the outline). */
+  const goToLesson = (target: LessonTarget) => (savedCourse: MyCourse, used: Draft) => {
+    if ('lessonId' in target) {
+      navigate(`${editBase}/${savedCourse.id}/lessons/${target.lessonId}`)
+      return
     }
-    void save(false, { kind, module })
-    return null
+    const index = keptModules(used).findIndex(m => m.key === target.moduleKey)
+    const moduleId = index >= 0 ? savedCourse.modules[index]?.id : undefined
+    navigate(`${editBase}/${savedCourse.id}/lessons/new?kind=${target.kind}${moduleId !== undefined ? `&module=${moduleId}` : ''}`)
+  }
+
+  /**
+   * Opens a lesson's editor page. The page saves the lesson on its own, so the
+   * course is saved first when it has to be: a new course (the lesson needs one
+   * to belong to), a new module, or pending edits (after asking). A module
+   * without a title gets "Module N", since a saved module needs one.
+   */
+  function openLesson(target: LessonTarget) {
+    const go = goToLesson(target)
+    let use = draft
+    if ('kind' in target) {
+      const index = draft.modules.findIndex(m => m.key === target.moduleKey)
+      if (index >= 0 && !draft.modules[index].title.trim()) {
+        use = { ...draft, modules: draft.modules.map((m, i) => (i === index ? { ...m, title: `Module ${index + 1}` } : m)) }
+        setDraft(use)
+      }
+    }
+    if (course && !changes(saved, use).any && !cover) go(course, use)
+    else if (course && dirty) setPendingOpen({ target, use })
+    else void save(false, { use, after: go })
   }
   // A course lesson saved or deleted on the server: update (or drop) its copy in both the saved and edited outline,
   // so it neither shows as an unsaved change nor gets sent back after it's gone.
@@ -176,12 +192,12 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const unfinished = (lessons ?? []).filter(l => l.problem && allLessons(draft).some(i => i.id === l.id))
   const canSubmit = !live && status !== 'pending'
 
-  function validate(submit: boolean) {
+  function validate(submit: boolean, d: Draft) {
     const found: Record<string, string> = {}
-    if (draft.title.trim().length < 3) found.title = 'Give the course a title of at least 3 characters.'
-    if (draft.access === 'paid' && !(Number(draft.price) >= 1)) found.price = 'Enter a price of at least ₹1.'
-    if (keptModules(draft).some(m => !m.title.trim())) found.items = 'Give every module a title, or delete the empty one.'
-    if (submit && lessonCount === 0) found.items = 'Add at least one lesson to a module before submitting.'
+    if (d.title.trim().length < 3) found.title = 'Give the course a title of at least 3 characters.'
+    if (d.access === 'paid' && !(Number(d.price) >= 1)) found.price = 'Enter a price of at least ₹1.'
+    if (keptModules(d).some(m => !m.title.trim())) found.items = 'Give every module a title, or delete the empty one.'
+    if (submit && allLessons(d).length === 0) found.items = 'Add at least one lesson to a module before submitting.'
     return found
   }
 
@@ -192,9 +208,13 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
     if (field && FIELD_STEP[field] && FIELD_STEP[field] !== step) goTo(FIELD_STEP[field])
   }
 
-  async function save(submit: boolean, then?: OpenLesson) {
-    const found = validate(submit)
+  /** Saves the course. `use` saves that version of the draft; `after` runs once it's saved (instead of the usual redirect). */
+  async function save(submit: boolean, opts?: { use?: Draft; after?: (saved: MyCourse, used: Draft) => void }) {
+    const d = opts?.use ?? draft
+    const changed = changes(saved, d)
+    const found = validate(submit, d)
     setNotice('')
+    setPendingOpen(null)
     if (Object.keys(found).length) {
       showErrors(found)
       return
@@ -207,17 +227,17 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
       const first = !course
       let result = await apiFetch<MyCourse>(
         first ? '/api/learning/me/courses/' : `/api/learning/me/courses/${course.id}/`,
-        { method: first ? 'POST' : 'PATCH', body: metaPayload(draft, isCompany) },
+        { method: first ? 'POST' : 'PATCH', body: metaPayload(d, isCompany) },
       )
       // Only send the parts that changed, so a live course isn't sent for review needlessly.
-      if (first ? keptModules(draft).length > 0 : changed.outline) {
-        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/outline/`, { method: 'PUT', body: outlinePayload(draft) })
+      if (first ? keptModules(d).length > 0 : changed.outline) {
+        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/outline/`, { method: 'PUT', body: outlinePayload(d) })
       }
-      if (first ? draft.faqs.length > 0 : changed.faqs) {
-        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/faqs/`, { method: 'PUT', body: faqsPayload(draft) })
+      if (first ? d.faqs.length > 0 : changed.faqs) {
+        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/faqs/`, { method: 'PUT', body: faqsPayload(d) })
       }
-      if (first ? draft.reading.length > 0 : changed.reading) {
-        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/reading/`, { method: 'PUT', body: readingPayload(draft) })
+      if (first ? d.reading.length > 0 : changed.reading) {
+        result = await apiFetch<MyCourse>(`/api/learning/me/courses/${result.id}/reading/`, { method: 'PUT', body: readingPayload(d) })
       }
       if (cover) {
         const form = new FormData()
@@ -230,9 +250,14 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
         navigate(coursesHome)
         return
       }
+      if (opts?.after) {
+        if (!first) load(result)
+        opts.after(result, d)
+        return
+      }
       if (first) {
         // The edit route loads the saved course (and enables Preview); the step stays the same.
-        navigate(`${editBase}/${result.id}/edit${location.search}`, { replace: true, state: then ? { openLesson: then } : null })
+        navigate(`${editBase}/${result.id}/edit${location.search}`, { replace: true })
         return
       }
       load(result)
@@ -383,7 +408,7 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
         {step === 'curriculum' && (
           <CurriculumStep courseId={courseId} live={live} revision={revision} draft={draft} patch={patch}
             lessons={lessons} setLessons={setLessons} error={errors.items ?? errors.modules ?? errors.loose_items}
-            starting={saving === 'draft' && !course} onStartWithoutCourse={startFirstLesson} openOnLoad={openLesson}
+            opening={saving === 'draft'} onOpenLesson={openLesson}
             onLessonSaved={card => syncLesson(card, false)} onLessonDeleted={card => syncLesson(card, true)} onRevision={setRevision} />
         )}
         {step === 'reading' && (
@@ -409,6 +434,13 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
           )}
         </div>
       </div>
+
+      {pendingOpen && (
+        <ConfirmDialog title="Save your changes first?"
+          description={`The lesson opens on its own page, so your changes to the course are saved first.${live ? ' On a live course, some of them go to Genex for review.' : ''}`}
+          confirmLabel="Save and continue" confirming={saving === 'draft'}
+          onCancel={() => setPendingOpen(null)} onConfirm={() => save(false, { use: pendingOpen.use, after: goToLesson(pendingOpen.target) })} />
+      )}
 
       {withdrawing && (
         <ConfirmDialog title="Withdraw your changes?"
