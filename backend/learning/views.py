@@ -24,8 +24,8 @@ from pages.api import GenexPagination, author_payload
 from pages.models import AccessControlled
 
 from .models import (
-    MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, CareerRole, Certificate, CourseLesson, CourseReview, Enrollment, ItemProgress, Playlist, PlaylistItem,
-    QuizAttempt, ReviewReply,
+    MAX_CERTIFICATE_NAME, MAX_REPLY_LENGTH, READING_KINDS, CareerRole, Certificate, CourseLesson, CourseReading, CourseReview, Enrollment,
+    ItemProgress, Playlist, PlaylistItem, QuizAttempt, ReviewReply,
 )
 from . import course_page
 from .lessons import BLOCK_MESSAGES, is_course_team, lesson_block, lesson_payload, shown_version
@@ -49,12 +49,14 @@ from .serializers import (
     FaqInputSerializer,
     MyCourseSerializer,
     OutlineSerializer,
+    ReadingSerializer,
     ReviewInputSerializer,
     eligible_instructors,
     library_for,
     lesson_problem,
     revision_summary,
     library_for_course,
+    reading_library_for_course,
     target_card,
 )
 
@@ -290,16 +292,16 @@ class MyCourseViewSet(
     def _check_refs(self, course, refs):
         """An error message if `refs` ({kind, id} dicts) aren't this author's own content, once each and within the limit."""
         if len(refs) > MAX_ITEMS:
-            return f"A course can hold at most {MAX_ITEMS} items."
+            return f"A course can hold at most {MAX_ITEMS} lessons."
         library = library_for_course(course)
         allowed = {kind: set(qs.values_list("pk", flat=True)) for kind, qs in library.items()}
         seen = set()
         for ref in refs:
             key = (ref["kind"], ref["id"])
             if ref["id"] not in allowed.get(ref["kind"], ()):
-                return "Courses can only include your own published content."
+                return "That lesson isn't part of this course."
             if key in seen:
-                return "Each item can appear only once."
+                return "Each lesson can appear only once."
             seen.add(key)
         return None
 
@@ -307,7 +309,7 @@ class MyCourseViewSet(
     def outline(self, request, pk=None):
         """
         Replace the course's modules and lessons:
-        `{modules: [{id?, title, summary, items: [{kind, id}]}], loose_items: [{kind, id}]}`.
+        `{modules: [{id?, title, summary, items: [{kind: "lesson", id}]}]}`. Every lesson sits in a module.
         Modules without an `id` are created; modules left out are deleted. Lessons
         keep learners' progress. On a live course, new or reworded modules wait
         for Genex review (with the rest of this outline) while the live version
@@ -317,15 +319,14 @@ class MyCourseViewSet(
         data = OutlineSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         modules_in = data.validated_data["modules"]
-        loose = data.validated_data["loose_items"]
-        refs = [ref for m in modules_in for ref in m["items"]] + loose
+        refs = [ref for m in modules_in for ref in m["items"]]
         error = self._check_refs(course, refs)
         if error:
             return Response({"items": error}, status=400)
         # On a live course, lessons Genex hasn't reviewed yet hold the outline for review, so they must be finished.
         new_lessons = []
         if is_live(course):
-            lesson_ids = {ref["id"] for ref in refs if ref["kind"] == "lesson"}
+            lesson_ids = {ref["id"] for ref in refs}
             new_lessons = list(course.lessons.filter(pk__in=lesson_ids, approved=False))
             unfinished = self._unfinished(new_lessons)
             if unfinished:
@@ -340,7 +341,7 @@ class MyCourseViewSet(
         if any(mid not in known for mid in ids) or len(ids) != len(set(ids)):
             return Response({"modules": "That module isn't part of this course."}, status=400)
 
-        outline = normalise_outline(modules_in, loose)
+        outline = normalise_outline(modules_in, [])
         with transaction.atomic():
             if is_live(course) and ((held and "outline" in held.changes) or new_lessons or rewords(course, outline)):
                 stage(course, request.user, {"outline": outline})
@@ -364,6 +365,35 @@ class MyCourseViewSet(
             elif faqs != live_value(course, "faqs"):
                 apply_faqs(course, faqs)
                 course.save(update_fields=["updated_at"])
+        return Response(self.get_serializer(course).data)
+
+    @action(detail=True, methods=["put"])
+    def reading(self, request, pk=None):
+        """
+        Replace the course's Further reading with `{items: [{kind, id}]}`, in order
+        (at most 20). It points to content that is already published and reviewed,
+        so changes go live straight away, even on a live course.
+        """
+        course = self.get_object()
+        data = ReadingSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        refs = data.validated_data["items"]
+        allowed = {kind: set(qs.values_list("pk", flat=True)) for kind, qs in reading_library_for_course(course).items()}
+        seen = set()
+        for ref in refs:
+            key = (ref["kind"], ref["id"])
+            if ref["id"] not in allowed.get(ref["kind"], ()):
+                return Response({"items": "Further reading can only point to your own published content."}, status=400)
+            if key in seen:
+                return Response({"items": "Each item can appear only once."}, status=400)
+            seen.add(key)
+        with transaction.atomic():
+            course.reading.all().delete()
+            CourseReading.objects.bulk_create([
+                CourseReading(playlist=course, position=i, **{f"{READING_KINDS[r['kind']][0]}_id": r["id"]})
+                for i, r in enumerate(refs)
+            ])
+            course.save(update_fields=["updated_at"])
         return Response(self.get_serializer(course).data)
 
     @staticmethod
@@ -452,7 +482,7 @@ class MyCourseViewSet(
     def submit(self, request, pk=None):
         course = self.get_object()
         if not course.items.exists():
-            return Response({"items": "Add at least one item before submitting."}, status=400)
+            return Response({"items": "Add at least one lesson to a module before submitting."}, status=400)
         unfinished = self._unfinished(course.lessons.filter(items__playlist=course))
         if unfinished:
             return Response({"items": "Finish these lessons before submitting: " + unfinished + "."}, status=400)

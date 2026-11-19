@@ -198,7 +198,7 @@ def apply_faqs(course, faqs):
 
 
 def _still_allowed(course, outline):
-    """Drops lessons whose content was deleted or unpublished while the changes waited for review."""
+    """Drops lessons that were deleted while the changes waited for review."""
     library = library_for_course(course)
     allowed = {kind: set(qs.values_list("pk", flat=True)) for kind, qs in library.items()}
     ok = lambda refs: [r for r in refs if r["id"] in allowed.get(r["kind"], ())]  # noqa: E731

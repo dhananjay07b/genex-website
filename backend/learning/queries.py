@@ -21,25 +21,18 @@ def _count(model, field):
 def with_course_stats(queryset):
     """
     Adds `item_count` (lessons), `enrolled_count`, `video_seconds` (total
-    length of the course's videos and video lessons; posts have no fixed length), and
-    `rating_avg` / `rating_count` over its visible reviews.
+    length of the course's video lessons), and `rating_avg` / `rating_count`
+    over its visible reviews.
     """
     visible_reviews = CourseReview.objects.filter(playlist=OuterRef("pk"), status=CourseReview.STATUS_VISIBLE).values("playlist")
-    video_seconds = (
-        PlaylistItem.objects.filter(playlist=OuterRef("pk"), video__isnull=False)
-        .values("playlist").annotate(s=Sum("video__duration_seconds")).values("s")
-    )
     lesson_video_seconds = (
-        PlaylistItem.objects.filter(playlist=OuterRef("pk"), lesson__isnull=False)
+        PlaylistItem.objects.filter(playlist=OuterRef("pk"))
         .values("playlist").annotate(s=Sum("lesson__duration_seconds")).values("s")
     )
     return queryset.annotate(
         item_count=_count(PlaylistItem, "playlist"),
         enrolled_count=_count(Enrollment, "playlist"),
-        video_seconds=(
-            Coalesce(Subquery(video_seconds, output_field=IntegerField()), Value(0))
-            + Coalesce(Subquery(lesson_video_seconds, output_field=IntegerField()), Value(0))
-        ),
+        video_seconds=Coalesce(Subquery(lesson_video_seconds, output_field=IntegerField()), Value(0)),
         rating_avg=Subquery(visible_reviews.annotate(a=Avg("rating")).values("a"), output_field=FloatField()),
         rating_count=Coalesce(Subquery(visible_reviews.annotate(n=Count("pk")).values("n"), output_field=IntegerField()), Value(0)),
     )

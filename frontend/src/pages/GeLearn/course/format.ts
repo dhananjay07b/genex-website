@@ -2,7 +2,10 @@ import type { CourseItemKind } from '@/types/learning'
 
 export const LEVEL_LABEL: Record<string, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 
-const KIND_WORDS: Record<CourseItemKind, [string, string]> = {
+// Lesson counts come by lesson type (text, video, quiz); the published kinds remain for Further reading.
+const KIND_WORDS: Record<CourseItemKind | 'text' | 'quiz', [string, string]> = {
+  text: ['text lesson', 'text lessons'],
+  quiz: ['quiz', 'quizzes'],
   video: ['video', 'videos'],
   post: ['blog post', 'blog posts'],
   article: ['GeAcademy article', 'GeAcademy articles'],
@@ -15,8 +18,9 @@ const KIND_WORDS: Record<CourseItemKind, [string, string]> = {
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /** "10 videos and 8 blog posts" from the lesson counts, biggest first. */
-export function lessonFormats(counts: Partial<Record<CourseItemKind, number>>): string {
-  const parts = (Object.entries(counts) as [CourseItemKind, number][])
+export function lessonFormats(counts: Partial<Record<string, number>>): string {
+  const parts = (Object.entries(counts) as [keyof typeof KIND_WORDS, number][])
+    .filter(([kind]) => kind in KIND_WORDS)
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1])
     .map(([kind, n]) => plural(n, ...KIND_WORDS[kind]))

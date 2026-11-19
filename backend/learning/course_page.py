@@ -27,8 +27,8 @@ MIN_LEARNER_COMPANIES = 3
 
 
 def lesson_counts(items):
-    """How many lessons of each kind, e.g. {"video": 10, "post": 8}."""
-    return dict(Counter(item["kind"] for item in items))
+    """How many lessons of each type, e.g. {"text": 4, "video": 4, "quiz": 2}."""
+    return dict(Counter(item.get("lesson_type") or item["kind"] for item in items))
 
 
 def modules_payload(course, items):

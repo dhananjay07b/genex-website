@@ -90,8 +90,7 @@ class StudioBaseSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         attrs = super().validate(attrs)
         if self._will_be_draft():
-            if getattr(self.instance, "is_draft", None) is False:
-                self._refuse_unpublishing_course_lessons()
+            # Content in a course's Further reading can go back to draft: it just drops out of the list.
             return attrs
         missing = {}
         for name in self._needed_to_publish:
@@ -101,19 +100,6 @@ class StudioBaseSerializer(serializers.ModelSerializer):
         if missing:
             raise serializers.ValidationError(missing)
         return attrs
-
-    def _refuse_unpublishing_course_lessons(self):
-        """A lesson in a course can't vanish: completion and certificates count every lesson."""
-        from learning.models import PlaylistItem
-        for field in PlaylistItem._meta.get_fields():
-            if getattr(field, "related_model", None) is type(self.instance):
-                titles = list(PlaylistItem.objects.filter(**{field.name: self.instance})
-                              .values_list("playlist__title", flat=True).distinct()[:3])
-                if titles:
-                    raise serializers.ValidationError({"is_draft": (
-                        f"This is a lesson in {', '.join(titles)}. Remove it from the course "
-                        "before moving it back to draft."
-                    )})
 
     def create(self, validated_data):
         if "date" in {f.name for f in self.Meta.model._meta.fields} and not validated_data.get("date"):

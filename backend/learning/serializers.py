@@ -19,8 +19,8 @@ from .lessons import REVIEWED_FIELDS, held_edits, with_pending
 from .reviews import card_rating, rating_summary
 from .models import (
     CourseLesson, MAX_QUIZ_OPTIONS, MAX_QUIZ_QUESTIONS, MIN_QUIZ_OPTIONS, QuizQuestion,
-    ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
-    PROMISED_FIELDS, CareerRole, Certificate, CourseFAQ, CourseModule, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
+    ITEM_KINDS, MAX_FAQS, MAX_MODULES, MAX_READING, READING_KINDS, MAX_REVIEW_LENGTH, MAX_OUTCOMES, MAX_PREREQUISITES, MAX_ROLES, MAX_TOPICS,
+    PROMISED_FIELDS, CareerRole, Certificate, CourseFAQ, CourseModule, CourseReading, Playlist, PlaylistItem, clean_text_lines, eligible_instructors, instructor_problem,
 )
 
 MAX_ITEMS = 100
@@ -33,8 +33,10 @@ def clean_lines(value, limit, label):
         raise serializers.ValidationError(error.messages)
 
 
-# Load every possible target (and its image) in one query per course.
-ITEM_SELECT = ["video__image", "post__image", "article__image", "research__image", "whitepaper", "podcast__image", "lesson__playlist"]
+# Load each outline lesson (and its course) in one query per course.
+ITEM_SELECT = ["lesson__playlist"]
+# Load every possible Further reading target (and its image) in one query per course.
+READING_SELECT = ["video__image", "post__image", "article__image", "research__image", "whitepaper", "podcast__image"]
 
 ITEM_PATHS = {
     "video": "/videos/{id}", "post": "/blog/{id}", "article": "/geacademy/{id}",
@@ -97,7 +99,7 @@ def lesson_own_minutes(lesson):
 
 
 def target_card(target, kind):
-    """A course item's content as shown in course pages and the builder."""
+    """A course lesson, or a piece of published content (Further reading), as shown in course pages and the builder."""
     if kind == "lesson":
         return lesson_card(target)
     image = getattr(target, "image", None)
@@ -302,13 +304,19 @@ class CourseDetailSerializer(CourseProgressSerializer):
     my_relation = serializers.SerializerMethodField()
     faqs = serializers.SerializerMethodField()
     learner_companies = serializers.SerializerMethodField()
+    reading = serializers.SerializerMethodField()
 
     class Meta(CourseProgressSerializer.Meta):
         fields = CourseProgressSerializer.Meta.fields + [
             "summary", "outcomes", "prerequisites", "language",
             "total_minutes", "lesson_counts", "modules", "next_item_id",
             "instructors", "publisher", "roles", "rating_summary", "reviews", "my_review", "my_relation", "faqs", "learner_companies",
+            "reading",
         ]
+
+    def get_reading(self, obj):
+        """Optional Further reading after the lessons; never part of progress or the certificate."""
+        return reading_cards(obj, self._cache(), self._user())
 
     # Course-page extras (see course_page.py). Lists of courses (enrollments) only use the card fields.
     def _items(self, obj):
@@ -393,6 +401,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
     enrolled_count = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
     revision = serializers.SerializerMethodField()
+    reading = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
@@ -400,7 +409,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             "id", "slug", "title", "summary", "description", "outcomes", "prerequisites", "language",
             "cover_url", "level", "topics", "roles", "instructors",
             "access", "price", "currency",
-            "status", "rejection_reason", "modules", "items", "faqs",
+            "status", "rejection_reason", "modules", "items", "faqs", "reading",
             "enrolled_count", "can_delete", "revision", "submitted_at", "updated_at",
         ]
         read_only_fields = ["id", "slug", "currency", "status", "rejection_reason", "submitted_at", "updated_at"]
@@ -417,6 +426,9 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
 
     def get_enrolled_count(self, obj):
         return obj.enrollments.count()
+
+    def get_reading(self, obj):
+        return reading_cards(obj)
 
     def get_can_delete(self, obj):
         """A live course with learners can't be deleted by its author (Genex unpublishes it instead)."""
@@ -438,7 +450,7 @@ class MyCourseSerializer(AccessFieldsMixin, serializers.ModelSerializer):
             held["faqs"] = [{"id": -(i + 1), "question": q, "answer": a} for i, (q, a) in enumerate(changes["faqs"])]
         if "outline" in changes:
             outline = changes["outline"]
-            refs = [(r, m["id"]) for m in outline["modules"] for r in m["items"]] + [(r, None) for r in outline["loose_items"]]
+            refs = [(r, m["id"]) for m in outline["modules"] for r in m["items"]]
             library = library_for_course(obj)
             found = {}
             for kind in {r["kind"] for r, _ in refs}:
@@ -693,13 +705,34 @@ class OutlineModuleSerializer(serializers.Serializer):
 
 
 class OutlineSerializer(serializers.Serializer):
-    """The whole lesson outline: modules in order, each with its lessons, plus lessons in no module (shown after them)."""
+    """The whole lesson outline: modules in order, each with its lessons. Every lesson sits in a module."""
     modules = OutlineModuleSerializer(many=True, required=False, default=list)
+    # Kept so older clients get a clear message; it must be empty.
     loose_items = ItemRefSerializer(many=True, required=False, default=list)
 
     def validate_modules(self, value):
         if len(value) > MAX_MODULES:
             raise serializers.ValidationError(f"A course can have at most {MAX_MODULES} modules.")
+        return value
+
+    def validate_loose_items(self, value):
+        if value:
+            raise serializers.ValidationError("Put every lesson in a module.")
+        return value
+
+
+class ReadingRefSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=list(READING_KINDS))
+    id = serializers.IntegerField()
+
+
+class ReadingSerializer(serializers.Serializer):
+    """A course's Further reading, in order: `{items: [{kind, id}]}`."""
+    items = ReadingRefSerializer(many=True)
+
+    def validate_items(self, value):
+        if len(value) > MAX_READING:
+            raise serializers.ValidationError(f"Further reading can hold at most {MAX_READING} items.")
         return value
 
 
@@ -740,7 +773,30 @@ def library_for(user):
 
 
 def library_for_course(course):
-    """What this course's outline may hold: the author's published content plus the course's own lessons."""
-    library = company_library(course.company) if course.company_id else professional_library(course.owner)
-    library["lesson"] = course.lessons.select_related("playlist")
-    return library
+    """What this course's outline may hold: the course's own lessons."""
+    return {"lesson": course.lessons.select_related("playlist")}
+
+
+def reading_library_for_course(course):
+    """What this course's Further reading may point to: the author's published content."""
+    return company_library(course.company) if course.company_id else professional_library(course.owner)
+
+
+def reading_cards(course, cache=None, user=None):
+    """
+    The course's Further reading as cards, in order. Content unpublished or
+    deleted since it was added is left out. With `user`, each card says whether
+    that user can open it (Further reading keeps its own access, like the
+    content's own page).
+    """
+    allowed = {kind: set(qs.values_list("pk", flat=True)) for kind, qs in reading_library_for_course(course).items()}
+    cards = []
+    for entry in course.reading.select_related(*READING_SELECT):
+        kind = entry.kind
+        if entry.target is None or getattr(entry, f"{READING_KINDS[kind][0]}_id") not in allowed.get(kind, ()):
+            continue
+        card = target_card(entry.target, kind)
+        if user is not None:
+            card["is_locked"] = not has_access(user, entry.target, cache)
+        cards.append(card)
+    return cards

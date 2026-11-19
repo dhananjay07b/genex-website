@@ -18,8 +18,21 @@ TODAY = datetime.date(2026, 9, 30)
 
 
 def lessons(refs):
-    """An outline payload with these lessons and no modules."""
-    return {"modules": [], "loose_items": refs}
+    """An outline payload with these lessons in one module (every lesson sits in a module)."""
+    return {"modules": [{"title": "Module 1", "items": refs}]}
+
+
+LESSON_FIELDS = {
+    "text": {"body": "<p>Lesson text.</p>"},
+    "video": {"video_url": "https://youtu.be/abc123", "duration": "10 min"},
+    "quiz": {},
+}
+
+
+def add_lesson(course, title="Lesson", kind="text", position=0, module=None, **fields):
+    """Put a lesson written in the course into its outline (the only thing an outline holds) and return the item."""
+    lesson = course.lessons.create(kind=kind, title=title, approved=True, **{**LESSON_FIELDS[kind], **fields})
+    return course.items.create(lesson=lesson, position=position, module=module)
 
 
 def make_user(username, **kwargs):
@@ -69,16 +82,24 @@ class CourseBuilderTests(TestCase):
         self.assertEqual((course["status"], course["slug"]), ("draft", "scada-foundations"))
         cid = course["id"]
 
-        self.assertEqual(self.api.post(f"/api/learning/me/courses/{cid}/submit/").status_code, 400)  # no items yet
+        self.assertEqual(self.api.post(f"/api/learning/me/courses/{cid}/submit/").status_code, 400)  # no lessons yet
 
-        bad = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([{"kind": "video", "id": self.foreign_video.pk}]), format="json")
-        self.assertEqual(bad.status_code, 400)
-        dup = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([{"kind": "video", "id": self.video.pk}] * 2), format="json")
-        self.assertEqual(dup.status_code, 400)
+        own = Playlist.objects.get(pk=cid)
+        notes = own.lessons.create(kind="text", title="SCADA field notes", body="<p>Notes</p>")
+        intro = own.lessons.create(kind="video", title="Intro to SCADA", video_url="https://youtu.be/abc123", duration="5 min")
+        elsewhere = Playlist.objects.create(owner=self.other_pro, title="Theirs").lessons.create(kind="text", title="Theirs", body="<p>x</p>")
+        outline = f"/api/learning/me/courses/{cid}/outline/"
 
-        res = self.api.put(f"/api/learning/me/courses/{cid}/outline/", lessons([
-            {"kind": "post", "id": self.post.pk}, {"kind": "video", "id": self.video.pk},
-        ]), format="json")
+        for refs in (
+            [{"kind": "lesson", "id": elsewhere.pk}],          # another course's lesson
+            [{"kind": "video", "id": self.video.pk}],          # published content is Further reading, not a lesson
+            [{"kind": "lesson", "id": intro.pk}] * 2,          # once each
+        ):
+            self.assertEqual(self.api.put(outline, lessons(refs), format="json").status_code, 400, refs)
+        loose = self.api.put(outline, {"modules": [], "loose_items": [{"kind": "lesson", "id": intro.pk}]}, format="json")
+        self.assertEqual(loose.json(), {"loose_items": ["Put every lesson in a module."]})
+
+        res = self.api.put(outline, lessons([{"kind": "lesson", "id": notes.pk}, {"kind": "lesson", "id": intro.pk}]), format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual([i["title"] for i in res.json()["items"]], ["SCADA field notes", "Intro to SCADA"])
 
@@ -96,9 +117,14 @@ class CourseBuilderTests(TestCase):
 
     def test_editing_a_live_course_holds_the_change_but_reordering_goes_live(self):
         course = Playlist.objects.create(owner=self.pro, title="Live", status="published")
-        self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([{"kind": "video", "id": self.video.pk}]), format="json")
+        module = course.modules.create(title="Basics")
+        one, two = add_lesson(course, "One", module=module), add_lesson(course, "Two", position=1, module=module)
+        swapped = {"modules": [{"id": module.pk, "title": "Basics", "items": [
+            {"kind": "lesson", "id": two.lesson_id}, {"kind": "lesson", "id": one.lesson_id}]}]}
+        self.assertEqual(self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", swapped, format="json").status_code, 200)
         course.refresh_from_db()
-        self.assertEqual((course.status, course.items.count()), ("published", 1))
+        self.assertEqual((course.status, [i.lesson.title for i in course.items.all()]), ("published", ["Two", "One"]))
+        self.assertFalse(CourseRevision.objects.filter(playlist=course).exists())
         self.api.patch(f"/api/learning/me/courses/{course.pk}/", {"price": None, "access": "members"}, format="json")
         course.refresh_from_db()
         self.assertEqual((course.status, course.access), ("published", "free"))  # live version unchanged
@@ -112,8 +138,8 @@ class CoursePublicAndEnrollmentTests(TestCase):
         self.video = publish_video(self.pro, "Free video")
         self.post = publish_post(self.pro, "Paid post", access="paid", price=Decimal("99"))
         self.course = Playlist.objects.create(owner=self.pro, title="Grid Ops", access="members", status="pending")
-        self.course.items.create(video=self.video, position=0)
-        self.item_post = self.course.items.create(post=self.post, position=1)
+        self.item_preview = add_lesson(self.course, "Preview video", "video", position=0, is_preview=True)
+        self.item_post = add_lesson(self.course, "Members lesson", "text", position=1)
         admin = User.objects.create_superuser("root", "root@example.org", "Passw0rd!x")
         request = RequestFactory().post("/")
         request.user = admin
@@ -134,18 +160,17 @@ class CoursePublicAndEnrollmentTests(TestCase):
         anon = APIClient().get("/api/learning/courses/grid-ops/").json()
         self.assertTrue(anon["is_locked"])
         self.assertIsNone(anon["enrollment"])
-        self.assertEqual([(i["title"], i["is_locked"]) for i in anon["items"]], [("Free video", False), ("Paid post", True)])
+        self.assertEqual([(i["title"], i["is_locked"]) for i in anon["items"]], [("Preview video", False), ("Members lesson", True)])
 
     def test_enroll_and_progress(self):
         api = APIClient()
         self.assertEqual(api.post("/api/learning/courses/grid-ops/enroll/").status_code, 401)
         api.force_authenticate(self.learner)
-        free_item = self.course.items.get(video=self.video)
+        free_item = self.item_preview
         self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{free_item.pk}/open/").status_code, 403)  # not enrolled
 
         body = api.post("/api/learning/courses/grid-ops/enroll/").json()
         self.assertEqual(body["enrollment"]["percent"], 0)
-        self.assertEqual(api.post(f"/api/learning/courses/grid-ops/items/{self.item_post.pk}/open/").status_code, 403)  # paid lesson, not bought
         res = api.post(f"/api/learning/courses/grid-ops/items/{free_item.pk}/open/")
         self.assertEqual((res.status_code, res.json()), (200, {"completed": 1, "certificate_code": None}))
         detail = api.get("/api/learning/courses/grid-ops/").json()
@@ -231,7 +256,7 @@ class CourseMetadataTests(TestCase):
 
 
 class CompanyCourseTests(TestCase):
-    """Company Studio courses: built from the company's own published content."""
+    """Company Studio courses: lessons written in the course, with the company's published content as Further reading."""
 
     def setUp(self):
         from organizations.models import Company
@@ -248,24 +273,26 @@ class CompanyCourseTests(TestCase):
         self.foreign = TechArticle.objects.create(title="Not ours", read_time="1", date=TODAY, excerpt="e", company=self.other)
         self.api.force_authenticate(self.staff)
 
-    def test_company_builds_a_course_from_its_content(self):
+    def test_company_adds_its_content_as_further_reading(self):
         res = self.api.post("/api/learning/me/courses/", {"title": "Remote Monitoring", "level": "intermediate"}, format="json")
         self.assertEqual(res.status_code, 201, res.content)
         course = Playlist.objects.get()
         self.assertEqual((course.owner, course.company), (self.staff, self.genex))
         library = {(c["kind"], c["title"]) for c in self.api.get("/api/learning/me/library/").json()}
         self.assertEqual(library, {("article", "Reading an SLD"), ("research", "SCADA retrofit"), ("whitepaper", "RMS architecture")})
-        res = self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([
+        res = self.api.put(f"/api/learning/me/courses/{course.pk}/reading/", {"items": [
             {"kind": "whitepaper", "id": self.paper.pk}, {"kind": "article", "id": self.article.pk}, {"kind": "research", "id": self.study.pk},
-        ]), format="json")
+        ]}, format="json")
         self.assertEqual(res.status_code, 200, res.content)
-        self.assertEqual([i["kind"] for i in res.json()["items"]], ["whitepaper", "article", "research"])
-        self.assertEqual(res.json()["items"][1]["path"], f"/geacademy/{self.article.pk}")
+        self.assertEqual([i["kind"] for i in res.json()["reading"]], ["whitepaper", "article", "research"])
+        self.assertEqual(res.json()["reading"][1]["path"], f"/geacademy/{self.article.pk}")
+        self.assertEqual(res.json()["items"], [])  # Further reading is never a lesson
 
     def test_cannot_add_another_companys_content(self):
         course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Ours")
-        res = self.api.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons([{"kind": "article", "id": self.foreign.pk}]), format="json")
-        self.assertEqual(res.status_code, 400)
+        url = f"/api/learning/me/courses/{course.pk}/reading/"
+        self.assertEqual(self.api.put(url, {"items": [{"kind": "article", "id": self.foreign.pk}]}, format="json").status_code, 400)
+        self.assertEqual(self.api.put(url, {"items": [{"kind": "article", "id": self.article.pk}] * 2}, format="json").status_code, 400)
 
     def test_colleagues_share_company_courses(self):
         course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Shared")
@@ -276,12 +303,12 @@ class CompanyCourseTests(TestCase):
     def test_learner_opens_a_company_course(self):
         from learning.models import PlaylistItem
         course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Live one", status="published")
-        PlaylistItem.objects.create(playlist=course, article=self.article, position=0)
+        add_lesson(course, self.article.title, "text", position=0)
         learner = make_user("learner")
         self.api.force_authenticate(learner)
         data = self.api.get(f"/api/learning/courses/{course.slug}/").json()
         self.assertEqual(data["company"]["name"], "Genex")
-        self.assertEqual((data["items"][0]["kind"], data["items"][0]["is_locked"]), ("article", False))
+        self.assertEqual((data["items"][0]["kind"], data["items"][0]["is_locked"]), ("lesson", True))  # until enrolled
         self.assertIn(self.api.post(f"/api/learning/courses/{course.slug}/enroll/").status_code, (200, 201))
         item_id = data["items"][0]["item_id"]
         self.assertEqual(self.api.post(f"/api/learning/courses/{course.slug}/items/{item_id}/open/").status_code, 200)
@@ -300,8 +327,13 @@ class CourseDetailsPhaseTests(TestCase):
         self.v2 = publish_video(self.pro, "Lesson two")
         self.p1 = publish_post(self.pro, "Lesson three")
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
-        self.i1 = self.course.items.create(video=self.v1, position=0)
-        self.i2 = self.course.items.create(video=self.v2, position=1)
+        self.m = self.course.modules.create(title="Lessons", position=0)
+        self.i1 = add_lesson(self.course, "Lesson one", "video", position=0, module=self.m)
+        self.i2 = add_lesson(self.course, "Lesson two", "video", position=1, module=self.m)
+        # Reviewed with the course but not in the outline yet, so adding it goes live straight away.
+        self.l3 = self.course.lessons.create(kind="text", title="Lesson three", body="<p>x</p>", approved=True)
+        self.L1, self.L2 = {"kind": "lesson", "id": self.i1.lesson_id}, {"kind": "lesson", "id": self.i2.lesson_id}
+        self.L3 = {"kind": "lesson", "id": self.l3.pk}
         self.api.force_authenticate(self.pro)
 
         self.genex = Company.objects.create(name="Genex", slug="genex")
@@ -313,6 +345,10 @@ class CourseDetailsPhaseTests(TestCase):
 
     def _url(self, suffix="", course=None):
         return f"/api/learning/me/courses/{(course or self.course).pk}/{suffix}"
+
+    def _outline(self, *refs):
+        """The live module with these lessons (no module change, so it applies straight away)."""
+        return {"modules": [{"id": self.m.pk, "title": "Lessons", "items": list(refs)}]}
 
     def _tick(self, item):
         from .models import ItemProgress
@@ -334,8 +370,7 @@ class CourseDetailsPhaseTests(TestCase):
     def test_saving_lessons_keeps_learners_progress(self):
         from .models import ItemProgress
         self._tick(self.i1)
-        res = self.api.put(self._url("outline/"), lessons([{"kind": "video", "id": self.v2.pk}, {"kind": "video", "id": self.v1.pk},
-                                                {"kind": "post", "id": self.p1.pk}]), format="json")
+        res = self.api.put(self._url("outline/"), self._outline(self.L2, self.L1, self.L3), format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.i1).exists())
         self.assertEqual([i["title"] for i in res.json()["items"]], ["Lesson two", "Lesson one", "Lesson three"])
@@ -344,7 +379,7 @@ class CourseDetailsPhaseTests(TestCase):
         from .models import ItemProgress
         self._tick(self.i1)
         self._tick(self.i2)
-        self.api.put(self._url("outline/"), lessons([{"kind": "video", "id": self.v1.pk}]), format="json")
+        self.api.put(self._url("outline/"), self._outline(self.L1), format="json")
         self.assertEqual(list(ItemProgress.objects.values_list("item_id", flat=True)), [self.i1.pk])
 
     # Outline with modules
@@ -353,22 +388,22 @@ class CourseDetailsPhaseTests(TestCase):
         self._tick(self.i2)
         res = self.api.put(self._url("outline/"), {
             "modules": [
-                {"title": "Basics", "summary": "Start here", "items": [{"kind": "video", "id": self.v1.pk}]},
+                {"title": "Basics", "summary": "Start here", "items": [self.L1]},
                 {"title": "Empty for now", "items": []},
+                {"title": "More", "items": [self.L2, self.L3]},
             ],
-            "loose_items": [{"kind": "video", "id": self.v2.pk}, {"kind": "post", "id": self.p1.pk}],
         }, format="json")
         self.assertEqual(res.status_code, 200, res.content)
         body = res.json()
         # The builder shows the held outline (new modules numbered below zero) ...
-        self.assertEqual([m["title"] for m in body["modules"]], ["Basics", "Empty for now"])
-        basics = body["modules"][0]["id"]
+        self.assertEqual([m["title"] for m in body["modules"]], ["Basics", "Empty for now", "More"])
+        basics, more = body["modules"][0]["id"], body["modules"][2]["id"]
         self.assertLess(basics, 0)
         self.assertEqual([(i["title"], i["module_id"]) for i in body["items"]],
-                         [("Lesson one", basics), ("Lesson two", None), ("Lesson three", None)])
+                         [("Lesson one", basics), ("Lesson two", more), ("Lesson three", more)])
         # ... while the live course keeps its lessons until Genex approves.
         self.assertEqual((self._status(), self._held()), ("published", ["outline"]))
-        self.assertFalse(self.course.modules.exists())
+        self.assertEqual(list(self.course.modules.values_list("title", flat=True)), ["Lessons"])
         self.assertEqual(self.course.items.count(), 2)
         self.assertTrue(ItemProgress.objects.filter(item=self.i2).exists())
 
@@ -377,8 +412,8 @@ class CourseDetailsPhaseTests(TestCase):
         a = CourseModule.objects.create(playlist=self.course, title="A", position=0)
         b = CourseModule.objects.create(playlist=self.course, title="B", position=1)
         outline = {"modules": [
-            {"id": b.pk, "title": "B", "items": [{"kind": "video", "id": self.v1.pk}]},
-            {"id": a.pk, "title": "A", "items": [{"kind": "video", "id": self.v2.pk}]},
+            {"id": b.pk, "title": "B", "items": [self.L1]},
+            {"id": a.pk, "title": "A", "items": [self.L2]},
         ]}
         self.assertEqual(self.api.put(self._url("outline/"), outline, format="json").status_code, 200)
         self.assertEqual((self._status(), self._held()), ("published", None))
@@ -391,7 +426,7 @@ class CourseDetailsPhaseTests(TestCase):
     def test_outline_drops_left_out_modules_and_rejects_foreign_ones(self):
         from .models import CourseModule
         gone = CourseModule.objects.create(playlist=self.course, title="Old", position=0)
-        res = self.api.put(self._url("outline/"), {"loose_items": [{"kind": "video", "id": self.v1.pk}]}, format="json")
+        res = self.api.put(self._url("outline/"), self._outline(self.L1), format="json")
         self.assertEqual(res.status_code, 200)
         self.assertFalse(CourseModule.objects.filter(pk=gone.pk).exists())
         other = Playlist.objects.create(owner=self.pro, title="Other")
@@ -401,12 +436,13 @@ class CourseDetailsPhaseTests(TestCase):
 
     def test_outline_rejects_duplicates_and_foreign_content(self):
         stranger = make_user("stranger", account_type="professional", company_other="X")
-        theirs = publish_video(stranger, "Theirs")
-        dup = {"modules": [{"title": "M", "items": [{"kind": "video", "id": self.v1.pk}]}],
-               "loose_items": [{"kind": "video", "id": self.v1.pk}]}
+        theirs = Playlist.objects.create(owner=stranger, title="Theirs").lessons.create(kind="text", title="T", body="<p>x</p>")
+        dup = {"modules": [{"title": "M", "items": [self.L1]}, {"title": "N", "items": [self.L1]}]}
         self.assertEqual(self.api.put(self._url("outline/"), dup, format="json").status_code, 400)
-        foreign = {"loose_items": [{"kind": "video", "id": theirs.pk}]}
+        foreign = self._outline({"kind": "lesson", "id": theirs.pk})
         self.assertEqual(self.api.put(self._url("outline/"), foreign, format="json").status_code, 400)
+        published = self._outline({"kind": "video", "id": self.v1.pk})  # published content belongs in Further reading
+        self.assertEqual(self.api.put(self._url("outline/"), published, format="json").status_code, 400)
 
     # Details and the review rule
     def test_outcomes_and_prerequisites_are_cleaned_and_limited(self):
@@ -566,10 +602,10 @@ class CourseAdminSafetyTests(TestCase):
     def test_lesson_cannot_point_at_another_courses_module(self):
         from django.core.exceptions import ValidationError
         from .models import CourseModule, PlaylistItem
-        video = publish_video(self.pro, "V")
+        lesson = self.own.lessons.create(kind="text", title="V", body="<p>x</p>")
         foreign = CourseModule.objects.create(playlist=self.company_course, title="Theirs")
         with self.assertRaises(ValidationError):
-            PlaylistItem(playlist=self.own, video=video, module=foreign).full_clean()
+            PlaylistItem(playlist=self.own, lesson=lesson, module=foreign).full_clean()
 
     def test_instructor_is_removed_when_they_stop_qualifying(self):
         from accounts.verification import refresh_company_verification
@@ -617,8 +653,8 @@ class BuilderPhaseTwoTests(TestCase):
         self.post = publish_post(self.pro, "Long read")
         BlogPost.objects.filter(pk=self.post.pk).update(body=[("rich_text", "<p>" + "word " * 450 + "</p>")])
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
-        self.course.items.create(video=self.video, position=0)
-        self.course.items.create(post=self.post, position=1)
+        add_lesson(self.course, "Ten minutes", "video", position=0, duration="9:30 min")
+        add_lesson(self.course, "Long read", "text", position=1, body="<p>" + "word " * 450 + "</p>")
 
     def test_lessons_carry_minutes(self):
         items = self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()["items"]
@@ -655,8 +691,8 @@ class CourseReviewTests(TestCase):
         self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
         self.v1, self.v2 = publish_video(self.pro, "One"), publish_video(self.pro, "Two")
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
-        self.i1 = self.course.items.create(video=self.v1, position=0)
-        self.i2 = self.course.items.create(video=self.v2, position=1)
+        self.i1 = add_lesson(self.course, self.v1.title, "video", position=0)
+        self.i2 = add_lesson(self.course, self.v2.title, "video", position=1)
         self.url = f"/api/learning/courses/{self.course.slug}/reviews/"
 
     def _learner(self, name, lessons=1, rating=None, body=""):
@@ -741,7 +777,7 @@ class SeedCourseDemoTests(TestCase):
     def setUp(self):
         self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
         self.course = Playlist.objects.create(owner=self.pro, title="Live", status="published")
-        self.course.items.create(video=publish_video(self.pro, "V"), position=0)
+        add_lesson(self.course, publish_video(self.pro, "V").title, "video", position=0)
 
     def test_seed_adds_demo_data_and_clear_removes_it(self):
         from django.core.management import call_command
@@ -785,9 +821,9 @@ class CoursePageApiTests(TestCase):
                                               summary="How plants are monitored.", outcomes=["Map registers"])
         self.course.roles.add(self.role)
         module = CourseModule.objects.create(playlist=self.course, title="Basics", position=0)
-        self.i1 = self.course.items.create(video=self.v1, position=0, module=module)
-        self.i2 = self.course.items.create(video=self.v2, position=1, module=module)
-        self.i3 = self.course.items.create(post=self.post, position=2)
+        self.i1 = add_lesson(self.course, "One", "video", position=0, module=module, duration="10:00 min")
+        self.i2 = add_lesson(self.course, "Two", "video", position=1, module=module, duration="5:00 min")
+        self.i3 = add_lesson(self.course, "Three", "text", position=2)
         CourseFAQ.objects.create(playlist=self.course, question="Do I need experience?", answer="No.")
         self.url = f"/api/learning/courses/{self.course.slug}/"
 
@@ -796,7 +832,7 @@ class CoursePageApiTests(TestCase):
 
     def _company_course(self, **kwargs):
         course = Playlist.objects.create(owner=self.staff, company=self.genex, status="published", **kwargs)
-        course.items.create(article=self.article, position=0)
+        add_lesson(course, self.article.title, "text", position=0)
         return course
 
     def _verified_pro(self, username, company):
@@ -806,9 +842,13 @@ class CoursePageApiTests(TestCase):
         return user
 
     def test_page_fields(self):
+        self.course.reading.create(post=self.post)
         data = APIClient().get(self.url).json()
         self.assertEqual((data["summary"], data["outcomes"], data["language"]), ("How plants are monitored.", ["Map registers"], "English"))
-        self.assertEqual(data["lesson_counts"], {"video": 2, "post": 1})
+        self.assertEqual(data["lesson_counts"], {"video": 2, "text": 1})
+        # Further reading comes separately and adds nothing to the lessons or the time.
+        self.assertEqual([(r["kind"], r["title"], r["is_locked"]) for r in data["reading"]], [("post", "Three", False)])
+        self.assertEqual(len(data["items"]), 3)
         self.assertEqual(data["total_minutes"], 15 + data["items"][2]["minutes"])
         self.assertEqual([(m["title"], m["item_ids"], m["minutes"]) for m in data["modules"]], [("Basics", [self.i1.pk, self.i2.pk], 15)])
         self.assertEqual(data["faqs"], [{"question": "Do I need experience?", "answer": "No."}])
@@ -902,9 +942,9 @@ class OwnCourseLockTests(TestCase):
         User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
         self.learner = make_user("learner")
         self.pro_course = Playlist.objects.create(owner=self.pro, title="Pro course", status="published")
-        self.pro_course.items.create(video=publish_video(self.pro, "One"), position=0)
+        add_lesson(self.pro_course, publish_video(self.pro, "One").title, "video", position=0)
         self.co_course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company course", status="published")
-        self.co_course.items.create(video=publish_video(self.pro, "Two"), position=0)
+        add_lesson(self.co_course, publish_video(self.pro, "Two").title, "video", position=0)
         self.co_course.instructors.add(self.teacher)
 
     def _enroll(self, user, course):
@@ -961,12 +1001,12 @@ class CourseRevisionTests(TestCase):
         self.learner = make_user("learner")
         self.v1, self.v2 = publish_video(self.pro, "One"), publish_video(self.pro, "Two")
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA basics", summary="Old promise", status="published")
-        self.i1 = self.course.items.create(video=self.v1, position=0)
+        self.i1 = add_lesson(self.course, self.v1.title, "video", position=0)
         genex = Company.objects.create(name="Genex", slug="genex")
         self.staff = make_user("staff", account_type="company", company=genex)
         self.article = TechArticle.objects.create(title="SLD guide", read_time="8 min", date=TODAY, excerpt="e", company=genex)
         self.co_course = Playlist.objects.create(owner=self.staff, company=genex, title="Company course", status="published")
-        self.co_course.items.create(article=self.article, position=0)
+        add_lesson(self.co_course, self.article.title, "text", position=0)
 
     def _admin(self, action, *courses):
         request = RequestFactory().post("/")
@@ -980,10 +1020,11 @@ class CourseRevisionTests(TestCase):
         from .models import CourseRevision, ItemProgress
         Enrollment.objects.create(user=self.learner, playlist=self.course)
         ItemProgress.objects.create(user=self.learner, item=self.i1)
+        two = self.course.lessons.create(kind="text", title="Two", body="<p>x</p>", approved=True)
         self.api.force_authenticate(self.pro)
         self.api.patch(f"/api/learning/me/courses/{self.course.pk}/", {"title": "SCADA fundamentals", "summary": "New promise"}, format="json")
         self.api.put(f"/api/learning/me/courses/{self.course.pk}/outline/", {
-            "modules": [{"title": "Start here", "items": [{"kind": "video", "id": self.v1.pk}, {"kind": "video", "id": self.v2.pk}]}],
+            "modules": [{"title": "Start here", "items": [{"kind": "lesson", "id": self.i1.lesson_id}, {"kind": "lesson", "id": two.pk}]}],
         }, format="json")
         self.api.put(f"/api/learning/me/courses/{self.course.pk}/faqs/", [{"question": "Free?", "answer": "Yes."}], format="json")
 
@@ -1051,7 +1092,7 @@ class ReviewReplyTests(TestCase):
         from .models import ItemProgress
         self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng", display_name="Priya")
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA", status="published")
-        item = self.course.items.create(video=publish_video(self.pro, "One"), position=0)
+        item = add_lesson(self.course, publish_video(self.pro, "One").title, "video", position=0)
         self.learner = make_user("learner")
         Enrollment.objects.create(user=self.learner, playlist=self.course)
         ItemProgress.objects.create(user=self.learner, item=item)
@@ -1063,7 +1104,7 @@ class ReviewReplyTests(TestCase):
         self.teacher = make_user("teacher", account_type="professional", company=genex, display_name="Ravi")
         User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
         self.co_course = Playlist.objects.create(owner=self.staff, company=genex, title="Company course", status="published")
-        co_item = self.co_course.items.create(article=TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=genex), position=0)
+        co_item = add_lesson(self.co_course, TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=genex).title, "text", position=0)
         self.co_course.instructors.add(self.teacher)
         Enrollment.objects.create(user=self.learner, playlist=self.co_course)
         ItemProgress.objects.create(user=self.learner, item=co_item)
@@ -1126,8 +1167,8 @@ class CertificateTests(TestCase):
         User.objects.filter(pk=self.pro.pk).update(company_verified=True)
         self.pro.refresh_from_db()
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA basics", status="published", level="beginner")
-        self.i1 = self.course.items.create(video=publish_video(self.pro, "One"), position=0)
-        self.i2 = self.course.items.create(video=publish_video(self.pro, "Two"), position=1)
+        self.i1 = add_lesson(self.course, publish_video(self.pro, "One").title, "video", position=0)
+        self.i2 = add_lesson(self.course, publish_video(self.pro, "Two").title, "video", position=1)
         self.learner = make_user("learner", display_name="Priya Nair")
         self.api = APIClient()
         self.api.force_authenticate(self.learner)
@@ -1137,7 +1178,7 @@ class CertificateTests(TestCase):
         self.teacher = make_user("teacher", account_type="professional", company=self.genex, role_title="Protection Engineer")
         User.objects.filter(pk=self.teacher.pk).update(company_verified=True)
         self.co_course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Company course", status="published")
-        self.co_item = self.co_course.items.create(article=TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=self.genex), position=0)
+        self.co_item = add_lesson(self.co_course, TechArticle.objects.create(title="SLD", read_time="8 min", date=TODAY, excerpt="e", company=self.genex).title, "text", position=0)
         self.co_course.instructors.add(self.teacher)
 
     def _open(self, item, course=None):
@@ -1205,7 +1246,7 @@ class CertificateTests(TestCase):
         from .revisions import apply_outline
         self._open(self.i1)
         self.assertFalse(Certificate.objects.exists())
-        apply_outline(self.course, {"modules": [], "loose_items": [{"kind": "video", "id": self.i1.video_id}]})
+        apply_outline(self.course, {"modules": [{"title": "M", "items": [{"kind": "lesson", "id": self.i1.lesson_id}]}], "loose_items": []})
         self.assertEqual(Certificate.objects.filter(user=self.learner).count(), 1)
 
     def test_backfill_command_is_idempotent(self):
@@ -1466,7 +1507,7 @@ class CourseLessonLearnerTests(TestCase):
         self.inside = self.course.lessons.create(kind="video", title="Inside", video_url="https://youtu.be/x", duration="4 min",
                                                  body="<p>Notes</p>", approved=True)
         self.i1 = self.course.items.create(lesson=self.preview, position=0)
-        self.i2 = self.course.items.create(video=self.video, position=1)
+        self.i2 = add_lesson(self.course, self.video.title, "video", position=1)
         self.i3 = self.course.items.create(lesson=self.inside, position=2)
 
     def _lesson(self, lesson, user=None, course=None):
@@ -1565,8 +1606,9 @@ class CourseLessonLiveReviewTests(TestCase):
                                          title="Live Lessons", status="published")
         self.text = course.lessons.create(kind="text", title="Why relays trip", body="<p>Old text</p>", approved=True)
         self.video = course.lessons.create(kind="video", title="Testing", video_url="https://youtu.be/old", duration="5 min", approved=True)
-        self.i1 = course.items.create(lesson=self.text, position=0)
-        self.i2 = course.items.create(lesson=self.video, position=1)
+        self.module = course.modules.create(title="Basics", position=0)
+        self.i1 = course.items.create(lesson=self.text, position=0, module=self.module)
+        self.i2 = course.items.create(lesson=self.video, position=1, module=self.module)
         Enrollment.objects.create(user=self.learner, playlist=course)
         self.author = APIClient()
         self.author.force_authenticate(author)
@@ -1631,7 +1673,8 @@ class CourseLessonLiveReviewTests(TestCase):
         new = res.json()
         self.assertEqual((new["review"], new["card"]["approved"], new["course_revision"]), ("new", False, None))
         refs = [{"kind": "lesson", "id": i} for i in (self.text.pk, self.video.pk, new["id"])]
-        res = self.author.put(f"/api/learning/me/courses/{course.pk}/outline/", lessons(refs), format="json")
+        outline = {"modules": [{"id": self.module.pk, "title": "Basics", "items": refs}]}
+        res = self.author.put(f"/api/learning/me/courses/{course.pk}/outline/", outline, format="json")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual(res.json()["revision"]["changed"], ["outline"])
         self.assertEqual(len(res.json()["items"]), 3)  # the builder shows the outline waiting for review
@@ -1902,3 +1945,58 @@ class CourseQuizTests(TestCase):
         self._publish(course)
         res = self._client(self.pro).patch(f"/api/learning/me/courses/{course.pk}/lessons/{quiz['id']}/", {"questions": []}, format="json")
         self.assertEqual(res.status_code, 400)
+
+
+class FurtherReadingTests(TestCase):
+    """Course builder v2: published content is optional Further reading, never a lesson or part of completion."""
+
+    def setUp(self):
+        self.api = APIClient()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.other = make_user("other", account_type="professional", company_other="Acme", role_title="Eng")
+        self.learner = make_user("learner")
+        self.video = publish_video(self.pro, "Walkthrough")
+        self.post = publish_post(self.pro, "Field notes", access="paid", price=Decimal("99"))
+        self.theirs = publish_video(self.other, "Not mine")
+        self.course = Playlist.objects.create(owner=self.pro, title="Grid basics", status="published")
+        self.item = add_lesson(self.course, "Only lesson")
+        self.url = f"/api/learning/me/courses/{self.course.pk}/reading/"
+        self.api.force_authenticate(self.pro)
+
+    def test_professional_picks_own_content_in_order_and_it_goes_live(self):
+        res = self.api.put(self.url, {"items": [{"kind": "post", "id": self.post.pk}, {"kind": "video", "id": self.video.pk}]}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual([r["title"] for r in res.json()["reading"]], ["Field notes", "Walkthrough"])
+        self.assertFalse(CourseRevision.objects.filter(playlist=self.course).exists())  # no review needed, even live
+        page = APIClient().get(f"/api/learning/courses/{self.course.slug}/").json()
+        # Further reading keeps the content's own access: the paid post stays locked for a visitor.
+        self.assertEqual([(r["title"], r["is_locked"]) for r in page["reading"]], [("Field notes", True), ("Walkthrough", False)])
+
+        res = self.api.put(self.url, {"items": [{"kind": "video", "id": self.video.pk}]}, format="json")
+        self.assertEqual([r["title"] for r in res.json()["reading"]], ["Walkthrough"])
+
+    def test_refuses_other_peoples_content_lessons_and_too_many(self):
+        for items in ([{"kind": "video", "id": self.theirs.pk}], [{"kind": "lesson", "id": self.item.lesson_id}]):
+            self.assertEqual(self.api.put(self.url, {"items": items}, format="json").status_code, 400, items)
+        too_many = [{"kind": "video", "id": self.video.pk}] * 21
+        self.assertEqual(self.api.put(self.url, {"items": too_many}, format="json").status_code, 400)
+        self.api.force_authenticate(self.other)
+        self.assertEqual(self.api.put(self.url, {"items": []}, format="json").status_code, 404)
+
+    def test_further_reading_never_counts_toward_completion(self):
+        from .models import Certificate
+        self.course.reading.create(video=self.video)
+        api = APIClient()
+        api.force_authenticate(self.learner)
+        api.post(f"/api/learning/courses/{self.course.slug}/enroll/")
+        res = api.post(f"/api/learning/courses/{self.course.slug}/items/{self.item.pk}/open/")
+        self.assertIsNotNone(res.json()["certificate_code"])  # the one lesson is the whole course
+        enrollment = api.get(f"/api/learning/courses/{self.course.slug}/").json()["enrollment"]
+        self.assertEqual((enrollment["total"], enrollment["percent"]), (1, 100))
+        self.assertTrue(Certificate.objects.filter(user=self.learner, playlist=self.course).exists())
+
+    def test_deleted_content_drops_out(self):
+        self.course.reading.create(video=self.video)
+        self.course.reading.create(post=self.post, position=1)
+        self.post.delete()
+        self.assertEqual([r["title"] for r in self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()["reading"]], ["Walkthrough"])

@@ -311,18 +311,17 @@ class StudioDraftTests(StudioTestBase):
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual(APIClient().get(f"/api/snippets/tech-articles/{draft['id']}/").status_code, 200)
 
-    def test_back_to_draft_unless_it_is_a_course_lesson(self):
-        from learning.models import Playlist, PlaylistItem
+    def test_back_to_draft_even_in_further_reading(self):
+        from learning.models import CourseReading, Playlist
+        from learning.serializers import reading_cards
         item = self._draft(is_draft=False, read_time="5 min", excerpt="e", date=TODAY)
+        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Grid course", status="published")
+        CourseReading.objects.create(playlist=course, article_id=item["id"])
+        self.assertEqual(len(reading_cards(course)), 1)
+
         res = self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": True}, format="json")
         self.assertEqual(res.status_code, 200, res.content)
-        self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": False}, format="json")
-
-        course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Grid course", status="published")
-        PlaylistItem.objects.create(playlist=course, article_id=item["id"])
-        res = self.api.patch(f"/api/studio/geacademy/{item['id']}/", {"is_draft": True}, format="json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("Grid course", res.json()["is_draft"][0])
+        self.assertEqual(reading_cards(course), [])  # a draft drops out of Further reading
 
     def test_paid_podcast_draft_needs_no_price_until_published(self):
         res = self.api.post("/api/studio/podcasts/", {"is_draft": True, "title": "Ep", "access": "paid"}, format="json")
@@ -375,18 +374,17 @@ class StudioVideoTests(StudioTestBase):
         page = public.get(f"/api/organizations/companies/{self.genex.slug}/").json()
         self.assertEqual([s["key"] for s in page["content"]], ["videos"])
 
-    def test_company_courses_can_use_their_videos(self):
-        from learning.models import Playlist, PlaylistItem
+    def test_company_courses_can_point_to_their_videos(self):
+        from learning.models import CourseReading, Playlist
         from learning.serializers import library_for
         vid = self._publish()["id"]
         self.assertTrue(library_for(self.staff)["video"].filter(pk=vid).exists())
         self.assertFalse(library_for(self.rival)["video"].filter(pk=vid).exists())
 
         course = Playlist.objects.create(owner=self.staff, company=self.genex, title="Storage course", status="published")
-        PlaylistItem.objects.create(playlist=course, video_id=vid)
+        CourseReading.objects.create(playlist=course, video_id=vid)
         res = self.api.patch(f"/api/studio/videos/{vid}/", {"is_draft": True}, format="json")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("Storage course", res.json()["is_draft"][0])
+        self.assertEqual(res.status_code, 200, res.content)  # Further reading never blocks unpublishing
 
     def test_paid_video_opens_for_the_company_only(self):
         vid = self._publish(access="paid", price="499")["id"]

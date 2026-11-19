@@ -296,7 +296,8 @@ export interface CourseDetail extends CourseProgress {
   prerequisites: string[]
   language: string
   total_minutes: number
-  lesson_counts: Partial<Record<CourseItemKind, number>>
+  /** Lessons by type: text, video, quiz. */
+  lesson_counts: Partial<Record<string, number>>
   modules: CoursePageModule[]
   next_item_id: number | null
   instructors: CourseInstructor[]

@@ -10,7 +10,7 @@ from engagement.models import Notification
 
 from .models import (
     MAX_FAQS, MAX_MODULES, MAX_ROLES, MAX_TOPICS, PROMISED_FIELDS, CourseFAQ, CourseLesson, CourseModule, Certificate, CourseReview, CourseRevision,
-    Enrollment, Playlist, PlaylistItem, ReviewReply, instructor_problem,
+    CourseReading, Enrollment, Playlist, PlaylistItem, ReviewReply, instructor_problem,
 )
 from .revisions import apply_revision, live_value, outline_lesson_ids, revision_of
 
@@ -109,8 +109,22 @@ class PlaylistAdminForm(forms.ModelForm):
 class PlaylistItemInline(admin.TabularInline):
     model = PlaylistItem
     extra = 0
-    fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast", "lesson")
-    readonly_fields = ("position", "module", "video", "post", "article", "research", "whitepaper", "podcast", "lesson")
+    verbose_name_plural = "Outline (lessons in order)"
+    fields = ("position", "module", "lesson")
+    readonly_fields = ("position", "module", "lesson")
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class CourseReadingInline(admin.TabularInline):
+    """Optional extra reading the author points to; it doesn't count toward completion."""
+    model = CourseReading
+    extra = 0
+    verbose_name_plural = "Further reading (optional, not counted toward completion)"
+    fields = ("position", "video", "post", "article", "research", "whitepaper", "podcast")
+    readonly_fields = fields
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
@@ -220,7 +234,7 @@ class PlaylistAdmin(admin.ModelAdmin):
     list_display = ("title", "owner", "company", "status", "changes_waiting", "level", "featured", "access", "price", "item_count", "submitted_at", "reviewed_at")
     list_filter = ("status", PendingChangesFilter, "access", "level", "featured")
     search_fields = ("title", "owner__username", "owner__display_name")
-    inlines = [CourseRevisionInline, CourseModuleInline, PlaylistItemInline, CourseLessonInline, CourseFAQInline]
+    inlines = [CourseRevisionInline, CourseModuleInline, PlaylistItemInline, CourseLessonInline, CourseReadingInline, CourseFAQInline]
     actions = ["approve", "reject"]
     # Status only changes through the actions, so the owner is always notified.
     # Company is fixed when the course is created (Company Studio sets it, a
@@ -254,7 +268,7 @@ class PlaylistAdmin(admin.ModelAdmin):
     def approve(self, request, queryset):
         empty = queryset.filter(status=Playlist.STATUS_PENDING, items__isnull=True)
         if empty.exists():
-            # A lesson's content can be deleted after the course was submitted.
+            # A lesson can be deleted after the course was submitted.
             self.message_user(request, "Not approved (no lessons left): " + ", ".join(c.title for c in empty), messages.WARNING)
         for course in queryset.filter(status=Playlist.STATUS_PENDING).exclude(pk__in=empty.values("pk")):
             course.status = Playlist.STATUS_PUBLISHED
@@ -262,7 +276,7 @@ class PlaylistAdmin(admin.ModelAdmin):
             course.reviewed_by = request.user
             course.save(update_fields=["status", "reviewed_at", "reviewed_by"])
             # Reviewed with the course: the lessons its outline uses. Others wait until they're added (and reviewed).
-            course.lessons.filter(pk__in=course.items.filter(lesson__isnull=False).values("lesson")).update(approved=True)
+            course.lessons.filter(pk__in=course.items.values("lesson")).update(approved=True)
             _notify(course, f'Your course "{course.title}" is live.')
         # Live courses with changes waiting: apply them; the course never went offline.
         for course in queryset.filter(status=Playlist.STATUS_PUBLISHED, revision__status=CourseRevision.STATUS_PENDING):
