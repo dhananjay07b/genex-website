@@ -53,6 +53,7 @@ const ForgotPassword        = lazy(() => import('@/pages/Account/ForgotPassword'
 const ResetPasswordConfirm  = lazy(() => import('@/pages/Account/ResetPasswordConfirm'))
 const VerifyEmail           = lazy(() => import('@/pages/Account/VerifyEmail'))
 const Profile                = lazy(() => import('@/pages/Account/Profile'))
+const AccountLayout         = lazy(() => import('@/pages/Account/AccountLayout'))
 const PublicProfile         = lazy(() => import('@/pages/Account/PublicProfile'))
 const SubmitPost            = lazy(() => import('@/pages/Account/SubmitPost'))
 const SubmitVideo           = lazy(() => import('@/pages/Account/SubmitVideo'))
@@ -176,7 +177,21 @@ export const gelearnRouter = createBrowserRouter([
           {
             element: <ProtectedRoute />,
             children: [
-              { path: '/account',              element: s(<Profile />) },
+              {
+                // My account: one dashboard frame (header + menu) for every account type.
+                element: s(<AccountLayout />),
+                children: [
+                  { path: '/account',          element: s(<Profile />) },
+                  {
+                    // A Professional's course builder sits inside their account, like Company Studio's.
+                    element: <RoleRoute roles={['professional']} />,
+                    children: [
+                      { path: '/account/courses/new',  element: s(<CourseBuilder />) },
+                      { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
+                    ],
+                  },
+                ],
+              },
             ],
           },
           {
@@ -187,8 +202,6 @@ export const gelearnRouter = createBrowserRouter([
               { path: '/submit-post/:id/edit', element: s(<SubmitPost />) },
               { path: '/submit-video',         element: s(<SubmitVideo />) },
               { path: '/submit-video/:id/edit', element: s(<SubmitVideo />) },
-              { path: '/account/courses/new',  element: s(<CourseBuilder />) },
-              { path: '/account/courses/:id/edit', element: s(<CourseBuilder />) },
             ],
           },
           {

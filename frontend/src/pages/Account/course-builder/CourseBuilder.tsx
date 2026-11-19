@@ -4,7 +4,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined'
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
 import { cn } from '@/lib/utils'
-import { DashboardHeader } from '@/components/gelearn/DashboardHeader'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Select } from '@/components/ui/Select'
 import { RolePicker, TopicPicker } from '@/components/gelearn/TopicPicker'
@@ -221,16 +220,13 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
   const revision = course?.revision ?? null
   const heading = isEditing ? 'Edit course' : 'New course'
   const chip = status ? STATUS_CHIP[status] : null
-  const Shell = isCompany ? 'div' : 'main'
 
   return (
-    // In Company Studio the layout already supplies the page shell, so only the builder itself renders.
-    <Shell className={isCompany ? undefined : 'min-h-screen pb-10'}>
+    // Both account types build inside their dashboard frame (AccountLayout or StudioLayout), which supplies the header and menu.
+    <div>
       <PageMeta title={heading} description="Build a course." canonical={`${editBase}/new`} noIndex />
-      {/* Professionals get the same dashboard header as their account pages; Studio's layout supplies its own. */}
-      {!isCompany && <DashboardHeader />}
 
-      <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 py-10')}>
+      <div>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* The dashboard header holds the page <h1> (the person's or company's name). */}
@@ -321,6 +317,6 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
           publisher={isCompany ? `Course by ${user?.company?.name ?? 'your company'}` : `Course by ${user?.display_name || user?.username || 'you'}`}
           onClose={() => setPreviewing(false)} />
       )}
-    </Shell>
+    </div>
   )
 }

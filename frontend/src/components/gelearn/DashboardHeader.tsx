@@ -1,4 +1,3 @@
-import type { Ref } from 'react'
 import { useAuth } from '@/context/useAuth'
 import { cn, getMediaUrl } from '@/lib/utils'
 import type { AccountType } from '@/types/auth'
@@ -12,8 +11,6 @@ const CONTEXT_LABELS: Record<AccountType, string> = {
 interface DashboardHeaderProps {
   /** Replaces the account-type label, e.g. "Company Studio". */
   label?: string
-  /** Lets a page measure the band (the account sidebar sizes itself from its height). */
-  ref?: Ref<HTMLDivElement>
 }
 
 function initialsOf(name: string) {
@@ -25,7 +22,7 @@ function initialsOf(name: string) {
  * the company account and Company Studio): identity mark, context label, then the name as the page <h1>.
  * People show their photo (or initials) in a circle; companies show their logo (or initials) in a tile.
  */
-export function DashboardHeader({ label, ref }: DashboardHeaderProps) {
+export function DashboardHeader({ label }: DashboardHeaderProps) {
   const { user } = useAuth()
   if (!user) return null
 
@@ -34,7 +31,7 @@ export function DashboardHeader({ label, ref }: DashboardHeaderProps) {
   const image = isCompany ? user.company?.logo_url : user.avatar_url
 
   return (
-    <div ref={ref} className="bg-brand-tint border-b border-border pt-16">
+    <div className="bg-brand-tint border-b border-border pt-16">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-9 flex items-center gap-4">
         <span
           aria-hidden="true"
