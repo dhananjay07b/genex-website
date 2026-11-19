@@ -68,7 +68,7 @@ export default function CourseDetail() {
   const present = useMemo(() => {
     const ids = new Set<SectionId>(['cp-about', 'cp-reviews', 'cp-faq'])
     if (course?.roles[0]?.path.length) ids.add('cp-path')
-    if (course?.items.length) ids.add('cp-lessons')
+    ids.add('cp-lessons')
     if (!relatedEmpty) ids.add('cp-more')
     return ids
   }, [course, relatedEmpty])
@@ -123,14 +123,12 @@ export default function CourseDetail() {
 
       <Section id="cp-about" label="About"><CourseAbout course={course} signedIn={Boolean(user)} /></Section>
       {primaryRole && <Section id="cp-path" label="Career path"><CoursePath role={primaryRole} /></Section>}
-      {(course.items.length > 0 || hasSide) && (
-        <Section id={course.items.length > 0 ? 'cp-lessons' : undefined} label={course.items.length > 0 ? 'Lessons' : 'Instructor and publisher'}>
-          <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
-            {course.items.length > 0 && <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onOpen={openLesson} /></div>}
-            {hasSide && <CourseSide instructors={course.instructors} publisher={course.publisher} />}
-          </div>
-        </Section>
-      )}
+      <Section id="cp-lessons" label="Lessons">
+        <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
+          <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onOpen={openLesson} /></div>
+          {hasSide && <CourseSide instructors={course.instructors} publisher={course.publisher} />}
+        </div>
+      </Section>
 
       {course.learner_companies.length > 0 && (
         <Section label="Learners' companies">

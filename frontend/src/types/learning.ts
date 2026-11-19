@@ -36,6 +36,9 @@ export interface CourseTarget {
   approved?: boolean
 }
 
+/** A course's Further reading item; `is_locked` says whether the viewer can open it (it keeps its own access). */
+export type CourseReadingCard = CourseTarget & { is_locked?: boolean }
+
 /** A course's own lesson as its author edits it: GET/POST /api/learning/me/courses/<id>/lessons/. */
 export interface CourseLesson {
   id: number
@@ -313,6 +316,8 @@ export interface CourseDetail extends CourseProgress {
   my_relation: 'owner' | 'instructor' | null
   faqs: CourseFaq[]
   learner_companies: CompanyDisplay[]
+  /** Optional extra reading after the lessons; never part of progress or the certificate. */
+  reading: CourseReadingCard[]
 }
 
 /** GET /api/learning/courses/<slug>/related/ */

@@ -18,6 +18,7 @@ import { useAuth } from '@/context/useAuth'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { returnState } from '@/lib/authRedirect'
 import { cn, embedVideoUrl } from '@/lib/utils'
+import { CourseReadingOutline } from './CourseReading'
 import type { CourseDetail as Course, CourseItem, CourseLessonBlock, CourseLessonContent } from '@/types/learning'
 import { formatMinutes, plural } from './format'
 import { recordLessonOpen } from './lessons'
@@ -83,6 +84,7 @@ function Outline({ course, currentId, completed, onOpen }: {
           </ol>
         </div>
       ))}
+      <CourseReadingOutline items={course.reading ?? []} />
     </nav>
   )
 }

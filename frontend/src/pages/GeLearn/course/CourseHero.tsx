@@ -12,7 +12,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay } from '@/components/gelearn/courseItemKinds'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { formatPrice, getMediaUrl } from '@/lib/utils'
 import { returnState } from '@/lib/authRedirect'
@@ -148,10 +148,12 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                 {nextItem ? (
                   <p className="flex items-center gap-2 text-sm text-slate-700">
                     <PlayCircleOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700 shrink-0" />
-                    <span className="min-w-0">Up next: <b className="text-text-primary">{nextItem.title}</b> · {COURSE_ITEM_KINDS[nextItem.kind].label}{nextItem.minutes ? ` · ${formatMinutes(nextItem.minutes)}` : ''}</span>
+                    <span className="min-w-0">Up next: <b className="text-text-primary">{nextItem.title}</b> · {courseItemDisplay(nextItem).label}{nextItem.minutes ? ` · ${formatMinutes(nextItem.minutes)}` : ''}</span>
                   </p>
                 ) : finished ? <p className="text-sm font-semibold text-emerald-800">You&apos;ve completed this course.</p>
-                  : course.enrollment.total > 0 && <p className="text-sm text-slate-700">The lessons you haven&apos;t opened are locked. Unlock them to complete the course and get your certificate.</p>}
+                  : course.enrollment.total > 0
+                    ? <p className="text-sm text-slate-700">The lessons you haven&apos;t opened are locked. Unlock them to complete the course and get your certificate.</p>
+                    : <p className="text-sm text-slate-700">The instructor is preparing the lessons. They show here as soon as they&apos;re ready.</p>}
                 <div className="flex flex-wrap gap-2">
                   {course.enrollment.certificate_code && (
                     <Link to={`/certificates/${course.enrollment.certificate_code}`} className={buttonVariants({ size: 'md' })}>
@@ -195,7 +197,7 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
           <dl className="rounded-xl border border-border bg-white overflow-hidden divide-y divide-border" aria-label="Course at a glance">
             <Fact icon={<ViewModuleOutlinedIcon sx={{ fontSize: 17 }} />} label="Content">
               <button type="button" onClick={() => onJump('cp-lessons')} className="text-left text-sky-700 hover:underline">
-                {course.modules.length > 0 && `${plural(course.modules.length, 'module')}, `}{plural(lessons, 'lesson')}
+                {lessons === 0 ? 'Lessons coming soon' : <>{course.modules.length > 0 && `${plural(course.modules.length, 'module')}, `}{plural(lessons, 'lesson')}</>}
               </button>
               <span className={sub}>{lessonFormats(course.lesson_counts)}</span>
             </Fact>
