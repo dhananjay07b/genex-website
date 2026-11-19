@@ -4,6 +4,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined'
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined'
 import { cn } from '@/lib/utils'
+import { DashboardHeader } from '@/components/gelearn/DashboardHeader'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { Select } from '@/components/ui/Select'
 import { RolePicker, TopicPicker } from '@/components/gelearn/TopicPicker'
@@ -219,20 +220,21 @@ function CourseBuilderForm({ id }: { id: string | undefined }) {
 
   const revision = course?.revision ?? null
   const heading = isEditing ? 'Edit course' : 'New course'
-  const PageHeading = isCompany ? 'h2' : 'h1'
   const chip = status ? STATUS_CHIP[status] : null
   const Shell = isCompany ? 'div' : 'main'
 
   return (
     // In Company Studio the layout already supplies the page shell, so only the builder itself renders.
-    <Shell className={isCompany ? undefined : 'min-h-screen pb-10 bg-brand-tint bg-brand-tint-static'}>
+    <Shell className={isCompany ? undefined : 'min-h-screen pb-10'}>
       <PageMeta title={heading} description="Build a course." canonical={`${editBase}/new`} noIndex />
+      {/* Professionals get the same dashboard header as their account pages; Studio's layout supplies its own. */}
+      {!isCompany && <DashboardHeader />}
 
-      <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-16')}>
+      <div className={cn(!isCompany && 'max-w-7xl mx-auto px-6 lg:px-8 py-10')}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Company Studio's layout already has the page <h1> (the company name). */}
-            <PageHeading className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</PageHeading>
+            {/* The dashboard header holds the page <h1> (the person's or company's name). */}
+            <h2 className="text-xs font-bold uppercase tracking-widest text-primary">{heading}</h2>
             {chip && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${chip.className}`}>{chip.label}</span>}
             {notice && <span role="status" className="text-xs font-bold text-emerald-700">{notice}</span>}
           </div>

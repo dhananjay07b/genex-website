@@ -2,8 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
-import { useAuth } from '@/context/useAuth'
-import { cn, getMediaUrl } from '@/lib/utils'
+import { DashboardHeader } from '@/components/gelearn/DashboardHeader'
+import { cn } from '@/lib/utils'
 import { STUDIO_TYPES } from './studioTypes'
 
 const NAV = [
@@ -15,24 +15,9 @@ const NAV = [
 
 /** Company Studio shell: company header + section nav. Company accounts only (see RoleRoute). */
 export default function StudioLayout() {
-  const { user } = useAuth()
-  const company = user?.company
-
   return (
     <div className="flex flex-col min-h-screen pb-10">
-      <div className="bg-brand-tint border-b border-border pt-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-9 flex items-center gap-4">
-          {company?.logo_url && (
-            <span className="size-14 rounded-2xl bg-white border border-border flex items-center justify-center p-2.5 shrink-0">
-              <img src={getMediaUrl(company.logo_url)} alt="" className="w-full h-full object-contain" />
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1.5">Company Studio</p>
-            <h1 className="text-3xl font-extrabold text-text-primary truncate">{company?.name ?? 'Your company'}</h1>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader label="Company Studio" />
 
       <section className="bg-white py-10 flex-1">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col lg:flex-row gap-7 lg:items-start">

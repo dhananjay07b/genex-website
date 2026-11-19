@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { PageMeta } from '@/components/seo/PageMeta'
 import { useAuth } from '@/context/useAuth'
 import { useRole } from '@/hooks/useRole'
-import { getMediaUrl, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { DashboardHeader } from '@/components/gelearn/DashboardHeader'
 import { OverviewTab } from './dashboard/OverviewTab'
 import { CompanyVerificationBanner } from './dashboard/CompanyVerificationBanner'
 import { StudioShortcut } from './dashboard/StudioShortcut'
@@ -74,45 +74,11 @@ export default function Profile() {
 
   if (!user) return null
 
-  const initials = (user.display_name || user.username).slice(0, 2).toUpperCase()
-
   return (
     <main className="flex flex-col min-h-screen pb-10">
       <PageMeta title="My Account" description="Manage your Genex GeLearn account." canonical="/account" noIndex />
 
-      {/* Header */}
-      <div ref={heroRef} className="bg-brand-tint border-b border-border pt-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-9 flex items-center justify-between gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1.5">GeLearn Account</p>
-            <h1 className="text-3xl font-extrabold text-text-primary">Welcome, {user.display_name || user.username}</h1>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => selectTab('settings')}
-              aria-label="Settings"
-              className="inline-flex items-center justify-center size-10 rounded-full border border-border text-text-primary hover:border-primary hover:text-primary transition-colors"
-            >
-              <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
-            </button>
-
-            <div className="flex items-center gap-3 bg-white/75 border border-border rounded-full pl-2 pr-3.5 py-2">
-              <span className="w-9 h-9 rounded-full bg-primary text-white text-sm font-extrabold flex items-center justify-center overflow-hidden shrink-0">
-                {user.avatar_url ? (
-                  <img src={getMediaUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </span>
-              <span className="text-left hidden sm:block">
-                <span className="block text-sm font-bold text-text-primary leading-tight mb-0.5">{user.display_name || user.username}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader ref={heroRef} />
 
       {/* Body */}
       <section className="bg-white py-10 flex-1 flex">
