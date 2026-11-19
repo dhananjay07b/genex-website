@@ -17,7 +17,11 @@ export const LIMITS = {
   answer: 1000,
   instructors: 3,
   items: 100,
+  reading: 20,
 } as const
+
+/** The builder's steps, kept in the address as ?step=. */
+export type StepKey = 'details' | 'curriculum' | 'reading' | 'settings'
 
 export const LANGUAGES = ['English', 'Hindi', 'English and Hindi'] as const
 
@@ -44,10 +48,11 @@ export interface Draft {
   instructors: number[]
   access: ContentAccess
   price: string
+  /** Every lesson sits in a module. */
   modules: DraftModule[]
-  /** Lessons in no module: the whole list when the course has no modules, otherwise shown after them. */
-  loose: CourseTarget[]
   faqs: CourseFaq[]
+  /** Optional Further reading: the author's published content, after the lessons. Saved straight to the live course. */
+  reading: CourseTarget[]
 }
 
 let keySeq = 0
@@ -55,14 +60,23 @@ export const newKey = () => `m${++keySeq}`
 
 export const keyOf = (t: Pick<CourseTarget, 'kind' | 'id'>) => `${t.kind}:${t.id}`
 
+/** A module ready to type into. A new course starts with one, so "Add lesson" is right there. */
+export const blankModule = (): DraftModule => ({ key: newKey(), id: null, title: '', summary: '', items: [] })
+
+/** A module that was never touched (no title, summary or lessons) isn't saved. */
+const isBlank = (m: DraftModule) => m.id === null && !m.title.trim() && !m.summary.trim() && m.items.length === 0
+
 export const emptyDraft = (): Draft => ({
   title: '', summary: '', description: '', language: 'English', outcomes: [], prerequisites: [],
   level: '', topics: [], roles: [], instructors: [], access: 'free', price: '',
-  modules: [], loose: [], faqs: [],
+  modules: [blankModule()], faqs: [], reading: [],
 })
 
 export function draftFromCourse(course: MyCourse): Draft {
-  const known = new Set(course.modules.map(m => m.id))
+  const modules = course.modules.map(m => ({
+    key: newKey(), id: m.id, title: m.title, summary: m.summary,
+    items: course.items.filter(i => i.module_id === m.id),
+  }))
   return {
     title: course.title,
     summary: course.summary,
@@ -76,16 +90,16 @@ export function draftFromCourse(course: MyCourse): Draft {
     instructors: course.instructors,
     access: course.access,
     price: course.price ?? '',
-    modules: course.modules.map(m => ({
-      key: newKey(), id: m.id, title: m.title, summary: m.summary,
-      items: course.items.filter(i => i.module_id === m.id),
-    })),
-    loose: course.items.filter(i => i.module_id === null || !known.has(i.module_id)),
+    modules: modules.length ? modules : [blankModule()],
     faqs: course.faqs.map(({ question, answer }) => ({ question, answer })),
+    reading: course.reading ?? [],
   }
 }
 
-export const allLessons = (d: Draft) => [...d.modules.flatMap(m => m.items), ...d.loose]
+export const allLessons = (d: Draft) => d.modules.flatMap(m => m.items)
+
+/** The modules that are saved: all but untouched blank ones. */
+export const keptModules = (d: Draft) => d.modules.filter(m => !isBlank(m))
 
 export const totalMinutes = (items: CourseTarget[]) => items.reduce((sum, i) => sum + (i.minutes || 0), 0)
 
@@ -116,17 +130,18 @@ const metaOf = (d: Draft) => JSON.stringify({
   outcomes: clean(d.outcomes), prerequisites: clean(d.prerequisites), level: d.level, topics: d.topics,
   roles: d.roles, instructors: d.instructors, access: d.access, price: d.access === 'paid' ? d.price : '',
 })
-const outlineOf = (d: Draft) => JSON.stringify({
-  modules: d.modules.map(m => ({ id: m.id, title: m.title.trim(), summary: m.summary.trim(), items: m.items.map(keyOf) })),
-  loose: d.loose.map(keyOf),
-})
+const outlineOf = (d: Draft) => JSON.stringify(
+  keptModules(d).map(m => ({ id: m.id, title: m.title.trim(), summary: m.summary.trim(), items: m.items.map(keyOf) })),
+)
 const faqsOf = (d: Draft) => JSON.stringify(cleanFaqs(d.faqs))
+const readingOf = (d: Draft) => JSON.stringify(d.reading.map(keyOf))
 
 export function changes(saved: Draft, current: Draft) {
   const meta = metaOf(saved) !== metaOf(current)
   const outline = outlineOf(saved) !== outlineOf(current)
   const faqs = faqsOf(saved) !== faqsOf(current)
-  return { meta, outline, faqs, any: meta || outline || faqs }
+  const reading = readingOf(saved) !== readingOf(current)
+  return { meta, outline, faqs, reading, any: meta || outline || faqs || reading }
 }
 
 /**
@@ -140,7 +155,7 @@ export function needsReview(saved: Draft, current: Draft): boolean {
     access: d.access, price: d.access === 'paid' ? d.price : '',
   })
   const savedModules = new Map(saved.modules.filter(m => m.id !== null).map(m => [m.id, m]))
-  const reworded = current.modules.some(m => {
+  const reworded = keptModules(current).some(m => {
     const before = m.id === null ? undefined : savedModules.get(m.id)
     return !before || before.title.trim() !== m.title.trim() || before.summary.trim() !== m.summary.trim()
   })
@@ -166,15 +181,18 @@ export function metaPayload(d: Draft, includeInstructors: boolean) {
   }
 }
 
+const ref = ({ kind, id }: CourseTarget) => ({ kind, id })
+
 export function outlinePayload(d: Draft) {
-  const ref = ({ kind, id }: CourseTarget) => ({ kind, id })
   return {
-    modules: d.modules.map(m => ({ id: m.id, title: m.title.trim(), summary: m.summary.trim(), items: m.items.map(ref) })),
-    loose_items: d.loose.map(ref),
+    modules: keptModules(d).map(m => ({ id: m.id, title: m.title.trim(), summary: m.summary.trim(), items: m.items.map(ref) })),
+    loose_items: [],
   }
 }
 
 export const faqsPayload = (d: Draft) => cleanFaqs(d.faqs)
+
+export const readingPayload = (d: Draft) => ({ items: d.reading.map(ref) })
 
 /** Moves one row of a list to another position. */
 export function move<T>(list: T[], from: number, to: number): T[] {
@@ -191,5 +209,5 @@ export const fieldClass =
 /** Every lesson in the outline passed through `fn`; returning null removes it. */
 export function mapItems(d: Draft, fn: (item: CourseTarget) => CourseTarget | null): Draft {
   const keep = (items: CourseTarget[]) => items.map(fn).filter((item): item is CourseTarget => item !== null)
-  return { ...d, modules: d.modules.map(m => ({ ...m, items: keep(m.items) })), loose: keep(d.loose) }
+  return { ...d, modules: d.modules.map(m => ({ ...m, items: keep(m.items) })) }
 }

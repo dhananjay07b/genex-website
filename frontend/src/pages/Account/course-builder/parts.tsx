@@ -24,11 +24,6 @@ export function BuilderCard({ n, title, hint, children }: { n?: number; title: R
   )
 }
 
-/** A side-rail panel. */
-export function RailCard({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('bg-white border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm', className)}>{children}</div>
-}
-
 const iconBtn = 'size-8 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none'
 
 /** Up / down / remove buttons for one row of an ordered list. */

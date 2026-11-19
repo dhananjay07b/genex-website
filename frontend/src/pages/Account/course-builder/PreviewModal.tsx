@@ -134,10 +134,17 @@ export function PreviewModal({ draft, coverUrl, publisher, onClose }: {
                     {m.items.length > 0 && <Lessons items={m.items} />}
                   </div>
                 ))}
-                {draft.loose.length > 0 && <Lessons items={draft.loose} />}
               </div>
             )}
           </section>
+
+          {draft.reading.length > 0 && (
+            <section>
+              <h3 className="text-lg font-extrabold text-text-primary">Further reading</h3>
+              <p className="text-sm text-text-muted mb-3">Optional. Not needed to complete the course.</p>
+              <div className="rounded-xl border border-border overflow-hidden"><Lessons items={draft.reading} /></div>
+            </section>
+          )}
 
           {faqs.length > 0 && (
             <section>

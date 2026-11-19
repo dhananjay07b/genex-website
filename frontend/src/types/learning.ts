@@ -8,6 +8,9 @@ import type { DiscoveryCard } from './discovery'
  */
 export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast' | 'lesson'
 
+/** Published content that can be a course's Further reading (never a lesson). */
+export type ReadingKind = Exclude<CourseItemKind, 'lesson'>
+
 /** A lesson written inside a course. Quizzes arrive later. */
 export type CourseLessonType = 'text' | 'video' | 'quiz'
 
@@ -372,6 +375,8 @@ export interface MyCourse {
   modules: CourseModuleInfo[]
   items: MyCourseItem[]
   faqs: (CourseFaq & { id: number })[]
+  /** Optional Further reading after the lessons, in order. Never counts toward completion. */
+  reading: CourseTarget[]
   enrolled_count: number
   /** False for a live course with learners: Genex unpublishes it instead. */
   can_delete: boolean

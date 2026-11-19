@@ -7,7 +7,7 @@ type Patch = (next: Partial<Draft>) => void
 
 export function BasicsCard({ draft, patch, titleError }: { draft: Draft; patch: Patch; titleError?: string }) {
   return (
-    <BuilderCard n={1} title="Basics" hint="Shown at the top of the course page">
+    <BuilderCard title="Basics" hint="Shown at the top of the course page">
       <div>
         <input value={draft.title} onChange={e => patch({ title: e.target.value })} placeholder="Course title" aria-label="Course title"
           maxLength={LIMITS.title}
@@ -35,7 +35,7 @@ export function BasicsCard({ draft, patch, titleError }: { draft: Draft; patch: 
 
 export function WhatLearnersGetCard({ draft, patch }: { draft: Draft; patch: Patch }) {
   return (
-    <BuilderCard n={2} title="What learners get" hint={`Short lines, up to ${LIMITS.line} characters each`}>
+    <BuilderCard title="What learners get" hint={`Short lines, up to ${LIMITS.line} characters each`}>
       <ListEditor label="What you'll learn" word="outcome" lines={draft.outcomes} max={LIMITS.outcomes} maxLength={LIMITS.line}
         onChange={outcomes => patch({ outcomes })}
         placeholder="e.g. Map Modbus registers for a new inverter"
@@ -48,12 +48,12 @@ export function WhatLearnersGetCard({ draft, patch }: { draft: Draft; patch: Pat
   )
 }
 
-export function FaqCard({ draft, patch, n }: { draft: Draft; patch: Patch; n: number }) {
+export function FaqCard({ draft, patch }: { draft: Draft; patch: Patch }) {
   const faqs = draft.faqs
   const set = (i: number, key: 'question' | 'answer', value: string) =>
     patch({ faqs: faqs.map((f, j) => (j === i ? { ...f, [key]: value } : f)) })
   return (
-    <BuilderCard n={n} title="Course FAQ" hint={`${faqs.length}/${LIMITS.faqs} · optional`}>
+    <BuilderCard title="Course FAQ" hint={`${faqs.length}/${LIMITS.faqs} · optional`}>
       {faqs.length === 0 && (
         <p className="text-sm text-text-muted border border-dashed border-border rounded-xl px-4 py-4 text-center">No questions yet. Add the ones learners ask you most.</p>
       )}
