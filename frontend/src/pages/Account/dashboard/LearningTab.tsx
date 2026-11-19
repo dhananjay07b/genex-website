@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
+import LogoutIcon from '@mui/icons-material/Logout'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import { apiFetch } from '@/lib/api/client'
 import { getMediaUrl } from '@/lib/utils'
 import type { SnippetListResponse } from '@/types/api'
 import type { CertificateInfo, CourseProgress } from '@/types/learning'
 import { recordLessonOpen } from '@/pages/GeLearn/course/lessons'
 import { longDate } from '@/pages/GeLearn/course/format'
+import { LeaveCourseDialog } from '@/pages/GeLearn/course/LeaveCourseDialog'
+import { MoreMenu } from '@/pages/Account/course-builder/MoreMenu'
 import { EmptyState } from './EmptyState'
 
 /** The learner's certificates, newest first. */
@@ -41,8 +46,11 @@ function Certificates({ certificates }: { certificates: CertificateInfo[] }) {
 
 /** Enrolled courses, with progress and a jump to the next unfinished lesson; then the learner's certificates. */
 export function LearningTab() {
+  const navigate = useNavigate()
   const [courses, setCourses] = useState<CourseProgress[] | null>(null)
   const [certificates, setCertificates] = useState<CertificateInfo[]>([])
+  const [leaving, setLeaving] = useState<CourseProgress | null>(null)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     apiFetch<SnippetListResponse<CourseProgress>>('/api/learning/me/enrollments/?limit=100')
@@ -57,6 +65,8 @@ export function LearningTab() {
         <h2 className="text-xl font-extrabold text-text-primary">My Learning</h2>
         <Link to="/courses" className="text-sm font-bold text-primary hover:underline">Browse courses</Link>
       </div>
+
+      {notice && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{notice}</p>}
 
       {courses === null ? (
         <div className="min-h-40" />
@@ -74,8 +84,17 @@ export function LearningTab() {
             const next = course.items.find(item => !item.completed && !item.is_locked)
             const done = progress !== null && progress.total > 0 && progress.completed === progress.total
             return (
-              <li key={course.slug} className="border border-border rounded-2xl overflow-hidden flex flex-col">
-                <Link to={`/courses/${course.slug}`} className="flex gap-4 p-4 group">
+              <li key={course.slug} className="relative border border-border rounded-2xl flex flex-col">
+                {progress && (
+                  <div className="absolute right-2 top-2">
+                    <MoreMenu label={`More for ${course.title}`} icon={MoreHorizIcon} entries={[
+                      { label: 'Open course page', icon: OpenInNewIcon, onSelect: () => navigate(`/courses/${course.slug}`) },
+                      { kind: 'separator' },
+                      { label: 'Leave course', icon: LogoutIcon, danger: true, onSelect: () => setLeaving(course) },
+                    ]} />
+                  </div>
+                )}
+                <Link to={`/courses/${course.slug}`} className="flex gap-4 p-4 pr-12 group">
                   <span className="size-16 rounded-xl bg-brand-tint flex items-center justify-center overflow-hidden shrink-0">
                     {course.cover_url
                       ? <img src={getMediaUrl(course.cover_url)} alt="" className="w-full h-full object-cover" />
@@ -117,6 +136,15 @@ export function LearningTab() {
         </ul>
       )}
       <Certificates certificates={certificates} />
+      {leaving?.enrollment && (
+        <LeaveCourseDialog slug={leaving.slug} title={leaving.title} enrollment={leaving.enrollment}
+          onClose={() => setLeaving(null)}
+          onLeft={() => {
+            setCourses(prev => (prev ?? []).filter(c => c.slug !== leaving.slug))
+            setNotice(`You left “${leaving.title}”. Your progress, quiz results and review were deleted.`)
+            setLeaving(null)
+          }} />
+      )}
     </div>
   )
 }

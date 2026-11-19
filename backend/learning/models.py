@@ -396,55 +396,50 @@ class QuizAttempt(models.Model):
         return f"{self.user} · {self.lesson} · {self.score}/{self.total}"
 
 
-# A course lesson points at exactly one piece of content. Professionals' courses
-# use their videos and blog posts; Company Studio courses use the company's
-# GeAcademy articles, research, whitepapers and podcasts (and videos). Any course
-# can also hold lessons written inside it (CourseLesson).
+# A course's outline holds only lessons written inside the course (CourseLesson).
+# Kept as a kind map so outline refs stay {kind, id} and stay open to new lesson sources.
 # kind → (field on PlaylistItem, model)
 ITEM_KINDS = {
+    "lesson": ("lesson", "learning.CourseLesson"),
+}
+
+# Published content an author can point learners to under "Further reading"
+# (CourseReading). Professionals use their videos and blog posts; Company
+# Studio courses use the company's GeAcademy articles, research, whitepapers,
+# podcasts and videos. Further reading never counts toward completion.
+READING_KINDS = {
     "video": ("video", "pages.VideoItem"),
     "post": ("post", "pages.BlogPost"),
     "article": ("article", "pages.TechArticle"),
     "research": ("research", "pages.CaseStudy"),
     "whitepaper": ("whitepaper", "pages.Whitepaper"),
     "podcast": ("podcast", "pages.PodcastEpisode"),
-    "lesson": ("lesson", "learning.CourseLesson"),
 }
-_ITEM_FIELDS = [field for field, _ in ITEM_KINDS.values()]
+_READING_FIELDS = [field for field, _ in READING_KINDS.values()]
+MAX_READING = 20
 
 
-def _exactly_one_target():
+def _exactly_one(fields):
     combos = Q()
-    for field in _ITEM_FIELDS:
-        combos |= Q(**{f"{field}__isnull": False}, **{f"{other}__isnull": True for other in _ITEM_FIELDS if other != field})
+    for field in fields:
+        combos |= Q(**{f"{field}__isnull": False}, **{f"{other}__isnull": True for other in fields if other != field})
     return combos
 
 
 class PlaylistItem(models.Model):
-    """One lesson at a position in the course: a piece of published content, or a CourseLesson."""
+    """One lesson at a position in the course, inside one of its modules."""
     playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="items")
     module = models.ForeignKey(
         CourseModule, null=True, blank=True, on_delete=models.SET_NULL, related_name="items",
-        help_text="Empty when the course has no modules, or the lesson isn't in one.",
+        help_text="The module the lesson sits in.",
     )
-    video = models.ForeignKey("pages.VideoItem", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    post = models.ForeignKey("pages.BlogPost", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    article = models.ForeignKey("pages.TechArticle", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    research = models.ForeignKey("pages.CaseStudy", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    whitepaper = models.ForeignKey("pages.Whitepaper", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    podcast = models.ForeignKey("pages.PodcastEpisode", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
-    lesson = models.ForeignKey(CourseLesson, null=True, blank=True, on_delete=models.CASCADE, related_name="items")
+    lesson = models.ForeignKey(CourseLesson, on_delete=models.CASCADE, related_name="items")
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["position", "id"]
         constraints = [
-            models.CheckConstraint(condition=_exactly_one_target(), name="playlist_item_exactly_one_target"),
-            *[
-                models.UniqueConstraint(fields=["playlist", field], condition=Q(**{f"{field}__isnull": False}),
-                                        name=f"playlist_unique_{field}")
-                for field in _ITEM_FIELDS
-            ],
+            models.UniqueConstraint(fields=["playlist", "lesson"], name="playlist_unique_lesson"),
         ]
 
     def clean(self):
@@ -456,14 +451,53 @@ class PlaylistItem(models.Model):
 
     @property
     def kind(self):
-        return next(kind for kind, (field, _) in ITEM_KINDS.items() if getattr(self, f"{field}_id"))
+        return "lesson"
 
     @property
     def target(self):
-        return getattr(self, ITEM_KINDS[self.kind][0])
+        return self.lesson
 
     def __str__(self):
-        return f"{self.playlist} #{self.position}: {self.target}"
+        return f"{self.playlist} #{self.position}: {self.lesson}"
+
+
+class CourseReading(models.Model):
+    """
+    One "Further reading" entry: a piece of the author's published content shown
+    after the lessons. Optional, and never part of progress or the certificate.
+    Content that is later unpublished or deleted simply drops out of the list.
+    """
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="reading")
+    video = models.ForeignKey("pages.VideoItem", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    post = models.ForeignKey("pages.BlogPost", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    article = models.ForeignKey("pages.TechArticle", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    research = models.ForeignKey("pages.CaseStudy", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    whitepaper = models.ForeignKey("pages.Whitepaper", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    podcast = models.ForeignKey("pages.PodcastEpisode", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+        verbose_name = "further reading item"
+        constraints = [
+            models.CheckConstraint(condition=_exactly_one(_READING_FIELDS), name="course_reading_exactly_one_target"),
+            *[
+                models.UniqueConstraint(fields=["playlist", field], condition=Q(**{f"{field}__isnull": False}),
+                                        name=f"course_reading_unique_{field}")
+                for field in _READING_FIELDS
+            ],
+        ]
+
+    @property
+    def kind(self):
+        return next(kind for kind, (field, _) in READING_KINDS.items() if getattr(self, f"{field}_id"))
+
+    @property
+    def target(self):
+        return getattr(self, READING_KINDS[self.kind][0])
+
+    def __str__(self):
+        return f"{self.playlist} · further reading #{self.position}"
 
 
 class Enrollment(models.Model):

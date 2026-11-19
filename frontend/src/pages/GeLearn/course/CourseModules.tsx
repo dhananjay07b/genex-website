@@ -8,7 +8,8 @@ import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOu
 import { courseItemDisplay, timeIsEstimated } from '@/components/gelearn/courseItemKinds'
 import { cn } from '@/lib/utils'
 import type { CourseDetail, CourseItem } from '@/types/learning'
-import { formatMinutes, lessonFormats, paidLessonNote, paidLessons, plural } from './format'
+import { formatMinutes, lessonFormats, plural } from './format'
+import { CourseReadingBlock } from './CourseReading'
 
 interface LessonListProps {
   items: CourseItem[]
@@ -91,13 +92,26 @@ export function CourseModules({ course, onOpen }: { course: CourseDetail; onOpen
   const summary = [plural(course.items.length, 'lesson'), lessonFormats(course.lesson_counts),
     course.total_minutes ? `about ${formatMinutes(course.total_minutes)} in total` : ''].filter(Boolean).join(' · ')
 
+  if (course.items.length === 0) {
+    // A live course whose lessons were all published content before lessons-only courses: its author is adding new ones.
+    return (
+      <div className="max-w-4xl">
+        <h2 className="text-xl font-extrabold text-text-primary lg:text-2xl">Lessons in this course</h2>
+        <p className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3.5 text-sm text-sky-900">
+          <b className="block">Lessons are being prepared</b>
+          The instructor is adding the lessons. {enrolled ? 'They show here as soon as they’re ready.' : 'You can enroll now and start as soon as they’re ready.'}
+        </p>
+        <CourseReadingBlock items={course.reading ?? []} />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl">
       <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-extrabold text-text-primary lg:text-2xl">{heading}</h2>
           <p className="mt-1 text-sm text-text-muted">{summary}</p>
-          {paidLessons(course) > 0 && <p className="mt-1 text-sm font-semibold text-amber-800">{paidLessonNote(paidLessons(course))}</p>}
         </div>
         {course.modules.length > 1 && (
           <button type="button" onClick={() => setOpen(allOpen ? new Set() : new Set(course.modules.map(m => m.id)))}
@@ -148,11 +162,12 @@ export function CourseModules({ course, onOpen }: { course: CourseDetail; onOpen
             <b className="block text-text-primary">Certificate of completion</b>
             {course.enrollment?.certificate_code
               ? <Link to={`/certificates/${course.enrollment.certificate_code}`} className="font-bold text-sky-700 hover:underline">View your certificate</Link>
-              : <span className="text-text-muted">Open every lesson from this page to earn a GeLearn certificate you can share on LinkedIn.</span>}
+              : <span className="text-text-muted">Open every lesson and pass every quiz to earn a GeLearn certificate you can share on LinkedIn. Further reading isn&apos;t needed.</span>}
           </p>
         </div>
       </div>
       {!enrolled && !course.is_locked && !course.my_relation && <p className="mt-3 text-sm text-text-muted">Enroll to track your progress. A lesson counts once you open it from this page.</p>}
+      <CourseReadingBlock items={course.reading ?? []} />
     </div>
   )
 }

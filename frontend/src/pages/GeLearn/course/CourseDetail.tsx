@@ -41,6 +41,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState('')
   const [reviewsKey, setReviewsKey] = useState(0)
   const [relatedEmpty, setRelatedEmpty] = useState(false)
   const barRef = useRef<HTMLElement | null>(null)
@@ -68,7 +69,7 @@ export default function CourseDetail() {
   const present = useMemo(() => {
     const ids = new Set<SectionId>(['cp-about', 'cp-reviews', 'cp-faq'])
     if (course?.roles[0]?.path.length) ids.add('cp-path')
-    if (course?.items.length) ids.add('cp-lessons')
+    ids.add('cp-lessons')
     if (!relatedEmpty) ids.add('cp-more')
     return ids
   }, [course, relatedEmpty])
@@ -87,6 +88,7 @@ export default function CourseDetail() {
     }
     setBusy(true)
     setMessage('')
+    setNotice('')
     try {
       setCourse(await apiFetch<Course>(`/api/learning/courses/${course.slug}/enroll/`, { method: 'POST' }))
     } catch (err) {
@@ -99,6 +101,13 @@ export default function CourseDetail() {
   /** Proof of learning: a lesson counts once an enrolled learner opens it from this page. */
   function openLesson(item: CourseItem) {
     if (course && enrolled && !item.completed && !item.is_locked) recordLessonOpen(course.slug, item.item_id)
+  }
+
+  /** Left the course: show the visitor view again (their review is gone too). */
+  async function left() {
+    setNotice('You left this course. Your progress, quiz results and review were deleted.')
+    setCourse(await load())
+    setReviewsKey(k => k + 1)
   }
 
   async function reviewsChanged() {
@@ -118,19 +127,18 @@ export default function CourseDetail() {
         canonical={`/courses/${course.slug}`}
         image={course.cover_url ? getMediaUrl(course.cover_url) : undefined}
       />
-      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} onOpen={openLesson} />
+      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} onOpen={openLesson}
+        notice={notice} onLeft={left} />
       <CourseTabs present={present} barRef={barRef} />
 
       <Section id="cp-about" label="About"><CourseAbout course={course} signedIn={Boolean(user)} /></Section>
       {primaryRole && <Section id="cp-path" label="Career path"><CoursePath role={primaryRole} /></Section>}
-      {(course.items.length > 0 || hasSide) && (
-        <Section id={course.items.length > 0 ? 'cp-lessons' : undefined} label={course.items.length > 0 ? 'Lessons' : 'Instructor and publisher'}>
-          <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
-            {course.items.length > 0 && <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onOpen={openLesson} /></div>}
-            {hasSide && <CourseSide instructors={course.instructors} publisher={course.publisher} />}
-          </div>
-        </Section>
-      )}
+      <Section id="cp-lessons" label="Lessons">
+        <div className="grid gap-8 lg:grid-cols-3 lg:items-start">
+          <div className="min-w-0 lg:col-span-2"><CourseModules course={course} onOpen={openLesson} /></div>
+          {hasSide && <CourseSide instructors={course.instructors} publisher={course.publisher} />}
+        </div>
+      </Section>
 
       {course.learner_companies.length > 0 && (
         <Section label="Learners' companies">

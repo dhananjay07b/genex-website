@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import User
 from learning.models import CareerRole, Enrollment, ItemProgress, LiveSession, Playlist, PlaylistItem
+from learning.tests import add_lesson
 from pages.models import CaseStudy, TechArticle, Tender, Testimonial, Topic, UserVideoPost, VideoItem
 
 from .models import SearchQuery, ViewEvent
@@ -43,7 +44,7 @@ class DiscoveryTestBase(TestCase):
         self.course = Playlist.objects.create(owner=self.pro, title="SCADA Fundamentals", description="From basics.",
                                               status=Playlist.STATUS_PUBLISHED, level="beginner")
         self.course.topics.add(self.scada)
-        self.item1 = PlaylistItem.objects.create(playlist=self.course, video=self.video, position=0)
+        self.item1 = add_lesson(self.course, self.video.title, "video", position=0, duration="12 min")
         self.draft = Playlist.objects.create(owner=self.pro, title="Draft course", status=Playlist.STATUS_DRAFT)
 
 
@@ -184,7 +185,7 @@ class PersonalHomeTests(DiscoveryTestBase):
 
     def test_continue_learning_and_week(self):
         post_video = VideoItem.objects.create(title="Event logs", date=TODAY, duration="9 min", excerpt="e")
-        PlaylistItem.objects.create(playlist=self.course, video=post_video, position=1)
+        add_lesson(self.course, post_video.title, "video", position=1)
         Enrollment.objects.create(user=self.learner, playlist=self.course)
         ItemProgress.objects.create(user=self.learner, item=self.item1)
         data = self.me()
@@ -393,7 +394,7 @@ class SearchFacetTests(DiscoveryTestBase):
     def test_highest_rated_sort_and_card_rating(self):
         from learning.models import CourseReview, Enrollment
         second = Playlist.objects.create(owner=self.pro, title="Grid basics", status=Playlist.STATUS_PUBLISHED)
-        PlaylistItem.objects.create(playlist=second, video=self.video, position=0)
+        add_lesson(second, self.video.title, "video", position=0)
 
         def review(course, ratings):
             for rating in ratings:

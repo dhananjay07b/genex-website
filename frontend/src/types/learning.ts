@@ -8,6 +8,9 @@ import type { DiscoveryCard } from './discovery'
  */
 export type CourseItemKind = 'video' | 'post' | 'article' | 'research' | 'whitepaper' | 'podcast' | 'lesson'
 
+/** Published content that can be a course's Further reading (never a lesson). */
+export type ReadingKind = Exclude<CourseItemKind, 'lesson'>
+
 /** A lesson written inside a course. Quizzes arrive later. */
 export type CourseLessonType = 'text' | 'video' | 'quiz'
 
@@ -32,6 +35,9 @@ export interface CourseTarget {
   /** Course lessons only: false until Genex has reviewed it, so adding it to a live course sends the outline for review. */
   approved?: boolean
 }
+
+/** A course's Further reading item; `is_locked` says whether the viewer can open it (it keeps its own access). */
+export type CourseReadingCard = CourseTarget & { is_locked?: boolean }
 
 /** A course's own lesson as its author edits it: GET/POST /api/learning/me/courses/<id>/lessons/. */
 export interface CourseLesson {
@@ -178,6 +184,8 @@ export interface CourseEnrollment {
   percent: number
   /** Set once every lesson has been opened from the course page. */
   certificate_code: string | null
+  /** False once a certificate was issued (valid or revoked): leaving would delete the record it rests on. */
+  can_leave: boolean
 }
 
 /** GET /api/learning/certificates/<code>/ (and each row of /me/certificates/). */
@@ -296,7 +304,8 @@ export interface CourseDetail extends CourseProgress {
   prerequisites: string[]
   language: string
   total_minutes: number
-  lesson_counts: Partial<Record<CourseItemKind, number>>
+  /** Lessons by type: text, video, quiz. */
+  lesson_counts: Partial<Record<string, number>>
   modules: CoursePageModule[]
   next_item_id: number | null
   instructors: CourseInstructor[]
@@ -309,6 +318,8 @@ export interface CourseDetail extends CourseProgress {
   my_relation: 'owner' | 'instructor' | null
   faqs: CourseFaq[]
   learner_companies: CompanyDisplay[]
+  /** Optional extra reading after the lessons; never part of progress or the certificate. */
+  reading: CourseReadingCard[]
 }
 
 /** GET /api/learning/courses/<slug>/related/ */
@@ -371,6 +382,8 @@ export interface MyCourse {
   modules: CourseModuleInfo[]
   items: MyCourseItem[]
   faqs: (CourseFaq & { id: number })[]
+  /** Optional Further reading after the lessons, in order. Never counts toward completion. */
+  reading: CourseTarget[]
   enrolled_count: number
   /** False for a live course with learners: Genex unpublishes it instead. */
   can_delete: boolean

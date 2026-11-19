@@ -1,25 +1,27 @@
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import LogoutIcon from '@mui/icons-material/Logout'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt'
 import ScheduleIcon from '@mui/icons-material/Schedule'
-import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
-import { COURSE_ITEM_KINDS } from '@/components/gelearn/courseItemKinds'
+import { courseItemDisplay } from '@/components/gelearn/courseItemKinds'
 import { SaveButton } from '@/components/engagement/SaveButton'
 import { formatPrice, getMediaUrl } from '@/lib/utils'
 import { returnState } from '@/lib/authRedirect'
 import { useRole } from '@/hooks/useRole'
 import type { CourseDetail, CourseItem } from '@/types/learning'
 import { PublisherLogo } from './CourseSide'
-import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, paidLessonNote, paidLessons, plural, type SectionId } from './format'
+import { LeaveCourseDialog } from './LeaveCourseDialog'
+import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, plural, type SectionId } from './format'
 
 interface CourseHeroProps {
   course: CourseDetail
@@ -30,6 +32,10 @@ interface CourseHeroProps {
   onJump: (id: SectionId) => void
   /** Records that the learner opened a lesson from the course page. */
   onOpen: (item: CourseItem) => void
+  /** Shown after leaving the course. */
+  notice: string
+  /** The learner left the course (it's already deleted on the server). */
+  onLeft: () => void
 }
 
 function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
@@ -45,7 +51,8 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
 
 const sub = 'text-xs font-medium text-text-muted'
 
-export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, onOpen }: CourseHeroProps) {
+export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, onOpen, notice, onLeft }: CourseHeroProps) {
+  const [leaving, setLeaving] = useState(false)
   const location = useLocation()
   const { isCompany } = useRole()
   const enrolled = course.enrollment !== null
@@ -148,10 +155,12 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                 {nextItem ? (
                   <p className="flex items-center gap-2 text-sm text-slate-700">
                     <PlayCircleOutlinedIcon sx={{ fontSize: 18 }} className="text-sky-700 shrink-0" />
-                    <span className="min-w-0">Up next: <b className="text-text-primary">{nextItem.title}</b> · {COURSE_ITEM_KINDS[nextItem.kind].label}{nextItem.minutes ? ` · ${formatMinutes(nextItem.minutes)}` : ''}</span>
+                    <span className="min-w-0">Up next: <b className="text-text-primary">{nextItem.title}</b> · {courseItemDisplay(nextItem).label}{nextItem.minutes ? ` · ${formatMinutes(nextItem.minutes)}` : ''}</span>
                   </p>
                 ) : finished ? <p className="text-sm font-semibold text-emerald-800">You&apos;ve completed this course.</p>
-                  : course.enrollment.total > 0 && <p className="text-sm text-slate-700">The lessons you haven&apos;t opened are locked. Unlock them to complete the course and get your certificate.</p>}
+                  : course.enrollment.total > 0
+                    ? <p className="text-sm text-slate-700">The lessons you haven&apos;t opened are locked. Unlock them to complete the course and get your certificate.</p>
+                    : <p className="text-sm text-slate-700">The instructor is preparing the lessons. They show here as soon as they&apos;re ready.</p>}
                 <div className="flex flex-wrap gap-2">
                   {course.enrollment.certificate_code && (
                     <Link to={`/certificates/${course.enrollment.certificate_code}`} className={buttonVariants({ size: 'md' })}>
@@ -169,6 +178,14 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                     </Button>
                   )}
                 </div>
+                <button type="button" onClick={() => setLeaving(true)}
+                  className="self-end inline-flex items-center gap-1.5 text-xs font-bold text-text-muted hover:text-red-700">
+                  <LogoutIcon sx={{ fontSize: 15 }} /> Leave course
+                </button>
+                {leaving && (
+                  <LeaveCourseDialog slug={course.slug} title={course.title} enrollment={course.enrollment}
+                    onClose={() => setLeaving(false)} onLeft={() => { setLeaving(false); onLeft() }} />
+                )}
               </div>
             ) : (
               <>
@@ -181,10 +198,10 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                   {accessNote}
                   {!signedIn && course.access !== 'paid' && <> · <Link to="/register" state={returnState(location)} className="font-semibold text-sky-700 hover:underline">Create an account</Link></>}
                 </p>
-                {paidLessons(course) > 0 && <p className="mt-1.5 text-sm font-semibold text-amber-800">{paidLessonNote(paidLessons(course))}</p>}
               </>
             )}
             {message && <p role="alert" className="mt-2 text-sm font-semibold text-red-600">{message}</p>}
+            {notice && !enrolled && <p role="status" className="mt-2 text-sm font-semibold text-emerald-700">{notice}</p>}
 
             {firstRole && (
               <p className="mt-3 text-sm text-slate-700">
@@ -196,7 +213,7 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
           <dl className="rounded-xl border border-border bg-white overflow-hidden divide-y divide-border" aria-label="Course at a glance">
             <Fact icon={<ViewModuleOutlinedIcon sx={{ fontSize: 17 }} />} label="Content">
               <button type="button" onClick={() => onJump('cp-lessons')} className="text-left text-sky-700 hover:underline">
-                {course.modules.length > 0 && `${plural(course.modules.length, 'module')}, `}{plural(lessons, 'lesson')}
+                {lessons === 0 ? 'Lessons coming soon' : <>{course.modules.length > 0 && `${plural(course.modules.length, 'module')}, `}{plural(lessons, 'lesson')}</>}
               </button>
               <span className={sub}>{lessonFormats(course.lesson_counts)}</span>
             </Fact>

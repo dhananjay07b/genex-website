@@ -10,6 +10,8 @@
   /* Surfaces */
   --color-surface: #F0F9FF;
   --color-surface-alt: #E8F8F5;
+  /* Solid light brand tint (no grid): dashboard header band, builder module headers */
+  --color-tint: #EAF6FC;
 
   /* Text */
   --color-text-primary: #0D1117;
