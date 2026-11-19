@@ -89,7 +89,7 @@ export function CourseAbout({ course, signedIn }: { course: CourseDetail; signed
           <Detail icon={<ChecklistIcon sx={{ fontSize: 20 }} />} title="Before you start">{course.prerequisites.join('; ')}</Detail>
         )}
         <Detail icon={<TranslateIcon sx={{ fontSize: 20 }} />} title={`Taught in ${course.language}`}>Self-paced; take the lessons in any order.</Detail>
-        <Detail icon={<WorkspacePremiumOutlinedIcon sx={{ fontSize: 20 }} />} title="Certificate">A GeLearn certificate of completion once you&apos;ve opened every lesson.</Detail>
+        <Detail icon={<WorkspacePremiumOutlinedIcon sx={{ fontSize: 20 }} />} title="Certificate">A GeLearn certificate of completion once you&apos;ve opened every lesson and passed every quiz.</Detail>
       </div>
 
       {course.description.trim() && (

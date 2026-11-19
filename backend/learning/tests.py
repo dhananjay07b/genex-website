@@ -2000,3 +2000,70 @@ class FurtherReadingTests(TestCase):
         self.course.reading.create(post=self.post, position=1)
         self.post.delete()
         self.assertEqual([r["title"] for r in self.api.get(f"/api/learning/me/courses/{self.course.pk}/").json()["reading"]], ["Walkthrough"])
+
+
+class LeaveCourseTests(TestCase):
+    """Phase 6: a learner can leave a course, losing their progress, quiz results and review, unless a certificate was issued."""
+
+    def setUp(self):
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.learner = make_user("learner")
+        self.other = make_user("other")
+        self.course = Playlist.objects.create(owner=self.pro, title="Relay Basics", status="published")
+        self.text = add_lesson(self.course, "Read first", "text", position=0)
+        self.quiz = add_lesson(self.course, "Relay quiz", "quiz", position=1)
+        self.other_course = Playlist.objects.create(owner=self.pro, title="Other course", status="published")
+        self.other_item = add_lesson(self.other_course, "Other lesson", "text")
+        self.api = APIClient()
+        self.api.force_authenticate(self.learner)
+        self.url = "/api/learning/courses/relay-basics/enroll/"
+        self.api.post(self.url)
+
+    def _progress(self):
+        """Progress, a quiz attempt and a review on this course, plus progress on another course that must survive."""
+        self.api.post(f"/api/learning/courses/relay-basics/items/{self.text.pk}/open/")
+        QuizAttempt.objects.create(user=self.learner, lesson=self.quiz.lesson, score=0, total=1, answers=[[1]])
+        CourseReview.objects.create(user=self.learner, playlist=self.course, rating=4, body="Useful")
+        self.api.post("/api/learning/courses/other-course/enroll/")
+        self.api.post(f"/api/learning/courses/other-course/items/{self.other_item.pk}/open/")
+
+    def test_leaving_deletes_enrollment_progress_attempts_and_review(self):
+        self._progress()
+        self.assertTrue(self.api.get("/api/learning/courses/relay-basics/").json()["enrollment"]["can_leave"])
+        self.assertEqual(self.api.delete(self.url).status_code, 204)
+        self.assertFalse(Enrollment.objects.filter(user=self.learner, playlist=self.course).exists())
+        self.assertFalse(ItemProgress.objects.filter(user=self.learner, item__playlist=self.course).exists())
+        self.assertFalse(QuizAttempt.objects.filter(user=self.learner).exists())
+        self.assertFalse(CourseReview.objects.filter(user=self.learner).exists())
+        # Other courses are untouched.
+        self.assertTrue(Enrollment.objects.filter(user=self.learner, playlist=self.other_course).exists())
+        self.assertTrue(ItemProgress.objects.filter(user=self.learner, item=self.other_item).exists())
+        self.assertIsNone(self.api.get("/api/learning/courses/relay-basics/").json()["enrollment"])
+
+    def test_enrolling_again_starts_from_zero(self):
+        self._progress()
+        self.api.delete(self.url)
+        body = self.api.post(self.url).json()
+        self.assertEqual((body["enrollment"]["completed"], body["enrollment"]["percent"]), (0, 0))
+
+    def test_leaving_is_refused_once_a_certificate_was_issued(self):
+        for status in (Certificate.STATUS_VALID, Certificate.STATUS_REVOKED):
+            cert = Certificate.objects.create(code=f"GL-TEST-{status[:4].upper()}", user=self.learner, playlist=self.course,
+                                              learner_name="Learner", issued_at=timezone.now(), status=status)
+            enrollment = self.api.get("/api/learning/courses/relay-basics/").json()["enrollment"]
+            self.assertFalse(enrollment["can_leave"])
+            res = self.api.delete(self.url)
+            self.assertEqual(res.status_code, 409)
+            self.assertIn("certificate", res.json()["detail"])
+            self.assertTrue(Enrollment.objects.filter(user=self.learner, playlist=self.course).exists())
+            cert.delete()
+
+    def test_someone_not_enrolled_gets_404(self):
+        api = APIClient()
+        api.force_authenticate(self.other)
+        self.assertEqual(api.delete(self.url).status_code, 404)
+        self.assertEqual(APIClient().delete(self.url).status_code, 401)
+
+    def test_my_enrollments_say_whether_each_course_can_be_left(self):
+        rows = self.api.get("/api/learning/me/enrollments/").json()["results"]
+        self.assertEqual([(r["slug"], r["enrollment"]["can_leave"]) for r in rows], [("relay-basics", True)])

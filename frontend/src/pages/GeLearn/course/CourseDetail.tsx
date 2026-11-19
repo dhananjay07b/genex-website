@@ -41,6 +41,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState('')
   const [reviewsKey, setReviewsKey] = useState(0)
   const [relatedEmpty, setRelatedEmpty] = useState(false)
   const barRef = useRef<HTMLElement | null>(null)
@@ -87,6 +88,7 @@ export default function CourseDetail() {
     }
     setBusy(true)
     setMessage('')
+    setNotice('')
     try {
       setCourse(await apiFetch<Course>(`/api/learning/courses/${course.slug}/enroll/`, { method: 'POST' }))
     } catch (err) {
@@ -99,6 +101,13 @@ export default function CourseDetail() {
   /** Proof of learning: a lesson counts once an enrolled learner opens it from this page. */
   function openLesson(item: CourseItem) {
     if (course && enrolled && !item.completed && !item.is_locked) recordLessonOpen(course.slug, item.item_id)
+  }
+
+  /** Left the course: show the visitor view again (their review is gone too). */
+  async function left() {
+    setNotice('You left this course. Your progress, quiz results and review were deleted.')
+    setCourse(await load())
+    setReviewsKey(k => k + 1)
   }
 
   async function reviewsChanged() {
@@ -118,7 +127,8 @@ export default function CourseDetail() {
         canonical={`/courses/${course.slug}`}
         image={course.cover_url ? getMediaUrl(course.cover_url) : undefined}
       />
-      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} onOpen={openLesson} />
+      <CourseHero course={course} signedIn={Boolean(user)} busy={busy} message={message} onEnroll={enroll} onJump={jump} onOpen={openLesson}
+        notice={notice} onLeft={left} />
       <CourseTabs present={present} barRef={barRef} />
 
       <Section id="cp-about" label="About"><CourseAbout course={course} signedIn={Boolean(user)} /></Section>

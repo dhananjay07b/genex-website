@@ -184,6 +184,8 @@ export interface CourseEnrollment {
   percent: number
   /** Set once every lesson has been opened from the course page. */
   certificate_code: string | null
+  /** False once a certificate was issued (valid or revoked): leaving would delete the record it rests on. */
+  can_leave: boolean
 }
 
 /** GET /api/learning/certificates/<code>/ (and each row of /me/certificates/). */

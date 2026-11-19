@@ -1,15 +1,16 @@
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import VerifiedIcon from '@mui/icons-material/Verified'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import LogoutIcon from '@mui/icons-material/Logout'
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined'
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt'
 import ScheduleIcon from '@mui/icons-material/Schedule'
-import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@/components/ui/Button'
 import { AccessBadge } from '@/components/gelearn/AccessBadge'
 import { courseItemDisplay } from '@/components/gelearn/courseItemKinds'
@@ -19,6 +20,7 @@ import { returnState } from '@/lib/authRedirect'
 import { useRole } from '@/hooks/useRole'
 import type { CourseDetail, CourseItem } from '@/types/learning'
 import { PublisherLogo } from './CourseSide'
+import { LeaveCourseDialog } from './LeaveCourseDialog'
 import { LEVEL_LABEL, aboutTime, formatMinutes, initials, lessonFormats, monthYear, plural, type SectionId } from './format'
 
 interface CourseHeroProps {
@@ -30,6 +32,10 @@ interface CourseHeroProps {
   onJump: (id: SectionId) => void
   /** Records that the learner opened a lesson from the course page. */
   onOpen: (item: CourseItem) => void
+  /** Shown after leaving the course. */
+  notice: string
+  /** The learner left the course (it's already deleted on the server). */
+  onLeft: () => void
 }
 
 function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
@@ -45,7 +51,8 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
 
 const sub = 'text-xs font-medium text-text-muted'
 
-export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, onOpen }: CourseHeroProps) {
+export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, onOpen, notice, onLeft }: CourseHeroProps) {
+  const [leaving, setLeaving] = useState(false)
   const location = useLocation()
   const { isCompany } = useRole()
   const enrolled = course.enrollment !== null
@@ -171,6 +178,14 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
                     </Button>
                   )}
                 </div>
+                <button type="button" onClick={() => setLeaving(true)}
+                  className="self-end inline-flex items-center gap-1.5 text-xs font-bold text-text-muted hover:text-red-700">
+                  <LogoutIcon sx={{ fontSize: 15 }} /> Leave course
+                </button>
+                {leaving && (
+                  <LeaveCourseDialog slug={course.slug} title={course.title} enrollment={course.enrollment}
+                    onClose={() => setLeaving(false)} onLeft={() => { setLeaving(false); onLeft() }} />
+                )}
               </div>
             ) : (
               <>
@@ -186,6 +201,7 @@ export function CourseHero({ course, signedIn, busy, message, onEnroll, onJump, 
               </>
             )}
             {message && <p role="alert" className="mt-2 text-sm font-semibold text-red-600">{message}</p>}
+            {notice && !enrolled && <p role="status" className="mt-2 text-sm font-semibold text-emerald-700">{notice}</p>}
 
             {firstRole && (
               <p className="mt-3 text-sm text-slate-700">

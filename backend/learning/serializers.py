@@ -205,6 +205,9 @@ class CourseCardSerializer(serializers.ModelSerializer):
         return round(seconds / 60)
 
 
+LEAVE_BLOCKED = "You can't leave this course: your certificate was issued for it, and it stays on your record."
+
+
 class CourseProgressSerializer(CourseCardSerializer):
     """A course with its lessons and the viewer's progress (lists of enrolled courses)."""
     is_locked = serializers.SerializerMethodField()
@@ -278,14 +281,16 @@ class CourseProgressSerializer(CourseCardSerializer):
             return None
         total = obj.items.count()
         done = len(self._completed_ids(obj))
-        certificate = obj.certificates.filter(user=user, status=Certificate.STATUS_VALID).values_list("code", flat=True).first()
+        certificates = dict(obj.certificates.filter(user=user).values_list("status", "code"))
         return {
             "completed_item_ids": sorted(self._completed_ids(obj)),
             "completed": done,
             "total": total,
             "percent": round(done * 100 / total) if total else 0,
             # Set once the learner has opened every lesson: links to their certificate.
-            "certificate_code": certificate,
+            "certificate_code": certificates.get(Certificate.STATUS_VALID),
+            # Leaving deletes progress, so it's refused once any certificate was issued.
+            "can_leave": not certificates,
         }
 
 

@@ -39,6 +39,7 @@ from .revisions import (
     restage_lessons, revision_of, rewords, stage, withdraw,
 )
 from .serializers import (
+    LEAVE_BLOCKED,
     MAX_FAQS,
     MAX_ITEMS,
     CareerRoleSerializer,
@@ -129,9 +130,22 @@ class EnrollView(APIView):
         return Response(CourseDetailSerializer(_published().get(pk=course.pk), context={"request": request}).data)
 
     def delete(self, request, slug):
+        """
+        Leave the course: the enrollment, lesson progress, quiz attempts and the
+        learner's review are deleted. Refused once a certificate was issued
+        (valid or revoked), since it records that the course was finished.
+        """
         course = get_object_or_404(Playlist, slug=slug)
-        Enrollment.objects.filter(user=request.user, playlist=course).delete()
-        ItemProgress.objects.filter(user=request.user, item__playlist=course).delete()
+        enrollment = Enrollment.objects.filter(user=request.user, playlist=course).first()
+        if enrollment is None:
+            return Response({"detail": "You aren't enrolled in this course."}, status=status.HTTP_404_NOT_FOUND)
+        if Certificate.objects.filter(user=request.user, playlist=course).exists():
+            return Response({"detail": LEAVE_BLOCKED}, status=status.HTTP_409_CONFLICT)
+        with transaction.atomic():
+            ItemProgress.objects.filter(user=request.user, item__playlist=course).delete()
+            QuizAttempt.objects.filter(user=request.user, lesson__playlist=course).delete()
+            CourseReview.objects.filter(user=request.user, playlist=course).delete()
+            enrollment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
