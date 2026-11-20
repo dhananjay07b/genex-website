@@ -824,3 +824,58 @@ class BackOfficeLayoutTests(TestCase):
         post = UserBlogPost.objects.get(pk=submission.pk).published_post
         res = self.client.get(f"{self.dj}pages/userblogpost/{submission.pk}/change/")
         self.assertContains(res, f'href="{self.cms}snippets/pages/blogpost/edit/{post.pk}/"')
+
+
+class DeletingSubmissionTakesThePageDownTests(TestCase):
+    """Deleting a submission also takes its published page off GeLearn, with what only made sense with it."""
+
+    def setUp(self):
+        from pages.models import BlogPost, VideoItem
+        import datetime
+        self.api = APIClient()
+        self.pro = make_user("pro", account_type="professional", company_other="Acme", role_title="Eng")
+        self.reader = make_user("reader")
+        self.api.force_authenticate(self.pro)
+        day = datetime.date(2026, 11, 1)
+        self.post = BlogPost.objects.create(title="Live post", date=day, excerpt="e")
+        self.submission = UserBlogPost.objects.create(author=self.pro, title="Live post", excerpt="e", body="<p>b</p>",
+                                                      status="published", published_post=self.post)
+        self.video = VideoItem.objects.create(title="Live video", date=day, duration="5 min", excerpt="e", video_url="https://v.example/x")
+        self.video_submission = UserVideoPost.objects.create(author=self.pro, title="Live video", excerpt="e", video_url="https://v.example/x",
+                                                             duration="5 min", status="published", published_video=self.video)
+
+    def test_deleting_a_published_post_takes_it_down(self):
+        from django.contrib.contenttypes.models import ContentType
+        from comments.models import Comment
+        from engagement.models import SavedItem
+        from pages.models import BlogPost
+        ct = ContentType.objects.get_for_model(BlogPost)
+        SavedItem.objects.create(user=self.reader, content_type=ct, object_id=self.post.pk)
+        Comment.objects.create(author=self.reader, content_type=ct, object_id=self.post.pk, body="Nice")
+        self.assertTrue(self.api.get("/api/snippets/blog-submissions/mine/").json()[0]["is_live"])
+        self.assertEqual(self.api.delete(f"/api/snippets/blog-submissions/{self.submission.pk}/").status_code, 204)
+        self.assertFalse(BlogPost.objects.filter(pk=self.post.pk).exists())
+        self.assertFalse(SavedItem.objects.exists())
+        self.assertFalse(Comment.objects.exists())
+
+    def test_deleting_a_published_video_leaves_course_reading(self):
+        from learning.models import Playlist
+        from pages.models import VideoItem
+        course = Playlist.objects.create(owner=self.pro, title="Course", status="published")
+        course.reading.create(video=self.video)
+        self.assertEqual(self.api.delete(f"/api/snippets/video-submissions/{self.video_submission.pk}/").status_code, 204)
+        self.assertFalse(VideoItem.objects.filter(pk=self.video.pk).exists())
+        self.assertEqual(course.reading.count(), 0)
+
+    def test_unpublished_submissions_only_delete_themselves(self):
+        from pages.models import BlogPost
+        draft = UserBlogPost.objects.create(author=self.pro, title="Draft", status="pending")
+        self.assertFalse(self.api.get(f"/api/snippets/blog-submissions/{draft.pk}/").json()["is_live"])
+        self.assertEqual(self.api.delete(f"/api/snippets/blog-submissions/{draft.pk}/").status_code, 204)
+        self.assertTrue(BlogPost.objects.filter(pk=self.post.pk).exists())
+
+    def test_others_cant_delete(self):
+        from pages.models import BlogPost
+        self.api.force_authenticate(make_user("other", account_type="professional", company_other="Acme", role_title="Eng"))
+        self.assertEqual(self.api.delete(f"/api/snippets/blog-submissions/{self.submission.pk}/").status_code, 404)
+        self.assertTrue(BlogPost.objects.filter(pk=self.post.pk).exists())

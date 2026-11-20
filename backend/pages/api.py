@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from django.db import transaction
 from django.db.models import Q
 from django.urls import path
 from wagtail.rich_text import expand_db_html
@@ -321,10 +322,15 @@ class SubmissionAccessMixin(serializers.Serializer):
 class UserBlogPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     topics = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
+    # A published page is up (also while an edit of it waits for review): deleting takes it down.
+    is_live = serializers.SerializerMethodField()
+
+    def get_is_live(self, obj):
+        return obj.published_post_id is not None
 
     class Meta:
         model = UserBlogPost
-        fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at",
+        fields = ["id", "title", "excerpt", "body", "topics", "other_topic", "image_url", "status", "rejection_reason", "created_at", "submitted_at", "is_live",
                   *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "image_url", "status", "rejection_reason", "created_at", "submitted_at"]
         extra_kwargs = {f: {"required": False, "allow_blank": True} for f in ("title", "excerpt", "body")}
@@ -425,11 +431,29 @@ class BlogSubmissionThrottle(ScopedRateThrottle):
     scope = "blog-submission"
 
 
+class TakeDownOnDeleteMixin:
+    """
+    Deleting a submission also takes its published page off GeLearn (pages.takedown),
+    so an author never leaves a live page behind that they can no longer manage.
+    """
+    published_field = None
+
+    def perform_destroy(self, instance):
+        from .takedown import take_down
+        published = getattr(instance, self.published_field)
+        with transaction.atomic():
+            instance.delete()
+            if published is not None:
+                take_down(published)
+
+
 class UserBlogPostViewSet(
+    TakeDownOnDeleteMixin,
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserBlogPostSerializer
+    published_field = "published_post"
     # Posting is a Professional feature; Learners get 403, Company staff use the Studio.
     permission_classes = [IsProfessional]
 
@@ -460,11 +484,16 @@ class UserBlogPostViewSet(
 
 class UserVideoPostSerializer(SubmissionAccessMixin, serializers.ModelSerializer):
     thumbnail_url = serializers.SerializerMethodField()
+    # A published page is up (also while an edit of it waits for review): deleting takes it down.
+    is_live = serializers.SerializerMethodField()
+
+    def get_is_live(self, obj):
+        return obj.published_video_id is not None
     topics = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), many=True, required=False)
 
     class Meta:
         model = UserVideoPost
-        fields = ["id", "title", "excerpt", "video_url", "topics", "other_topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at",
+        fields = ["id", "title", "excerpt", "video_url", "topics", "other_topic", "duration", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at", "is_live",
                   *SubmissionAccessMixin.ACCESS_FIELDS]
         read_only_fields = ["id", "thumbnail_url", "status", "rejection_reason", "created_at", "submitted_at"]
         extra_kwargs = {f: {"required": False, "allow_blank": True} for f in ("title", "excerpt", "video_url")}
@@ -505,10 +534,12 @@ class VideoSubmissionThrottle(ScopedRateThrottle):
 
 
 class UserVideoPostViewSet(
+    TakeDownOnDeleteMixin,
     mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet,
 ):
     serializer_class = UserVideoPostSerializer
+    published_field = "published_video"
     permission_classes = [IsProfessional]
 
     def get_throttles(self):
