@@ -120,6 +120,9 @@ export function VideosTab() {
       {pendingDelete && (
         <ConfirmDeleteDialog
           label={pendingDelete.title || 'Untitled draft'}
+          message={pendingDelete.is_live
+            ? 'will be removed from your account and taken off GeLearn, including any courses that use it.'
+            : undefined}
           confirming={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={handleConfirmDelete}

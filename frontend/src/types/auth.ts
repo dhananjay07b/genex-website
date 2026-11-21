@@ -128,6 +128,8 @@ export interface UserBlogPost {
   other_topic: string
   image_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
+  /** Its published page is up (also while an edit waits for review). Deleting it takes the page down. */
+  is_live: boolean
   access: ContentAccess
   price: string | null
   rejection_reason: string
@@ -145,6 +147,8 @@ export interface UserVideoPost {
   duration: string
   thumbnail_url: string | null
   status: 'draft' | 'pending' | 'published' | 'rejected'
+  /** Its published page is up (also while an edit waits for review). Deleting it takes the page down. */
+  is_live: boolean
   access: ContentAccess
   price: string | null
   rejection_reason: string
